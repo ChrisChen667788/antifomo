@@ -1,35 +1,72 @@
 # Anti-FOMO
 
-AntiFomo is a `Next.js + FastAPI` research workspace for high-signal content intake, recommendation, focus sessions, research reports, action cards, and WeChat-oriented collection workflows.
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
-This open-source snapshot is prepared for GitHub publishing:
-- local secrets and runtime artifacts are excluded
-- example config files are kept
-- the mini program `AppID` is intentionally blank
-- the repository is packaged as a fresh git repo without local history
+Open-source research workspace for high-signal content intake, AI-assisted reports, focus sessions, action cards, and WeChat-first collection workflows.
 
-## What It Does
+If this project is useful, give it a star. It makes the repository easier to discover and helps future contributors find it faster.
 
-- `Inbox`: submit URLs, raw text, or keywords for research
-- `Feed`: triage content with `like / ignore / save / open detail`
-- `Research`: generate report drafts, compare topics, and derive action cards
-- `Focus`: run focus sessions and turn inputs into follow-up artifacts
-- `Collector`: manage URL-first collection, desktop collector, and WeChat PC agent
-- `Mini Program`: a mobile companion for feed, inbox, research, focus, and collector operations
-- `Browser Extension`: send current web pages or WeChat article pages into the system
+## Why AntiFomo
 
-## Repository Layout
+Most information tools stop at one of these layers:
+- read later
+- news triage
+- AI summary
+- task export
 
-```text
-.
-├── src/                    # Next.js web app
-├── backend/                # FastAPI backend, models, services, tests
-├── miniapp/                # WeChat mini program
-├── browser-extension/      # Chrome extension
-├── scripts/                # local automation and smoke helpers
-├── public/                 # static assets
-└── .github/workflows/      # CI for build + backend tests
-```
+AntiFomo tries to connect the full loop:
+
+`collect -> filter -> research -> focus -> action`
+
+That makes it useful for people who do real work with information, not just consume it.
+
+## Built For
+
+- consultants and strategy teams
+- founders and operators
+- BD and market research teams
+- people who monitor WeChat-heavy information flows
+- builders who want a local-first, hackable research workspace
+
+## Core Capabilities
+
+### 1. High-Signal Intake
+
+- submit URLs, raw text, and keyword research requests
+- browser extension for fast page capture
+- multi-format collector pipeline
+- WeChat-oriented URL-first collection path
+
+### 2. Research Workspace
+
+- generate structured report drafts
+- compare research topics
+- track research versions and watchlists
+- turn reports into reusable action cards
+
+### 3. Focus And Execution
+
+- run focus sessions with goals
+- generate session artifacts
+- export follow-up tasks, briefs, and reading lists
+- bridge research output into execution workflows
+
+### 4. Multi-Client Surface
+
+- web app
+- FastAPI backend
+- WeChat mini program
+- Chrome extension
+
+## Why It Feels Different
+
+- `WeChat-first`: not only generic web links
+- `evidence-aware`: designed around source quality and report iteration
+- `execution-oriented`: action cards and session outputs are first-class
+- `hackable`: easy to run locally, inspect, and modify
 
 ## Quick Start
 
@@ -68,27 +105,32 @@ Open:
 - Web: `http://127.0.0.1:3000`
 - API: `http://127.0.0.1:8000`
 
-## Useful Commands
+## Repository Layout
 
-```bash
-# Web production build
-npm run build
-
-# Backend tests
-source backend/.venv/bin/activate
-pytest backend/tests
-
-# One-command local demo scripts
-npm run demo:setup
-npm run demo:start
-npm run demo:stop
-
-# WeChat collector helpers
-npm run collector:start
-npm run collector:stop
-npm run wechat-agent:start
-npm run wechat-agent:stop
+```text
+.
+├── src/                    # Next.js web app
+├── backend/                # FastAPI backend, models, services, tests
+├── miniapp/                # WeChat mini program
+├── browser-extension/      # Chrome extension
+├── scripts/                # automation and smoke helpers
+└── public/                 # static assets
 ```
+
+## Project Status
+
+Current repository status:
+- active local-first prototype
+- public snapshot sanitized for open-source release
+- web build passes
+- backend tests pass
+
+What is intentionally not included in this public repo:
+- runtime `.env`
+- personal data
+- local databases
+- `.tmp` collector logs and screenshots
+- real WeChat mini program `AppID`
 
 ## Configuration
 
@@ -101,11 +143,11 @@ Key groups:
 - `LLM_PROVIDER`: `mock` or OpenAI-compatible provider
 - `OPENAI_*`: primary model config
 - `STRATEGY_OPENAI_*`: optional second model for research pipeline
-- `WORKBUDDY_*`: callback / webhook integration
+- `WORKBUDDY_*`: callback and webhook integration
 
 ### Mini Program
 
-The file `miniapp/project.config.json` ships with an empty `appid`.
+`miniapp/project.config.json` ships with an empty `appid`.
 
 Before importing into WeChat DevTools:
 1. fill in your own Mini Program `AppID`
@@ -113,17 +155,24 @@ Before importing into WeChat DevTools:
 
 ### Browser Extension
 
-The extension is under `browser-extension/chrome`. Load it in Chrome developer mode and point it to your backend URL.
+The extension lives in `browser-extension/chrome`. Load it in Chrome developer mode and point it to your backend URL.
 
-## Security Notes
+## Roadmap
 
-- No runtime `.env`, database files, logs, or `.tmp` artifacts are included in this repo
-- Secrets should only be placed in local env files, never committed
-- The mini program `AppID` is intentionally removed from the public snapshot
-- Some automation scripts target local desktop workflows and require manual permission setup on macOS
+Near-term areas worth pushing further:
+- better WeChat collection reliability
+- stronger report grounding and source traceability
+- better watchlist and entity workflows
+- stronger focus-to-action artifact quality
+- cleaner public demo assets and walkthroughs
 
-If you discover a security issue, see `SECURITY.md`.
+## Community
+
+- ideas and product suggestions: open a Discussion or Feature Request
+- bugs: open an Issue with reproduction details
+- code contributions: see `CONTRIBUTING.md`
+- security reports: see `SECURITY.md`
 
 ## License
 
-This snapshot is prepared with the MIT license. See `LICENSE`.
+MIT. See `LICENSE`.
