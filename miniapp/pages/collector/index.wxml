@@ -1,0 +1,523 @@
+<view class="page {{prefClass}}">
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section panel">
+    <button class="btn btn-primary" bindtap="chooseImage">{{i18n.chooseImage}}</button>
+    <image wx:if="{{imagePreview}}" class="preview-image section" src="{{imagePreview}}" mode="widthFix" />
+
+    <view class="field section">
+      <view class="field-label">{{i18n.sourceUrl}}</view>
+      <input
+        class="input-box"
+        type="text"
+        value="{{sourceUrl}}"
+        placeholder="{{i18n.sourceUrlPlaceholder}}"
+        bindinput="onSourceUrlInput"
+      />
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.titleHint}}</view>
+      <input
+        class="input-box"
+        type="text"
+        value="{{titleHint}}"
+        placeholder="{{i18n.titleHintPlaceholder}}"
+        bindinput="onTitleHintInput"
+      />
+    </view>
+
+    <button class="btn btn-secondary section" bindtap="submitOCR" loading="{{submitting}}" disabled="{{submitting}}">
+      {{submitting ? i18n.submitting : i18n.submit}}
+    </button>
+
+    <view class="text-muted tip" wx:if="{{message}}">{{message}}</view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.daemonTitle}}</view>
+    <view class="row-between">
+      <view class="daemon-badge {{daemonStatus && daemonStatus.running ? 'daemon-running' : 'daemon-stopped'}}">
+        {{daemonStatus && daemonStatus.running ? i18n.daemonRunning : i18n.daemonStopped}}
+      </view>
+      <view class="text-muted">{{i18n.daemonPid}}: {{daemonStatus && daemonStatus.pid ? daemonStatus.pid : '-'}}</view>
+    </view>
+    <view class="ops-wrap section">
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="startDaemon"
+        loading="{{startingDaemon}}"
+        disabled="{{startingDaemon}}"
+      >
+        {{i18n.startDaemon}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="stopDaemon"
+        loading="{{stoppingDaemon}}"
+        disabled="{{stoppingDaemon}}"
+      >
+        {{i18n.stopDaemon}}
+      </button>
+      <button
+        class="btn btn-primary btn-inline"
+        bindtap="runDaemonOnce"
+        loading="{{runningDaemonOnce}}"
+        disabled="{{runningDaemonOnce}}"
+      >
+        {{i18n.runDaemonOnce}}
+      </button>
+    </view>
+    <view class="text-muted tip">{{i18n.daemonUptime}}: {{daemonUptimeLabel}} · {{i18n.daemonSources}}: {{daemonStatus && daemonStatus.source_file_count ? daemonStatus.source_file_count : 0}}</view>
+    <view class="text-muted tip">{{i18n.daemonLastReport}}: {{daemonLastReportLabel}} · {{i18n.daemonLastDaily}}: {{daemonLastDailyLabel}}</view>
+    <view class="field-label section">{{i18n.daemonLogTail}}</view>
+    <scroll-view scroll-y class="daemon-log-view">
+      <text class="daemon-log-text">{{daemonOutput || daemonLogText || '-'}}</text>
+    </scroll-view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.wechatAgentTitle}}</view>
+    <view class="text-muted tip">{{i18n.wechatAgentHint}}</view>
+    <view class="row-between">
+      <view class="daemon-badge {{wechatAgentStatus && wechatAgentStatus.running ? 'daemon-running' : 'daemon-stopped'}}">
+        {{wechatAgentStatus && wechatAgentStatus.running ? i18n.daemonRunning : i18n.daemonStopped}}
+      </view>
+      <view class="text-muted">{{i18n.daemonPid}}: {{wechatAgentStatus && wechatAgentStatus.pid ? wechatAgentStatus.pid : '-'}}</view>
+    </view>
+    <view class="ops-wrap section">
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="startWechatAgent"
+        loading="{{startingWechatAgent}}"
+        disabled="{{startingWechatAgent}}"
+      >
+        {{i18n.wechatAgentStart}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="stopWechatAgent"
+        loading="{{stoppingWechatAgent}}"
+        disabled="{{stoppingWechatAgent}}"
+      >
+        {{i18n.wechatAgentStop}}
+      </button>
+      <button
+        class="btn btn-primary btn-inline"
+        bindtap="runWechatAgentOnce"
+        loading="{{runningWechatAgentOnce}}"
+        disabled="{{runningWechatAgentOnce}}"
+      >
+        {{i18n.wechatAgentRunOnce}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="checkWechatAgentHealth"
+        loading="{{checkingWechatAgentHealth}}"
+        disabled="{{checkingWechatAgentHealth}}"
+      >
+        {{i18n.wechatAgentHealthCheck}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="selfHealWechatAgent"
+        loading="{{healingWechatAgent}}"
+        disabled="{{healingWechatAgent}}"
+      >
+        {{i18n.wechatAgentSelfHeal}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="previewWechatCapture"
+        loading="{{capturingWechatPreview}}"
+        disabled="{{capturingWechatPreview}}"
+      >
+        {{i18n.wechatAgentPreviewCapture}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="previewWechatOCR"
+        loading="{{runningWechatOCRPreview}}"
+        disabled="{{runningWechatOCRPreview}}"
+      >
+        {{i18n.wechatAgentPreviewOCR}}
+      </button>
+    </view>
+    <view class="text-muted tip">{{i18n.daemonUptime}}: {{wechatAgentUptimeLabel}} · {{i18n.wechatAgentHashes}}: {{wechatAgentStatus && wechatAgentStatus.processed_hashes ? wechatAgentStatus.processed_hashes : 0}}</view>
+    <view class="text-muted tip">{{i18n.wechatAgentLastCycle}}: {{wechatAgentLastCycleLabel}} · {{i18n.wechatAgentRunOncePid}}: {{wechatAgentStatus && wechatAgentStatus.run_once_running ? wechatAgentStatus.run_once_pid : '-'}}</view>
+    <view class="text-muted tip">
+      {{i18n.wechatAgentCycleSubmitted}}: {{wechatAgentStatus && wechatAgentStatus.last_cycle_submitted ? wechatAgentStatus.last_cycle_submitted : 0}}
+      · {{i18n.wechatAgentCycleFailed}}: {{wechatAgentStatus && wechatAgentStatus.last_cycle_failed ? wechatAgentStatus.last_cycle_failed : 0}}
+      · {{i18n.wechatAgentCycleSkippedSeen}}: {{wechatAgentStatus && wechatAgentStatus.last_cycle_skipped_seen ? wechatAgentStatus.last_cycle_skipped_seen : 0}}
+      · {{i18n.wechatAgentCycleLowQuality}}: {{wechatAgentStatus && wechatAgentStatus.last_cycle_skipped_low_quality ? wechatAgentStatus.last_cycle_skipped_low_quality : 0}}
+    </view>
+    <view class="text-muted tip" wx:if="{{wechatAgentStatus && wechatAgentStatus.last_cycle_error}}">
+      {{i18n.wechatAgentCycleError}}: {{wechatAgentStatus.last_cycle_error}}
+    </view>
+    <view class="text-muted tip" wx:if="{{wechatAgentHealth}}">
+      {{wechatAgentHealth.healthy ? i18n.wechatAgentHealthHealthy : i18n.wechatAgentHealthUnhealthy}}
+      · {{i18n.wechatAgentHealthCheckedAt}}: {{wechatAgentHealth.checked_at}}
+      <block wx:if="{{!wechatAgentHealth.healthy}}">
+        · {{i18n.wechatAgentHealthReasons}}: {{wechatAgentHealth.reasons}}
+      </block>
+    </view>
+
+    <view class="section" wx:if="{{wechatAgentBatchView.visible}}">
+      <view class="field-label">{{i18n.wechatAgentBatchTitle}}</view>
+      <view class="text-muted tip">{{wechatAgentBatchView.title}}</view>
+      <view class="text-muted tip">{{wechatAgentBatchView.summary}}</view>
+      <view class="collector-progress-track section">
+        <view class="collector-progress-fill" style="width: {{wechatAgentBatchView.progress}}%;"></view>
+      </view>
+      <view class="metrics-grid">
+        <view class="metric">
+          <view class="metric-label">{{i18n.wechatAgentBatchSubmittedNew}}</view>
+          <view class="metric-value">{{wechatAgentBatchView.metrics.submittedNew}}</view>
+        </view>
+      <view class="metric">
+        <view class="metric-label">{{i18n.wechatAgentBatchSubmittedUrl}}</view>
+        <view class="metric-value">{{wechatAgentBatchView.metrics.submittedUrl}}</view>
+      </view>
+      <view class="metric">
+        <view class="metric-label">{{i18n.wechatAgentBatchUrlDirect}}</view>
+        <view class="metric-value">{{wechatAgentBatchView.metrics.submittedUrlDirect}}</view>
+      </view>
+      <view class="metric">
+        <view class="metric-label">{{i18n.wechatAgentBatchUrlShareCopy}}</view>
+        <view class="metric-value">{{wechatAgentBatchView.metrics.submittedUrlShareCopy}}</view>
+      </view>
+      <view class="metric">
+        <view class="metric-label">{{i18n.wechatAgentBatchUrlResolved}}</view>
+        <view class="metric-value">{{wechatAgentBatchView.metrics.submittedUrlResolved}}</view>
+      </view>
+      <view class="metric">
+        <view class="metric-label">{{i18n.wechatAgentBatchSubmittedOcr}}</view>
+        <view class="metric-value">{{wechatAgentBatchView.metrics.submittedOcr}}</view>
+      </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.wechatAgentBatchDedup}}</view>
+          <view class="metric-value">{{wechatAgentBatchView.metrics.deduplicatedExisting}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.wechatAgentBatchSeen}}</view>
+          <view class="metric-value">{{wechatAgentBatchView.metrics.skippedSeen}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.wechatAgentBatchFailed}}</view>
+          <view class="metric-value">{{wechatAgentBatchView.metrics.failed}}</view>
+        </view>
+      </view>
+      <view class="text-muted tip" wx:if="{{wechatAgentBatchView.lastMessage}}">
+        {{i18n.wechatAgentBatchMessage}}: {{wechatAgentBatchView.lastMessage}}
+      </view>
+      <view class="text-muted tip" wx:if="{{wechatAgentBatchView.lastError}}">
+        {{i18n.wechatAgentCycleError}}: {{wechatAgentBatchView.lastError}}
+      </view>
+    </view>
+
+    <view class="field-label section">{{i18n.daemonLogTail}}</view>
+    <scroll-view scroll-y class="daemon-log-view">
+      <text class="daemon-log-text">{{wechatAgentOutput || wechatAgentLogText || '-'}}</text>
+    </scroll-view>
+
+    <block wx:if="{{wechatAgentCapturePreview}}">
+      <view class="field-label section">{{i18n.wechatAgentPreviewImage}}</view>
+      <view class="text-muted">{{i18n.wechatAgentPreviewSize}}: {{wechatAgentCapturePreview.image_size_bytes}}</view>
+      <image
+        wx:if="{{wechatAgentCaptureImage}}"
+        class="preview-image section"
+        src="{{wechatAgentCaptureImage}}"
+        mode="widthFix"
+      />
+    </block>
+
+    <block wx:if="{{wechatAgentOCRPreview}}">
+      <view class="field-label section">{{i18n.wechatAgentPreviewResult}}</view>
+      <view class="text-muted">
+        {{i18n.wechatAgentPreviewQuality}}:
+        {{wechatAgentOCRPreview.quality_ok ? i18n.wechatAgentPreviewPass : i18n.wechatAgentPreviewFail}}
+      </view>
+      <view class="text-muted" wx:if="{{wechatAgentOCRPreview.quality_reason}}">
+        {{i18n.wechatAgentPreviewReason}}: {{wechatAgentOCRPreview.quality_reason}}
+      </view>
+      <view class="preview-ocr-title">{{wechatAgentOCRPreview.title || '-'}}</view>
+      <view class="preview-ocr-body">{{wechatAgentOCRPreview.body_preview || '-'}}</view>
+      <view class="text-muted">{{i18n.wechatAgentPreviewKeywords}}: {{wechatAgentOCRPreview.keywords && wechatAgentOCRPreview.keywords.length ? wechatAgentOCRPreview.keywords : '-'}}</view>
+    </block>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.wechatAgentConfigTitle}}</view>
+    <view class="config-grid">
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigRows}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.rows_per_batch}}" data-field="rows_per_batch" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigBatches}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.batches_per_cycle}}" data-field="batches_per_cycle" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigRowHeight}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.article_row_height}}" data-field="article_row_height" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigInterval}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.loop_interval_sec}}" data-field="loop_interval_sec" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigHealthStale}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.health_stale_minutes}}" data-field="health_stale_minutes" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigMinFileSize}}</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.min_capture_file_size_kb}}" data-field="min_capture_file_size_kb" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigListOrigin}} x</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.list_origin && wechatAgentConfig.list_origin.x}}" data-field="list_origin.x" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigListOrigin}} y</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.list_origin && wechatAgentConfig.list_origin.y}}" data-field="list_origin.y" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigCapture}} x</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.article_capture_region && wechatAgentConfig.article_capture_region.x}}" data-field="article_capture_region.x" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigCapture}} y</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.article_capture_region && wechatAgentConfig.article_capture_region.y}}" data-field="article_capture_region.y" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigCapture}} w</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.article_capture_region && wechatAgentConfig.article_capture_region.width}}" data-field="article_capture_region.width" bindinput="onWechatAgentConfigInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">{{i18n.wechatAgentConfigCapture}} h</view>
+        <input class="input-box" type="number" value="{{wechatAgentConfig && wechatAgentConfig.article_capture_region && wechatAgentConfig.article_capture_region.height}}" data-field="article_capture_region.height" bindinput="onWechatAgentConfigInput" />
+      </view>
+    </view>
+    <button class="btn btn-secondary btn-inline section" bindtap="saveWechatAgentConfig" loading="{{savingWechatAgentConfig}}" disabled="{{savingWechatAgentConfig}}">
+      {{i18n.wechatAgentConfigSave}}
+    </button>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.statusTitle}}</view>
+    <block wx:if="{{collectorStatus}}">
+      <view class="metrics-grid">
+        <view class="metric">
+          <view class="metric-label">{{i18n.total}}</view>
+          <view class="metric-value">{{collectorStatus.last_24h_total}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.ready}}</view>
+          <view class="metric-value">{{collectorStatus.last_24h_ready}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.processing}}</view>
+          <view class="metric-value">{{collectorStatus.last_24h_processing}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.failed}}</view>
+          <view class="metric-value">{{collectorStatus.last_24h_failed}}</view>
+        </view>
+        <view class="metric">
+          <view class="metric-label">{{i18n.ocrItems}}</view>
+          <view class="metric-value">{{collectorStatus.last_24h_ocr_items}}</view>
+        </view>
+      </view>
+    </block>
+    <view class="ops-wrap section">
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="flushPending"
+        loading="{{processingPending}}"
+        disabled="{{processingPending}}"
+      >
+        {{i18n.flushPending}}
+      </button>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="retryFailed"
+        loading="{{retryingFailed}}"
+        disabled="{{retryingFailed}}"
+      >
+        {{i18n.retryFailed}}
+      </button>
+      <button
+        class="btn btn-primary btn-inline"
+        bindtap="generateDaily"
+        loading="{{generatingDaily}}"
+        disabled="{{generatingDaily}}"
+      >
+        {{i18n.generateDaily}}
+      </button>
+    </view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="row-between">
+      <view class="field-label">{{i18n.rssFeedTitle}}</view>
+      <button
+        class="btn btn-secondary btn-inline"
+        bindtap="syncRssFeeds"
+        loading="{{syncingFeeds}}"
+        disabled="{{syncingFeeds}}"
+      >
+        {{i18n.rssFeedSyncAll}}
+      </button>
+    </view>
+    <view class="field section">
+      <input
+        class="input-box"
+        type="text"
+        value="{{rssFeedInput}}"
+        placeholder="{{i18n.rssFeedInputPlaceholder}}"
+        data-field="rssFeedInput"
+        bindinput="onRssFeedInput"
+      />
+    </view>
+    <view class="field">
+      <input
+        class="input-box"
+        type="text"
+        value="{{rssFeedTitleInput}}"
+        placeholder="{{i18n.rssFeedNamePlaceholder}}"
+        data-field="rssFeedTitleInput"
+        bindinput="onRssFeedInput"
+      />
+    </view>
+    <button
+      class="btn btn-primary btn-inline section"
+      bindtap="addRssFeedSource"
+      loading="{{addingFeed}}"
+      disabled="{{addingFeed}}"
+    >
+      {{i18n.rssFeedAdd}}
+    </button>
+    <view class="text-muted tip" wx:if="{{latestFeedSyncSummary}}">{{latestFeedSyncSummary}}</view>
+    <view class="source-list section" wx:if="{{collectorFeeds.length}}">
+      <view class="source-row" wx:for="{{collectorFeeds}}" wx:key="id">
+        <view class="source-url">{{item.title || item.source_url}}</view>
+        <view class="text-muted">{{item.source_url}}</view>
+        <view class="row-between">
+          <view class="text-muted">{{item.status}} · {{item.last_synced_at_display || '-'}}</view>
+        </view>
+        <view class="text-muted tip" wx:if="{{item.last_error}}">{{item.last_error}}</view>
+      </view>
+    </view>
+    <view class="text-muted" wx:if="{{!collectorFeeds.length}}">{{i18n.rssFeedEmpty}}</view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.sourceManagerTitle}}</view>
+    <view class="field section">
+      <input
+        class="input-box"
+        type="text"
+        value="{{sourceManagerInput}}"
+        placeholder="{{i18n.sourceInputPlaceholder}}"
+        bindinput="onSourceManagerInput"
+      />
+    </view>
+    <button
+      class="btn btn-secondary btn-inline"
+      bindtap="addCollectorSource"
+      loading="{{addingSource}}"
+      disabled="{{addingSource}}"
+    >
+      {{i18n.addSource}}
+    </button>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.batchSourceTitle}}</view>
+      <textarea
+        class="text-box"
+        value="{{batchSourceInput}}"
+        placeholder="{{i18n.sourceInputPlaceholder}}"
+        bindinput="onBatchSourceInput"
+      />
+      <view class="text-muted tip">{{i18n.sourceRecognized}}: {{batchSourceCount}}</view>
+    </view>
+    <button
+      class="btn btn-secondary btn-inline"
+      bindtap="importCollectorSourcesBatch"
+      loading="{{importingSource}}"
+      disabled="{{importingSource}}"
+    >
+      {{i18n.importSources}}
+    </button>
+
+    <view class="source-list section" wx:if="{{collectorSources.length}}">
+      <view class="source-row" wx:for="{{collectorSources}}" wx:key="id">
+        <view class="source-url">{{item.source_url}}</view>
+        <view class="row-between">
+          <view class="text-muted">{{item.enabled ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+          <view class="source-actions">
+            <button
+              class="btn btn-secondary btn-mini"
+              data-id="{{item.id}}"
+              bindtap="toggleCollectorSource"
+              loading="{{togglingSourceId===item.id}}"
+              disabled="{{togglingSourceId===item.id}}"
+            >
+              {{i18n.sourceToggle}}
+            </button>
+            <button
+              class="btn btn-secondary btn-mini"
+              data-id="{{item.id}}"
+              bindtap="deleteCollectorSource"
+              loading="{{deletingSourceId===item.id}}"
+              disabled="{{deletingSourceId===item.id}}"
+            >
+              {{i18n.sourceDelete}}
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="text-muted" wx:if="{{!collectorSources.length}}">{{i18n.noSources}}</view>
+  </view>
+
+  <view class="glass-card section panel" wx:if="{{resultItem}}">
+    <view class="field-label">{{resultItem.title}}</view>
+    <view class="text-muted source">{{resultItem.source_domain}}</view>
+    <view class="summary">{{resultItem.short_summary}}</view>
+    <view class="chip-wrap">
+      <text class="chip" wx:for="{{resultItem.tags}}" wx:key="id">#{{item.tag_name || item}}</text>
+    </view>
+    <button class="btn btn-secondary section" bindtap="openItemDetail">{{i18n.openDetail}}</button>
+  </view>
+
+  <view class="glass-card section panel" wx:if="{{!resultItem}}">
+    <view class="text-muted">{{i18n.noResult}}</view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.failedTitle}}</view>
+    <block wx:if="{{failedItems.length}}">
+      <view class="failed-list">
+        <view class="failed-row" wx:for="{{failedItems}}" wx:key="id">
+          <view class="failed-title">{{item.title || 'Untitled'}}</view>
+          <view class="text-muted">{{item.source_domain || '-'}}</view>
+          <view class="failed-error text-muted">{{item.processing_error || '-'}}</view>
+        </view>
+      </view>
+    </block>
+    <view class="text-muted" wx:if="{{!failedItems.length}}">{{i18n.noFailed}}</view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="row-between">
+      <view class="field-label">{{i18n.dailyTitle}}</view>
+      <button class="btn btn-secondary btn-inline" bindtap="copyMarkdown">{{i18n.copyMarkdown}}</button>
+    </view>
+    <scroll-view scroll-y class="markdown-view">
+      <text class="markdown-text">{{dailyMarkdown || i18n.markdownPlaceholder}}</text>
+    </scroll-view>
+  </view>
+</view>

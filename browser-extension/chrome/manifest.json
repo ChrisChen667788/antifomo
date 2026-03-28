@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Anti-fomo Quick Send",
+  "version": "0.2.0",
+  "description": "Send current page URL and extracted content to Anti-fomo Inbox in one click.",
+  "permissions": ["activeTab", "tabs", "storage", "scripting"],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_title": "Send to Anti-fomo",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

@@ -1,0 +1,714 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <view class="settings-btn settings-btn-icon source-btn" bindtap="toggleSourcePanel">
+      <view class="source-glyph">{{i18n.sourceToggle}}</view>
+    </view>
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card panel source-panel" wx:if="{{sourcePanelOpen}}">
+    <view class="panel-kicker">{{i18n.sourcePanelKicker}}</view>
+    <view class="source-panel-desc">{{i18n.sourcePanelDesc}}</view>
+    <view class="source-active-row">
+      <view class="source-active-label">{{i18n.sourceActive}}</view>
+      <view class="source-active-value">{{(sourceSettings.enabled_source_labels && sourceSettings.enabled_source_labels.length ? sourceSettings.enabled_source_labels.join(' / ') : i18n.sourceNone)}}</view>
+    </view>
+    <view class="source-card-list">
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceJianyu}}</view>
+          <view class="source-card-desc">{{i18n.sourceJianyuDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_jianyu_tender_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_jianyu_tender_feed}}"
+          data-key="enable_jianyu_tender_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceYuntoutiao}}</view>
+          <view class="source-card-desc">{{i18n.sourceYuntoutiaoDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_yuntoutiao_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_yuntoutiao_feed}}"
+          data-key="enable_yuntoutiao_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceGgzy}}</view>
+          <view class="source-card-desc">{{i18n.sourceGgzyDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_ggzy_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_ggzy_feed}}"
+          data-key="enable_ggzy_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceCecbid}}</view>
+          <view class="source-card-desc">{{i18n.sourceCecbidDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_cecbid_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_cecbid_feed}}"
+          data-key="enable_cecbid_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceCcgp}}</view>
+          <view class="source-card-desc">{{i18n.sourceCcgpDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_ccgp_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_ccgp_feed}}"
+          data-key="enable_ccgp_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceGovPolicy}}</view>
+          <view class="source-card-desc">{{i18n.sourceGovPolicyDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_gov_policy_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_gov_policy_feed}}"
+          data-key="enable_gov_policy_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+      <view class="source-card">
+        <view class="source-card-main">
+          <view class="source-card-title">{{i18n.sourceLocalGgzy}}</view>
+          <view class="source-card-desc">{{i18n.sourceLocalGgzyDesc}}</view>
+          <view class="source-card-status">{{sourceSettings.enable_local_ggzy_feed ? i18n.sourceEnabled : i18n.sourceDisabled}}</view>
+        </view>
+        <switch
+          color="#0ea5e9"
+          checked="{{sourceSettings.enable_local_ggzy_feed}}"
+          data-key="enable_local_ggzy_feed"
+          bindchange="toggleResearchSource"
+        />
+      </view>
+    </view>
+    <view class="research-diagnostics-block" wx:if="{{sourceSettings.connector_statuses && sourceSettings.connector_statuses.length}}">
+      <view class="research-diagnostics-label">{{i18n.sourceConnectorTitle}}</view>
+      <view class="research-source-stack">
+        <view class="research-source-card" wx:for="{{sourceSettings.connector_statuses}}" wx:key="key">
+          <view class="research-source-card-head">
+            <view class="research-source-card-title">{{item.label}}</view>
+            <view class="research-quality-chip {{item.status==='active' ? 'quality-high' : item.status==='authorization_required' ? 'quality-medium' : 'quality-low'}}">
+              {{item.status==='active' ? i18n.sourceConnectorActive : item.status==='authorization_required' ? i18n.sourceConnectorAuthorization : i18n.sourceConnectorAvailable}}
+            </view>
+          </view>
+          <view class="research-source-card-note">{{item.detail}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="source-saving" wx:if="{{sourceSaving}}">{{i18n.sourceSaving}}</view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="summary-grid">
+      <view class="summary-card summary-{{item.tone}}" wx:for="{{summaryCards}}" wx:key="label">
+        <view class="summary-label">{{item.label}}</view>
+        <view class="summary-value">{{item.value}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="panel-kicker">{{i18n.filterTitle}}</view>
+    <view class="search-row">
+      <input
+        class="search-input"
+        value="{{query}}"
+        placeholder="{{i18n.searchPlaceholder}}"
+        bindinput="onQueryInput"
+        confirm-type="search"
+        bindconfirm="submitSearch"
+      />
+      <button class="btn btn-secondary compact-btn" bindtap="submitSearch">{{i18n.searchSubmit}}</button>
+    </view>
+    <view class="filter-row">
+      <view class="chip {{filter==='all' ? 'chip-on' : ''}}" data-key="all" bindtap="setFilter">{{i18n.filterAll}}</view>
+      <view class="chip {{filter==='reports' ? 'chip-on' : ''}}" data-key="reports" bindtap="setFilter">{{i18n.filterReports}}</view>
+      <view class="chip {{filter==='actions' ? 'chip-on' : ''}}" data-key="actions" bindtap="setFilter">{{i18n.filterActions}}</view>
+      <view class="chip {{focusOnly ? 'chip-on' : ''}}" bindtap="toggleFocusOnly">
+        {{focusOnly ? i18n.focusOnlyOn : i18n.focusOnlyOff}}
+      </view>
+    </view>
+    <view class="perspective-block">
+      <view class="facet-label">{{i18n.perspectiveLabel}}</view>
+      <view class="filter-row">
+        <view class="chip {{perspective==='all' ? 'chip-on' : ''}}" data-key="all" bindtap="setPerspective">{{i18n.viewAll}}</view>
+        <view class="chip {{perspective==='regional' ? 'chip-on' : ''}}" data-key="regional" bindtap="setPerspective">{{i18n.viewRegional}}</view>
+        <view class="chip {{perspective==='client_followup' ? 'chip-on' : ''}}" data-key="client_followup" bindtap="setPerspective">{{i18n.viewClient}}</view>
+        <view class="chip {{perspective==='bidding' ? 'chip-on' : ''}}" data-key="bidding" bindtap="setPerspective">{{i18n.viewBidding}}</view>
+        <view class="chip {{perspective==='ecosystem' ? 'chip-on' : ''}}" data-key="ecosystem" bindtap="setPerspective">{{i18n.viewEcosystem}}</view>
+      </view>
+      <view class="perspective-desc">{{activePerspectiveDesc}}</view>
+    </view>
+    <view class="facet-grid">
+      <picker mode="selector" range="{{regionOptions}}" bindchange="onRegionChange">
+        <view class="facet-field">
+          <view class="facet-label">{{i18n.regionLabel}}</view>
+          <view class="facet-value">{{regionFilter || i18n.regionAll}}</view>
+        </view>
+      </picker>
+      <picker mode="selector" range="{{industryOptions}}" bindchange="onIndustryChange">
+        <view class="facet-field">
+          <view class="facet-label">{{i18n.industryLabel}}</view>
+          <view class="facet-value">{{industryFilter || i18n.industryAll}}</view>
+        </view>
+      </picker>
+      <picker mode="selector" range="{{actionTypeOptions}}" bindchange="onActionTypeChange">
+        <view class="facet-field">
+          <view class="facet-label">{{i18n.actionTypeLabel}}</view>
+          <view class="facet-value">{{actionTypeFilter || i18n.actionTypeAll}}</view>
+        </view>
+      </picker>
+    </view>
+    <view class="filter-actions">
+      <view class="filter-hint" wx:if="{{!activeFilters.length}}">{{i18n.noFilterHint}}</view>
+      <view class="active-filter-list" wx:else>
+        <view class="active-filter-chip" wx:for="{{activeFilters}}" wx:key="*this">{{item}}</view>
+      </view>
+      <button class="btn btn-ghost compact-btn" bindtap="clearFilters">{{i18n.clearFilters}}</button>
+    </view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="panel-kicker">{{i18n.savedViewsTitle}}</view>
+    <view class="source-panel-desc">{{i18n.savedViewsDesc}}</view>
+    <view class="filter-actions">
+      <button class="btn btn-secondary compact-btn" bindtap="saveCurrentView" loading="{{workspaceSaving}}">
+        {{i18n.saveCurrentView}}
+      </button>
+    </view>
+    <view class="source-card-list" wx:if="{{savedViews.length}}">
+      <view class="source-card" wx:for="{{savedViews}}" wx:key="id">
+        <view class="source-card-main">
+          <view class="source-card-title">{{item.name}}</view>
+          <view class="source-card-desc">{{item.query || '-'}}</view>
+          <view class="source-card-status">{{item.updated_at}}</view>
+        </view>
+        <view class="research-entry-foot">
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="applySavedView">{{i18n.applyView}}</button>
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="deleteSavedView">{{i18n.deleteLabel}}</button>
+        </view>
+      </view>
+    </view>
+    <view class="filter-hint" wx:else>{{i18n.savedViewsEmpty}}</view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="panel-kicker">{{i18n.trackingTitle}}</view>
+    <view class="source-panel-desc">{{i18n.trackingDesc}}</view>
+    <view class="filter-actions">
+      <button class="btn btn-secondary compact-btn" bindtap="saveTrackingTopic" loading="{{workspaceSaving}}">
+        {{i18n.saveTopic}}
+      </button>
+    </view>
+    <view class="source-card-list" wx:if="{{trackingTopics.length}}">
+      <view class="source-card" wx:for="{{trackingTopics}}" wx:key="id">
+        <view class="source-card-main">
+          <view class="source-card-title">{{item.name}}</view>
+          <view class="source-card-desc">{{item.keyword}}</view>
+          <view class="source-card-status">{{item.research_focus || item.updated_at}}</view>
+          <view class="source-card-status" wx:if="{{item.last_refreshed_at}}">
+            {{i18n.trackingLastRefresh}} · {{item.last_refreshed_at}}
+          </view>
+          <view class="research-quality-row compact">
+            <view class="research-quality-chip {{item.last_refresh_status_tone}}">
+              {{item.last_refresh_status_label}}
+            </view>
+            <view class="research-quality-chip quality-info" wx:if="{{item.last_refresh_new_targets.length}}">
+              新增甲方·{{item.last_refresh_new_targets.length}}
+            </view>
+            <view class="research-quality-chip quality-medium" wx:if="{{item.last_refresh_new_competitors.length}}">
+              新增竞品·{{item.last_refresh_new_competitors.length}}
+            </view>
+            <view class="research-quality-chip quality-high" wx:if="{{item.last_refresh_new_budget_signals.length}}">
+              新增预算·{{item.last_refresh_new_budget_signals.length}}
+            </view>
+          </view>
+          <view class="source-card-status" wx:if="{{item.last_refresh_note}}">
+            {{item.last_refresh_note}}
+          </view>
+          <view class="source-card-status error-text" wx:if="{{item.last_refresh_error}}">
+            {{item.last_refresh_error}}
+          </view>
+          <view class="research-chip-row" wx:if="{{item.last_refresh_new_targets.length || item.last_refresh_new_competitors.length || item.last_refresh_new_budget_signals.length}}">
+            <view class="research-tag subtle" wx:for="{{item.last_refresh_new_targets}}" wx:key="*this">
+              甲方 · {{item}}
+            </view>
+            <view class="research-tag subtle" wx:for="{{item.last_refresh_new_competitors}}" wx:key="*this">
+              竞品 · {{item}}
+            </view>
+            <view class="research-tag subtle" wx:for="{{item.last_refresh_new_budget_signals}}" wx:key="*this">
+              预算 · {{item}}
+            </view>
+          </view>
+          <view class="research-quality-row compact" wx:if="{{item.latest_version_source_count}}">
+            <view class="research-quality-chip {{item.latest_version_evidence_tone}}">
+              {{i18n.evidenceDensity}}·{{item.latest_version_evidence_label}}
+            </view>
+            <view class="research-quality-chip {{item.latest_version_quality_tone}}">
+              {{i18n.sourceQuality}}·{{item.latest_version_quality_label}}
+            </view>
+            <view class="research-quality-chip quality-neutral">
+              {{i18n.sourcesLabel}}·{{item.latest_version_source_count}}
+            </view>
+          </view>
+        </view>
+        <view class="research-entry-foot">
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="refreshTrackingTopic">
+            {{refreshingTopicId===item.id ? i18n.refreshingTopic : i18n.refreshTopic}}
+          </button>
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="applyTrackingTopic">{{i18n.applyTopic}}</button>
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="createWatchlistFromTopic">
+            {{i18n.createWatchlist}}
+          </button>
+          <navigator class="btn btn-ghost compact-btn" url="/pages/research-topic/index?id={{item.id}}">
+            {{i18n.openTopicWorkspace}}
+          </navigator>
+          <navigator class="btn btn-ghost compact-btn" wx:if="{{item.last_report_entry_id}}" url="/pages/knowledge/index?id={{item.last_report_entry_id}}">
+            {{i18n.openLatestReport}}
+          </navigator>
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="deleteTrackingTopic">{{i18n.deleteLabel}}</button>
+        </view>
+      </view>
+    </view>
+    <view class="filter-hint" wx:else>{{i18n.trackingEmpty}}</view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="panel-kicker">{{i18n.watchlistTitle}}</view>
+    <view class="source-panel-desc">{{i18n.watchlistDesc}}</view>
+    <view class="source-card-list" wx:if="{{watchlists.length}}">
+      <view class="source-card" wx:for="{{watchlists}}" wx:key="id">
+        <view class="source-card-main">
+          <view class="source-card-title">{{item.name}}</view>
+          <view class="source-card-desc">{{item.query}}</view>
+          <view class="source-card-status" wx:if="{{item.last_checked_at}}">
+            最近检查 · {{item.last_checked_at}}
+          </view>
+          <view class="research-quality-row compact" wx:if="{{item.latest_changes && item.latest_changes.length}}">
+            <view class="research-quality-chip quality-info">
+              {{item.latest_changes[0].change_type}}
+            </view>
+            <view class="research-quality-chip quality-neutral">
+              {{item.latest_changes[0].severity}}
+            </view>
+          </view>
+          <view class="source-card-status" wx:if="{{item.latest_changes && item.latest_changes.length}}">
+            {{item.latest_changes[0].summary}}
+          </view>
+        </view>
+        <view class="research-entry-foot">
+          <button class="btn btn-ghost compact-btn" data-id="{{item.id}}" bindtap="refreshWatchlist">
+            {{refreshingWatchlistId===item.id ? i18n.refreshingWatchlist : i18n.refreshWatchlist}}
+          </button>
+          <navigator class="btn btn-ghost compact-btn" wx:if="{{item.tracking_topic_id}}" url="/pages/research-topic/index?id={{item.tracking_topic_id}}">
+            {{i18n.openTopicWorkspace}}
+          </navigator>
+        </view>
+      </view>
+    </view>
+    <view class="filter-hint" wx:else>{{i18n.watchlistEmpty}}</view>
+  </view>
+
+  <view class="glass-card panel">
+    <view class="panel-kicker">{{i18n.consoleTitle}}</view>
+    <view class="source-panel-desc">{{i18n.consoleDesc}}</view>
+    <view class="filter-row">
+      <view
+        class="chip {{consoleFilterTopicId==='all' ? 'chip-on' : ''}}"
+        data-topic-id="all"
+        bindtap="setConsoleTopicFilter"
+      >
+        {{i18n.consoleAllTopics}}
+      </view>
+      <view
+        class="chip {{consoleFilterTopicId===item.id ? 'chip-on' : ''}}"
+        wx:for="{{trackingTopics}}"
+        wx:key="id"
+        data-topic-id="{{item.id}}"
+        bindtap="setConsoleTopicFilter"
+      >
+        {{item.name}}
+      </view>
+    </view>
+    <view class="filter-actions">
+      <button class="btn btn-secondary compact-btn" bindtap="createConsoleConversation" loading="{{consoleSubmitting}}">
+        {{i18n.consoleNewConversation}}
+      </button>
+      <button class="btn btn-ghost compact-btn" bindtap="loadResearchConsole">
+        {{i18n.consoleRefresh}}
+      </button>
+    </view>
+    <view class="filter-hint error-text" wx:if="{{consoleError}}">{{consoleError}}</view>
+    <view class="filter-hint" wx:if="{{consoleLoading}}">{{i18n.loading}}</view>
+    <view class="source-card-list" wx:if="{{consoleConversations.length}}">
+      <view
+        class="source-card console-card {{consoleSelectedConversationId===item.id ? 'console-card-active' : ''}}"
+        wx:for="{{consoleConversations}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="openConsoleConversation"
+      >
+        <view class="source-card-main">
+          <view class="source-card-title">{{item.title}}</view>
+          <view class="source-card-desc">{{item.updated_label}}</view>
+          <view class="source-card-status" wx:if="{{item.last_message_preview}}">
+            {{item.last_message_preview}}
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="filter-hint" wx:elif="{{!consoleLoading}}">{{i18n.consoleEmpty}}</view>
+
+    <view class="console-thread" wx:if="{{consoleSelectedConversation}}">
+      <view class="console-thread-head">
+        <view class="console-thread-title">{{consoleSelectedConversation.title}}</view>
+        <view class="research-quality-chip quality-neutral">
+          {{consoleSelectedConversation.messages.length}} {{i18n.consoleMessages}}
+        </view>
+      </view>
+      <view class="console-message-stack">
+        <view
+          class="console-message console-message-{{item.role}}"
+          wx:for="{{consoleSelectedConversation.messages}}"
+          wx:key="id"
+        >
+          <view class="console-message-meta">
+            <view>{{item.role==='assistant' ? i18n.consoleAssistant : i18n.consoleUser}}</view>
+            <view>{{item.created_at}}</view>
+          </view>
+          <view class="console-message-content">{{item.content}}</view>
+        </view>
+      </view>
+      <view class="research-chip-row" wx:if="{{consoleSuggestedFollowups.length}}">
+        <view
+          class="research-tag subtle"
+          wx:for="{{consoleSuggestedFollowups}}"
+          wx:key="*this"
+          data-value="{{item}}"
+          bindtap="useConsoleFollowup"
+        >
+          {{item}}
+        </view>
+      </view>
+      <textarea
+        class="console-input"
+        value="{{consoleDraft}}"
+        placeholder="{{i18n.consolePlaceholder}}"
+        bindinput="onConsoleDraftInput"
+      />
+      <view class="filter-actions">
+        <button
+          class="btn btn-secondary compact-btn"
+          bindtap="submitConsoleMessage"
+          loading="{{consoleSubmitting}}"
+          disabled="{{!consoleDraft}}"
+        >
+          {{i18n.consoleSend}}
+        </button>
+      </view>
+    </view>
+    <view class="filter-hint" wx:else>{{i18n.consoleSelectHint}}</view>
+
+    <view class="console-thread">
+      <view class="console-thread-title">{{i18n.consoleTimelineTitle}}</view>
+      <view class="source-card-list" wx:if="{{consoleTimeline.length}}">
+        <view class="source-card console-timeline-card" wx:for="{{consoleTimeline}}" wx:key="created_at">
+          <view class="source-card-main">
+            <view class="source-card-title">{{item.stage_label}}</view>
+            <view class="source-card-desc">{{item.message}}</view>
+            <view class="source-card-status">{{item.created_at}}</view>
+          </view>
+          <view class="research-quality-chip quality-info">{{item.progress_percent}}%</view>
+        </view>
+      </view>
+      <view class="filter-hint" wx:else>
+        {{consoleSelectedConversation && consoleSelectedConversation.job_id ? i18n.consoleTimelineEmpty : i18n.consoleTimelineNoJob}}
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card panel af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card panel af-state-card" wx:elif="{{error}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loadFailed}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="loadData">{{i18n.retryLoad}}</button>
+    </view>
+  </view>
+
+  <view class="glass-card panel af-state-card" wx:elif="{{!visibleItems.length}}">
+    <view class="af-state-head">
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.empty}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="research-list" wx:else>
+    <view class="glass-card panel result-head">
+      <view class="panel-kicker">{{i18n.resultTitle}}</view>
+      <view class="result-count">{{visibleItems.length}}</view>
+    </view>
+    <view
+      class="glass-card panel research-entry-card"
+      wx:for="{{visibleItems}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="openEntry"
+    >
+      <view class="research-entry-tags">
+        <view class="research-tag {{item.kind==='report' ? 'research-tag-report' : 'research-tag-action'}}">
+          {{item.kind==='report' ? i18n.reportBadge : i18n.actionBadge}}
+        </view>
+        <view class="research-tag research-tag-focus" wx:if="{{item.is_focus_reference}}">
+          {{i18n.focusBadge}}
+        </view>
+        <view class="research-tag" wx:if="{{item.action_type}}">
+          {{item.action_type}}
+        </view>
+        <view class="research-tag" wx:if="{{item.region_label}}">
+          {{item.region_label}}
+        </view>
+        <view class="research-tag" wx:if="{{item.industry_label}}">
+          {{item.industry_label}}
+        </view>
+      </view>
+      <view class="research-quality-row" wx:if="{{item.kind==='report'}}">
+        <view class="research-quality-chip {{item.report_evidence_tone}}">
+          {{i18n.evidenceDensity}}·{{item.report_evidence_label}}
+        </view>
+        <view class="research-quality-chip {{item.report_source_quality_tone}}">
+          {{i18n.sourceQuality}}·{{item.report_source_quality_label}}
+        </view>
+      </view>
+      <view class="research-entry-title">{{item.title}}</view>
+      <view class="research-entry-preview">{{item.preview_summary}}</view>
+      <view class="research-action-preview" wx:if="{{item.kind==='report' && item.report_action_cards && item.report_action_cards.length}}">
+        <view class="research-action-preview-card" wx:for="{{item.report_action_cards}}" wx:for-item="card" wx:key="title">
+          <view class="research-action-preview-title">{{card.title}}</view>
+          <view class="research-action-preview-meta" wx:if="{{card.target_persona}}">
+            <text class="research-action-preview-label">{{i18n.actionTarget}}：</text>{{card.target_persona}}
+          </view>
+          <view class="research-action-preview-meta" wx:if="{{card.execution_window}}">
+            <text class="research-action-preview-label">{{i18n.actionWindow}}：</text>{{card.execution_window}}
+          </view>
+          <view class="research-action-preview-meta" wx:if="{{card.deliverable}}">
+            <text class="research-action-preview-label">{{i18n.actionDeliverable}}：</text>{{card.deliverable}}
+          </view>
+          <view class="research-phase-list" wx:if="{{card.phases.length}}">
+            <view class="research-phase-label">{{i18n.actionTimeline}}</view>
+            <view class="research-phase-card" wx:for="{{card.phases}}" wx:for-item="phase" wx:key="content">
+              <view class="research-phase-head">
+                <view class="research-phase-chip">{{phase.label}}</view>
+                <view class="research-phase-horizon" wx:if="{{phase.horizon}}">{{phase.horizon}}</view>
+              </view>
+              <view class="research-phase-content">{{phase.content}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="research-ranked-preview" wx:if="{{item.kind==='report' && item.report_ranked_preview && item.report_ranked_preview.length}}">
+        <view class="research-ranked-group" wx:for="{{item.report_ranked_preview}}" wx:key="key">
+          <view class="research-ranked-group-title">{{item.title}}</view>
+          <view class="research-ranked-chip-row">
+            <view class="research-ranked-chip" wx:for="{{item.items}}" wx:key="name">
+              {{item.name}} · {{item.score_label}}
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="research-source-row" wx:if="{{item.kind==='report' && item.report_source_tiers && item.report_source_tiers.length}}">
+        <view class="research-source-chip" wx:for="{{item.report_source_tiers}}" wx:key="key">
+          {{item.label}}·{{item.value}}
+        </view>
+      </view>
+      <view
+        class="research-diagnostics-card"
+        wx:if="{{item.kind==='report' && item.report_source_diagnostics && (item.report_source_diagnostics.enabled_labels.length || item.report_source_diagnostics.matched_labels.length || item.report_source_diagnostics.tier_breakdown.length || item.report_source_diagnostics.topic_anchor_terms.length || item.report_source_diagnostics.matched_theme_labels.length || item.report_source_diagnostics.filtered_old_source_count || item.report_source_diagnostics.normalized_entity_count || item.report_source_diagnostics.unique_domain_count || item.report_source_diagnostics.candidate_profile_companies.length || item.report_source_diagnostics.candidate_profile_hit_count)}}"
+      >
+        <view class="research-diagnostics-head">
+          <view class="research-diagnostics-title">{{i18n.sourceDiagnosticsTitle}}</view>
+          <view class="research-diagnostics-meta">
+            {{i18n.sourceDiagnosticsHits}} {{item.report_source_diagnostics.adapter_hits}} · 命中搜索源 {{item.report_source_diagnostics.search_hits}}
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.enabled_labels.length}}">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsEnabled}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip" wx:for="{{item.report_source_diagnostics.enabled_labels}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.matched_labels.length}}">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsMatched}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.matched_labels}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.scope_regions.length || item.report_source_diagnostics.scope_industries.length || item.report_source_diagnostics.scope_clients.length}}">
+          <view class="research-diagnostics-label">范围锁定</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.scope_regions}}" wx:key="*this">区域 · {{item}}</view>
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.scope_industries}}" wx:key="*this">领域 · {{item}}</view>
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.scope_clients}}" wx:key="*this">公司 · {{item}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.tier_breakdown.length}}">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsTier}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip tier-chip" wx:for="{{item.report_source_diagnostics.tier_breakdown}}" wx:key="key">
+              {{item.label}}·{{item.value}}
+            </view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.candidate_profile_companies.length || item.report_source_diagnostics.candidate_profile_hit_count}}">
+          <view class="research-diagnostics-label">候选补证</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip" wx:if="{{item.report_source_diagnostics.candidate_profile_companies.length}}">
+              候选公司 {{item.report_source_diagnostics.candidate_profile_companies.length}}
+            </view>
+            <view class="research-diagnostics-chip diagnostic-hit" wx:if="{{item.report_source_diagnostics.candidate_profile_hit_count}}">
+              补证公开源 {{item.report_source_diagnostics.candidate_profile_hit_count}}
+            </view>
+            <view class="research-diagnostics-chip diagnostic-hit" wx:if="{{item.report_source_diagnostics.candidate_profile_official_hit_count}}">
+              官方源 {{item.report_source_diagnostics.candidate_profile_official_hit_count}}
+            </view>
+          </view>
+          <view class="research-diagnostics-chip-row" wx:if="{{item.report_source_diagnostics.candidate_profile_companies.length}}">
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.candidate_profile_companies}}" wx:key="*this">候选公司 · {{item}}</view>
+          </view>
+          <view class="research-diagnostics-chip-row" wx:if="{{item.report_source_diagnostics.candidate_profile_source_labels.length}}">
+            <view class="research-diagnostics-chip" wx:for="{{item.report_source_diagnostics.candidate_profile_source_labels}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsRecency}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-quality-chip {{item.report_source_diagnostics.evidence_mode === 'strong' ? 'quality-high' : item.report_source_diagnostics.evidence_mode === 'provisional' ? 'quality-medium' : 'quality-low'}}">
+              {{item.report_source_diagnostics.evidence_mode_label}}
+            </view>
+            <view class="research-diagnostics-chip">{{item.report_source_diagnostics.recency_window_years}}年</view>
+            <view class="research-diagnostics-chip diagnostic-hit">
+              {{item.report_source_diagnostics.retrieval_quality_label}}
+            </view>
+            <view class="research-diagnostics-chip">
+              严格命中 {{item.report_source_diagnostics.strict_match_percent}}%
+            </view>
+            <view class="research-diagnostics-chip">
+              官方源 {{item.report_source_diagnostics.official_source_percent}}%
+            </view>
+            <view class="research-diagnostics-chip" wx:if="{{item.report_source_diagnostics.unique_domain_count}}">
+              域名 {{item.report_source_diagnostics.unique_domain_count}}
+            </view>
+            <view class="research-diagnostics-chip" wx:if="{{item.report_source_diagnostics.filtered_old_source_count}}">
+              {{i18n.sourceDiagnosticsFilteredOld}} {{item.report_source_diagnostics.filtered_old_source_count}}
+            </view>
+            <view class="research-diagnostics-chip" wx:if="{{item.report_source_diagnostics.strict_topic_source_count}}">
+              {{i18n.sourceDiagnosticsStrictTopic}} {{item.report_source_diagnostics.strict_topic_source_count}}
+            </view>
+            <view class="research-diagnostics-chip" wx:if="{{item.report_source_diagnostics.expansion_triggered}}">
+              已触发扩搜
+            </view>
+            <view class="research-diagnostics-chip diagnostic-hit" wx:if="{{item.report_source_diagnostics.corrective_triggered}}">
+              已触发纠错检索
+            </view>
+          </view>
+          <view class="text-muted helper">
+            <text wx:if="{{item.report_source_diagnostics.evidence_mode === 'strong'}}">当前结果具备较稳定的主题命中、官方源和多域名交叉支撑。</text>
+            <text wx:elif="{{item.report_source_diagnostics.evidence_mode === 'provisional'}}">当前结果已有可用线索，建议继续补官方源与专项交叉验证。</text>
+            <text wx:else>当前更像高价值候选，适合作为下一轮跟进线索，不应直接当成最终结论。</text>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.normalized_entity_count}}">
+          <view class="research-diagnostics-label">实体归一化</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip">总实体 {{item.report_source_diagnostics.normalized_entity_count}}</view>
+            <view class="research-diagnostics-chip">甲方 {{item.report_source_diagnostics.normalized_target_count}}</view>
+            <view class="research-diagnostics-chip">竞品 {{item.report_source_diagnostics.normalized_competitor_count}}</view>
+            <view class="research-diagnostics-chip">伙伴 {{item.report_source_diagnostics.normalized_partner_count}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.topic_anchor_terms.length}}">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsTopicAnchors}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip" wx:for="{{item.report_source_diagnostics.topic_anchor_terms}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+        <view class="research-diagnostics-block" wx:if="{{item.report_source_diagnostics.matched_theme_labels.length}}">
+          <view class="research-diagnostics-label">{{i18n.sourceDiagnosticsThemes}}</view>
+          <view class="research-diagnostics-chip-row">
+            <view class="research-diagnostics-chip diagnostic-hit" wx:for="{{item.report_source_diagnostics.matched_theme_labels}}" wx:key="*this">{{item}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="research-entry-metrics">
+        <view class="research-metric">
+          <view class="research-metric-label">{{i18n.collectionLabel}}</view>
+          <view class="research-metric-value">{{item.collection_name || '-'}}</view>
+        </view>
+        <view class="research-metric" wx:if="{{item.kind==='report'}}">
+          <view class="research-metric-label">{{i18n.sourcesLabel}}</view>
+          <view class="research-metric-value">{{(item.metadata_payload && item.metadata_payload.report && item.metadata_payload.report.source_count) || '—'}}</view>
+        </view>
+        <view class="research-metric">
+          <view class="research-metric-label">{{i18n.updatedLabel}}</view>
+          <view class="research-metric-value">{{item.updated_label}}</view>
+        </view>
+      </view>
+      <view class="research-entry-foot">
+        <view class="research-open">{{i18n.openKnowledge}}</view>
+      </view>
+    </view>
+  </view>
+</view>

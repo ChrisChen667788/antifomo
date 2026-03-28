@@ -1,0 +1,51 @@
+{
+  "name": "antifomo",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A research workspace for high-signal content intake, focus sessions, and WeChat-oriented collection workflows.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "demo:setup": "bash scripts/setup_demo.sh",
+    "demo:backend": "bash scripts/run_backend.sh",
+    "demo:frontend": "bash scripts/run_frontend.sh",
+    "demo:start": "bash scripts/start_demo.sh",
+    "demo:stop": "bash scripts/stop_demo.sh",
+    "workbuddy:doctor": "bash scripts/workbuddy_official_doctor.sh",
+    "demo:smoke": "bash scripts/smoke_test.sh",
+    "demo:wechat-test": "backend/.venv311/bin/python scripts/wechat_batch_test.py --file .tmp/wechat_urls.txt --min-count 30",
+    "demo:simulate": "backend/.venv311/bin/python scripts/simulate_mvp_flow.py --file .tmp/wechat_urls_17.txt --report .tmp/mvp_simulation_report.md",
+    "demo:plugin-validate": "backend/.venv311/bin/python scripts/plugin_batch_validate.py",
+    "demo:chrome-plugin-pipeline": "node scripts/chrome_plugin_pipeline_validate.mjs",
+    "collector:once": "node scripts/desktop_wechat_collector.mjs --source-file .tmp/wechat_collector_sources.txt --state-file .tmp/wechat_collector_state.json --report-file .tmp/wechat_collector_latest.md",
+    "collector:start": "bash scripts/start_collector.sh",
+    "collector:stop": "bash scripts/stop_collector.sh",
+    "collector:status": "bash scripts/collector_status.sh",
+    "collector:flush": "bash scripts/collector_flush_pending.sh 200",
+    "collector:daily": "bash scripts/collector_daily_report.sh 24 12 .tmp/collector_daily_summary.md",
+    "collector:sync-sources": "bash scripts/collector_import_file_sources.sh .tmp/wechat_collector_sources.txt",
+    "wechat-agent:once": "python3 scripts/wechat_pc_full_auto_agent.py --config .tmp/wechat_pc_agent_config.json --state-file .tmp/wechat_pc_agent_state.json --report-file .tmp/wechat_pc_agent_latest.json",
+    "wechat-agent:start": "bash scripts/start_wechat_pc_agent.sh",
+    "wechat-agent:stop": "bash scripts/stop_wechat_pc_agent.sh",
+    "wechat-agent:status": "bash scripts/wechat_pc_agent_status.sh"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "puppeteer-core": "^24.39.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

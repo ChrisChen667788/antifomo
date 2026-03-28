@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/feed/index",
+    "pages/inbox/index",
+    "pages/saved/index",
+    "pages/focus/index",
+    "pages/session-summary/index",
+    "pages/item/index",
+    "pages/knowledge/index",
+    "pages/knowledge-edit/index",
+    "pages/knowledge-merge/index",
+    "pages/research/index",
+    "pages/research-topic/index",
+    "pages/webview/index",
+    "pages/collector/index",
+    "pages/settings/index",
+    "pages/logs/index"
+  ],
+  "darkmode": true,
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#0e1218",
+    "navigationBarTitleText": "Anti-fomo",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#090b10"
+  },
+  "tabBar": {
+    "color": "#7f8ba0",
+    "selectedColor": "#f4f7ff",
+    "borderStyle": "black",
+    "backgroundColor": "#0d1117",
+    "list": [
+      {
+        "pagePath": "pages/feed/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/inbox/index",
+        "text": "智囊"
+      },
+      {
+        "pagePath": "pages/saved/index",
+        "text": "稍后再读"
+      },
+      {
+        "pagePath": "pages/focus/index",
+        "text": "专注"
+      },
+      {
+        "pagePath": "pages/session-summary/index",
+        "text": "总结"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

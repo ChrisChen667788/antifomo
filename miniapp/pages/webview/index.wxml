@@ -1,0 +1,7 @@
+<view wx:if="{{url}}">
+  <web-view src="{{url}}"></web-view>
+</view>
+
+<view wx:else class="page">
+  <view class="empty">缺少可打开的链接</view>
+</view>

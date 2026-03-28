@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  web-and-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Web build
+        run: npm run build
+
+      - name: Backend tests
+        run: pytest backend/tests

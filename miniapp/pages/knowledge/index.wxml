@@ -1,0 +1,682 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+    <view class="af-state-skeleton">
+      <view class="af-state-line af-state-line-mid"></view>
+      <view class="af-state-line af-state-line-full"></view>
+      <view class="af-state-line af-state-line-short"></view>
+    </view>
+  </view>
+
+  <view class="glass-card section af-state-card" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{entryId ? i18n.empty : i18n.loadFailedTitle}}</view>
+        <view class="af-state-sub">{{entryId ? i18n.empty : i18n.loadFailedHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="reloadCurrentView">{{i18n.retryLoad}}</button>
+      <button class="btn btn-secondary" bindtap="openFeed">{{i18n.backToFeed}}</button>
+    </view>
+  </view>
+
+  <block wx:elif="{{entryId && entry}}">
+    <view class="af-status-banner af-status-banner-{{pageNoticeTone}}" wx:if="{{pageNotice}}">
+      {{pageNotice}}
+    </view>
+
+    <view class="glass-card section card detail-hero-card">
+      <view class="entry-top">
+        <view>
+          <view class="title">{{entry.title}}</view>
+          <view class="chip-row">
+            <text class="chip chip-on" wx:if="{{entry.is_focus_reference}}">{{i18n.focusRef}}</text>
+            <text class="chip chip-on" wx:if="{{entry.is_pinned}}">{{i18n.pinned}}</text>
+            <text class="chip" wx:if="{{entry.collection_name}}">{{entry.collection_name}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="meta">{{i18n.source}}：{{entry.source_domain || i18n.unknownSource}}</view>
+      <view class="meta">{{i18n.createdAt}}：{{entry.created_at}}</view>
+      <view class="meta" wx:if="{{entry.updated_at}}">{{i18n.updatedAt}}：{{entry.updated_at}}</view>
+      <view class="command-grid section">
+        <button class="btn btn-secondary" bindtap="toggleEntryPinned">
+          <view class="btn-inline">
+            <view class="af-icon-shell {{entry.is_pinned ? 'af-icon-shell-cool' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+              <text class="icon-glyph">{{entry.is_pinned ? '−' : '★'}}</text>
+            </view>
+            <text>{{entry.is_pinned ? i18n.unpin : i18n.pin}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="toggleEntryFocusReference">
+          <view class="btn-inline">
+            <view class="af-icon-shell {{entry.is_focus_reference ? 'af-icon-shell-cool' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+              <text class="icon-glyph">{{entry.is_focus_reference ? '◎' : '＋'}}</text>
+            </view>
+            <text>{{entry.is_focus_reference ? i18n.focusRefRemove : i18n.focusRefAdd}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="copyKnowledgeMarkdown">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">#</text>
+            </view>
+            <text>{{i18n.copyMarkdown}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="downloadKnowledgeMarkdown" loading="{{entryExporting}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">↓</text>
+            </view>
+            <text>{{entryExporting ? i18n.downloading : i18n.download}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="exportKnowledgeViaWorkBuddy" loading="{{entryWorkBuddyExporting}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+              <image class="af-icon-logo af-icon-logo-sm" src="../../images/workbuddy.png" mode="aspectFit" />
+            </view>
+            <text>{{entryWorkBuddyExporting ? i18n.workbuddyExporting : i18n.workbuddyExport}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary command-span" bindtap="openEditEntry">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">✎</text>
+            </view>
+            <text>{{i18n.editStandalone}}</text>
+          </view>
+        </button>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="research-brief-card" wx:if="{{researchMeta}}">
+        <view class="label">{{i18n.researchReportTitle}}</view>
+        <view class="research-evidence-card evidence-{{researchMeta.evidence_mode}}">
+          <view class="research-evidence-title">{{researchMeta.evidence_mode_label}}</view>
+          <view class="research-evidence-note" wx:if="{{researchMeta.evidence_mode === 'strong'}}">当前结果有较稳定的主题命中、官方源和多域名交叉支撑。</view>
+          <view class="research-evidence-note" wx:elif="{{researchMeta.evidence_mode === 'provisional'}}">当前已有可用线索，但仍建议继续补官方源或专项交叉验证。</view>
+          <view class="research-evidence-note" wx:else>当前更像高价值候选，不应直接视为最终结论。</view>
+          <view class="research-evidence-flags">
+            <view class="research-evidence-flag" wx:if="{{researchMeta.corrective_triggered}}">已触发纠错检索</view>
+            <view class="research-evidence-flag" wx:if="{{researchMeta.expansion_triggered}}">已触发扩搜补证</view>
+            <view class="research-evidence-flag" wx:if="{{researchMeta.candidate_profile_companies.length}}">候选补证公司 {{researchMeta.candidate_profile_companies.length}}</view>
+            <view class="research-evidence-flag" wx:if="{{researchMeta.candidate_profile_hit_count}}">补证公开源 {{researchMeta.candidate_profile_hit_count}}</view>
+            <view class="research-evidence-flag" wx:if="{{researchMeta.candidate_profile_official_hit_count}}">官方源 {{researchMeta.candidate_profile_official_hit_count}}</view>
+          </view>
+        </view>
+        <view class="chip-row" wx:if="{{researchMeta.candidate_profile_companies.length}}">
+          <text class="chip chip-on" wx:for="{{researchMeta.candidate_profile_companies}}" wx:key="*this">{{item}}</text>
+        </view>
+        <view class="chip-row" wx:if="{{researchMeta.candidate_profile_source_labels.length}}">
+          <text class="chip" wx:for="{{researchMeta.candidate_profile_source_labels}}" wx:key="*this">{{item}}</text>
+        </view>
+        <view class="content">{{researchMeta.executive_summary}}</view>
+        <view class="research-angle-card">{{researchMeta.consulting_angle}}</view>
+
+        <view class="research-grid" wx:if="{{researchMeta.five_year_outlook.length || researchMeta.competition_analysis.length}}">
+          <view class="research-panel" wx:if="{{researchMeta.five_year_outlook.length}}">
+            <view class="research-panel-title">{{i18n.researchFiveYear}}</view>
+            <view class="research-bullet" wx:for="{{researchMeta.five_year_outlook}}" wx:key="*this">
+              <view class="research-bullet-dot"></view>
+              <view class="research-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="research-panel" wx:if="{{researchMeta.competition_analysis.length}}">
+            <view class="research-panel-title">{{i18n.researchCompetition}}</view>
+            <view class="research-bullet" wx:for="{{researchMeta.competition_analysis}}" wx:key="*this">
+              <view class="research-bullet-dot"></view>
+              <view class="research-bullet-text">{{item}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="research-grid" wx:if="{{researchMeta.client_peer_moves.length || researchMeta.winner_peer_moves.length}}">
+          <view class="research-panel" wx:if="{{researchMeta.client_peer_moves.length}}">
+            <view class="research-panel-title">{{i18n.researchClientPeers}}</view>
+            <view class="research-bullet" wx:for="{{researchMeta.client_peer_moves}}" wx:key="*this">
+              <view class="research-bullet-dot"></view>
+              <view class="research-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="research-panel" wx:if="{{researchMeta.winner_peer_moves.length}}">
+            <view class="research-panel-title">{{i18n.researchWinnerPeers}}</view>
+            <view class="research-bullet" wx:for="{{researchMeta.winner_peer_moves}}" wx:key="*this">
+              <view class="research-bullet-dot"></view>
+              <view class="research-bullet-text">{{item}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="research-grid" wx:if="{{researchMeta.top_target_accounts.length || researchMeta.top_competitors.length || researchMeta.top_ecosystem_partners.length}}">
+          <view class="research-panel" wx:if="{{researchMeta.top_target_accounts.length}}">
+            <view class="research-panel-title">高价值甲方 Top 3</view>
+            <view class="research-rank-item" wx:for="{{researchMeta.top_target_accounts}}" wx:key="name">
+                <view class="research-rank-head">
+                  <view class="research-rank-name">{{item.name}}</view>
+                <view class="research-rank-score">{{item.score_label}}</view>
+              </view>
+              <view class="research-rank-reason">{{item.reasoning}}</view>
+              <view class="score-factor-list" wx:if="{{item.score_breakdown.length}}">
+                <view class="score-factor-card" wx:for="{{item.score_breakdown}}" wx:key="label">
+                  <view class="score-factor-head">
+                    <view class="score-factor-label">{{item.label}}</view>
+                    <view class="score-factor-badge {{item.score > 0 ? 'score-factor-positive' : item.score < 0 ? 'score-factor-negative' : 'score-factor-neutral'}}">
+                      {{item.score_label}}
+                    </view>
+                  </view>
+                  <view class="score-factor-note" wx:if="{{item.note}}">{{item.note}}</view>
+                </view>
+              </view>
+              <view class="research-rank-links" wx:if="{{item.evidence_links.length}}">
+                <button
+                  class="evidence-link-chip compact-evidence-link"
+                  wx:for="{{item.evidence_links}}"
+                  wx:key="url"
+                  data-url="{{item.url}}"
+                  bindtap="openResearchEvidenceLink"
+                >
+                  <view class="evidence-link-title">{{item.title}}</view>
+                  <view class="evidence-link-tier">{{item.tier_label}}</view>
+                  <view class="evidence-link-meta">{{item.source_label}}</view>
+                </button>
+              </view>
+            </view>
+          </view>
+          <view class="research-panel" wx:if="{{researchMeta.top_competitors.length}}">
+            <view class="research-panel-title">高威胁竞品 Top 3</view>
+            <view class="research-rank-item" wx:for="{{researchMeta.top_competitors}}" wx:key="name">
+                <view class="research-rank-head">
+                  <view class="research-rank-name">{{item.name}}</view>
+                <view class="research-rank-score">{{item.score_label}}</view>
+              </view>
+              <view class="research-rank-reason">{{item.reasoning}}</view>
+              <view class="score-factor-list" wx:if="{{item.score_breakdown.length}}">
+                <view class="score-factor-card" wx:for="{{item.score_breakdown}}" wx:key="label">
+                  <view class="score-factor-head">
+                    <view class="score-factor-label">{{item.label}}</view>
+                    <view class="score-factor-badge {{item.score > 0 ? 'score-factor-positive' : item.score < 0 ? 'score-factor-negative' : 'score-factor-neutral'}}">
+                      {{item.score_label}}
+                    </view>
+                  </view>
+                  <view class="score-factor-note" wx:if="{{item.note}}">{{item.note}}</view>
+                </view>
+              </view>
+              <view class="research-rank-links" wx:if="{{item.evidence_links.length}}">
+                <button
+                  class="evidence-link-chip compact-evidence-link"
+                  wx:for="{{item.evidence_links}}"
+                  wx:key="url"
+                  data-url="{{item.url}}"
+                  bindtap="openResearchEvidenceLink"
+                >
+                  <view class="evidence-link-title">{{item.title}}</view>
+                  <view class="evidence-link-tier">{{item.tier_label}}</view>
+                  <view class="evidence-link-meta">{{item.source_label}}</view>
+                </button>
+              </view>
+            </view>
+          </view>
+          <view class="research-panel" wx:if="{{researchMeta.top_ecosystem_partners.length}}">
+            <view class="research-panel-title">高影响力生态伙伴 Top 3</view>
+            <view class="research-rank-item" wx:for="{{researchMeta.top_ecosystem_partners}}" wx:key="name">
+                <view class="research-rank-head">
+                  <view class="research-rank-name">{{item.name}}</view>
+                <view class="research-rank-score">{{item.score_label}}</view>
+              </view>
+              <view class="research-rank-reason">{{item.reasoning}}</view>
+              <view class="score-factor-list" wx:if="{{item.score_breakdown.length}}">
+                <view class="score-factor-card" wx:for="{{item.score_breakdown}}" wx:key="label">
+                  <view class="score-factor-head">
+                    <view class="score-factor-label">{{item.label}}</view>
+                    <view class="score-factor-badge {{item.score > 0 ? 'score-factor-positive' : item.score < 0 ? 'score-factor-negative' : 'score-factor-neutral'}}">
+                      {{item.score_label}}
+                    </view>
+                  </view>
+                  <view class="score-factor-note" wx:if="{{item.note}}">{{item.note}}</view>
+                </view>
+              </view>
+              <view class="research-rank-links" wx:if="{{item.evidence_links.length}}">
+                <button
+                  class="evidence-link-chip compact-evidence-link"
+                  wx:for="{{item.evidence_links}}"
+                  wx:key="url"
+                  data-url="{{item.url}}"
+                  bindtap="openResearchEvidenceLink"
+                >
+                  <view class="evidence-link-title">{{item.title}}</view>
+                  <view class="evidence-link-tier">{{item.tier_label}}</view>
+                  <view class="evidence-link-meta">{{item.source_label}}</view>
+                </button>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="research-panel" wx:for="{{researchMeta.sections}}" wx:for-item="section" wx:key="title">
+          <view class="research-panel-title">{{section.title}}</view>
+          <view class="research-bullet" wx:for="{{section.items}}" wx:for-item="bullet" wx:key="*this">
+            <view class="research-bullet-dot"></view>
+            <view class="research-bullet-text">{{bullet}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="label">{{i18n.content}}</view>
+      <block wx:if="{{editingEntry}}">
+        <input
+          class="search-input entry-input"
+          value="{{entryDraftTitle}}"
+          bindinput="onEntryTitleInput"
+        />
+        <input
+          class="search-input entry-input section-gap-sm"
+          value="{{entryDraftCollection}}"
+          placeholder="{{i18n.groupPlaceholder}}"
+          bindinput="onEntryCollectionInput"
+        />
+        <textarea
+          class="entry-textarea"
+          value="{{entryDraftContent}}"
+          bindinput="onEntryContentInput"
+          maxlength="-1"
+        />
+        <view class="action-row">
+          <button class="btn btn-primary" bindtap="saveEntryEdit" loading="{{entrySaving}}">
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+                <text class="icon-glyph">✓</text>
+              </view>
+              <text>{{entrySaving ? i18n.saving : i18n.save}}</text>
+            </view>
+          </button>
+          <button class="btn btn-secondary" bindtap="cancelEditEntry">
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+                <view class="af-icon af-icon-cross">
+                  <view class="af-icon-cross-bar af-icon-cross-bar-a"></view>
+                  <view class="af-icon-cross-bar af-icon-cross-bar-b"></view>
+                </view>
+              </view>
+              <text>{{i18n.cancel}}</text>
+            </view>
+          </button>
+        </view>
+      </block>
+      <view class="content" wx:else>{{entry.content}}</view>
+      <view class="sort-hint" wx:if="{{entryMessage}}">{{entryMessage}}</view>
+    </view>
+
+    <view class="glass-card section card" wx:if="{{entry.item_id}}">
+      <button class="btn btn-secondary" bindtap="openItem">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+            <view class="af-icon af-icon-arrow">
+              <view class="af-icon-arrow-stem"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+            </view>
+          </view>
+          <text>{{i18n.openItem}}</text>
+        </view>
+      </button>
+    </view>
+
+    <view class="glass-card section card" wx:if="{{relatedEntries.length}}">
+      <view class="label">{{i18n.relatedTitle}}</view>
+      <view class="content">{{i18n.relatedSubtitle}}</view>
+      <view
+        class="related-card"
+        wx:for="{{relatedEntries}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="openRelatedEntry"
+      >
+        <view class="list-entry-top">
+          <view class="list-title">{{item.title}}</view>
+          <text class="chip">{{i18n.openRelated}}</text>
+        </view>
+        <view class="meta">{{item.source_domain || i18n.unknownSource}}</view>
+        <view class="content preview">{{item.content}}</view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="af-status-banner af-status-banner-{{pageNoticeTone}}" wx:if="{{pageNotice}}">
+      {{pageNotice}}
+    </view>
+
+    <view class="glass-card section card overview-card">
+      <view class="label">{{i18n.overviewTitle}}</view>
+      <view class="overview-grid">
+        <view class="overview-metric">
+          <view class="overview-label">{{i18n.overviewTotal}}</view>
+          <view class="overview-value">{{overview.total}}</view>
+        </view>
+        <view class="overview-metric">
+          <view class="overview-label">{{i18n.overviewFocus}}</view>
+          <view class="overview-value">{{overview.focusReferenceCount}}</view>
+        </view>
+        <view class="overview-metric">
+          <view class="overview-label">{{i18n.overviewPinned}}</view>
+          <view class="overview-value">{{overview.pinnedCount}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="label">{{i18n.mergeTitle}}</view>
+      <view class="content">{{i18n.mergeHint}}</view>
+      <view class="sort-hint">{{i18n.mergeSelectionHint}}</view>
+      <view class="action-row section">
+        <button class="btn {{selectionMode ? 'btn-primary' : 'btn-secondary'}}" bindtap="toggleSelectionMode">
+          <view class="btn-inline">
+            <view class="af-icon-shell {{selectionMode ? 'af-icon-shell-primary' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+              <text class="icon-glyph">{{selectionMode ? '✓' : '◎'}}</text>
+            </view>
+            <text>{{selectionMode ? i18n.exitSelectMode : i18n.selectMode}}</text>
+          </view>
+        </button>
+        <input
+          class="search-input merge-input"
+          value="{{mergeTitle}}"
+          placeholder="{{i18n.mergePlaceholder}}"
+          bindinput="onMergeTitleInput"
+        />
+      </view>
+      <view class="selection-strip" wx:if="{{selectionMode}}">
+        <view class="selection-strip-title">{{i18n.selectionSummary}} {{selectedEntryIds.length}}</view>
+        <view class="selection-strip-sub">{{i18n.selectionHint}}</view>
+      </view>
+      <view class="merge-preview-card" wx:if="{{mergePreview}}">
+        <view class="merge-preview-head">
+          <view>
+            <view class="label">{{i18n.mergePreviewTitle}}</view>
+            <view class="merge-preview-title">{{mergePreview.title}}</view>
+          </view>
+          <text class="chip {{mergePreview.ready ? 'chip-on' : ''}}">
+            {{mergePreview.ready ? i18n.mergePreviewReady : i18n.mergePreviewWaiting}}
+          </text>
+        </view>
+        <view class="merge-preview-sub">{{i18n.mergePreviewHint}}</view>
+        <view class="merge-preview-chip-row">
+          <text class="chip chip-on" wx:if="{{mergePreview.inheritPinned}}">{{i18n.inheritPinned}}</text>
+          <text class="chip chip-on" wx:if="{{mergePreview.inheritFocus}}">{{i18n.inheritFocusRef}}</text>
+          <text class="chip" wx:if="{{mergePreview.inheritCollection}}">
+            {{i18n.inheritCollection}}：{{mergePreview.inheritCollection}}
+          </text>
+        </view>
+        <view class="merge-preview-list">
+          <view class="merge-preview-item" wx:for="{{mergePreview.titles}}" wx:key="*this">
+            <text class="merge-preview-index">{{index + 1}}</text>
+            <text class="merge-preview-item-title">{{item}}</text>
+          </view>
+          <view class="merge-preview-more" wx:if="{{mergePreview.moreCount > 0}}">
+            +{{mergePreview.moreCount}}
+          </view>
+        </view>
+      </view>
+      <view class="action-row section" wx:if="{{selectionMode}}">
+        <input
+          class="search-input merge-input"
+          value="{{batchCollectionName}}"
+          placeholder="{{i18n.batchGroupPlaceholder}}"
+          bindinput="onBatchCollectionInput"
+        />
+      </view>
+      <view class="action-row section" wx:if="{{selectionMode}}">
+        <button class="btn btn-secondary" bindtap="batchPinSelected" disabled="{{selectedEntryIds.length < 1}}" loading="{{mergeBusy}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <text class="icon-glyph">★</text>
+            </view>
+            <text>{{i18n.batchPin}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="batchUnpinSelected" disabled="{{selectedEntryIds.length < 1}}" loading="{{mergeBusy}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">−</text>
+            </view>
+            <text>{{i18n.batchUnpin}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="batchApplyCollection" disabled="{{selectedEntryIds.length < 1}}" loading="{{mergeBusy}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">▣</text>
+            </view>
+            <text>{{i18n.batchGroupApply}}</text>
+          </view>
+        </button>
+      </view>
+      <view class="action-row section" wx:if="{{selectionMode}}">
+        <button class="btn btn-secondary" bindtap="batchAddFocusSelected" disabled="{{selectedEntryIds.length < 1}}" loading="{{mergeBusy}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <text class="icon-glyph">◎</text>
+            </view>
+            <text>{{i18n.batchFocusAdd}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="batchRemoveFocusSelected" disabled="{{selectedEntryIds.length < 1}}" loading="{{mergeBusy}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">−</text>
+            </view>
+            <text>{{i18n.batchFocusRemove}}</text>
+          </view>
+        </button>
+      </view>
+      <view class="action-row section" wx:if="{{selectionMode}}">
+        <button class="btn btn-secondary" bindtap="batchExportSelected" disabled="{{selectedEntryIds.length < 1}}" loading="{{batchExporting}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">↓</text>
+            </view>
+            <text>{{batchExporting ? i18n.batchExporting : i18n.batchExport}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="batchExportSelectedViaWorkBuddy" disabled="{{selectedEntryIds.length < 1}}" loading="{{batchWorkBuddyExporting}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+              <image class="af-icon-logo af-icon-logo-sm" src="../../images/workbuddy.png" mode="aspectFit" />
+            </view>
+            <text>{{batchWorkBuddyExporting ? i18n.workbuddyExporting : i18n.batchExportWorkBuddy}}</text>
+          </view>
+        </button>
+      </view>
+      <button
+        class="btn btn-primary section"
+        bindtap="openMergeWorkspace"
+        disabled="{{selectedEntryIds.length < 2}}"
+      >
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+            <text class="icon-glyph">⇄</text>
+          </view>
+          <text>{{i18n.openMergeWorkspace}}</text>
+        </view>
+      </button>
+      <view class="sort-hint" wx:if="{{mergeMessage}}">{{mergeMessage}}</view>
+      <view class="action-row section" wx:if="{{lastMergedEntryId}}">
+        <button class="btn btn-secondary" bindtap="openLastMergedEntry">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <view class="af-icon af-icon-arrow">
+                <view class="af-icon-arrow-stem"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.openMerged}}</text>
+          </view>
+        </button>
+      </view>
+    </view>
+
+    <view class="glass-card section card" wx:if="{{rule}}">
+      <view class="label">{{i18n.rulesTitle}}</view>
+      <view class="content">{{i18n.rulesSubtitle}}</view>
+      <button class="btn {{rule.enabled ? 'btn-primary' : 'btn-secondary'}} section" bindtap="toggleRuleEnabled">
+        <view class="btn-inline">
+          <view class="af-icon-shell {{rule.enabled ? 'af-icon-shell-primary' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+            <text class="icon-glyph">{{rule.enabled ? '✓' : '○'}}</text>
+          </view>
+          <text>{{rule.enabled ? i18n.ruleEnabled : i18n.ruleDisabled}}</text>
+        </view>
+      </button>
+
+      <view class="rule-row section">
+        <text class="rule-label">{{i18n.ruleThreshold}}</text>
+        <view class="rule-chip-row">
+          <text
+            wx:for="{{ruleThresholdOptions}}"
+            wx:key="value"
+            class="chip {{item.active ? 'chip-on' : ''}}"
+            data-value="{{item.value}}"
+            bindtap="setRuleThreshold"
+          >
+            {{item.label}}
+          </text>
+        </view>
+      </view>
+
+      <view class="rule-chip-row section">
+        <text class="chip {{rule.archive_on_like ? 'chip-on' : ''}}" bindtap="toggleRuleLike">
+          {{i18n.ruleLike}}
+        </text>
+        <text class="chip {{rule.archive_on_save ? 'chip-on' : ''}}" bindtap="toggleRuleSave">
+          {{i18n.ruleSave}}
+        </text>
+      </view>
+      <view class="sort-hint" wx:if="{{ruleExplainText}}">{{ruleExplainText}}</view>
+    </view>
+
+    <view class="glass-card section card toolbar">
+      <view class="search-box">
+        <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+          <text class="icon-glyph">⌕</text>
+        </view>
+        <input
+          class="search-input"
+          value="{{query}}"
+          placeholder="{{i18n.searchPlaceholder}}"
+          bindinput="onSearchInput"
+        />
+      </view>
+      <scroll-view class="source-scroll section" scroll-x enable-flex>
+        <view class="source-row">
+          <text
+            wx:for="{{sourceOptions}}"
+            wx:key="key"
+            data-key="{{item.key}}"
+            bindtap="setSourceFilter"
+            class="chip {{sourceFilter===item.key ? 'chip-on' : ''}}"
+          >
+            {{item.label}}
+          </text>
+        </view>
+      </scroll-view>
+      <scroll-view class="source-scroll section" scroll-x enable-flex>
+        <view class="source-row">
+          <text
+            wx:for="{{collectionOptions}}"
+            wx:key="key"
+            data-key="{{item.key}}"
+            bindtap="setCollectionFilter"
+            class="chip {{collectionFilter===item.key ? 'chip-on' : ''}}"
+          >
+            {{item.label}}
+          </text>
+        </view>
+      </scroll-view>
+      <view class="sort-hint">{{query ? i18n.searchSorted : i18n.latestFirst}}</view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="label">{{i18n.latest}}</view>
+    </view>
+
+    <view class="glass-card section af-state-card" wx:if="{{!entries.length}}">
+      <view class="af-state-head">
+        <view class="af-state-icon-wrap">
+          <text class="af-state-icon-glyph">□</text>
+        </view>
+        <view class="af-state-copy">
+          <view class="af-state-title">{{i18n.emptyList}}</view>
+          <view class="af-state-sub">{{i18n.emptyListHint}}</view>
+        </view>
+      </view>
+      <view class="af-state-actions">
+        <button class="btn btn-primary" bindtap="openFeed">{{i18n.backToFeed}}</button>
+      </view>
+    </view>
+
+    <view
+      class="glass-card section card list-card {{selectedEntryIds.indexOf(item.id) >= 0 ? 'list-card-on' : ''}}"
+      wx:for="{{entries}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="openEntry"
+    >
+      <view class="list-entry-top">
+        <view>
+          <view class="chip-row">
+            <text class="chip chip-on" wx:if="{{item.is_focus_reference}}">{{i18n.focusRef}}</text>
+            <text class="chip chip-on" wx:if="{{item.is_pinned}}">{{i18n.pinned}}</text>
+            <text class="chip" wx:if="{{item.collection_name}}">{{item.collection_name}}</text>
+          </view>
+          <view class="list-title">{{item.title}}</view>
+        </view>
+        <view class="entry-action-row">
+          <text
+            wx:if="{{selectionMode}}"
+            class="chip {{selectedEntryIds.indexOf(item.id) >= 0 ? 'chip-on' : ''}}"
+          >
+            {{selectedEntryIds.indexOf(item.id) >= 0 ? i18n.selected : i18n.select}}
+          </text>
+          <button class="btn btn-secondary entry-edit-btn" catchtap="toggleListPinned" data-id="{{item.id}}">
+            <view class="btn-inline">
+              <view class="af-icon-shell {{item.is_pinned ? 'af-icon-shell-cool' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+                <text class="icon-glyph">{{item.is_pinned ? '−' : '★'}}</text>
+              </view>
+              <text>{{item.is_pinned ? i18n.unpin : i18n.pin}}</text>
+            </view>
+          </button>
+        </view>
+      </view>
+      <view class="meta">{{i18n.source}}：{{item.source_domain || i18n.unknownSource}}</view>
+      <view class="meta">{{i18n.createdAt}}：{{item.created_at}}</view>
+      <view class="content preview">{{item.content}}</view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anti-fomo Quick Send</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="header">
+        <p class="kicker">Anti-fomo</p>
+        <h1>Quick Send</h1>
+      </header>
+
+      <section class="section">
+        <label class="label" for="api-base">API Base</label>
+        <input id="api-base" class="input" type="text" placeholder="http://127.0.0.1:8000" />
+      </section>
+
+      <section class="section">
+        <p class="label">当前页面</p>
+        <p id="page-title" class="page-title">读取中...</p>
+        <p id="page-url" class="page-url">--</p>
+      </section>
+
+      <section class="section">
+        <p class="label">正文提取</p>
+        <p id="extract-info" class="extract-info">检测中...</p>
+        <label class="checkbox-row" for="include-content">
+          <input id="include-content" type="checkbox" checked />
+          <span>提交时附带正文（推荐）</span>
+        </label>
+      </section>
+
+      <div class="actions">
+        <button id="send-btn" class="btn btn-primary" type="button">发送到 Inbox</button>
+        <button id="feed-btn" class="btn btn-secondary" type="button">打开 Feed</button>
+      </div>
+
+      <p id="status" class="status"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+  </html>

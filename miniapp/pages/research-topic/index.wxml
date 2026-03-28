@@ -1,0 +1,532 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{topic ? topic.name : i18n.title}}</view>
+  <view class="hero-subtitle">{{topic ? topic.keyword : i18n.subtitle}}</view>
+
+  <view class="glass-card panel af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card panel af-state-card" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{loadError}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="loadTopic">{{i18n.retryLoad}}</button>
+      <navigator class="btn btn-secondary" url="/pages/research/index">{{i18n.back}}</navigator>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="glass-card panel">
+      <view class="panel-kicker">{{i18n.kicker}}</view>
+      <view class="topic-notes" wx:if="{{topic.research_focus}}">{{topic.research_focus}}</view>
+      <view class="topic-actions">
+        <button class="btn btn-secondary compact-btn" bindtap="openLatestReport" wx:if="{{latestEntryId}}">
+          {{i18n.openLatestReport}}
+        </button>
+        <button class="btn btn-secondary compact-btn" bindtap="refreshTopic" loading="{{refreshing}}">
+          {{refreshing ? i18n.refreshingTopic : i18n.refreshTopic}}
+        </button>
+        <button class="btn btn-secondary compact-btn" bindtap="handleRegenerateActions" loading="{{actionBusy}}">
+          {{i18n.regenerateActions}}
+        </button>
+        <button class="btn btn-secondary compact-btn" data-focus="true" bindtap="handleRegenerateActions" loading="{{actionBusy}}">
+          {{i18n.regenerateActionsFocus}}
+        </button>
+      </view>
+      <view class="topic-message" wx:if="{{actionMessage}}">{{actionMessage}}</view>
+    </view>
+
+    <view class="glass-card panel">
+      <view class="panel-kicker">{{i18n.versionCompare}}</view>
+      <view class="facet-grid">
+        <picker mode="selector" range="{{versionOptions}}" value="{{compareLeftIndex}}" bindchange="onBaselineChange">
+          <view class="facet-field">
+            <view class="facet-label">{{i18n.versionBaseline}}</view>
+            <view class="facet-value">{{versionOptions[compareLeftIndex] || "—"}}</view>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{versionOptions}}" value="{{compareRightIndex}}" bindchange="onCurrentChange">
+          <view class="facet-field">
+            <view class="facet-label">{{i18n.versionCurrent}}</view>
+            <view class="facet-value">{{versionOptions[compareRightIndex] || "—"}}</view>
+          </view>
+        </picker>
+      </view>
+      <view class="compare-summary-list">
+        <view class="compare-summary-item" wx:for="{{compareSummary}}" wx:key="*this">
+          <view class="compare-summary-dot"></view>
+          <view class="compare-summary-text">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="compare-grid">
+      <view class="glass-card panel compare-card" wx:if="{{compareLeftCard}}">
+        <view class="panel-kicker">{{i18n.versionBaseline}}</view>
+        <view class="compare-card-title">{{compareLeftCard.title}}</view>
+        <view class="compare-card-time">{{compareLeftCard.refreshed_label}}</view>
+        <view class="research-quality-row">
+          <view class="research-quality-chip {{compareLeftCard.evidence_tone}}">
+            {{i18n.evidenceDensity}}·{{compareLeftCard.evidence_label}}
+          </view>
+          <view class="research-quality-chip {{compareLeftCard.quality_tone}}">
+            {{i18n.sourceQuality}}·{{compareLeftCard.quality_label}}
+          </view>
+          <view class="research-quality-chip quality-neutral">
+            {{i18n.cardSources}}·{{compareLeftCard.source_count}}
+          </view>
+        </view>
+        <view class="compare-card-summary">{{compareLeftCard.summary || i18n.versionFieldEmpty}}</view>
+        <view class="focus-grid">
+          <view class="focus-block" wx:if="{{compareLeftCard.account_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldAccounts}}</view>
+            <view class="focus-bullet" wx:for="{{compareLeftCard.account_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareLeftCard.budget_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldBudget}}</view>
+            <view class="focus-bullet" wx:for="{{compareLeftCard.budget_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareLeftCard.competitor_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldCompetitors}}</view>
+            <view class="focus-bullet" wx:for="{{compareLeftCard.competitor_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareLeftCard.partner_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldPartners}}</view>
+            <view class="focus-bullet" wx:for="{{compareLeftCard.partner_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+        </view>
+        <button class="btn btn-ghost compact-btn topic-open-btn" data-entry-id="{{compareLeftEntryId}}" bindtap="openVersionReport" wx:if="{{compareLeftEntryId}}">
+          {{i18n.openSelectedVersion}}
+        </button>
+      </view>
+
+      <view class="glass-card panel compare-card" wx:if="{{compareRightCard}}">
+        <view class="panel-kicker">{{i18n.versionCurrent}}</view>
+        <view class="compare-card-title">{{compareRightCard.title}}</view>
+        <view class="compare-card-time">{{compareRightCard.refreshed_label}}</view>
+        <view class="research-quality-row">
+          <view class="research-quality-chip {{compareRightCard.evidence_tone}}">
+            {{i18n.evidenceDensity}}·{{compareRightCard.evidence_label}}
+          </view>
+          <view class="research-quality-chip {{compareRightCard.quality_tone}}">
+            {{i18n.sourceQuality}}·{{compareRightCard.quality_label}}
+          </view>
+          <view class="research-quality-chip quality-neutral">
+            {{i18n.cardSources}}·{{compareRightCard.source_count}}
+          </view>
+        </view>
+        <view class="compare-card-summary">{{compareRightCard.summary || i18n.versionFieldEmpty}}</view>
+        <view class="focus-grid">
+          <view class="focus-block" wx:if="{{compareRightCard.account_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldAccounts}}</view>
+            <view class="focus-bullet" wx:for="{{compareRightCard.account_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareRightCard.budget_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldBudget}}</view>
+            <view class="focus-bullet" wx:for="{{compareRightCard.budget_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareRightCard.competitor_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldCompetitors}}</view>
+            <view class="focus-bullet" wx:for="{{compareRightCard.competitor_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+          <view class="focus-block" wx:if="{{compareRightCard.partner_items.length}}">
+            <view class="focus-block-title">{{i18n.diffFieldPartners}}</view>
+            <view class="focus-bullet" wx:for="{{compareRightCard.partner_items}}" wx:key="*this">
+              <view class="focus-bullet-dot"></view>
+              <view class="focus-bullet-text">{{item}}</view>
+            </view>
+          </view>
+        </view>
+        <button class="btn btn-ghost compact-btn topic-open-btn" data-entry-id="{{compareRightEntryId}}" bindtap="openVersionReport" wx:if="{{compareRightEntryId}}">
+          {{i18n.openSelectedVersion}}
+        </button>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{diffHighlights.length}}">
+      <view class="panel-kicker">{{i18n.versionDiffHighlights}}</view>
+      <view class="highlight-grid">
+        <view class="highlight-card" wx:for="{{diffHighlights}}" wx:key="title">
+          <view class="highlight-title">{{item.title}}</view>
+          <view class="focus-bullet" wx:for="{{item.items}}" wx:key="*this">
+            <view class="focus-bullet-dot"></view>
+            <view class="focus-bullet-text">{{item}}</view>
+          </view>
+          <view class="evidence-link-group" wx:if="{{item.evidence_links.length}}">
+            <view class="evidence-link-kicker">{{i18n.evidenceLinks}}</view>
+            <button
+              class="evidence-link-chip"
+              wx:for="{{item.evidence_links}}"
+              wx:key="url"
+              data-url="{{item.url}}"
+              bindtap="openEvidenceLink"
+            >
+              <view class="evidence-link-title">{{item.title}}</view>
+              <view class="evidence-link-tier">{{item.tier_label}}</view>
+              <view class="evidence-link-meta">{{item.meta}}</view>
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{sourceTierDetails.length}}">
+      <view class="panel-kicker">{{i18n.sourceTierDetails}}</view>
+      <view class="source-panel-desc">{{i18n.sourceTierDetailsDesc}}</view>
+      <view class="highlight-grid">
+        <view class="highlight-card" wx:for="{{sourceTierDetails}}" wx:key="key">
+          <view class="highlight-title">{{item.title}}</view>
+          <button
+            class="evidence-link-chip"
+            wx:for="{{item.items}}"
+            wx:key="url"
+            data-url="{{item.url}}"
+            bindtap="openEvidenceLink"
+          >
+            <view class="evidence-link-title">{{item.title}}</view>
+            <view class="evidence-link-tier">{{item.tier_label}}</view>
+            <view class="evidence-link-meta">{{item.meta}}</view>
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{compareMatrixCards.length}}">
+      <view class="panel-kicker">{{i18n.compareMatrixTitle}}</view>
+      <view class="source-panel-desc">{{i18n.compareMatrixDesc}}</view>
+      <view class="matrix-grid">
+        <view class="matrix-card" wx:for="{{compareMatrixCards}}" wx:key="key">
+          <view class="matrix-title">{{item.title}}</view>
+          <view class="matrix-columns">
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionBaseline}}</view>
+              <view class="focus-bullet" wx:for="{{item.baseline_items.length ? item.baseline_items : [i18n.versionFieldEmpty]}}" wx:key="*this">
+                <view class="focus-bullet-dot"></view>
+                <view class="focus-bullet-text">{{item}}</view>
+              </view>
+            </view>
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionCurrent}}</view>
+              <view class="focus-bullet" wx:for="{{item.current_items.length ? item.current_items : [i18n.versionFieldEmpty]}}" wx:key="*this">
+                <view class="focus-bullet-dot"></view>
+                <view class="focus-bullet-text">{{item}}</view>
+              </view>
+            </view>
+          </view>
+          <view class="evidence-link-group" wx:if="{{item.evidence_links.length}}">
+            <view class="evidence-link-kicker">{{i18n.evidenceLinks}}</view>
+            <button
+              class="evidence-link-chip"
+              wx:for="{{item.evidence_links}}"
+              wx:key="url"
+              data-url="{{item.url}}"
+              bindtap="openEvidenceLink"
+            >
+              <view class="evidence-link-title">{{item.title}}</view>
+              <view class="evidence-link-tier">{{item.tier_label}}</view>
+              <view class="evidence-link-meta">{{item.meta}}</view>
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{scoreBreakdownPanels.length}}">
+      <view class="panel-kicker">{{i18n.scorePanelTitle}}</view>
+      <view class="source-panel-desc">{{i18n.scorePanelDesc}}</view>
+      <view class="score-panel-list">
+        <view class="score-panel-card" wx:for="{{scoreBreakdownPanels}}" wx:key="key">
+          <view class="matrix-title">{{item.title}}</view>
+          <view class="matrix-columns">
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionBaseline}}</view>
+              <view class="score-entity-list" wx:if="{{item.baseline_entities.length}}">
+                <view class="score-entity-card" wx:for="{{item.baseline_entities}}" wx:key="name">
+                  <view class="score-entity-head">
+                    <view class="score-entity-name">{{item.name}}</view>
+                    <view class="score-chip">{{item.score_label}}</view>
+                  </view>
+                  <view class="score-entity-reasoning" wx:if="{{item.reasoning}}">{{item.reasoning}}</view>
+                  <view class="score-factor-list" wx:if="{{item.score_breakdown.length}}">
+                    <view class="score-factor-card" wx:for="{{item.score_breakdown}}" wx:key="label">
+                      <view class="score-factor-head">
+                        <view class="score-factor-label">{{item.label}}</view>
+                        <view
+                          class="score-factor-badge {{item.score > 0 ? 'score-factor-positive' : item.score < 0 ? 'score-factor-negative' : 'score-factor-neutral'}}"
+                        >
+                          {{item.score_label}}
+                        </view>
+                      </view>
+                      <view class="score-factor-note" wx:if="{{item.note}}">{{item.note}}</view>
+                    </view>
+                  </view>
+                  <view class="score-factor-empty" wx:else>{{i18n.scorePanelEmpty}}</view>
+                  <view class="evidence-link-group" wx:if="{{item.evidence_links.length}}">
+                    <view class="evidence-link-kicker">{{i18n.evidenceLinks}}</view>
+                    <button
+                      class="evidence-link-chip"
+                      wx:for="{{item.evidence_links}}"
+                      wx:key="url"
+                      data-url="{{item.url}}"
+                      bindtap="openEvidenceLink"
+                    >
+                      <view class="evidence-link-title">{{item.title}}</view>
+                      <view class="evidence-link-tier">{{item.tier_label}}</view>
+                      <view class="evidence-link-meta">{{item.source_label}}</view>
+                    </button>
+                  </view>
+                </view>
+              </view>
+              <view class="score-factor-empty" wx:else>{{i18n.versionFieldEmpty}}</view>
+            </view>
+
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionCurrent}}</view>
+              <view class="score-entity-list" wx:if="{{item.current_entities.length}}">
+                <view class="score-entity-card" wx:for="{{item.current_entities}}" wx:key="name">
+                  <view class="score-entity-head">
+                    <view class="score-entity-name">{{item.name}}</view>
+                    <view class="score-chip">{{item.score_label}}</view>
+                  </view>
+                  <view class="score-entity-reasoning" wx:if="{{item.reasoning}}">{{item.reasoning}}</view>
+                  <view class="score-factor-list" wx:if="{{item.score_breakdown.length}}">
+                    <view class="score-factor-card" wx:for="{{item.score_breakdown}}" wx:key="label">
+                      <view class="score-factor-head">
+                        <view class="score-factor-label">{{item.label}}</view>
+                        <view
+                          class="score-factor-badge {{item.score > 0 ? 'score-factor-positive' : item.score < 0 ? 'score-factor-negative' : 'score-factor-neutral'}}"
+                        >
+                          {{item.score_label}}
+                        </view>
+                      </view>
+                      <view class="score-factor-note" wx:if="{{item.note}}">{{item.note}}</view>
+                    </view>
+                  </view>
+                  <view class="score-factor-empty" wx:else>{{i18n.scorePanelEmpty}}</view>
+                  <view class="evidence-link-group" wx:if="{{item.evidence_links.length}}">
+                    <view class="evidence-link-kicker">{{i18n.evidenceLinks}}</view>
+                    <button
+                      class="evidence-link-chip"
+                      wx:for="{{item.evidence_links}}"
+                      wx:key="url"
+                      data-url="{{item.url}}"
+                      bindtap="openEvidenceLink"
+                    >
+                      <view class="evidence-link-title">{{item.title}}</view>
+                      <view class="evidence-link-tier">{{item.tier_label}}</view>
+                      <view class="evidence-link-meta">{{item.source_label}}</view>
+                    </button>
+                  </view>
+                </view>
+              </view>
+              <view class="score-factor-empty" wx:else>{{i18n.versionFieldEmpty}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{sourceContributionPanels.length}}">
+      <view class="panel-kicker">{{i18n.sourceContributionTitle}}</view>
+      <view class="source-panel-desc">{{i18n.sourceContributionDesc}}</view>
+      <view class="score-panel-list">
+        <view class="score-panel-card" wx:for="{{sourceContributionPanels}}" wx:key="key">
+          <view class="matrix-title">{{item.title}}</view>
+          <view class="matrix-columns">
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionBaseline}}</view>
+              <view class="score-factor-list" wx:if="{{item.baseline_rows.length}}">
+                <view class="score-factor-card" wx:for="{{item.baseline_rows}}" wx:key="tier">
+                  <view class="score-factor-head">
+                    <view class="score-factor-label">{{item.label}}</view>
+                    <view class="score-chip">{{item.percent}}%</view>
+                  </view>
+                  <view class="score-progress-track">
+                    <view
+                      class="score-progress-fill {{item.tier === 'official' ? 'score-progress-official' : item.tier === 'aggregate' ? 'score-progress-aggregate' : 'score-progress-media'}}"
+                      style="width: {{item.percent < 6 ? 6 : item.percent}}%;"
+                    ></view>
+                  </view>
+                  <view class="score-factor-note">{{i18n.sourceContributionScore}} {{item.score_label}}</view>
+                </view>
+              </view>
+              <view class="score-factor-empty" wx:else>{{i18n.versionFieldEmpty}}</view>
+            </view>
+
+            <view class="matrix-column">
+              <view class="matrix-label">{{i18n.versionCurrent}}</view>
+              <view class="score-factor-list" wx:if="{{item.current_rows.length}}">
+                <view class="score-factor-card" wx:for="{{item.current_rows}}" wx:key="tier">
+                  <view class="score-factor-head">
+                    <view class="score-factor-label">{{item.label}}</view>
+                    <view class="score-chip">{{item.percent}}%</view>
+                  </view>
+                  <view class="score-progress-track">
+                    <view
+                      class="score-progress-fill {{item.tier === 'official' ? 'score-progress-official' : item.tier === 'aggregate' ? 'score-progress-aggregate' : 'score-progress-media'}}"
+                      style="width: {{item.percent < 6 ? 6 : item.percent}}%;"
+                    ></view>
+                  </view>
+                  <view class="score-factor-note">{{i18n.sourceContributionScore}} {{item.score_label}}</view>
+                </view>
+              </view>
+              <view class="score-factor-empty" wx:else>{{i18n.versionFieldEmpty}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel" wx:if="{{fieldDiffRows.length}}">
+      <view class="panel-kicker">{{i18n.versionFieldDiff}}</view>
+      <view class="source-panel-desc">{{i18n.versionFieldDiffDesc}}</view>
+      <view class="diff-list">
+        <view class="diff-card" wx:for="{{fieldDiffRows}}" wx:key="key">
+          <view class="diff-head">
+            <view class="diff-title">{{item.title}}</view>
+            <view class="research-quality-row compact">
+              <view class="research-quality-chip quality-high" wx:if="{{item.added.length}}">
+                {{i18n.versionFieldAdded}}·{{item.added.length}}
+              </view>
+              <view class="research-quality-chip quality-low" wx:if="{{item.removed.length}}">
+                {{i18n.versionFieldRemoved}}·{{item.removed.length}}
+              </view>
+              <view class="research-quality-chip quality-medium" wx:if="{{item.rewritten.length}}">
+                {{i18n.versionFieldRewritten}}·{{item.rewritten.length}}
+              </view>
+            </view>
+          </view>
+          <view class="diff-grid">
+            <view class="diff-column">
+              <view class="diff-label">{{i18n.versionBaseline}}</view>
+              <view class="focus-bullet" wx:for="{{item.baseline.length ? item.baseline : [i18n.versionFieldEmpty]}}" wx:key="*this">
+                <view class="focus-bullet-dot"></view>
+                <view class="focus-bullet-text">{{item}}</view>
+              </view>
+            </view>
+            <view class="diff-column">
+              <view class="diff-label">{{i18n.versionCurrent}}</view>
+              <view class="focus-bullet" wx:for="{{item.current.length ? item.current : [i18n.versionFieldEmpty]}}" wx:key="*this">
+                <view class="focus-bullet-dot"></view>
+                <view class="focus-bullet-text">{{item}}</view>
+              </view>
+            </view>
+            <view class="diff-column">
+              <view class="diff-label">{{i18n.versionFieldDelta}}</view>
+              <view class="diff-change-title">{{i18n.versionFieldAdded}}</view>
+              <view class="diff-change-copy">{{item.added.length ? item.added.join('；') : i18n.versionFieldNone}}</view>
+              <view class="diff-change-title remove">{{i18n.versionFieldRemoved}}</view>
+              <view class="diff-change-copy">{{item.removed.length ? item.removed.join('；') : i18n.versionFieldNone}}</view>
+              <view class="diff-change-title rewrite">{{i18n.versionFieldRewritten}}</view>
+              <view class="diff-change-copy">{{item.rewritten.length ? item.rewritten.join('；') : i18n.versionFieldNone}}</view>
+            </view>
+          </view>
+          <view class="diff-evidence-grid" wx:if="{{item.baseline_evidence_links.length || item.current_evidence_links.length}}">
+            <view class="diff-evidence-column">
+              <view class="evidence-link-kicker">{{i18n.versionBaselineEvidence}}</view>
+              <button
+                class="evidence-link-chip"
+                wx:for="{{item.baseline_evidence_links}}"
+                wx:key="url"
+                data-url="{{item.url}}"
+                bindtap="openEvidenceLink"
+              >
+                <view class="evidence-link-title">{{item.title}}</view>
+                <view class="evidence-link-tier">{{item.tier_label}}</view>
+                <view class="evidence-link-meta">{{item.meta}}</view>
+              </button>
+              <view class="score-factor-empty" wx:if="{{!item.baseline_evidence_links.length}}">{{i18n.versionFieldNone}}</view>
+            </view>
+            <view class="diff-evidence-column">
+              <view class="evidence-link-kicker">{{i18n.versionCurrentEvidence}}</view>
+              <button
+                class="evidence-link-chip"
+                wx:for="{{item.current_evidence_links}}"
+                wx:key="url"
+                data-url="{{item.url}}"
+                bindtap="openEvidenceLink"
+              >
+                <view class="evidence-link-title">{{item.title}}</view>
+                <view class="evidence-link-tier">{{item.tier_label}}</view>
+                <view class="evidence-link-meta">{{item.meta}}</view>
+              </button>
+              <view class="score-factor-empty" wx:if="{{!item.current_evidence_links.length}}">{{i18n.versionFieldNone}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card panel">
+      <view class="panel-kicker">{{i18n.topicHistory}}</view>
+      <view class="source-card-list">
+        <view class="source-card" wx:for="{{historyCards}}" wx:key="id">
+          <view class="source-card-main">
+            <view class="source-card-title">{{item.title}}</view>
+            <view class="source-card-status">{{item.refreshed_label}}</view>
+            <view class="research-quality-row compact">
+              <view class="research-quality-chip {{item.evidence_tone}}">
+                {{i18n.evidenceDensity}}·{{item.evidence_label}}
+              </view>
+              <view class="research-quality-chip {{item.quality_tone}}">
+                {{i18n.sourceQuality}}·{{item.quality_label}}
+              </view>
+              <view class="research-quality-chip quality-neutral">
+                {{i18n.cardSources}}·{{item.source_count}}
+              </view>
+            </view>
+          </view>
+          <button class="btn btn-ghost compact-btn" data-entry-id="{{item.entry_id}}" bindtap="openVersionReport" wx:if="{{item.entry_id}}">
+            {{i18n.openSelectedVersion}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>
