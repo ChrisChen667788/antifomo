@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a new capability or product improvement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you want
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Inbox
+        - Feed
+        - Research
+        - Focus
+        - Collector
+        - Mini Program
+        - Browser Extension
+        - Backend
+        - Documentation
+  - type: textarea
+    id: context
+    attributes:
+      label: Extra context
