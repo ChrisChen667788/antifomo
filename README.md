@@ -1,4 +1,4 @@
-# AntiFomo
+# Anti-FOMO
 
 AntiFomo is a `Next.js + FastAPI` research workspace for high-signal content intake, recommendation, focus sessions, research reports, action cards, and WeChat-oriented collection workflows.
 
