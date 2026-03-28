@@ -31,3 +31,7 @@ git push -u origin main
 This snapshot is also packaged as:
 - `antifomo-open-source-20260329.tar.gz`
 - `antifomo-open-source-20260329.zip`
+
+## GitHub Actions Note
+
+If your current GitHub token does not include `workflow` scope, push the repository first without `.github/workflows/*`, then add workflow files later after refreshing authentication.

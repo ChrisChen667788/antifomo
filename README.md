@@ -124,14 +124,6 @@ The extension is under `browser-extension/chrome`. Load it in Chrome developer m
 
 If you discover a security issue, see `SECURITY.md`.
 
-## CI
-
-GitHub Actions runs:
-- `npm run build`
-- backend `pytest`
-
-Workflow file: `.github/workflows/ci.yml`
-
 ## License
 
 This snapshot is prepared with the MIT license. See `LICENSE`.
