@@ -1,0 +1,43 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="60" x2="1160" y2="580" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8E8"/>
+      <stop offset="0.5" stop-color="#F3F7FF"/>
+      <stop offset="1" stop-color="#EEF8F2"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="122" y1="146" x2="596" y2="466" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1F5EFF"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F6F9FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" rx="32" fill="url(#bg)"/>
+  <circle cx="1088" cy="118" r="78" fill="#DDEAFE"/>
+  <circle cx="1134" cy="510" r="94" fill="#E2F7EA"/>
+  <circle cx="130" cy="552" r="112" fill="#FFF0C9"/>
+  <rect x="82" y="90" width="524" height="460" rx="30" fill="url(#accent)"/>
+  <text x="122" y="170" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">ANTI-FOMO</text>
+  <text x="122" y="248" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">Research workspace</text>
+  <text x="122" y="316" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">for signal, focus,</text>
+  <text x="122" y="384" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">and action.</text>
+  <text x="122" y="450" fill="#D8E7FF" font-family="Arial, Helvetica, sans-serif" font-size="28">Collect high-signal content, generate evidence-aware</text>
+  <text x="122" y="488" fill="#D8E7FF" font-family="Arial, Helvetica, sans-serif" font-size="28">reports, run focus sessions, and turn output into action cards.</text>
+  <rect x="690" y="106" width="500" height="136" rx="24" fill="url(#card)" stroke="#D7E1F2" stroke-width="2"/>
+  <text x="726" y="154" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">Signal pipeline</text>
+  <text x="726" y="198" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="28">collect → filter → research → focus → action</text>
+  <rect x="690" y="272" width="238" height="222" rx="24" fill="url(#card)" stroke="#D7E1F2" stroke-width="2"/>
+  <text x="724" y="320" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">Built for</text>
+  <text x="724" y="366" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• consultants</text>
+  <text x="724" y="404" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• strategy teams</text>
+  <text x="724" y="442" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• operators</text>
+  <rect x="952" y="272" width="238" height="222" rx="24" fill="url(#card)" stroke="#D7E1F2" stroke-width="2"/>
+  <text x="986" y="320" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">Surfaces</text>
+  <text x="986" y="366" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• Next.js web</text>
+  <text x="986" y="404" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• FastAPI backend</text>
+  <text x="986" y="442" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">• Mini program</text>
+  <rect x="690" y="524" width="500" height="62" rx="18" fill="#0F172A"/>
+  <text x="722" y="564" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">Star the repo if you want an open-source WeChat-first research tool.</text>
+</svg>

@@ -5,9 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
+![AntiFomo hero](./docs/assets/github-hero.svg)
+
 Open-source research workspace for high-signal content intake, AI-assisted reports, focus sessions, action cards, and WeChat-first collection workflows.
 
 If this project is useful, give it a star. It makes the repository easier to discover and helps future contributors find it faster.
+
+Start here:
+- roadmap: [Public roadmap issue](https://github.com/ChrisChen667788/antifomo/issues/1)
+- contribute: [good first issue](https://github.com/ChrisChen667788/antifomo/issues/2)
+- collector reliability: [help wanted issue](https://github.com/ChrisChen667788/antifomo/issues/3)
+- ideas and use cases: [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
 
 ## Why AntiFomo
 
