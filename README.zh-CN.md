@@ -119,6 +119,14 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 - Web：`http://127.0.0.1:3000`
 - API：`http://127.0.0.1:8000`
 
+这些回环地址只用于本地 demo 和 smoke test。
+
+如果你要把 Anti-FOMO 部署到云端，请替换成：
+
+- 你自己的前端域名
+- 你自己的后端 API 地址
+- 你自己的 webhook / callback 地址
+
 ## 仓库结构
 
 ```text
@@ -166,6 +174,8 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 导入微信开发者工具前：
 1. 填入你自己的小程序 `AppID`
 2. 把 API 地址改成你的本地或局域网后端
+
+如果要做公开或团队部署，请把小程序和浏览器扩展都改到你自己的线上后端地址，不要继续使用 `127.0.0.1` / `localhost`。
 
 ### 浏览器扩展
 

@@ -118,6 +118,14 @@ Open:
 - Web: `http://127.0.0.1:3000`
 - API: `http://127.0.0.1:8000`
 
+These loopback addresses are for local demo and smoke-test workflows only.
+
+If you deploy Anti-FOMO to the cloud, replace them with:
+
+- your own frontend domain
+- your own backend API base URL
+- your own webhook or callback endpoints
+
 ## Repository Layout
 
 ```text
@@ -165,6 +173,8 @@ Key groups:
 Before importing into WeChat DevTools:
 1. fill in your own Mini Program `AppID`
 2. adjust API base to your local or LAN backend
+
+For public or team deployment, point the mini program and browser extension at your own hosted backend instead of `127.0.0.1` / `localhost`.
 
 ### Browser Extension
 
