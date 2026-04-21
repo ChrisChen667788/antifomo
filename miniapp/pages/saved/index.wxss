@@ -1,0 +1,87 @@
+.toolbar {
+  padding: 22rpx;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  color: #94a5c1;
+  font-size: 24rpx;
+}
+
+.chips {
+  margin-left: 10rpx;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.chip-on {
+  background: linear-gradient(180deg, #8fd3ff 0%, #5fbeff 100%);
+  color: #06111f;
+  border-color: #5fbeff;
+}
+
+.sort-box {
+  margin-left: 10rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.34);
+  background: rgba(123, 139, 168, 0.12);
+  color: #dce5f5;
+  font-size: 24rpx;
+}
+
+.empty {
+  padding: 24rpx;
+  color: #8f9fb7;
+}
+
+.item-card {
+  padding: 24rpx;
+  border-color: rgba(123, 139, 168, 0.3);
+}
+
+.row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.title {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #f2f7ff;
+}
+
+.score {
+  margin-left: 12rpx;
+  color: #bcecff;
+  background: rgba(14, 76, 107, 0.35);
+  border: 1rpx solid rgba(127, 216, 255, 0.4);
+  border-radius: 999rpx;
+  padding: 6rpx 14rpx;
+  font-size: 22rpx;
+}
+
+.source {
+  margin-top: 8rpx;
+}
+
+.summary {
+  margin-top: 12rpx;
+  line-height: 1.7;
+  color: #d3e0f3;
+}
+
+.tag-wrap {
+  margin-top: 12rpx;
+}
+
+.detail-btn {
+  width: 100%;
+}

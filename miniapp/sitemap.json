@@ -1,0 +1,9 @@
+{
+  "desc": "Anti-fomo demo sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

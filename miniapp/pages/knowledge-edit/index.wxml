@@ -1,0 +1,92 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card section af-state-card" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.empty}}</view>
+        <view class="af-state-sub">{{i18n.emptyHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="reloadEntry">{{i18n.retryLoad}}</button>
+      <button class="btn btn-secondary" bindtap="backToDetail">{{i18n.cancel}}</button>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="af-status-banner af-status-banner-{{pageNoticeTone}}" wx:if="{{pageNotice}}">
+      {{pageNotice}}
+    </view>
+
+    <view class="glass-card section card hero-card">
+      <view class="meta">{{i18n.source}}：{{entry.source_domain || '—'}}</view>
+      <view class="meta">{{i18n.createdAt}}：{{entry.created_at}}</view>
+      <view class="meta" wx:if="{{entry.updated_at}}">{{i18n.updatedAt}}：{{entry.updated_at}}</view>
+      <view class="toggle-row section">
+        <text class="chip {{draftPinned ? 'chip-on' : ''}}" bindtap="togglePinnedDraft">{{i18n.pin}}</text>
+        <text class="chip {{draftFocusReference ? 'chip-on' : ''}}" bindtap="toggleFocusDraft">{{i18n.focusRef}}</text>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="field-label">{{i18n.title}}</view>
+      <input class="input field-input" value="{{draftTitle}}" bindinput="onTitleInput" maxlength="120" />
+
+      <view class="field-label section">{{i18n.group}}</view>
+      <input
+        class="input field-input"
+        value="{{draftCollection}}"
+        placeholder="{{i18n.groupPlaceholder}}"
+        bindinput="onCollectionInput"
+        maxlength="80"
+      />
+
+      <view class="field-label section">{{i18n.content}}</view>
+      <textarea
+        class="entry-textarea"
+        value="{{draftContent}}"
+        bindinput="onContentInput"
+        maxlength="-1"
+      />
+    </view>
+
+    <view class="glass-card section card action-card">
+      <view class="action-row">
+        <button class="btn btn-primary" bindtap="saveEntry" loading="{{saving}}">
+          {{saving ? i18n.saving : i18n.save}}
+        </button>
+        <button class="btn btn-secondary" bindtap="backToDetail">{{i18n.cancel}}</button>
+      </view>
+      <button class="btn btn-secondary section" wx:if="{{entry.item_id}}" bindtap="openItem">{{i18n.openItem}}</button>
+      <button class="btn btn-secondary section" bindtap="backToDetail">{{i18n.openCard}}</button>
+    </view>
+  </block>
+</view>

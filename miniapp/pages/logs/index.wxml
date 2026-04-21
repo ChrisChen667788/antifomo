@@ -1,0 +1,43 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn" url="/pages/settings/index">{{settingsLabel}}</navigator>
+  </view>
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card panel">
+    <view class="btn-row">
+      <button class="btn btn-primary" bindtap="refreshEvents">{{i18n.refresh}}</button>
+      <button class="btn btn-secondary" bindtap="startReplay" disabled="{{replaying}}">
+        {{replaying ? i18n.replaying : i18n.startReplay}}
+      </button>
+      <button class="btn btn-secondary" bindtap="stopReplay">{{i18n.stopReplay}}</button>
+      <button class="btn btn-secondary" bindtap="clearAll">{{i18n.clear}}</button>
+    </view>
+    <view class="text-muted tip" wx:if="{{replaying}}">
+      {{i18n.progress}}：{{replayIndex + 1}} / {{replayList.length}}
+    </view>
+  </view>
+
+  <view class="glass-card panel" wx:if="{{!events.length}}">
+    {{i18n.empty}}
+  </view>
+
+  <view class="event-list" wx:if="{{events.length}}">
+    <view class="glass-card event-item" wx:for="{{events}}" wx:key="id">
+      <view class="event-head">
+        <view class="event-name">{{item.name}}</view>
+        <view class="event-time">{{item.timeText}}</view>
+      </view>
+      <view class="event-payload">{{item.payloadText}}</view>
+    </view>
+  </view>
+
+  <view class="glass-card panel replay-box" wx:if="{{replaying && replayList.length}}">
+    <view class="kicker">{{i18n.replayCurrent}}</view>
+    <view class="replay-name">{{replayList[replayIndex].name}}</view>
+    <view class="text-muted">{{replayList[replayIndex].timeText}}</view>
+    <view class="event-payload">{{replayList[replayIndex].payloadText}}</view>
+  </view>
+</view>

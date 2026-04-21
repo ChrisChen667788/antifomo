@@ -1,0 +1,376 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="hero-panel">
+    <view class="kicker">{{i18n.kicker}}</view>
+    <view class="hero-title">{{i18n.title}}</view>
+    <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+    <view class="hero-stats glass-card">
+      <view class="stat-item">
+        <view class="stat-label">{{i18n.processed}}</view>
+        <view class="stat-value">{{items.length}}</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-label">{{i18n.currentCard}}</view>
+        <view class="stat-value">{{items.length ? currentIndex + 1 : 0}}</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-label">{{i18n.mode}}</view>
+        <view class="stat-value">{{mode === 'focus' ? i18n.modeFocus : i18n.modeNormal}}</view>
+      </view>
+    </view>
+
+    <view class="mode-row">
+      <text class="mode-pill {{mode === 'normal' ? 'mode-on' : ''}}" data-mode="normal" bindtap="switchMode">
+        {{i18n.modeNormal}}
+      </text>
+      <text class="mode-pill {{mode === 'focus' ? 'mode-on' : ''}}" data-mode="focus" bindtap="switchMode">
+        {{i18n.modeFocus}}
+      </text>
+      <navigator class="mode-pill mode-link" url="/pages/focus/index" open-type="switchTab">
+        {{i18n.configureFocus}}
+      </navigator>
+      <navigator class="mode-pill mode-link" url="/pages/logs/index" open-type="navigate">
+        {{i18n.logsReplay}}
+      </navigator>
+    </view>
+
+    <view class="focus-goal text-muted" wx:if="{{mode === 'focus'}}">
+      {{i18n.goal}}：{{focusGoalText || i18n.goalUnset}}
+    </view>
+  </view>
+
+  <view class="latest-run glass-card" wx:if="{{latestRun}}">
+    <view class="latest-run-head">
+      <view class="latest-run-copy">
+        <view class="latest-run-kicker">{{i18n.latestRunKicker}}</view>
+        <view class="latest-run-title">{{i18n.latestRunTitle}}</view>
+        <view class="latest-run-sub">{{latestRun.metaLine}}</view>
+      </view>
+      <button class="latest-run-btn" bindtap="openInbox">{{i18n.latestRunOpenInbox}}</button>
+    </view>
+
+    <view class="latest-run-metrics">
+      <view class="latest-run-metric">
+        <view class="latest-run-metric-label">{{i18n.latestRunSubmitted}}</view>
+        <view class="latest-run-metric-value">{{latestRun.submitted}}</view>
+      </view>
+      <view class="latest-run-metric">
+        <view class="latest-run-metric-label">{{i18n.latestRunNew}}</view>
+        <view class="latest-run-metric-value">{{latestRun.submittedNew}}</view>
+      </view>
+      <view class="latest-run-metric">
+        <view class="latest-run-metric-label">{{i18n.latestRunDedup}}</view>
+        <view class="latest-run-metric-value">{{latestRun.deduplicatedExisting}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{latestRun.newItems.length}}">
+      <view class="latest-run-section">{{i18n.latestRunPreview}}</view>
+      <view
+        class="latest-run-item"
+        wx:for="{{latestRun.newItems}}"
+        wx:key="id"
+      >
+        <view class="latest-run-item-top">
+          <text class="latest-run-item-source">{{item.source_domain}}</text>
+        </view>
+        <view class="latest-run-item-title">{{item.title}}</view>
+        <view class="latest-run-item-summary">{{item.preview_summary}}</view>
+      </view>
+    </view>
+    <view class="latest-run-empty" wx:else>{{latestRun.emptyText}}</view>
+  </view>
+
+  <view class="daily-brief glass-card" wx:if="{{dailyBrief}}">
+    <view class="daily-brief-head">
+      <view class="latest-run-copy">
+        <view class="latest-run-kicker">{{i18n.dailyBriefKicker}}</view>
+        <view class="latest-run-title">{{dailyBrief.headline || i18n.dailyBriefTitle}}</view>
+        <view class="latest-run-sub">{{dailyBrief.summary}}</view>
+      </view>
+      <view class="daily-brief-actions">
+        <button class="latest-run-btn latest-run-btn-muted" bindtap="refreshDailyBrief">
+          {{i18n.dailyBriefRefresh}}
+        </button>
+        <button class="latest-run-btn" bindtap="openResearchCenter">
+          {{i18n.dailyBriefOpenResearch}}
+        </button>
+      </view>
+    </view>
+
+    <view class="latest-run-section">{{i18n.dailyBriefTopItems}}</view>
+    <view
+      class="daily-brief-item"
+      wx:for="{{dailyBrief.top_items}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="openDailyBriefItem"
+    >
+      <view class="latest-run-item-top">
+        <text class="latest-run-item-source">{{item.source_domain}}</text>
+      </view>
+      <view class="latest-run-item-title">{{item.title}}</view>
+      <view class="latest-run-item-summary">{{item.summary}}</view>
+    </view>
+
+    <view wx:if="{{dailyBrief.watchlist_changes && dailyBrief.watchlist_changes.length}}">
+      <view class="latest-run-section">{{i18n.dailyBriefWatchlist}}</view>
+      <view class="daily-brief-watchlist" wx:for="{{dailyBrief.watchlist_changes}}" wx:key="id">
+        <view class="daily-brief-watchlist-summary">{{item.summary}}</view>
+        <view class="daily-brief-watchlist-meta">{{item.change_type}} · {{item.severity}}</view>
+      </view>
+    </view>
+
+    <view class="daily-brief-audio-row">
+      <button
+        class="latest-run-btn latest-run-btn-muted"
+        bindtap="toggleDailyBriefAudio"
+        disabled="{{dailyBrief.audio_status!=='ready'}}"
+      >
+        {{dailyBriefPlaying ? i18n.dailyBriefPause : i18n.dailyBriefPlay}}
+      </button>
+      <view class="daily-brief-audio-hint" wx:if="{{dailyBrief.audio_status!=='ready'}}">
+        {{i18n.dailyBriefUnavailable}}
+      </view>
+    </view>
+  </view>
+  <view class="glass-card af-state-card section" wx:elif="{{dailyBriefLoading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.dailyBriefTitle}}</view>
+        <view class="af-state-sub">{{i18n.loading}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="glass-card af-state-card section" wx:elif="{{dailyBriefError}}">
+    <view class="af-state-head">
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.dailyBriefTitle}}</view>
+        <view class="af-state-sub">{{dailyBriefError}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="refreshDailyBrief">{{i18n.dailyBriefRefresh}}</button>
+    </view>
+  </view>
+
+  <view class="glass-card af-state-card section" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+    <view class="af-state-skeleton">
+      <view class="af-state-line af-state-line-mid"></view>
+      <view class="af-state-line af-state-line-full"></view>
+      <view class="af-state-line af-state-line-short"></view>
+    </view>
+  </view>
+
+  <view class="glass-card af-state-card section" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loadingFailed}}</view>
+        <view class="af-state-sub">{{i18n.emptyHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="reloadFeed">{{i18n.retryLoad}}</button>
+      <button class="btn btn-secondary" bindtap="openInbox">{{i18n.openInboxCta}}</button>
+    </view>
+  </view>
+
+  <view class="glass-card af-state-card section" wx:elif="{{!items.length}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">□</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.empty}}</view>
+        <view class="af-state-sub">{{i18n.emptyHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="openInbox">{{i18n.openInboxCta}}</button>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="swipe-copy">
+      <view class="swipe-main">{{swipeHint || i18n.swipeHint}}</view>
+      <view class="swipe-sub" wx:if="{{swipeSubHint}}">{{swipeSubHint}}</view>
+    </view>
+
+    <view class="deck-stage">
+      <view class="ghost-card glass-card" wx:if="{{nextItem}}">
+        <view class="ghost-kicker">{{i18n.upNext}}</view>
+        <view class="ghost-title">{{nextItem.title}}</view>
+        <view class="ghost-summary">{{nextItem.preview_summary}}</view>
+      </view>
+
+      <view class="swipe-badge swipe-badge-left {{swipeDirection === 'ignore' ? 'badge-on' : ''}}">
+        <view class="swipe-badge-title">{{i18n.swipeLeft}}</view>
+        <view class="swipe-badge-sub">{{i18n.swipeLeftSub}}</view>
+      </view>
+
+      <view class="swipe-badge swipe-badge-right {{swipeDirection === 'like' ? 'badge-on' : ''}}">
+        <view class="swipe-badge-title">{{i18n.swipeRight}}</view>
+        <view class="swipe-badge-sub">{{i18n.swipeRightSub}}</view>
+      </view>
+
+      <view
+        class="story-card glass-card"
+        style="{{cardStyle}}"
+        bindtouchstart="handleTouchStart"
+        bindtouchmove="handleTouchMove"
+        bindtouchend="handleTouchEnd"
+      >
+        <view class="story-poster">
+          <view class="poster-glow poster-glow-a"></view>
+          <view class="poster-glow poster-glow-b"></view>
+          <view class="poster-grid"></view>
+          <view class="poster-topline">
+            <text class="poster-chip">{{currentItem.source_domain}}</text>
+            <text class="poster-chip poster-score {{currentItem.scoreTone}}">
+              {{i18n.value}} {{currentItem.score100}}
+            </text>
+          </view>
+          <view class="poster-bottom">
+            <view class="poster-kicker">{{i18n.todayHighlight}}</view>
+            <view class="poster-title">{{currentItem.title}}</view>
+            <view class="poster-summary">{{currentItem.preview_summary}}</view>
+          </view>
+        </view>
+
+        <view class="card-content">
+          <view class="tag-wrap">
+            <text class="chip" wx:for="{{currentItem.tagsText}}" wx:key="*this">#{{item}}</text>
+          </view>
+
+          <view class="signal-panel">
+            <view class="signal-label">{{i18n.suggestedAction}}</view>
+            <view class="signal-value">{{currentItem.cardActionLabel}}</view>
+            <view class="signal-label section">{{i18n.whyRecommended}}</view>
+            <view class="signal-reason" wx:if="{{currentItem.why_recommended.length}}">
+              {{currentItem.why_recommended[0]}}
+            </view>
+            <view class="signal-reason" wx:elif="{{currentItem.recommendation_reason.length}}">
+              {{currentItem.recommendation_reason[0]}}
+            </view>
+            <view class="tag-wrap" wx:if="{{currentItem.matched_preferences.length}}">
+              <text class="chip chip-ghost" wx:for="{{currentItem.matched_preferences}}" wx:key="*this">
+                {{item}}
+              </text>
+            </view>
+            <view class="signal-meta" wx:if="{{currentItem.topic_match_score || currentItem.source_match_score}}">
+              {{i18n.preferenceMatch}} · Topic {{currentItem.topic_match_score_label}} / Source {{currentItem.source_match_score_label}}
+            </view>
+          </view>
+
+          <view class="knowledge-strip" wx:if="{{currentKnowledgeContext}}">
+            <view class="knowledge-strip-top">
+              <view class="knowledge-strip-copy">
+                <view class="knowledge-strip-title">{{i18n.knowledgeLinked}} · {{currentKnowledgeContext.count}}</view>
+                <view class="knowledge-strip-sub">{{i18n.knowledgeHint}}</view>
+              </view>
+              <button class="knowledge-ghost-btn" bindtap="openKnowledgeList">
+                <view class="btn-inline">
+                  <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+                    <view class="af-icon af-icon-library">
+                      <view class="af-icon-library-spine af-icon-library-spine-a"></view>
+                      <view class="af-icon-library-spine af-icon-library-spine-b"></view>
+                      <view class="af-icon-library-band"></view>
+                    </view>
+                  </view>
+                  <text>{{i18n.knowledgeList}}</text>
+                </view>
+              </button>
+            </view>
+            <view
+              class="knowledge-focus-card"
+              data-id="{{currentKnowledgeContext.primary.id}}"
+              bindtap="openKnowledgeEntry"
+            >
+              <view class="knowledge-mini-row">
+                <view class="knowledge-mini-title">{{currentKnowledgeContext.primary.title}}</view>
+                <text class="chip chip-inline chip-on" wx:if="{{currentKnowledgeContext.primary.is_pinned}}">
+                  {{i18n.knowledgePinned}}
+                </text>
+                <text class="knowledge-more-chip" wx:if="{{currentKnowledgeContext.moreCount > 0}}">
+                  +{{currentKnowledgeContext.moreCount}}
+                </text>
+              </view>
+              <view class="knowledge-mini-meta" wx:if="{{currentKnowledgeContext.primary.collection_name}}">
+                {{i18n.knowledgeCollection}}：{{currentKnowledgeContext.primary.collection_name}}
+              </view>
+            </view>
+          </view>
+
+          <view class="memory-note">{{i18n.memoryNote}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="action-dock">
+      <button
+        class="dock-btn dock-secondary {{currentFeedback.ignored ? 'dock-secondary-on' : ''}}"
+        bindtap="tapIgnoreAction"
+      >
+        <view class="af-icon-shell af-icon-shell-muted af-icon-shell-lg">
+          <view class="af-icon af-icon-cross">
+            <view class="af-icon-cross-bar af-icon-cross-bar-a"></view>
+            <view class="af-icon-cross-bar af-icon-cross-bar-b"></view>
+          </view>
+        </view>
+        <text class="dock-label">{{currentFeedback.ignored ? i18n.actionIgnoreDone : i18n.actionIgnore}}</text>
+      </button>
+      <button class="dock-btn dock-secondary" bindtap="openDetail">
+        <view class="af-icon-shell af-icon-shell-cool af-icon-shell-lg">
+          <view class="af-icon af-icon-arrow">
+            <view class="af-icon-arrow-stem"></view>
+            <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+            <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+          </view>
+        </view>
+        <text class="dock-label">{{i18n.actionOpenDetail}}</text>
+      </button>
+      <button
+        class="dock-btn dock-like {{currentFeedback.liked && currentFeedback.saved ? 'dock-like-on' : ''}}"
+        bindtap="tapLikeAction"
+      >
+        <view class="af-icon-shell af-icon-shell-primary af-icon-shell-lg">
+          <view class="af-icon af-icon-spark">
+            <view class="af-icon-spark-core"></view>
+            <view class="af-icon-spark-ray af-icon-spark-ray-top"></view>
+            <view class="af-icon-spark-ray af-icon-spark-ray-right"></view>
+            <view class="af-icon-spark-ray af-icon-spark-ray-bottom"></view>
+            <view class="af-icon-spark-ray af-icon-spark-ray-left"></view>
+          </view>
+        </view>
+        <text class="dock-label">{{currentFeedback.liked && currentFeedback.saved ? i18n.actionCollectDone : i18n.actionCollect}}</text>
+      </button>
+    </view>
+  </block>
+
+  <view class="af-status-banner af-status-banner-info" wx:if="{{apiMessage}}">{{apiMessage}}</view>
+</view>
