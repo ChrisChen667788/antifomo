@@ -1,0 +1,339 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card panel setup-panel">
+    <view class="panel-kicker">{{i18n.setupTitle}}</view>
+    <view class="panel-subtitle">{{i18n.setupHint}}</view>
+
+    <view class="overview-grid">
+      <view class="overview-metric">
+        <view class="overview-label">{{i18n.overviewDuration}}</view>
+        <view class="overview-value">{{duration}} {{i18n.minutes}}</view>
+      </view>
+      <view class="overview-metric">
+        <view class="overview-label">{{i18n.overviewReferences}}</view>
+        <view class="overview-value">{{referenceEntries.length}}</view>
+      </view>
+      <view class="overview-metric">
+        <view class="overview-label">{{i18n.overviewStrategies}}</view>
+        <view class="overview-value">{{strategyCount}}</view>
+      </view>
+    </view>
+
+    <view class="block-title section">{{i18n.duration}}</view>
+    <view class="btn-row">
+      <button
+        class="btn {{duration===25 ? 'btn-primary' : 'btn-secondary'}}"
+        data-duration="25"
+        bindtap="chooseDuration"
+      >
+        25 {{i18n.minutes}}
+      </button>
+      <button
+        class="btn {{duration===50 ? 'btn-primary' : 'btn-secondary'}}"
+        data-duration="50"
+        bindtap="chooseDuration"
+      >
+        50 {{i18n.minutes}}
+      </button>
+    </view>
+
+    <view class="block-title section">{{i18n.goal}}</view>
+    <input
+      class="input"
+      placeholder="{{i18n.goalPlaceholder}}"
+      value="{{goalText}}"
+      bindinput="onGoalInput"
+    />
+
+    <view class="block-title section">{{i18n.strategy}}</view>
+    <view class="switch-row">
+      <text class="switch-label">{{i18n.strategyMute}}</text>
+      <switch checked="{{muteIncoming}}" bindchange="onToggleMute" color="#7fd8ff" />
+    </view>
+    <view class="switch-row">
+      <text class="switch-label">{{i18n.strategySummary}}</text>
+      <switch checked="{{summaryAfter}}" bindchange="onToggleSummary" color="#7fd8ff" />
+    </view>
+    <view class="switch-row">
+      <text class="switch-label">{{i18n.strategyTodo}}</text>
+      <switch checked="{{generateTodo}}" bindchange="onToggleTodo" color="#7fd8ff" />
+    </view>
+
+    <view class="focus-reference section">
+      <view class="focus-reference-top">
+        <view>
+          <view class="block-title">{{i18n.referenceTitle}}</view>
+          <view class="focus-reference-sub">{{i18n.referenceSubtitle}}</view>
+        </view>
+      <button class="btn btn-secondary focus-reference-btn" bindtap="openKnowledgeList">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+            <view class="af-icon af-icon-library">
+              <view class="af-icon-library-spine af-icon-library-spine-a"></view>
+              <view class="af-icon-library-spine af-icon-library-spine-b"></view>
+              <view class="af-icon-library-band"></view>
+            </view>
+          </view>
+          <text>{{i18n.referenceList}}</text>
+        </view>
+      </button>
+      </view>
+      <view class="focus-reference-empty" wx:if="{{!referenceEntries.length}}">
+        {{i18n.referenceEmpty}}
+      </view>
+      <view
+        class="focus-reference-card"
+        wx:for="{{referenceEntries}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="openKnowledgeEntry"
+      >
+        <view class="focus-reference-row">
+          <view class="focus-reference-title">{{item.title}}</view>
+          <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+            <view class="af-icon af-icon-arrow">
+              <view class="af-icon-arrow-stem"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+            </view>
+          </view>
+        </view>
+        <view class="focus-reference-meta">
+          <text wx:if="{{item.collection_name}}">{{item.collection_name}}</text>
+          <text wx:if="{{item.collection_name && item.source_domain}}"> · </text>
+          <text>{{item.source_domain || ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card panel timer-panel">
+    <view class="panel-kicker">{{i18n.countdown}}</view>
+    <view class="timer-goal">{{goalText || i18n.goalUnset}}</view>
+    <view class="timer-meta-row">
+      <view class="timer-meta-pill">{{running ? i18n.stateRunning : (secondsLeft===0 ? i18n.stateDone : i18n.stateReady)}}</view>
+      <view class="timer-meta-pill">{{i18n.newItems}} {{newItemsCount}} {{i18n.itemsUnit}}</view>
+    </view>
+    <view class="timer-ring">
+      <view class="water-fill" style="height: {{progressPercent}}%;">
+        <view class="wave wave-back"></view>
+        <view class="wave wave-front"></view>
+        <view class="bubble bubble-1"></view>
+        <view class="bubble bubble-2"></view>
+        <view class="bubble bubble-3"></view>
+        <view class="bubble bubble-4"></view>
+        <view class="bubble bubble-5"></view>
+      </view>
+      <view class="surface-glow"></view>
+      <view class="timer-overlay">
+        <view class="countdown">{{countdownText}}</view>
+        <view class="progress-text">{{i18n.progress}} {{progressPercent}}%</view>
+      </view>
+    </view>
+    <view class="progress-track">
+      <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
+    </view>
+
+    <view class="btn-row section">
+      <button
+        class="btn btn-primary"
+        bindtap="startOrPause"
+        disabled="{{secondsLeft===0 || startingSession}}"
+      >
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+            <text class="icon-glyph">{{running ? 'Ⅱ' : '▶'}}</text>
+          </view>
+          <text>{{startingSession ? i18n.starting : (running ? i18n.pause : i18n.start)}}</text>
+        </view>
+      </button>
+      <button class="btn btn-secondary" bindtap="finishEarly">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+            <view class="af-icon af-icon-cross">
+              <view class="af-icon-cross-bar af-icon-cross-bar-a"></view>
+              <view class="af-icon-cross-bar af-icon-cross-bar-b"></view>
+            </view>
+          </view>
+          <text>{{i18n.finishEarly}}</text>
+        </view>
+      </button>
+      <button class="btn btn-secondary" bindtap="resetTimer">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+            <text class="icon-glyph">↻</text>
+          </view>
+          <text>{{i18n.reset}}</text>
+        </view>
+      </button>
+    </view>
+
+    <view class="btn-row section">
+      <button class="btn btn-secondary summary-btn" bindtap="jumpSummary">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+            <view class="af-icon af-icon-arrow">
+              <view class="af-icon-arrow-stem"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+              <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+            </view>
+          </view>
+          <text>{{i18n.openSummary}}</text>
+        </view>
+      </button>
+    </view>
+    <view class="text-muted msg" wx:if="{{sessionMessage}}">{{sessionMessage}}</view>
+  </view>
+
+  <view class="glass-card panel collector-panel" wx:if="{{collectorBatchView.visible}}">
+    <view class="panel-kicker">{{i18n.collectorKicker}}</view>
+    <view class="collector-head">
+      <view>
+        <view class="collector-title">{{collectorBatchView.title}}</view>
+        <view class="collector-subtitle">{{collectorBatchView.summary}}</view>
+      </view>
+      <view class="collector-progress-badge">{{collectorBatchView.progress}}%</view>
+    </view>
+    <view class="collector-progress-track">
+      <view class="collector-progress-fill" style="width: {{collectorBatchView.progress}}%;"></view>
+    </view>
+    <view class="collector-metrics-grid">
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorSubmittedNew}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedNew}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorSubmittedUrl}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedUrl}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorUrlDirect}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedUrlDirect}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorUrlShareCopy}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedUrlShareCopy}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorUrlResolved}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedUrlResolved}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorSubmittedOcr}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.submittedOcr}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorDedup}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.deduplicatedExisting}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorSeen}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.skippedSeen}}</view>
+      </view>
+      <view class="collector-metric-card">
+        <view class="collector-metric-label">{{i18n.collectorFailed}}</view>
+        <view class="collector-metric-value">{{collectorBatchView.metrics.failed}}</view>
+      </view>
+    </view>
+    <view class="collector-meta" wx:if="{{collectorBatchView.lastMessage}}">
+      {{i18n.collectorLastMessage}}：{{collectorBatchView.lastMessage}}
+    </view>
+    <view class="collector-error" wx:if="{{collectorBatchView.lastError}}">
+      {{i18n.collectorLastError}}：{{collectorBatchView.lastError}}
+    </view>
+  </view>
+
+  <view class="glass-card panel assistant-panel">
+    <view class="panel-kicker">{{i18n.assistantTitle}}</view>
+    <view class="panel-subtitle">{{i18n.assistantSubtitle}}</view>
+    <view class="btn-row section">
+      <button class="btn btn-secondary" bindtap="buildAssistantPlan" loading="{{assistantLoading}}">
+        <view class="btn-inline">
+          <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+            <text class="icon-glyph">✦</text>
+          </view>
+          <text>{{assistantLoading ? i18n.starting : i18n.assistantBuild}}</text>
+        </view>
+      </button>
+    </view>
+
+    <view class="assistant-summary" wx:if="{{assistantPlan}}">
+      <view class="assistant-summary-copy">{{assistantPlan.summary}}</view>
+      <view class="chip-row">
+        <text class="chip">{{i18n.goal}}：{{assistantPlan.goal_text || i18n.goalUnset}}</text>
+        <text class="chip">Focus Ref：{{assistantPlan.focus_reference_count}}</text>
+      </view>
+    </view>
+
+    <view class="assistant-card" wx:for="{{assistantPlan.actions}}" wx:key="key">
+      <view class="assistant-card-head">
+        <view>
+          <view class="assistant-card-title">{{item.title}}</view>
+          <view class="assistant-card-desc">{{item.description}}</view>
+        </view>
+        <text class="chip {{item.available ? 'chip-on' : ''}}">{{item.available ? 'Ready' : 'Blocked'}}</text>
+      </view>
+      <view class="assistant-reason" wx:if="{{item.reason}}">{{item.reason}}</view>
+      <view class="assistant-steps" wx:if="{{item.steps && item.steps.length}}">
+        <view class="assistant-step" wx:for="{{item.steps}}" wx:key="*this">
+          <text class="assistant-step-index">{{index + 1}}</text>
+          <text class="assistant-step-copy">{{item}}</text>
+        </view>
+      </view>
+      <view class="assistant-handoff" wx:if="{{item.handoff_prompt}}">{{item.handoff_prompt}}</view>
+      <view class="action-row section">
+        <button
+          class="btn btn-primary"
+          data-action="{{item.key}}"
+          data-channel="workbuddy"
+          bindtap="runAssistantAction"
+          disabled="{{!item.available || !!assistantExecutingKey}}"
+        >
+          <view class="wb-btn-inline">
+            <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+            <text>{{assistantExecutingKey === (item.key + ':workbuddy') ? i18n.assistantExecuting : i18n.assistantToWorkBuddy}}</text>
+          </view>
+        </button>
+        <button
+          class="btn btn-secondary"
+          data-action="{{item.key}}"
+          data-channel="direct"
+          bindtap="runAssistantAction"
+          disabled="{{!item.available || !!assistantExecutingKey}}"
+        >
+          {{assistantExecutingKey === (item.key + ':direct') ? i18n.assistantExecuting : i18n.assistantDirect}}
+        </button>
+      </view>
+    </view>
+
+    <view class="assistant-blocked" wx:if="{{assistantPlan && assistantPlan.blocked_actions && assistantPlan.blocked_actions.length}}">
+      <view class="block-title">{{i18n.assistantBlocked}}</view>
+      <view class="assistant-blocked-item" wx:for="{{assistantPlan.blocked_actions}}" wx:key="key">
+        <view class="assistant-card-title">{{item.title}}</view>
+        <view class="assistant-reason">{{item.reason || item.description}}</view>
+      </view>
+    </view>
+
+    <view class="assistant-guardrails" wx:if="{{assistantPlan && assistantPlan.guardrails && assistantPlan.guardrails.length}}">
+      <view class="assistant-guardrail" wx:for="{{assistantPlan.guardrails}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="assistant-output" wx:if="{{assistantOutputPreview}}">
+      <view class="block-title">Output</view>
+      <view class="assistant-output-copy">{{assistantOutputPreview}}</view>
+    </view>
+    <view class="text-muted msg" wx:if="{{assistantMessage}}">{{assistantMessage}}</view>
+  </view>
+</view>

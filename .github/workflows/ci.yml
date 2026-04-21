@@ -1,0 +1,351 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv311
+          source backend/.venv311/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Prepare backend env
+        run: |
+          if [ ! -f backend/.env ]; then
+            cp backend/.env.example backend/.env
+          fi
+
+      - name: Run check
+        run: npm run check
+
+      - name: Upload Next.js build
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          if-no-files-found: error
+          include-hidden-files: true
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv311
+          source backend/.venv311/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Prepare backend env
+        run: |
+          if [ ! -f backend/.env ]; then
+            cp backend/.env.example backend/.env
+          fi
+
+      - name: Prepare smoke artifact dir
+        run: mkdir -p /tmp/smoke-artifacts
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          DATABASE_URL=sqlite:////tmp/anti-fomo-smoke-ci.db .venv311/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/smoke-artifacts/backend.log 2>&1 &
+          echo $! > /tmp/anti-fomo-smoke-backend.pid
+
+      - name: Wait for backend
+        run: |
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/healthz > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/smoke-artifacts/backend.log
+          exit 1
+
+      - name: Run smoke test
+        run: SMOKE_ARTIFACT_DIR=/tmp/smoke-artifacts SMOKE_REPORT_FILE=/tmp/smoke-artifacts/smoke-report.json npm run demo:smoke
+
+      - name: Show smoke backend log on failure
+        if: failure()
+        run: cat /tmp/smoke-artifacts/backend.log
+
+      - name: Build smoke summary
+        if: always()
+        env:
+          REPORT_FILE: /tmp/smoke-artifacts/smoke-report.json
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+
+          const reportFile = process.env.REPORT_FILE;
+          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+          const lines = ["## Smoke", ""];
+
+          if (!reportFile || !fs.existsSync(reportFile)) {
+            lines.push("- Status: `missing report`");
+            lines.push("- Download artifact: `smoke-artifacts`");
+            fs.appendFileSync(summaryFile, `${lines.join("\n")}\n`);
+            process.exit(0);
+          }
+
+          const report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
+          const sanitize = (value) => String(value ?? "-").replace(/`/g, "'");
+
+          lines.push(`- Status: \`${sanitize(report.status)}\``);
+          lines.push(`- Stage: \`${sanitize(report.stage)}\``);
+          lines.push(`- API base: \`${sanitize(report.apiBase)}\``);
+          lines.push(`- Health status: \`${sanitize(report.healthStatus)}\``);
+          lines.push(`- Created item id: \`${sanitize(report.createdItemId)}\``);
+          lines.push(`- Created item status: \`${sanitize(report.createdItemStatus)}\``);
+          lines.push(`- Items count: \`${sanitize(report.itemsCount)}\``);
+          if (report.error) {
+            lines.push(`- Error: \`${sanitize(report.error)}\``);
+          }
+          lines.push("- Download artifact: `smoke-artifacts`");
+
+          fs.appendFileSync(summaryFile, `${lines.join("\n")}\n`);
+          EOF
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: /tmp/smoke-artifacts
+          if-no-files-found: warn
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/anti-fomo-smoke-backend.pid ]; then
+            kill "$(cat /tmp/anti-fomo-smoke-backend.pid)" || true
+          fi
+
+  focus-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv311
+          source backend/.venv311/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Prepare backend env
+        run: |
+          if [ ! -f backend/.env ]; then
+            cp backend/.env.example backend/.env
+          fi
+
+      - name: Prepare Focus E2E artifact dir
+        run: mkdir -p /tmp/focus-e2e-artifacts
+
+      - name: Download Next.js build
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .
+
+      - name: Install Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Resolve Chrome path
+        run: |
+          CHROME_PATH="${{ steps.chrome.outputs.chrome-path }}"
+          if [ -z "$CHROME_PATH" ]; then
+            for candidate in google-chrome google-chrome-stable chromium-browser chromium chrome; do
+              if command -v "$candidate" >/dev/null 2>&1; then
+                CHROME_PATH="$(command -v "$candidate")"
+                break
+              fi
+            done
+          fi
+          if [ -z "$CHROME_PATH" ]; then
+            echo "Chrome executable not found"
+            exit 1
+          fi
+          echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
+
+      - name: Start frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8011
+        run: |
+          npm run start > /tmp/anti-fomo-frontend.log 2>&1 &
+          echo $! > /tmp/anti-fomo-frontend.pid
+
+      - name: Wait for frontend
+        run: |
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/focus > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/anti-fomo-frontend.log
+          exit 1
+
+      - name: Run Focus E2E
+        run: npm run demo:focus-e2e -- --frontend-url http://127.0.0.1:3000 --backend-url http://127.0.0.1:8011 --artifact-dir /tmp/focus-e2e-artifacts --report-file /tmp/focus-e2e-artifacts/focus-e2e-report.json
+
+      - name: Show frontend log on failure
+        if: failure()
+        run: cat /tmp/anti-fomo-frontend.log
+
+      - name: Build Focus E2E summary
+        if: always()
+        env:
+          REPORT_FILE: /tmp/focus-e2e-artifacts/focus-e2e-report.json
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+
+          const reportFile = process.env.REPORT_FILE;
+          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+          const lines = ["## Focus E2E", ""];
+
+          if (!reportFile || !fs.existsSync(reportFile)) {
+            lines.push("- Status: `missing report`");
+            lines.push("- Download artifact: `focus-e2e-artifacts`");
+            fs.appendFileSync(summaryFile, `${lines.join("\n")}\n`);
+            process.exit(0);
+          }
+
+          const report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
+          const failedAssertions = Array.isArray(report.failedAssertions) ? report.failedAssertions : [];
+          const assertionEntries = Object.entries(report.assertions || {});
+          const passedCount = assertionEntries.filter(([, value]) => value).length;
+          const sanitize = (value) => String(value ?? "-").replace(/`/g, "'");
+
+          lines.push(`- Status: \`${sanitize(report.status)}\``);
+          lines.push(`- Frontend: \`${sanitize(report.frontendUrl)}\``);
+          lines.push(`- Backend: \`${sanitize(report.backendUrl)}\``);
+          lines.push(`- Chrome: \`${sanitize(report.chromePath)}\``);
+          lines.push(`- Assertions: \`${passedCount}/${assertionEntries.length}\` passed`);
+          if (failedAssertions.length > 0) {
+            lines.push(`- Failed assertions: \`${sanitize(failedAssertions.join(", "))}\``);
+          }
+          if (report.error?.message) {
+            lines.push(`- Error: \`${sanitize(report.error.message)}\``);
+          }
+          if (report.countdowns) {
+            lines.push("");
+            lines.push("| Stage | Countdown |");
+            lines.push("| --- | --- |");
+            for (const [stage, countdown] of Object.entries(report.countdowns)) {
+              lines.push(`| ${stage} | \`${sanitize(countdown)}\` |`);
+            }
+          }
+          if (report.sessionStatus) {
+            lines.push("");
+            lines.push("| Session stage | Status | Remaining seconds |");
+            lines.push("| --- | --- | --- |");
+            for (const [stage, detail] of Object.entries(report.sessionStatus)) {
+              lines.push(`| ${stage} | \`${sanitize(detail?.status)}\` | \`${sanitize(detail?.remaining_seconds)}\` |`);
+            }
+          }
+          lines.push("");
+          lines.push(`- Console messages captured: \`${(report.diagnostics?.consoleMessages || []).length}\``);
+          lines.push(`- Request failures captured: \`${(report.diagnostics?.requestFailures || []).length}\``);
+          lines.push(`- Page errors captured: \`${(report.diagnostics?.pageErrors || []).length}\``);
+          lines.push("- Download artifact: `focus-e2e-artifacts`");
+
+          fs.appendFileSync(summaryFile, `${lines.join("\n")}\n`);
+          EOF
+
+      - name: Collect frontend log
+        if: always()
+        run: |
+          if [ -f /tmp/anti-fomo-frontend.log ]; then
+            cp /tmp/anti-fomo-frontend.log /tmp/focus-e2e-artifacts/frontend.log
+          fi
+
+      - name: Upload Focus E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focus-e2e-artifacts
+          path: /tmp/focus-e2e-artifacts
+          if-no-files-found: warn
+
+      - name: Stop frontend
+        if: always()
+        run: |
+          if [ -f /tmp/anti-fomo-frontend.pid ]; then
+            kill "$(cat /tmp/anti-fomo-frontend.pid)" || true
+          fi

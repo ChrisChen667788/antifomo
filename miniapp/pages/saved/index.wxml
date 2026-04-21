@@ -1,0 +1,54 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn" url="/pages/settings/index">{{settingsLabel}}</navigator>
+  </view>
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card toolbar section">
+    <view class="line">
+      <text class="label">{{i18n.filter}}：</text>
+      <view class="chips">
+        <text
+          wx:for="{{tagOptions}}"
+          wx:key="key"
+          data-key="{{item.key}}"
+          bindtap="setTagFilter"
+          class="chip {{tagFilter===item.key ? 'chip-on' : ''}}"
+        >
+          {{item.label}}
+        </text>
+      </view>
+    </view>
+    <view class="line section">
+      <text class="label">{{i18n.sort}}：</text>
+      <picker mode="selector" range="{{sortOptions}}" range-key="label" bindchange="setSortMode">
+        <view class="sort-box">{{sortLabel}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="glass-card empty section" wx:if="{{loading}}">
+    {{i18n.loading}}
+  </view>
+
+  <view class="glass-card empty section" wx:if="{{!loading && !items.length}}">
+    {{i18n.empty}}
+  </view>
+
+  <view class="glass-card item-card section" wx:for="{{items}}" wx:key="id">
+    <view class="row-top">
+      <view class="title">{{index + 1}}. {{item.title || i18n.untitled}}</view>
+      <view class="score">{{i18n.score}} {{item.score100}}</view>
+    </view>
+    <view class="text-muted source">{{i18n.source}}：{{item.source_domain || i18n.unknownSource}}</view>
+    <view class="summary">{{item.short_summary || item.long_summary || ''}}</view>
+    <view class="tag-wrap">
+      <text class="chip" wx:for="{{item.tagsText}}" wx:key="*this">#{{item}}</text>
+    </view>
+    <button class="btn btn-secondary section detail-btn" data-id="{{item.id}}" bindtap="openDetail">
+      {{i18n.detail}}
+    </button>
+  </view>
+</view>

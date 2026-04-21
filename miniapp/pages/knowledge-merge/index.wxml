@@ -1,0 +1,115 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="glass-card section af-state-card" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.empty}}</view>
+        <view class="af-state-sub">{{i18n.emptyHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="reloadEntries">{{i18n.retryLoad}}</button>
+      <button class="btn btn-secondary" bindtap="goBack">{{i18n.back}}</button>
+    </view>
+  </view>
+
+  <block wx:else>
+    <view class="af-status-banner af-status-banner-{{pageNoticeTone}}" wx:if="{{pageNotice}}">
+      {{pageNotice}}
+    </view>
+
+    <view class="glass-card section card">
+      <view class="field-label">{{i18n.previewTitle}}</view>
+      <input
+        class="input field-input"
+        value="{{mergeTitle}}"
+        placeholder="{{i18n.mergePlaceholder}}"
+        bindinput="onMergeTitleInput"
+        maxlength="120"
+      />
+      <view class="helper">{{i18n.previewHint}}</view>
+    </view>
+
+    <view class="glass-card section card merge-preview-card" wx:if="{{preview}}">
+      <view class="merge-preview-head">
+        <view>
+          <view class="field-label">{{i18n.previewTitle}}</view>
+          <view class="merge-preview-title">{{preview.title}}</view>
+        </view>
+        <text class="chip {{preview.ready ? 'chip-on' : ''}}">
+          {{preview.ready ? i18n.previewReady : i18n.previewWaiting}}
+        </text>
+      </view>
+      <view class="merge-preview-chip-row">
+        <text class="chip chip-on" wx:if="{{preview.inherit_pinned}}">{{i18n.inheritPinned}}</text>
+        <text class="chip chip-on" wx:if="{{preview.inherit_focus_reference}}">{{i18n.inheritFocusRef}}</text>
+        <text class="chip" wx:if="{{preview.inherit_collection}}">
+          {{i18n.inheritCollection}}：{{preview.inherit_collection}}
+        </text>
+      </view>
+      <view class="merge-preview-list">
+        <view class="merge-preview-item" wx:for="{{preview.titles}}" wx:key="*this">
+          <text class="merge-preview-index">{{index + 1}}</text>
+          <text class="merge-preview-item-title">{{item}}</text>
+        </view>
+        <view class="merge-preview-more" wx:if="{{preview.more_count > 0}}">+{{preview.more_count}}</view>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="field-label">{{i18n.selected}} {{entries.length}}</view>
+      <view
+        class="selected-card"
+        wx:for="{{entries}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="openEntry"
+      >
+        <view class="selected-card-top">
+          <view class="selected-title">{{item.title}}</view>
+          <text class="chip">{{i18n.selected}}</text>
+        </view>
+        <view class="meta">{{i18n.source}}：{{item.source_domain || '—'}}</view>
+        <view class="meta">{{i18n.createdAt}}：{{item.created_at}}</view>
+      </view>
+    </view>
+
+    <view class="glass-card section card action-card">
+      <view class="action-row">
+        <button class="btn btn-primary" bindtap="submitMerge" disabled="{{entries.length < 2}}" loading="{{merging}}">
+          {{merging ? i18n.merging : i18n.mergeAction}}
+        </button>
+        <button class="btn btn-secondary" bindtap="goBack">{{i18n.back}}</button>
+      </view>
+      <button class="btn btn-secondary section" wx:if="{{mergedEntryId}}" bindtap="openMergedEntry">{{i18n.openMerged}}</button>
+    </view>
+  </block>
+</view>

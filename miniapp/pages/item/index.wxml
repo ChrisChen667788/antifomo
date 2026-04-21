@@ -1,0 +1,364 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section af-state-card" wx:if="{{loading}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap af-state-icon-loading">
+        <text class="af-state-icon-glyph">◎</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.loading}}</view>
+        <view class="af-state-sub">{{i18n.subtitle}}</view>
+      </view>
+    </view>
+    <view class="af-state-skeleton">
+      <view class="af-state-line af-state-line-mid"></view>
+      <view class="af-state-line af-state-line-full"></view>
+      <view class="af-state-line af-state-line-short"></view>
+    </view>
+  </view>
+
+  <view class="glass-card section af-state-card" wx:elif="{{loadError}}">
+    <view class="af-state-head">
+      <view class="af-state-icon-wrap">
+        <text class="af-state-icon-glyph">!</text>
+      </view>
+      <view class="af-state-copy">
+        <view class="af-state-title">{{i18n.empty}}</view>
+        <view class="af-state-sub">{{i18n.emptyHint}}</view>
+      </view>
+    </view>
+    <view class="af-state-actions">
+      <button class="btn btn-primary" bindtap="reloadItem">{{i18n.retryLoad}}</button>
+      <button class="btn btn-secondary" bindtap="openFeed">{{i18n.openFeed}}</button>
+    </view>
+  </view>
+
+  <block wx:elif="{{item}}">
+    <view class="af-status-banner af-status-banner-{{messageTone}}" wx:if="{{message}}">
+      {{message}}
+    </view>
+
+    <view class="glass-card section card main-card">
+      <view class="top-line">
+        <view class="kicker">{{i18n.source}}</view>
+        <view class="score">{{i18n.score}} {{item.score100}} / 100</view>
+      </view>
+      <view class="title">{{item.title || i18n.untitled}}</view>
+      <view class="meta">{{i18n.source}}：{{item.source_domain || i18n.unknownSource}}</view>
+      <view class="link link-inline" bindtap="openSource">
+        <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+          <view class="af-icon af-icon-arrow">
+            <view class="af-icon-arrow-stem"></view>
+            <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+            <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+          </view>
+        </view>
+        <text>{{i18n.sourceLinkCopy}}</text>
+      </view>
+      <view class="label section">{{i18n.diagnosticsTitle}}</view>
+      <view class="tag-wrap">
+        <text class="chip chip-ghost">{{i18n.diagnosticsRoute}} · {{item.diagnostics.ingest_route}}</text>
+        <text class="chip chip-ghost">{{i18n.diagnosticsBody}} · {{item.diagnostics.content_acquisition_status}}</text>
+        <text class="chip chip-ghost">{{i18n.diagnosticsProcessing}} · {{item.diagnostics.processing_status}}</text>
+        <text class="chip chip-ghost" wx:if="{{item.diagnostics.attempt_count}}">
+          {{i18n.diagnosticsAttempts}} · {{item.diagnostics.attempt_count}}
+        </text>
+        <text class="chip chip-ghost" wx:if="{{item.diagnostics.fallback_used}}">{{i18n.diagnosticsFallback}}</text>
+      </view>
+      <view class="hint-copy" wx:if="{{item.diagnostics.content_acquisition_note}}">
+        {{item.diagnostics.content_acquisition_note}}
+      </view>
+      <view class="tag-wrap">
+        <text class="chip" wx:for="{{item.tagsText}}" wx:key="*this">#{{item}}</text>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="view-tabs">
+        <button
+          class="view-tab {{currentView==='original' ? 'view-tab-on' : ''}}"
+          data-view="original"
+          bindtap="switchView"
+        >
+          {{i18n.viewOriginal}}
+        </button>
+        <button
+          class="view-tab {{currentView==='summary' ? 'view-tab-on' : ''}}"
+          data-view="summary"
+          bindtap="switchView"
+        >
+          {{i18n.viewSummary}}
+        </button>
+        <button
+          class="view-tab {{currentView==='insight' ? 'view-tab-on' : ''}}"
+          data-view="insight"
+          bindtap="switchView"
+        >
+          {{i18n.viewInsight}}
+        </button>
+      </view>
+      <view class="view-stage {{viewMotionClass}}">
+        <block wx:if="{{currentView==='original'}}">
+          <view class="label">{{i18n.highlightKeywords}}</view>
+          <view class="tag-wrap">
+            <text
+              class="chip chip-ghost"
+              wx:for="{{itemOriginalView.keywords && itemOriginalView.keywords.length ? itemOriginalView.keywords : item.tagsText}}"
+              wx:for-item="keyword"
+              wx:key="*this"
+            >
+              {{keyword}}
+            </text>
+          </view>
+
+          <view class="label section">{{i18n.keyParagraphs}}</view>
+          <view class="hint-copy">{{i18n.keyParagraphsHint}}</view>
+          <view
+            class="key-paragraph-card"
+            wx:for="{{itemOriginalView.keyParagraphs}}"
+            wx:for-item="paragraph"
+            wx:key="raw"
+          >
+            <view class="content key-paragraph">
+              <text
+                wx:for="{{paragraph.segments}}"
+                wx:for-item="segment"
+                wx:key="index"
+                class="{{segment.hit ? 'segment-hit' : ''}}"
+              >
+                {{segment.text}}
+              </text>
+            </view>
+            <button
+              class="btn btn-secondary section"
+              data-paragraph="{{paragraph.raw}}"
+              data-index="{{index}}"
+              bindtap="saveExcerptParagraph"
+              loading="{{knowledgeSaving}}"
+            >
+              <view class="btn-inline">
+                <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+                  <view class="af-icon af-icon-plus">
+                    <view class="af-icon-plus-bar"></view>
+                    <view class="af-icon-plus-bar af-icon-plus-bar-vertical"></view>
+                  </view>
+                </view>
+                <text>{{i18n.saveExcerpt}}</text>
+              </view>
+            </button>
+          </view>
+          <view class="hint-copy" wx:if="{{!itemOriginalView.keyParagraphs.length}}">
+            {{i18n.keyParagraphsEmpty}}
+          </view>
+
+          <view class="label section">{{i18n.originalContent}}</view>
+          <view class="original-wrap">
+            <view class="content original-content">{{item.originalContent}}</view>
+          </view>
+        </block>
+
+        <block wx:elif="{{currentView==='summary'}}">
+          <view class="label">{{i18n.shortSummary}}</view>
+          <view class="content">{{item.short_summary || i18n.noSummary}}</view>
+          <view class="label section">{{i18n.longSummary}}</view>
+          <view class="content">{{item.long_summary || i18n.noSummary}}</view>
+          <view class="label section">{{i18n.whyRecommended}}</view>
+          <view class="reason" wx:for="{{item.why_recommended}}" wx:key="*this">• {{item}}</view>
+          <view class="tag-wrap" wx:if="{{item.matched_preferences && item.matched_preferences.length}}">
+            <text class="chip chip-ghost" wx:for="{{item.matched_preferences}}" wx:key="*this">{{item}}</text>
+          </view>
+          <view class="label section">{{i18n.suggestedAction}}</view>
+          <view class="suggestion">{{item.cardActionLabel}}</view>
+          <view class="reason" wx:for="{{item.recommendation_reason}}" wx:key="*this">• {{item}}</view>
+        </block>
+
+        <block wx:else>
+          <view class="insight-preview-card">
+            <view class="insight-preview-kicker">{{i18n.insightSheetTitle}}</view>
+            <view class="insight-preview-title">{{insightData ? insightData.insight_title : i18n.interpretation}}</view>
+            <view class="content insight-preview-copy">
+              {{insightData ? insightData.expert_take : i18n.insightPreview}}
+            </view>
+            <view class="action-grid section">
+              <button class="btn btn-primary" bindtap="openInterpretation" loading="{{insightLoading}}">
+                <view class="btn-inline">
+                  <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+                    <view class="af-icon af-icon-spark">
+                      <view class="af-icon-spark-core"></view>
+                      <view class="af-icon-spark-ray af-icon-spark-ray-top"></view>
+                      <view class="af-icon-spark-ray af-icon-spark-ray-right"></view>
+                      <view class="af-icon-spark-ray af-icon-spark-ray-bottom"></view>
+                      <view class="af-icon-spark-ray af-icon-spark-ray-left"></view>
+                    </view>
+                  </view>
+                  <text>{{i18n.insightOpenSheet}}</text>
+                </view>
+              </button>
+              <button class="btn btn-secondary" bindtap="openKnowledgeList">
+                <view class="btn-inline">
+                  <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+                    <view class="af-icon af-icon-library">
+                      <view class="af-icon-library-spine af-icon-library-spine-a"></view>
+                      <view class="af-icon-library-spine af-icon-library-spine-b"></view>
+                      <view class="af-icon-library-band"></view>
+                    </view>
+                  </view>
+                  <text>{{i18n.openKnowledgeList}}</text>
+                </view>
+              </button>
+            </view>
+          </view>
+
+          <button
+            wx:if="{{knowledgeEntryId}}"
+            class="btn btn-secondary section"
+            bindtap="openKnowledgeEntry"
+          >
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+                <view class="af-icon af-icon-arrow">
+                  <view class="af-icon-arrow-stem"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+                </view>
+              </view>
+              <text>{{i18n.openKnowledge}}</text>
+            </view>
+          </button>
+
+          <view class="text-muted msg" wx:if="{{insightLoading}}">{{i18n.insightLoading}}</view>
+        </block>
+      </view>
+    </view>
+
+    <view class="glass-card section card">
+      <view class="label">{{i18n.userFeedback}}</view>
+      <view class="action-grid">
+        <button class="btn {{liked ? 'btn-like-on' : 'btn-primary'}}" bindtap="tapLike">
+          <view class="btn-inline">
+            <view class="af-icon-shell {{liked ? 'af-icon-shell-cool' : 'af-icon-shell-primary'}} af-icon-shell-sm">
+              <view class="af-icon af-icon-spark">
+                <view class="af-icon-spark-core"></view>
+                <view class="af-icon-spark-ray af-icon-spark-ray-top"></view>
+                <view class="af-icon-spark-ray af-icon-spark-ray-right"></view>
+                <view class="af-icon-spark-ray af-icon-spark-ray-bottom"></view>
+                <view class="af-icon-spark-ray af-icon-spark-ray-left"></view>
+              </view>
+            </view>
+            <text>{{liked ? i18n.actionLikeDone : i18n.actionLike}}</text>
+          </view>
+        </button>
+        <button class="btn {{ignored ? 'btn-ignore-on' : 'btn-secondary'}}" bindtap="tapIgnore">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <view class="af-icon af-icon-cross">
+                <view class="af-icon-cross-bar af-icon-cross-bar-a"></view>
+                <view class="af-icon-cross-bar af-icon-cross-bar-b"></view>
+              </view>
+            </view>
+            <text>{{ignored ? i18n.actionIgnoreDone : i18n.actionIgnore}}</text>
+          </view>
+        </button>
+        <button class="btn {{saved ? 'btn-save-on' : 'btn-secondary'}}" bindtap="tapSave">
+          <view class="btn-inline">
+            <view class="af-icon-shell {{saved ? 'af-icon-shell-cool' : 'af-icon-shell-muted'}} af-icon-shell-sm">
+              <text class="icon-glyph">★</text>
+            </view>
+            <text>{{saved ? i18n.actionSaveDone : i18n.actionSave}}</text>
+          </view>
+        </button>
+      </view>
+      <view class="action-grid section">
+        <button class="btn btn-secondary" bindtap="tapReprocess">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">↻</text>
+            </view>
+            <text>{{reprocessState === 'processing' ? i18n.actionReprocessing : i18n.actionReprocess}}</text>
+          </view>
+        </button>
+        <button class="btn btn-secondary" bindtap="tapInaccurate">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <text class="icon-glyph">!</text>
+            </view>
+            <text>{{i18n.actionInaccurate}}</text>
+          </view>
+        </button>
+      </view>
+    </view>
+  </block>
+
+  <block wx:if="{{insightSheetMounted}}">
+    <view class="insight-sheet-mask {{insightSheetActive ? 'insight-sheet-mask-on' : ''}}" bindtap="closeInterpretation"></view>
+    <view class="insight-sheet {{insightSheetActive ? 'insight-sheet-on' : ''}}" catchtap="noopTap">
+      <view class="insight-sheet-handle"></view>
+      <view class="insight-sheet-top">
+        <view>
+          <view class="insight-subtitle">{{i18n.insightSheetTitle}}</view>
+          <view class="insight-sheet-title">{{insightData ? insightData.insight_title : i18n.interpretation}}</view>
+        </view>
+        <button class="insight-sheet-close" bindtap="closeInterpretation">
+          <text class="icon-glyph">×</text>
+        </button>
+      </view>
+
+      <scroll-view class="insight-sheet-body" scroll-y enable-flex>
+        <view class="text-muted msg" wx:if="{{insightLoading}}">{{i18n.insightLoading}}</view>
+
+        <block wx:if="{{insightExpanded && insightData}}">
+          <view class="insight-card">
+            <view class="content">{{insightData.expert_take}}</view>
+          </view>
+
+          <view class="insight-card section">
+            <view class="insight-subtitle">{{i18n.insightSignals}}</view>
+            <view class="reason" wx:for="{{insightData.key_signals}}" wx:key="*this">• {{item}}</view>
+          </view>
+
+          <view class="insight-card section">
+            <view class="insight-subtitle">{{i18n.insightKnowledge}}</view>
+            <view class="content">{{insightData.knowledge_note}}</view>
+          </view>
+        </block>
+      </scroll-view>
+
+      <view class="insight-sheet-actions">
+        <button class="btn btn-secondary" bindtap="closeInterpretation">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <view class="af-icon af-icon-cross">
+                <view class="af-icon-cross-bar af-icon-cross-bar-a"></view>
+                <view class="af-icon-cross-bar af-icon-cross-bar-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.insightClose}}</text>
+          </view>
+        </button>
+        <button class="btn btn-primary" bindtap="saveInsightToKnowledge" loading="{{knowledgeSaving}}">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+              <view class="af-icon af-icon-plus">
+                <view class="af-icon-plus-bar"></view>
+                <view class="af-icon-plus-bar af-icon-plus-bar-vertical"></view>
+              </view>
+            </view>
+            <text>{{i18n.insightAdd}}</text>
+          </view>
+        </button>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,446 @@
+<view class="page {{prefClass}}">
+  <view class="top-actions">
+    <navigator class="settings-btn settings-btn-icon" url="/pages/settings/index">
+      <view class="settings-dots">
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+        <view class="settings-dot"></view>
+      </view>
+    </navigator>
+  </view>
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.subtitle}}</view>
+
+  <view class="glass-card section panel state-card" wx:if="{{loading}}">
+    <view class="panel-kicker">{{i18n.statusTitle}}</view>
+    <view class="state-copy">{{i18n.loading}}</view>
+  </view>
+
+  <view class="glass-card section panel state-card" wx:if="{{!loading && !session}}">
+    <view class="panel-kicker">{{i18n.statusTitle}}</view>
+    <view class="state-copy">{{i18n.emptySession}}</view>
+  </view>
+
+  <block wx:if="{{!loading && session}}">
+    <view class="glass-card section panel hero-panel">
+      <view class="panel-kicker">{{i18n.goal}}</view>
+      <view class="hero-goal">{{session.goal_text || i18n.goalUnset}}</view>
+      <view class="summary">{{displaySummary || i18n.systemSummaryEmpty}}</view>
+
+      <view class="status-stack" wx:if="{{summaryNotice || taskMessage}}">
+        <view class="status-pill status-pill-info" wx:if="{{summaryNotice}}">
+          {{summaryNotice}}
+        </view>
+        <view class="status-pill status-pill-{{taskTone}}" wx:if="{{taskMessage}}">
+          {{taskMessage}}
+        </view>
+      </view>
+    </view>
+
+    <view class="metrics-grid">
+      <view class="glass-card metric">
+        <view class="metric-label">{{i18n.duration}}</view>
+        <view class="metric-value">{{session.duration_minutes}} {{i18n.minutes}}</view>
+      </view>
+      <view class="glass-card metric">
+        <view class="metric-label">{{i18n.newContent}}</view>
+        <view class="metric-value">{{sessionMetrics.newContentCount}}</view>
+      </view>
+      <view class="glass-card metric">
+        <view class="metric-label">{{i18n.deepRead}}</view>
+        <view class="metric-value">{{sessionMetrics.deepReadCount}}</view>
+      </view>
+      <view class="glass-card metric">
+        <view class="metric-label">{{i18n.later}}</view>
+        <view class="metric-value">{{sessionMetrics.laterCount}}</view>
+      </view>
+      <view class="glass-card metric">
+        <view class="metric-label">{{i18n.skip}}</view>
+        <view class="metric-value">{{sessionMetrics.skipCount}}</view>
+      </view>
+    </view>
+
+    <view class="glass-card section panel collector-panel" wx:if="{{collectorBatchSummary.visible}}">
+      <view class="panel-kicker">{{i18n.collectorKicker}}</view>
+      <view class="collector-head">
+        <view>
+          <view class="collector-title">{{collectorBatchSummary.title}}</view>
+          <view class="collector-subtitle">{{collectorBatchSummary.summary}}</view>
+        </view>
+        <view class="collector-progress-badge">{{collectorBatchSummary.progress}}%</view>
+      </view>
+      <view class="collector-progress-track">
+        <view class="collector-progress-fill" style="width: {{collectorBatchSummary.progress}}%;"></view>
+      </view>
+      <view class="collector-metrics-grid">
+        <view class="collector-metric-card">
+          <view class="collector-metric-label">{{i18n.collectorSubmittedNew}}</view>
+          <view class="collector-metric-value">{{collectorBatchSummary.metrics.submittedNew}}</view>
+        </view>
+        <view class="collector-metric-card">
+          <view class="collector-metric-label">{{i18n.collectorDedup}}</view>
+          <view class="collector-metric-value">{{collectorBatchSummary.metrics.deduplicatedExisting}}</view>
+        </view>
+        <view class="collector-metric-card">
+          <view class="collector-metric-label">{{i18n.collectorSeen}}</view>
+          <view class="collector-metric-value">{{collectorBatchSummary.metrics.skippedSeen}}</view>
+        </view>
+        <view class="collector-metric-card">
+          <view class="collector-metric-label">{{i18n.collectorFailed}}</view>
+          <view class="collector-metric-value">{{collectorBatchSummary.metrics.failed}}</view>
+        </view>
+      </view>
+      <view class="collector-meta" wx:if="{{collectorBatchSummary.lastMessage}}">
+        {{i18n.collectorLastMessage}}：{{collectorBatchSummary.lastMessage}}
+      </view>
+    </view>
+
+    <view class="glass-card section panel latest-items-panel" wx:if="{{latestSessionItems.length}}">
+      <view class="latest-items-head">
+        <view>
+          <view class="panel-kicker">{{i18n.latestNewTitle}}</view>
+          <view class="panel-subtitle">{{i18n.latestNewHint}}</view>
+        </view>
+        <view class="latest-items-tools">
+          <view class="collector-progress-badge latest-items-badge">{{filteredLatestSessionItems.length}}{{i18n.items}}</view>
+          <button class="btn btn-secondary collector-link-btn" bindtap="openCollector">
+            {{i18n.latestNewCollector}}
+          </button>
+        </view>
+      </view>
+      <view class="latest-filter-group" wx:if="{{latestSourceOptions.length > 1}}">
+        <view
+          class="latest-filter-chip {{latestSourceFilter === item.key ? 'latest-filter-chip-on' : ''}}"
+          wx:for="{{latestSourceOptions}}"
+          wx:key="key"
+          data-key="{{item.key}}"
+          bindtap="selectLatestSourceFilter"
+        >
+          {{item.label}}
+        </view>
+      </view>
+      <view class="latest-filter-group" wx:if="{{latestActionOptions.length > 1}}">
+        <view
+          class="latest-filter-chip {{latestActionFilter === item.key ? 'latest-filter-chip-on' : ''}}"
+          wx:for="{{latestActionOptions}}"
+          wx:key="key"
+          data-key="{{item.key}}"
+          bindtap="selectLatestActionFilter"
+        >
+          {{item.label}}
+        </view>
+      </view>
+      <view class="latest-items-list">
+        <view
+          class="latest-item-card"
+          wx:for="{{filteredLatestSessionItems}}"
+          wx:key="id"
+          data-item-id="{{item.id}}"
+          bindtap="openLatestItem"
+        >
+          <view class="latest-item-row">
+            <view class="latest-item-copy">
+              <view class="latest-item-title">{{item.title}}</view>
+              <view class="latest-item-source">{{item.source}}</view>
+            </view>
+            <view class="latest-item-score">{{item.scoreLabel}}</view>
+          </view>
+          <view class="latest-item-summary">{{item.summary}}</view>
+          <view class="latest-item-link">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <view class="af-icon af-icon-arrow">
+                <view class="af-icon-arrow-stem"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.latestNewOpen}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="panel-subtitle latest-empty" wx:if="{{!filteredLatestSessionItems.length}}">
+        {{i18n.latestNewEmpty}}
+      </view>
+    </view>
+
+    <view class="glass-card section panel research-panel" wx:if="{{researchRecommendations.length}}">
+      <view class="latest-items-head">
+        <view>
+          <view class="panel-kicker">{{i18n.researchTitle}}</view>
+          <view class="panel-subtitle">{{i18n.researchHint}}</view>
+        </view>
+        <button class="btn btn-secondary collector-link-btn" bindtap="openResearchCenter">
+          {{i18n.researchOpen}}
+        </button>
+      </view>
+      <view class="research-summary-list">
+        <view
+          class="research-summary-card"
+          wx:for="{{researchRecommendations}}"
+          wx:key="id"
+          data-entry-id="{{item.id}}"
+          bindtap="openResearchEntry"
+        >
+          <view class="research-summary-head">
+            <view class="research-summary-copy">
+              <view class="research-summary-title">{{item.title}}</view>
+              <view class="research-summary-meta">
+                <view class="research-summary-badge focus" wx:if="{{item.isFocusReference}}">Focus</view>
+                <view class="research-summary-badge" wx:if="{{item.collectionName}}">{{item.collectionName}}</view>
+              </view>
+            </view>
+          </view>
+          <view class="research-summary-text">{{item.summary}}</view>
+
+          <view class="research-chip-section" wx:if="{{item.topicAnchors.length || item.matchedThemes.length || item.filteredOldSourceCount || item.uniqueDomainCount || item.normalizedEntityCount || item.candidateProfileCompanies.length || item.candidateProfileHitCount}}">
+            <view class="research-chip-list">
+              <view class="research-chip {{item.evidenceMode === 'strong' ? 'research-chip-emerald' : item.evidenceMode === 'provisional' ? 'research-chip-amber' : ''}}">
+                {{item.evidenceMode === 'strong' ? '强证据' : item.evidenceMode === 'provisional' ? '可用初版' : '兜底候选'}}
+              </view>
+              <view class="research-chip">{{item.retrievalQuality === 'high' ? '高价值' : item.retrievalQuality === 'medium' ? '普通价值' : '低价值'}}</view>
+              <view class="research-chip research-chip-sky">官方源 {{item.officialSourcePercent}}%</view>
+              <view class="research-chip research-chip-violet" wx:for="{{item.topicAnchors}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+              <view class="research-chip research-chip-emerald" wx:for="{{item.matchedThemes}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+              <view class="research-chip" wx:if="{{item.filteredOldSourceCount}}">剔除过旧来源 {{item.filteredOldSourceCount}}</view>
+              <view class="research-chip" wx:if="{{item.uniqueDomainCount}}">域名 {{item.uniqueDomainCount}}</view>
+              <view class="research-chip research-chip-emerald" wx:if="{{item.normalizedEntityCount}}">归一化实体 {{item.normalizedEntityCount}}</view>
+              <view class="research-chip research-chip-amber" wx:if="{{item.correctiveTriggered}}">已触发纠错检索</view>
+              <view class="research-chip research-chip-sky" wx:if="{{item.candidateProfileCompanies.length}}">候选补证公司 {{item.candidateProfileCompanies.length}}</view>
+              <view class="research-chip research-chip-sky" wx:if="{{item.candidateProfileHitCount}}">补证公开源 {{item.candidateProfileHitCount}}</view>
+              <view class="research-chip research-chip-sky" wx:if="{{item.candidateProfileOfficialHitCount}}">官方源 {{item.candidateProfileOfficialHitCount}}</view>
+              <view class="research-chip research-chip-sky" wx:for="{{item.candidateProfileCompanies}}" wx:for-item="chip" wx:key="*this">候选公司 · {{chip}}</view>
+              <view class="research-chip research-chip-cyan" wx:for="{{item.candidateProfileSourceLabels}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+            </view>
+          </view>
+
+          <view class="research-action-card-lite" wx:for="{{item.actionCards}}" wx:for-item="card" wx:key="title">
+            <view class="research-action-card-title">{{card.title}}</view>
+            <view class="research-action-card-meta" wx:if="{{card.target_persona}}">
+              <text class="research-action-card-label">{{i18n.researchActionTarget}}：</text>{{card.target_persona}}
+            </view>
+            <view class="research-action-card-meta" wx:if="{{card.execution_window}}">
+              <text class="research-action-card-label">{{i18n.researchActionWindow}}：</text>{{card.execution_window}}
+            </view>
+            <view class="research-action-card-meta" wx:if="{{card.deliverable}}">
+              <text class="research-action-card-label">{{i18n.researchActionDeliverable}}：</text>{{card.deliverable}}
+            </view>
+            <view class="research-phase-list" wx:if="{{card.phases.length}}">
+              <view class="research-phase-label">{{i18n.researchActionTimeline}}</view>
+              <view class="research-phase-card" wx:for="{{card.phases}}" wx:for-item="phase" wx:key="content">
+                <view class="research-phase-head">
+                  <view class="research-phase-chip">{{phase.label}}</view>
+                  <view class="research-phase-horizon" wx:if="{{phase.horizon}}">{{phase.horizon}}</view>
+                </view>
+                <view class="research-phase-content">{{phase.content}}</view>
+              </view>
+            </view>
+          </view>
+
+          <view class="research-chip-section" wx:if="{{item.topTargets.length}}">
+            <view class="research-chip-title">{{i18n.researchTopTargets}}</view>
+            <view class="research-chip-list">
+              <view class="research-chip research-chip-sky" wx:for="{{item.topTargets}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+            </view>
+          </view>
+          <view class="research-chip-section" wx:if="{{item.topCompetitors.length}}">
+            <view class="research-chip-title">{{i18n.researchTopCompetitors}}</view>
+            <view class="research-chip-list">
+              <view class="research-chip research-chip-amber" wx:for="{{item.topCompetitors}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+            </view>
+          </view>
+          <view class="research-chip-section" wx:if="{{item.topPartners.length}}">
+            <view class="research-chip-title">{{i18n.researchTopPartners}}</view>
+            <view class="research-chip-list">
+              <view class="research-chip research-chip-emerald" wx:for="{{item.topPartners}}" wx:for-item="chip" wx:key="*this">{{chip}}</view>
+            </view>
+          </view>
+
+          <view class="latest-item-link">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <view class="af-icon af-icon-arrow">
+                <view class="af-icon-arrow-stem"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.researchOpenDetail}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card section panel assistant-panel" wx:if="{{assistantResult}}">
+      <view class="panel-kicker">{{i18n.assistantTitle}}</view>
+      <view class="assistant-head">
+        <view class="assistant-copy">
+          <view class="assistant-title">{{assistantResult.actionTitle}}</view>
+          <view class="panel-subtitle">{{assistantResult.message || i18n.assistantHint}}</view>
+        </view>
+        <view class="assistant-meta">
+          <view class="assistant-badge">{{assistantResult.channelLabel}}</view>
+          <view class="assistant-time" wx:if="{{assistantResult.displayTime}}">{{assistantResult.displayTime}}</view>
+        </view>
+      </view>
+      <view class="assistant-output-wrap">
+        <view class="output-head">
+          <view class="output-title">{{i18n.assistantOutput}}</view>
+          <button class="btn btn-secondary output-copy-btn" data-content="{{assistantResult.content}}" bindtap="copyText">
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+                <view class="af-icon af-icon-arrow">
+                  <view class="af-icon-arrow-stem"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+                </view>
+              </view>
+              <text>{{i18n.assistantCopy}}</text>
+            </view>
+          </button>
+        </view>
+        <view class="assistant-preview">{{assistantResult.preview || i18n.assistantNoOutput}}</view>
+      </view>
+      <view class="assistant-history" wx:if="{{assistantHistory.length}}">
+        <view class="panel-kicker">{{i18n.assistantHistory}}</view>
+        <view
+          class="assistant-history-card"
+          wx:for="{{assistantHistory}}"
+          wx:key="createdAt"
+          data-index="{{index}}"
+          bindtap="showAssistantHistory"
+        >
+          <view class="assistant-history-copy">
+            <view class="assistant-history-title">{{item.actionTitle}}</view>
+            <view class="assistant-history-preview">{{item.preview}}</view>
+          </view>
+          <view class="assistant-history-time">{{item.displayTime}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="glass-card section panel exports-panel">
+      <view class="panel-kicker">{{i18n.exportsTitle}}</view>
+      <view class="panel-subtitle">{{i18n.exportsHint}}</view>
+
+      <view class="action-grid section">
+        <button
+          class="btn btn-primary action-btn"
+          bindtap="generateMarkdown"
+          loading="{{taskLoadingType==='export_markdown_summary'}}"
+          disabled="{{!!taskLoadingType}}"
+        >
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-primary af-icon-shell-sm">
+              <image class="af-icon-logo af-icon-logo-sm" src="../../images/workbuddy.png" mode="aspectFit" />
+            </view>
+            <text>{{i18n.generateMarkdown}}</text>
+          </view>
+        </button>
+        <button
+          class="btn btn-secondary action-btn"
+          bindtap="generateReadingList"
+          loading="{{taskLoadingType==='export_reading_list'}}"
+          disabled="{{!!taskLoadingType}}"
+        >
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <image class="af-icon-logo af-icon-logo-sm" src="../../images/workbuddy.png" mode="aspectFit" />
+            </view>
+            <text>{{i18n.generateReadingList}}</text>
+          </view>
+        </button>
+        <button
+          class="btn btn-secondary action-btn"
+          bindtap="generateTodoDraft"
+          loading="{{taskLoadingType==='export_todo_draft'}}"
+          disabled="{{!!taskLoadingType}}"
+        >
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <image class="af-icon-logo af-icon-logo-sm" src="../../images/workbuddy.png" mode="aspectFit" />
+            </view>
+            <text>{{i18n.generateTodoDraft}}</text>
+          </view>
+        </button>
+      </view>
+      <view class="text-muted tip">{{i18n.routeHint}}</view>
+    </view>
+
+    <view class="section output-heading">
+      <view class="panel-kicker">{{i18n.outputsTitle}}</view>
+      <view class="panel-subtitle">{{i18n.outputsHint}}</view>
+    </view>
+
+    <view class="glass-card section panel output-panel">
+      <view class="output-head">
+        <view class="output-title">{{i18n.markdownTitle}}</view>
+        <button class="btn btn-secondary output-copy-btn" data-content="{{markdown}}" bindtap="copyText">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+              <view class="af-icon af-icon-arrow">
+                <view class="af-icon-arrow-stem"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.copyMarkdown}}</text>
+          </view>
+        </button>
+      </view>
+      <textarea class="output" value="{{markdown}}" disabled placeholder="{{i18n.placeholder}}" />
+    </view>
+
+    <view class="glass-card section panel output-panel">
+      <view class="output-head">
+        <view class="output-title">{{i18n.readingListTitle}}</view>
+        <button class="btn btn-secondary output-copy-btn" data-content="{{readingList}}" bindtap="copyText">
+          <view class="btn-inline">
+            <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+              <view class="af-icon af-icon-arrow">
+                <view class="af-icon-arrow-stem"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+              </view>
+            </view>
+            <text>{{i18n.copyReadingList}}</text>
+          </view>
+        </button>
+      </view>
+      <textarea class="output" value="{{readingList}}" disabled placeholder="{{i18n.placeholder}}" />
+    </view>
+
+    <view class="glass-card section panel output-panel">
+      <view class="output-head">
+        <view class="output-title">{{i18n.todoDraftTitle}}</view>
+        <view class="output-actions">
+          <button
+            class="btn btn-secondary output-copy-btn"
+            bindtap="importTodoToCalendar"
+            loading="{{calendarLoading}}"
+            disabled="{{calendarLoading || !!taskLoadingType || !sessionId}}"
+          >
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-cool af-icon-shell-sm">
+                <text class="icon-glyph">◔</text>
+              </view>
+              <text>{{calendarLoading ? i18n.importingCalendar : i18n.importTodoCalendar}}</text>
+            </view>
+          </button>
+          <button class="btn btn-secondary output-copy-btn" data-content="{{todoDraft}}" bindtap="copyText">
+            <view class="btn-inline">
+              <view class="af-icon-shell af-icon-shell-muted af-icon-shell-sm">
+                <view class="af-icon af-icon-arrow">
+                  <view class="af-icon-arrow-stem"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-a"></view>
+                  <view class="af-icon-arrow-head af-icon-arrow-head-b"></view>
+                </view>
+              </view>
+              <text>{{i18n.copyTodo}}</text>
+            </view>
+          </button>
+        </view>
+      </view>
+      <textarea class="output" value="{{todoDraft}}" disabled placeholder="{{i18n.placeholder}}" />
+    </view>
+  </block>
+</view>

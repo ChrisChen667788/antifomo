@@ -1,0 +1,10 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sqlalchemy>=2.0.30
+alembic>=1.13.2
+pg8000>=1.31.2
+pydantic-settings>=2.3.4
+certifi>=2024.2.2
+pytest>=8.0.0
+ocrmac>=1.0.1
+pillow>=10.0.0

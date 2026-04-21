@@ -1,0 +1,217 @@
+<view class="page {{prefClass}}">
+  <view class="kicker">{{i18n.kicker}}</view>
+  <view class="hero-title">{{i18n.title}}</view>
+  <view class="hero-subtitle">{{i18n.desc}}</view>
+
+  <view class="glass-card section panel">
+    <view class="field">
+      <view class="field-label">{{i18n.font}}</view>
+      <picker mode="selector" range="{{fontOptions}}" bindchange="onFontChange" value="{{selectedFontIndex}}">
+        <view class="picker-box">{{fontOptions[selectedFontIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.textSize}}</view>
+      <picker mode="selector" range="{{sizeOptions}}" bindchange="onSizeChange" value="{{selectedSizeIndex}}">
+        <view class="picker-box">{{sizeOptions[selectedSizeIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.language}}</view>
+      <picker mode="selector" range="{{languageOptions}}" bindchange="onLanguageChange" value="{{selectedLanguageIndex}}">
+        <view class="picker-box">{{languageOptions[selectedLanguageIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.theme}}</view>
+      <view class="btn-row">
+        <button
+          wx:for="{{themeOptions}}"
+          wx:key="value"
+          data-value="{{item.value}}"
+          bindtap="onThemeChange"
+          class="btn {{preferences.themeMode===item.value ? 'btn-primary' : 'btn-secondary'}}"
+        >
+          {{item.label}}
+        </button>
+      </view>
+    </view>
+
+    <view class="section preview">{{i18n.preview}}</view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.preferenceTitle}}</view>
+    <view class="preview">{{i18n.preferenceDesc}}</view>
+
+    <view class="preference-metric section" wx:if="{{preferenceSummary}}">
+      <view class="preference-metric-value">{{preferenceSummary.feedback_total || 0}}</view>
+      <view class="preference-metric-label">{{i18n.preferenceFeedbackTotal}}</view>
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.preferenceTopTags}}</view>
+      <view class="preference-chip-row" wx:if="{{preferenceSummary && preferenceSummary.top_tags.length}}">
+        <view class="preference-chip" wx:for="{{preferenceSummary.top_tags}}" wx:key="key">
+          {{item.key}} · {{item.mapped_score}}
+        </view>
+      </view>
+      <view class="preview" wx:else>{{i18n.preferenceEmpty}}</view>
+    </view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.preferenceTopSources}}</view>
+      <view class="preference-chip-row" wx:if="{{preferenceSummary && preferenceSummary.top_domains.length}}">
+        <view class="preference-chip" wx:for="{{preferenceSummary.top_domains}}" wx:key="key">
+          {{item.key}} · {{item.mapped_score}}
+        </view>
+      </view>
+      <view class="preview" wx:else>{{i18n.preferenceEmpty}}</view>
+    </view>
+
+    <view class="btn-row section">
+      <button class="btn btn-secondary" bindtap="refreshPreferenceSummary" disabled="{{preferenceLoading}}">
+        {{i18n.preferenceRefresh}}
+      </button>
+      <button class="btn btn-secondary" bindtap="onResetPreferenceSummary" disabled="{{preferenceResetting}}">
+        {{preferenceResetting ? i18n.preferenceResetting : i18n.preferenceReset}}
+      </button>
+    </view>
+
+    <view wx:if="{{preferenceMessage}}" class="section api-status api-status-{{preferenceTone}}">
+      {{preferenceMessage}}
+    </view>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="field-label">{{i18n.apiBaseTitle}}</view>
+    <view class="preview">{{i18n.apiBaseDesc}}</view>
+
+    <view class="field section">
+      <view class="field-label">{{i18n.apiBaseLabel}}</view>
+      <input
+        class="picker-box api-input"
+        value="{{apiBaseInput}}"
+        placeholder="{{i18n.apiBasePlaceholder}}"
+        bindinput="onApiBaseInput"
+      />
+    </view>
+
+    <view class="section preview">
+      {{i18n.apiBaseRuntime}}：{{runtimePlatformLabel}}
+    </view>
+    <view class="section preview" wx:if="{{apiSuggestion}}">
+      {{i18n.apiBaseSuggestion}}：{{apiSuggestion}}
+    </view>
+
+    <view class="btn-row section">
+      <button class="btn btn-secondary" bindtap="onSaveApiBase">{{i18n.apiBaseSave}}</button>
+      <button class="btn btn-secondary" bindtap="onTestApiBase">{{i18n.apiBaseTest}}</button>
+      <button class="btn btn-secondary" wx:if="{{apiSuggestion}}" bindtap="onUseSuggestedApiBase">
+        {{i18n.apiBaseSuggestion}}
+      </button>
+    </view>
+
+    <view wx:if="{{apiBaseStatus}}" class="section api-status api-status-{{apiBaseTone}}">
+      {{apiBaseStatus}}
+    </view>
+
+    <button class="btn btn-secondary section collector-btn" bindtap="onOpenCollector">{{i18n.collector}}</button>
+    <button class="btn btn-secondary section reset-btn" bindtap="onReset">{{i18n.reset}}</button>
+  </view>
+
+  <view class="glass-card section panel">
+    <view class="wb-title-row">
+      <image class="wb-logo" src="../../images/workbuddy.png" mode="aspectFit" />
+      <view class="field-label wb-title">{{i18n.workbuddyTitle}}</view>
+    </view>
+    <view class="preview">{{i18n.workbuddyDesc}}</view>
+
+    <view class="section wb-status">
+      <view>{{workbuddyHealth && workbuddyHealth.status === 'ok' ? i18n.workbuddyReady : i18n.workbuddyUnavailable}}</view>
+      <view class="wb-sub">
+        {{workbuddyHealth && workbuddyHealth.signature_required ? i18n.workbuddySignatureOn : i18n.workbuddySignatureOff}}
+      </view>
+      <view class="wb-sub">
+        {{i18n.workbuddyMode}}：{{workbuddyModeText}}
+      </view>
+      <view class="wb-sub">
+        {{i18n.workbuddyProvider}}：{{workbuddyProviderText}}
+      </view>
+      <view class="wb-sub">
+        {{i18n.workbuddyRoute}}：{{workbuddyRouteText}}
+      </view>
+      <view class="wb-sub">
+        {{i18n.workbuddyRoles}}：{{workbuddyRolesText}}
+      </view>
+      <view class="wb-sub">
+        {{i18n.workbuddyLatestSession}}：{{latestSessionId || i18n.workbuddyNoSession}}
+      </view>
+      <view class="wb-sub">
+        {{workbuddyHealth && workbuddyHealth.official_cli_detected ? i18n.workbuddyCliReady : i18n.workbuddyCliMissing}}
+      </view>
+      <view class="wb-sub" wx:if="{{workbuddyHealth && workbuddyHealth.official_cli_detected}}">
+        {{workbuddyHealth && workbuddyHealth.official_cli_authenticated ? i18n.workbuddyCliAuthed : i18n.workbuddyCliLoginRequired}}
+      </view>
+      <view class="wb-sub">
+        {{workbuddyHealth && workbuddyHealth.official_gateway_reachable ? i18n.workbuddyGatewayReady : (workbuddyHealth && workbuddyHealth.official_gateway_configured ? i18n.workbuddyGatewayDown : i18n.workbuddyGatewayMissing)}}
+      </view>
+      <view class="wb-sub" wx:if="{{workbuddyHealth && workbuddyHealth.official_cli_auth_detail}}">
+        {{workbuddyHealth.official_cli_auth_detail}}
+      </view>
+      <view class="wb-sub" wx:if="{{workbuddyHealth && workbuddyHealth.official_gateway_url}}">
+        {{i18n.workbuddyGatewayLabel}}：{{workbuddyHealth.official_gateway_url}}
+      </view>
+      <view class="wb-sub" wx:if="{{workbuddyHealth && workbuddyHealth.official_gateway_detail}}">
+        {{workbuddyHealth.official_gateway_detail}}
+      </view>
+      <view class="wb-sub">{{i18n.workbuddyOfficialHint}}</view>
+    </view>
+
+    <view class="btn-row section">
+      <button class="btn btn-secondary" bindtap="onWorkBuddyRefresh" disabled="{{workbuddyRunning}}">
+        <view class="wb-btn-inline">
+          <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+          <text>{{workbuddyRunning ? i18n.workbuddyRunning : i18n.workbuddyRefresh}}</text>
+        </view>
+      </button>
+      <button class="btn btn-secondary" bindtap="onWorkBuddyPing" disabled="{{workbuddyRunning}}">
+        <view class="wb-btn-inline">
+          <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+          <text>{{workbuddyRunning ? i18n.workbuddyRunning : i18n.workbuddyPing}}</text>
+        </view>
+      </button>
+    </view>
+
+    <view class="btn-row section">
+      <button class="btn btn-primary" bindtap="onWorkBuddyMarkdown" disabled="{{workbuddyRunning}}">
+        <view class="wb-btn-inline">
+          <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+          <text>{{workbuddyRunning ? i18n.workbuddyRunning : i18n.workbuddyMarkdown}}</text>
+        </view>
+      </button>
+      <button class="btn btn-secondary" bindtap="onWorkBuddyReadingList" disabled="{{workbuddyRunning}}">
+        <view class="wb-btn-inline">
+          <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+          <text>{{workbuddyRunning ? i18n.workbuddyRunning : i18n.workbuddyReadingList}}</text>
+        </view>
+      </button>
+      <button class="btn btn-secondary" bindtap="onWorkBuddyTodoDraft" disabled="{{workbuddyRunning}}">
+        <view class="wb-btn-inline">
+          <image class="wb-logo-inline" src="../../images/workbuddy.png" mode="aspectFit" />
+          <text>{{workbuddyRunning ? i18n.workbuddyRunning : i18n.workbuddyTodoDraft}}</text>
+        </view>
+      </button>
+    </view>
+
+    <view wx:if="{{workbuddyMessage}}" class="section preview">{{workbuddyMessage}}</view>
+
+    <view class="section wb-output">
+      <view class="field-label">{{i18n.workbuddyOutputTitle}}</view>
+      <view class="wb-output-text">{{workbuddyOutput || i18n.workbuddyOutputEmpty}}</view>
+    </view>
+  </view>
+</view>

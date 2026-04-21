@@ -1,0 +1,237 @@
+.panel {
+  padding: 24rpx;
+}
+
+.preview-image {
+  width: 100%;
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.28);
+}
+
+.field-label {
+  font-size: 24rpx;
+  color: var(--af-text-secondary);
+  margin-bottom: 10rpx;
+}
+
+.input-box {
+  min-height: 68rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid var(--af-input-border);
+  background: var(--af-input-bg);
+  color: var(--af-input-text);
+  padding: 16rpx 20rpx;
+  box-sizing: border-box;
+}
+
+.text-box {
+  width: 100%;
+  min-height: 180rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid var(--af-input-border);
+  background: var(--af-input-bg);
+  color: var(--af-input-text);
+  padding: 16rpx 20rpx;
+  box-sizing: border-box;
+}
+
+.tip {
+  margin-top: 14rpx;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.metric {
+  padding: 16rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.18);
+  background: rgba(123, 139, 168, 0.08);
+}
+
+.metric-label {
+  font-size: 22rpx;
+  color: var(--af-text-muted);
+}
+
+.metric-value {
+  margin-top: 6rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--af-text-primary);
+}
+
+.collector-progress-track {
+  margin-top: 12rpx;
+  height: 14rpx;
+  border-radius: 999rpx;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.collector-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.9), rgba(59, 130, 246, 0.92), rgba(34, 211, 238, 0.88));
+}
+
+.source {
+  margin-top: 6rpx;
+}
+
+.summary {
+  margin-top: 14rpx;
+  line-height: 1.7;
+  color: var(--af-text-primary);
+  font-size: 26rpx;
+}
+
+.preview-ocr-title {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: var(--af-text-primary);
+  font-weight: 600;
+}
+
+.preview-ocr-body {
+  margin-top: 10rpx;
+  line-height: 1.7;
+  color: var(--af-text-primary);
+  font-size: 24rpx;
+  white-space: pre-wrap;
+}
+
+.chip-wrap {
+  margin-top: 14rpx;
+}
+
+.chip {
+  margin-right: 10rpx;
+  margin-bottom: 10rpx;
+}
+
+.ops-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10rpx 12rpx;
+  margin-top: 10rpx;
+}
+
+.daemon-badge {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.25);
+  font-size: 22rpx;
+}
+
+.daemon-running {
+  color: #0f766e;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.daemon-stopped {
+  color: var(--af-text-secondary);
+  background: rgba(123, 139, 168, 0.1);
+}
+
+.btn-inline {
+  min-width: 180rpx;
+}
+
+.btn-mini {
+  min-width: 120rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  padding: 0 18rpx;
+  font-size: 22rpx;
+}
+
+.source-list {
+  margin-top: 12rpx;
+}
+
+.source-row {
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid rgba(123, 139, 168, 0.16);
+}
+
+.source-url {
+  font-size: 24rpx;
+  color: var(--af-text-primary);
+  word-break: break-all;
+}
+
+.source-actions {
+  display: flex;
+  gap: 8rpx;
+}
+
+.failed-list {
+  margin-top: 8rpx;
+}
+
+.failed-row {
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid rgba(123, 139, 168, 0.16);
+}
+
+.failed-title {
+  font-size: 26rpx;
+  color: var(--af-text-primary);
+}
+
+.failed-error {
+  margin-top: 6rpx;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.markdown-view {
+  margin-top: 12rpx;
+  max-height: 360rpx;
+  padding: 14rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.16);
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.daemon-log-view {
+  margin-top: 8rpx;
+  max-height: 300rpx;
+  padding: 14rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(123, 139, 168, 0.16);
+  background: rgba(22, 28, 36, 0.9);
+}
+
+.daemon-log-text {
+  font-family: Menlo, Monaco, monospace;
+  font-size: 22rpx;
+  line-height: 1.7;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.markdown-text {
+  font-family: Menlo, Monaco, monospace;
+  font-size: 22rpx;
+  line-height: 1.7;
+  color: var(--af-text-primary);
+  white-space: pre-wrap;
+}
