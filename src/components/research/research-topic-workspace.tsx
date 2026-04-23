@@ -6,10 +6,12 @@ import {
   type ApiResearchNormalizedEntity,
   createResearchMarkdownArchive,
   createResearchActionPlan,
+  getResearchOfflineEvaluation,
   getResearchTrackingTopicTimeline,
   getResearchTrackingTopicVersions,
   getResearchWorkspace,
   saveResearchActionCards,
+  type ApiResearchOfflineEvaluation,
   type ApiResearchRankedEntity,
   type ApiResearchReport,
   type ApiResearchTrackingTopicTimelineEvent,
@@ -24,6 +26,7 @@ import {
   buildResearchTopicRecapPdfFilename,
   buildResearchTopicRecapPlainText,
   summarizeResearchTopicRecapEvidence,
+  summarizeResearchTopicSectionDiagnostics,
 } from "@/lib/research-topic-recap";
 import {
   buildResearchMarkdownArchiveCompareHref,
@@ -477,6 +480,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
   const [topic, setTopic] = useState<ApiResearchTrackingTopic | null>(null);
   const [versions, setVersions] = useState<ApiResearchTrackingTopicVersionDetail[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<ApiResearchTrackingTopicTimelineEvent[]>([]);
+  const [offlineEvaluation, setOfflineEvaluation] = useState<ApiResearchOfflineEvaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [planningActions, setPlanningActions] = useState(false);
@@ -487,6 +491,22 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
   const [compareLeftId, setCompareLeftId] = useState("");
   const [compareRightId, setCompareRightId] = useState("");
   const [selectedEntityKey, setSelectedEntityKey] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getResearchOfflineEvaluation(6)
+      .then((evaluation) => {
+        if (!active) return;
+        setOfflineEvaluation(evaluation);
+      })
+      .catch(() => {
+        if (!active) return;
+        setOfflineEvaluation(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -709,6 +729,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
     if (!topic) {
       return null;
     }
+    const sectionDiagnosticsSummary = summarizeResearchTopicSectionDiagnostics(compareLeftVersion, compareRightVersion);
     const exportOptions = {
       topic,
       baselineVersion: compareLeftVersion,
@@ -720,6 +741,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
       sourceContributionPanels,
       timelineEvents,
       generatedAt,
+      offlineEvaluation,
     };
     return {
       markdownFilename: buildResearchTopicRecapExportFilename(topic.name, generatedAt),
@@ -729,6 +751,8 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
       plainText: buildResearchTopicRecapPlainText(exportOptions),
       execBrief: buildResearchTopicRecapExecBrief(exportOptions),
       evidenceSummary: summarizeResearchTopicRecapEvidence(fieldDiffRows),
+      sectionDiagnosticsSummary,
+      offlineEvaluationSnapshot: offlineEvaluation,
     };
   };
 
@@ -817,6 +841,8 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
           current_version_id: compareRightVersion?.id || "",
           current_version_title: compareRightVersion?.title || "",
           evidence_appendix_summary: bundle.evidenceSummary,
+          section_diagnostics_summary: bundle.sectionDiagnosticsSummary,
+          offline_evaluation_snapshot: bundle.offlineEvaluationSnapshot || {},
         },
       });
       setActionMessage(t("research.topicArchiveSaved", `已保存 Markdown 归档：${saved.name}`));

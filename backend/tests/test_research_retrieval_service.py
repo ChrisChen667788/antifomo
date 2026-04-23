@@ -43,6 +43,8 @@ def test_build_report_retrieval_chunks_includes_section_and_followup_evidence() 
 
     chunks = build_report_retrieval_chunks(report)
 
+    assert any(chunk.field_key == "report_summary" for chunk in chunks)
+    assert any(chunk.field_key == "section_summary" for chunk in chunks)
     assert any(chunk.field_key == "supplemental_evidence" for chunk in chunks)
     assert any(chunk.field_key == "section_evidence" for chunk in chunks)
     assert any(chunk.source_url == "https://example.com/shanghai-data" for chunk in chunks)
@@ -78,5 +80,34 @@ def test_retrieve_report_evidence_chunks_prioritizes_new_budget_evidence() -> No
 
     assert matches
     assert "预算复核" in matches[0]["text"]
-    assert matches[0]["field_key"] in {"supplemental_evidence", "section_evidence"}
+    assert matches[0]["field_key"] in {"supplemental_evidence", "section_summary", "section_evidence", "report_summary"}
     assert any(link["url"] == "https://example.com/shanghai-data" for link in matches[0]["evidence_links"])
+
+
+def test_retrieve_report_evidence_chunks_routes_from_section_summary_into_child_evidence() -> None:
+    report = {
+        "keyword": "政务云预算窗口",
+        "executive_summary": "优先判断采购中心与预算复核窗口。",
+        "sections": [
+            {
+                "title": "采购中心与预算复核",
+                "items": ["7 月同步确认需求。"],
+                "evidence_links": [
+                    {
+                        "title": "公开公告",
+                        "url": "https://example.com/budget-review",
+                        "source_label": "公开公告",
+                        "source_tier": "official",
+                        "anchor_text": "7 月时间窗 / 需求确认",
+                        "excerpt": "公告显示 7 月组织需求确认。",
+                    }
+                ],
+            }
+        ],
+    }
+
+    matches = retrieve_report_evidence_chunks("采购中心预算复核", report, limit=2)
+
+    assert matches
+    assert matches[0]["field_key"] in {"section_evidence", "section_item"}
+    assert "7 月" in matches[0]["text"]

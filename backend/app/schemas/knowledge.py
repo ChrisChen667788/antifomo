@@ -247,6 +247,17 @@ class KnowledgeCommercialDashboardOut(BaseModel):
     review_queue: list[KnowledgeReviewQueueItemOut] = Field(default_factory=list)
 
 
+class KnowledgeRetrievalPreviewOut(BaseModel):
+    snippet: str = ""
+    label: str = ""
+    field_key: str = ""
+    section_title: str = ""
+    source_tier: str = "media"
+    score: float = 0.0
+    match_modes: list[str] = Field(default_factory=list)
+    matched_terms: list[str] = Field(default_factory=list)
+
+
 class KnowledgeEntryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -256,6 +267,7 @@ class KnowledgeEntryOut(BaseModel):
     content: str
     source_domain: str | None = None
     metadata_payload: dict | None = None
+    retrieval_preview: KnowledgeRetrievalPreviewOut | None = None
     commercial_intelligence: KnowledgeCommercialIntelligenceOut | None = None
     collection_name: str | None = None
     is_pinned: bool = False

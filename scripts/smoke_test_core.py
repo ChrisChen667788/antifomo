@@ -544,7 +544,7 @@ def summarize(results: list[CheckResult]) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Anti-FOMO core smoke tests.")
     parser.add_argument("--api", default="http://127.0.0.1:8000")
-    parser.add_argument("--web", default="http://127.0.0.1:3000")
+    parser.add_argument("--web", default="http://127.0.0.1:3010")
     args = parser.parse_args()
 
     started_at = utc_now()

@@ -393,10 +393,27 @@ export interface ApiResearchFollowupContext {
   supplemental_requirements: string;
 }
 
+export interface ApiResearchFollowupDiagnostics {
+  enabled: boolean;
+  input_sections: string[];
+  planning_focus: string;
+  summary: string;
+  scope_rebuilt: boolean;
+  query_decomposition_applied: boolean;
+  decomposition_queries: string[];
+  rebuilt_regions: string[];
+  rebuilt_industries: string[];
+  rebuilt_clients: string[];
+  rebuilt_company_anchors: string[];
+  rebuilt_must_include_terms: string[];
+  rebuilt_exclusion_terms: string[];
+}
+
 export interface ApiResearchReport {
   keyword: string;
   research_focus?: string | null;
   followup_context?: ApiResearchFollowupContext;
+  followup_diagnostics?: ApiResearchFollowupDiagnostics;
   output_language: AppLanguage;
   research_mode?: "fast" | "deep";
   report_title: string;
@@ -778,6 +795,7 @@ export interface ApiResearchCompareSnapshot {
   roles: Array<"甲方" | "中标方" | "竞品" | "伙伴">;
   preview_names: string[];
   linked_report_diff?: ApiResearchCompareSnapshotLinkedVersionDiff | null;
+  metadata_payload: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -929,6 +947,46 @@ export interface ApiResearchLowQualityReviewActionResponse {
   review_status: "rewritten" | "accepted" | "reverted";
   item?: ApiResearchLowQualityReviewQueueItem | null;
   diff?: ApiResearchLowQualityRewriteDiff | null;
+}
+
+export interface ApiResearchOfflineEvaluationMetric {
+  key: string;
+  label: string;
+  numerator: number;
+  denominator: number;
+  rate: number;
+  percent: number;
+  benchmark: number;
+  status: "good" | "watch" | "bad" | string;
+  summary: string;
+}
+
+export interface ApiResearchOfflineEvaluationWeakReport {
+  entry_id: string;
+  entry_title: string;
+  report_title: string;
+  keyword: string;
+  weakness_score: number;
+  retrieval_hit: boolean;
+  supported_target_accounts: number;
+  unsupported_target_accounts: number;
+  unsupported_targets: string[];
+  quota_passed_section_count: number;
+  quota_total_section_count: number;
+  failing_sections: string[];
+  official_source_ratio: number;
+  strict_match_ratio: number;
+  retrieval_quality: "low" | "medium" | "high" | string;
+}
+
+export interface ApiResearchOfflineEvaluation {
+  generated_at: string;
+  total_reports: number;
+  evaluated_reports: number;
+  invalid_payloads: number;
+  metrics: ApiResearchOfflineEvaluationMetric[];
+  weakest_reports: ApiResearchOfflineEvaluationWeakReport[];
+  summary_lines: string[];
 }
 
 export interface ApiResearchTrackingTopicRefresh {
@@ -2076,6 +2134,22 @@ export function getLowQualityResearchReviewQueue(
   }));
 }
 
+export function getResearchOfflineEvaluation(weakestLimit = 6): Promise<ApiResearchOfflineEvaluation> {
+  const params = new URLSearchParams();
+  params.set("weakest_limit", String(weakestLimit));
+  return request<ApiResearchOfflineEvaluation>(`/api/research/evaluation/offline?${params.toString()}`, {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_reports: 0,
+    evaluated_reports: 0,
+    invalid_payloads: 0,
+    metrics: [],
+    weakest_reports: [],
+    summary_lines: [],
+  }));
+}
+
 export function rewriteLowQualityResearchReviewItem(entryId: string): Promise<ApiResearchLowQualityReviewActionResponse> {
   return request<ApiResearchLowQualityReviewActionResponse>(`/api/research/review-queue/low-quality/${entryId}/rewrite`, {
     method: "POST",
@@ -2101,6 +2175,7 @@ export function createResearchCompareSnapshot(payload: {
   tracking_topic_id?: string | null;
   summary?: string;
   rows: Array<Record<string, unknown>>;
+  metadata_payload?: Record<string, unknown>;
 }): Promise<ApiResearchCompareSnapshot> {
   return request<ApiResearchCompareSnapshot>("/api/research/workspace/compare-snapshots", {
     method: "POST",

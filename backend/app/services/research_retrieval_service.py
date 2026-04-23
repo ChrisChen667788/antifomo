@@ -51,6 +51,7 @@ _FOCUS_GROUP_HINTS: dict[str, tuple[str, ...]] = {
 }
 
 _FIELD_FOCUS_GROUPS: dict[str, tuple[str, ...]] = {
+    "report_summary": ("evidence", "delta"),
     "executive_summary": ("evidence",),
     "consulting_angle": ("evidence",),
     "budget_signals": ("budget", "timing"),
@@ -71,10 +72,12 @@ _FIELD_FOCUS_GROUPS: dict[str, tuple[str, ...]] = {
     "supplemental_evidence": ("delta", "evidence"),
     "supplemental_requirements": ("delta",),
     "followup_report_summary": ("delta",),
+    "section_summary": ("evidence",),
     "section_item": ("evidence",),
     "section_evidence": ("evidence",),
     "source": ("evidence",),
 }
+_PARENT_FIELD_KEYS = {"report_summary", "section_summary"}
 
 
 @dataclass(slots=True)
@@ -189,6 +192,10 @@ def _focus_groups_from_text(text: str) -> tuple[str, ...]:
     return tuple(_dedupe_strings(groups))
 
 
+def _is_parent_field_key(field_key: str) -> bool:
+    return normalize_text(field_key) in _PARENT_FIELD_KEYS
+
+
 def _collect_report_evidence_links(report: dict[str, Any]) -> list[dict[str, str]]:
     evidence_links: list[dict[str, str]] = []
     seen_urls: set[str] = set()
@@ -238,6 +245,49 @@ def _collect_report_evidence_links(report: dict[str, Any]) -> list[dict[str, str
             }
         )
     return evidence_links
+
+
+def _summary_values(values: Any, *, limit: int = 2) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    rows: list[str] = []
+    for value in values:
+        normalized = normalize_text(str(value or ""))
+        if not normalized or normalized in rows:
+            continue
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _build_report_summary_text(report: dict[str, Any]) -> str:
+    parts = [
+        normalize_text(str(report.get("report_title") or "")),
+        normalize_text(str(report.get("executive_summary") or "")),
+        normalize_text(str(report.get("consulting_angle") or "")),
+        "；".join(_summary_values(report.get("target_accounts"), limit=2)),
+        "；".join(_summary_values(report.get("budget_signals"), limit=2)),
+        "；".join(_summary_values(report.get("target_departments"), limit=2)),
+    ]
+    return "；".join(part for part in parts if part)
+
+
+def _build_section_summary_text(section: dict[str, Any]) -> str:
+    title = normalize_text(str(section.get("title") or "章节"))
+    item_rows = _summary_values(section.get("items"), limit=2)
+    evidence_parts: list[str] = []
+    for raw_link in list(section.get("evidence_links") or [])[:2]:
+        if not isinstance(raw_link, dict):
+            continue
+        evidence_parts.extend(
+            [
+                normalize_text(str(raw_link.get("anchor_text") or "")),
+                normalize_text(str(raw_link.get("excerpt") or "")),
+            ]
+        )
+    parts = [title, *item_rows, *[part for part in evidence_parts if part]]
+    return "；".join(part for part in parts if part)
 
 
 def _append_chunk(
@@ -290,6 +340,15 @@ def build_report_retrieval_chunks(report: dict[str, Any] | None) -> list[Researc
     seen: set[str] = set()
     global_evidence_links = _collect_report_evidence_links(report)
 
+    _append_chunk(
+        chunks,
+        seen,
+        text=_build_report_summary_text(report),
+        label="研报总览",
+        field_key="report_summary",
+        evidence_links=global_evidence_links[:3],
+        priority=11,
+    )
     _append_chunk(
         chunks,
         seen,
@@ -360,6 +419,16 @@ def build_report_retrieval_chunks(report: dict[str, Any] | None) -> list[Researc
             continue
         section_title = normalize_text(str(section.get("title") or "章节"))
         evidence_links: list[dict[str, str]] = []
+        _append_chunk(
+            chunks,
+            seen,
+            text=_build_section_summary_text(section),
+            label=f"{section_title} 总览",
+            field_key="section_summary",
+            section_title=section_title,
+            evidence_links=global_evidence_links[:2],
+            priority=10,
+        )
         for raw_link in list(section.get("evidence_links") or []):
             if not isinstance(raw_link, dict):
                 continue
@@ -483,6 +552,39 @@ def _chunk_score(
     return score
 
 
+def _boost_routed_chunk_score(
+    chunk: ResearchRetrievalChunk,
+    *,
+    base_score: int,
+    report_parent_score: int,
+    section_parent_scores: dict[str, int],
+) -> tuple[int, bool]:
+    if _is_parent_field_key(chunk.field_key):
+        return base_score, False
+
+    score = int(base_score)
+    routed = False
+    if report_parent_score > 0:
+        report_boost = int(round(report_parent_score * 0.18))
+        if chunk.field_key in {"section_evidence", "section_item", "target_accounts", "target_departments", "budget_signals"}:
+            report_boost += 4
+        if report_boost > 0:
+            score += report_boost
+            routed = True
+    if chunk.section_title:
+        section_parent_score = int(section_parent_scores.get(chunk.section_title, 0) or 0)
+        if section_parent_score > 0:
+            section_boost = int(round(section_parent_score * 0.45))
+            if chunk.field_key == "section_evidence":
+                section_boost += 8
+            elif chunk.field_key == "section_item":
+                section_boost += 5
+            if section_boost > 0:
+                score += section_boost
+                routed = True
+    return score, routed
+
+
 def retrieve_report_evidence_chunks(
     question: str,
     report: dict[str, Any] | None,
@@ -496,9 +598,29 @@ def retrieve_report_evidence_chunks(
     normalized_question = normalize_text(question).lower()
     question_terms = _question_terms(question)
     focus_groups = _question_focus_groups(question)
-    scored = [
+    raw_scored = [
         (chunk, _chunk_score(chunk, normalized_question=normalized_question, question_terms=question_terms, focus_groups=focus_groups))
         for chunk in chunks
+    ]
+    report_parent_score = max(
+        (score for chunk, score in raw_scored if chunk.field_key == "report_summary"),
+        default=0,
+    )
+    section_parent_scores: dict[str, int] = {}
+    for chunk, score in raw_scored:
+        if chunk.field_key == "section_summary" and chunk.section_title:
+            section_parent_scores[chunk.section_title] = max(section_parent_scores.get(chunk.section_title, 0), score)
+    scored = [
+        (
+            chunk,
+            *_boost_routed_chunk_score(
+                chunk,
+                base_score=score,
+                report_parent_score=report_parent_score,
+                section_parent_scores=section_parent_scores,
+            ),
+        )
+        for chunk, score in raw_scored
     ]
     ranked = sorted(
         scored,
@@ -513,14 +635,29 @@ def retrieve_report_evidence_chunks(
 
     selected: list[dict[str, Any]] = []
     seen_texts: set[str] = set()
-    for chunk, score in ranked:
+    for chunk, score, routed in ranked:
         if score <= 0:
             continue
+        if _is_parent_field_key(chunk.field_key):
+            if any(
+                not _is_parent_field_key(other_chunk.field_key)
+                and (
+                    (chunk.field_key == "section_summary" and other_chunk.section_title == chunk.section_title)
+                    or (chunk.field_key == "report_summary" and other_score >= score - 6)
+                )
+                and other_score >= score - 6
+                for other_chunk, other_score, _other_routed in ranked
+                if other_chunk is not chunk
+            ):
+                continue
         normalized_text = normalize_text(chunk.text)
         if not normalized_text or normalized_text in seen_texts:
             continue
         seen_texts.add(normalized_text)
-        selected.append(chunk.to_payload(score=score))
+        payload = chunk.to_payload(score=score)
+        if routed:
+            payload["routing_boost"] = True
+        selected.append(payload)
         if len(selected) >= limit:
             break
     return selected

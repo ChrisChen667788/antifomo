@@ -265,6 +265,46 @@ class ResearchLowQualityReviewActionResponse(BaseModel):
     diff: ResearchLowQualityRewriteDiffOut | None = None
 
 
+class ResearchOfflineEvaluationMetricOut(BaseModel):
+    key: Literal["retrieval_hit_rate", "target_support_rate", "section_quota_pass_rate"]
+    label: str
+    numerator: int = 0
+    denominator: int = 0
+    rate: float = 0.0
+    percent: int = 0
+    benchmark: float = 0.0
+    status: Literal["good", "watch", "bad"] = "watch"
+    summary: str = ""
+
+
+class ResearchOfflineEvaluationWeakReportOut(BaseModel):
+    entry_id: str
+    entry_title: str = ""
+    report_title: str = ""
+    keyword: str = ""
+    weakness_score: int = 0
+    retrieval_hit: bool = False
+    supported_target_accounts: int = 0
+    unsupported_target_accounts: int = 0
+    unsupported_targets: list[str] = Field(default_factory=list)
+    quota_passed_section_count: int = 0
+    quota_total_section_count: int = 0
+    failing_sections: list[str] = Field(default_factory=list)
+    official_source_ratio: float = 0.0
+    strict_match_ratio: float = 0.0
+    retrieval_quality: Literal["low", "medium", "high"] = "low"
+
+
+class ResearchOfflineEvaluationOut(BaseModel):
+    generated_at: datetime
+    total_reports: int = 0
+    evaluated_reports: int = 0
+    invalid_payloads: int = 0
+    metrics: list[ResearchOfflineEvaluationMetricOut] = Field(default_factory=list)
+    weakest_reports: list[ResearchOfflineEvaluationWeakReportOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
 class ResearchCompareSnapshotCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     query: str = Field(default="", max_length=120)
@@ -274,6 +314,7 @@ class ResearchCompareSnapshotCreateRequest(BaseModel):
     tracking_topic_id: str | None = Field(default=None, max_length=64)
     summary: str = Field(default="", max_length=600)
     rows: list[dict[str, Any]] = Field(default_factory=list, min_length=1, max_length=80)
+    metadata_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResearchCompareSnapshotOut(BaseModel):
@@ -294,6 +335,7 @@ class ResearchCompareSnapshotOut(BaseModel):
     roles: list[ResearchCompareRole] = Field(default_factory=list)
     preview_names: list[str] = Field(default_factory=list)
     linked_report_diff: "ResearchCompareSnapshotLinkedVersionDiffOut | None" = None
+    metadata_payload: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -578,6 +620,22 @@ class ResearchFollowupContextOut(BaseModel):
     supplemental_requirements: str = ""
 
 
+class ResearchFollowupDiagnosticsOut(BaseModel):
+    enabled: bool = False
+    input_sections: list[str] = Field(default_factory=list)
+    planning_focus: str = ""
+    summary: str = ""
+    scope_rebuilt: bool = False
+    query_decomposition_applied: bool = False
+    decomposition_queries: list[str] = Field(default_factory=list)
+    rebuilt_regions: list[str] = Field(default_factory=list)
+    rebuilt_industries: list[str] = Field(default_factory=list)
+    rebuilt_clients: list[str] = Field(default_factory=list)
+    rebuilt_company_anchors: list[str] = Field(default_factory=list)
+    rebuilt_must_include_terms: list[str] = Field(default_factory=list)
+    rebuilt_exclusion_terms: list[str] = Field(default_factory=list)
+
+
 class ResearchReportSectionOut(BaseModel):
     title: str
     items: list[str] = Field(default_factory=list)
@@ -663,6 +721,7 @@ class ResearchReportDocument(BaseModel):
     keyword: str
     research_focus: str | None = None
     followup_context: ResearchFollowupContextOut = Field(default_factory=ResearchFollowupContextOut)
+    followup_diagnostics: ResearchFollowupDiagnosticsOut = Field(default_factory=ResearchFollowupDiagnosticsOut)
     output_language: OutputLanguage = "zh-CN"
     research_mode: ResearchMode = "deep"
     report_title: str

@@ -6,7 +6,7 @@ TMP_DIR="$ROOT_DIR/.tmp"
 BACKEND_PID_FILE="$TMP_DIR/backend.pid"
 FRONTEND_PID_FILE="$TMP_DIR/frontend.pid"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+FRONTEND_PORT="${FRONTEND_PORT:-3010}"
 
 stop_pid_file() {
   local name="$1"

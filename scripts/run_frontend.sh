@@ -9,6 +9,6 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+FRONTEND_PORT="${FRONTEND_PORT:-3010}"
 
 NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}" npm run dev -- --port "$FRONTEND_PORT"

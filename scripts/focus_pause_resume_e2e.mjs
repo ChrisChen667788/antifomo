@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
 
-const DEFAULT_FRONTEND_URL = "http://127.0.0.1:3000";
+const DEFAULT_FRONTEND_URL = "http://127.0.0.1:3010";
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8011";
 const DEFAULT_MAC_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const API_BASE_OVERRIDE_KEY = "anti_fomo_api_base_override";

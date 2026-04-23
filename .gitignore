@@ -24,6 +24,8 @@
 .DS_Store
 *.pem
 *.db
+*.db-shm
+*.db-wal
 .tmp/
 .storage/
 .codex-project/

@@ -1,6 +1,14 @@
 import type { ApiResearchMarkdownArchive, ApiResearchMarkdownArchiveDetail } from "@/lib/api";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
-import { buildArchiveEvidenceDeltaLines, buildArchiveDeliveryDigest } from "@/lib/research-archive-metadata";
+import {
+  buildArchiveDeliveryDigest,
+  buildArchiveEvidenceDeltaLines,
+  buildArchiveOfflineEvaluationDeltaLines,
+  buildArchiveSectionDiagnosticsDeltaLines,
+  extractArchiveOfflineEvaluationSnapshot,
+  extractArchiveSectionDiagnosticsSummary,
+  getArchiveMetadata,
+} from "@/lib/research-archive-metadata";
 
 export const RESEARCH_MARKDOWN_ARCHIVE_COMPARE_SUMMARY_ANCHOR = "archive-compare-summary";
 
@@ -141,6 +149,12 @@ function formatInlineList(values: string[], fallback = "无", limit = 4): string
   return next.length ? next.join("；") : fallback;
 }
 
+function offlineStatusLabel(status: string): string {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
+}
+
 function formatArchiveSummary(archive: ApiResearchMarkdownArchiveDetail): string {
   const segments = [
     archive.name,
@@ -250,6 +264,12 @@ export function buildResearchMarkdownArchiveCompareSummaryLines(
   buildArchiveEvidenceDeltaLines(archive, compareArchive).forEach((line) => {
     lines.push(line);
   });
+  buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive).forEach((line) => {
+    lines.push(line);
+  });
+  buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive).forEach((line) => {
+    lines.push(line);
+  });
   return lines.slice(0, 6);
 }
 
@@ -300,6 +320,12 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
   const { archive, compareArchive, comparison } = options;
   const appCompareUrl = normalizeText(options.appCompareUrl);
   const summaryLines = buildResearchMarkdownArchiveCompareSummaryLines(archive, compareArchive, comparison);
+  const currentMetadata = getArchiveMetadata(archive);
+  const compareMetadata = getArchiveMetadata(compareArchive);
+  const currentSectionSummary = extractArchiveSectionDiagnosticsSummary(currentMetadata);
+  const compareSectionSummary = extractArchiveSectionDiagnosticsSummary(compareMetadata);
+  const currentOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(currentMetadata);
+  const compareOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(compareMetadata);
   const lines = [
     "# 历史归档差异复盘报告",
     "",
@@ -333,6 +359,8 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
   const currentDigest = buildArchiveDeliveryDigest(archive);
   const compareDigest = buildArchiveDeliveryDigest(compareArchive);
   const evidenceDeltaLines = buildArchiveEvidenceDeltaLines(archive, compareArchive);
+  const sectionDeltaLines = buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive);
+  const offlineDeltaLines = buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive);
   if (currentDigest || compareDigest || evidenceDeltaLines.length) {
     lines.push("", "## Evidence Appendix Delta", "");
     evidenceDeltaLines.forEach((line) => {
@@ -362,6 +390,76 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
       });
       if (compareDigest.outstandingItems.length) {
         lines.push(`- ${compareDigest.outstandingLabel}: ${formatInlineList(compareDigest.outstandingItems, "无", 5)}`);
+      }
+    }
+  }
+
+  if (sectionDeltaLines.length || currentSectionSummary || compareSectionSummary) {
+    lines.push("", "## Section Diagnostics Delta", "");
+    sectionDeltaLines.forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+    if (currentSectionSummary) {
+      lines.push("");
+      lines.push("### 当前归档章节诊断", "");
+      if (currentSectionSummary.mode === "compare") {
+        lines.push(`- 待补证章节: ${currentSectionSummary.weakSectionCount}`);
+      } else {
+        lines.push(`- 对照版本待补证章节: ${currentSectionSummary.currentWeakSectionCount}`);
+        lines.push(`- 新增待补证章节: ${formatInlineList(currentSectionSummary.newlyWeakSections, "无", 4)}`);
+      }
+      lines.push(`- 配额未达标章节: ${currentSectionSummary.quotaRiskSectionCount}`);
+      lines.push(`- 矛盾章节: ${currentSectionSummary.contradictionSectionCount}`);
+      lines.push(`- 重点章节: ${formatInlineList(currentSectionSummary.highlightedSections, "无", 5)}`);
+    }
+    if (compareSectionSummary) {
+      lines.push("");
+      lines.push("### 对照归档章节诊断", "");
+      if (compareSectionSummary.mode === "compare") {
+        lines.push(`- 待补证章节: ${compareSectionSummary.weakSectionCount}`);
+      } else {
+        lines.push(`- 对照版本待补证章节: ${compareSectionSummary.currentWeakSectionCount}`);
+        lines.push(`- 新增待补证章节: ${formatInlineList(compareSectionSummary.newlyWeakSections, "无", 4)}`);
+      }
+      lines.push(`- 配额未达标章节: ${compareSectionSummary.quotaRiskSectionCount}`);
+      lines.push(`- 矛盾章节: ${compareSectionSummary.contradictionSectionCount}`);
+      lines.push(`- 重点章节: ${formatInlineList(compareSectionSummary.highlightedSections, "无", 5)}`);
+    }
+  }
+
+  if (offlineDeltaLines.length || currentOfflineSnapshot || compareOfflineSnapshot) {
+    lines.push("", "## Offline Regression Delta", "");
+    offlineDeltaLines.forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+    if (currentOfflineSnapshot) {
+      lines.push("");
+      lines.push("### 当前归档离线回归", "");
+      currentOfflineSnapshot.metrics.slice(0, 3).forEach((metric) => {
+        lines.push(
+          `- ${metric.label}: ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${Math.round(metric.benchmark * 100)}%）`,
+        );
+      });
+      if (currentOfflineSnapshot.summaryLines.length) {
+        lines.push(`- 摘要: ${formatInlineList(currentOfflineSnapshot.summaryLines, "无", 2)}`);
+      }
+      if (currentOfflineSnapshot.weakestReports.length) {
+        lines.push(`- 弱样本: ${formatInlineList(currentOfflineSnapshot.weakestReports, "无", 3)}`);
+      }
+    }
+    if (compareOfflineSnapshot) {
+      lines.push("");
+      lines.push("### 对照归档离线回归", "");
+      compareOfflineSnapshot.metrics.slice(0, 3).forEach((metric) => {
+        lines.push(
+          `- ${metric.label}: ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${Math.round(metric.benchmark * 100)}%）`,
+        );
+      });
+      if (compareOfflineSnapshot.summaryLines.length) {
+        lines.push(`- 摘要: ${formatInlineList(compareOfflineSnapshot.summaryLines, "无", 2)}`);
+      }
+      if (compareOfflineSnapshot.weakestReports.length) {
+        lines.push(`- 弱样本: ${formatInlineList(compareOfflineSnapshot.weakestReports, "无", 3)}`);
       }
     }
   }
@@ -433,6 +531,8 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
   const currentDigest = buildArchiveDeliveryDigest(archive);
   const compareDigest = buildArchiveDeliveryDigest(compareArchive);
   const evidenceDeltaLines = buildArchiveEvidenceDeltaLines(archive, compareArchive);
+  const sectionDeltaLines = buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive);
+  const offlineDeltaLines = buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive);
   const lines = [
     "# Archive Diff Exec Brief",
     "",
@@ -464,6 +564,20 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
         lines.push(`- 对照待补证: ${formatInlineList(compareDigest.outstandingItems, "无", 4)}`);
       }
     }
+  }
+
+  if (sectionDeltaLines.length) {
+    lines.push("", "## Section Diagnostics Delta", "");
+    sectionDeltaLines.slice(0, 3).forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+  }
+
+  if (offlineDeltaLines.length) {
+    lines.push("", "## Offline Regression", "");
+    offlineDeltaLines.slice(0, 3).forEach((line) => {
+      lines.push(`- ${line}`);
+    });
   }
 
   lines.push("", "## 结构变化焦点", "");
@@ -507,6 +621,8 @@ export function buildResearchMarkdownArchiveComparePlainText(
   const currentDigest = buildArchiveDeliveryDigest(archive);
   const compareDigest = buildArchiveDeliveryDigest(compareArchive);
   const evidenceDeltaLines = buildArchiveEvidenceDeltaLines(archive, compareArchive);
+  const sectionDeltaLines = buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive);
+  const offlineDeltaLines = buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive);
   const lines = [
     "历史归档差异复盘报告",
     `导出时间: ${formatDateTimeStamp(generatedAt)}`,
@@ -546,6 +662,20 @@ export function buildResearchMarkdownArchiveComparePlainText(
         lines.push(`对照待补证: ${formatInlineList(compareDigest.outstandingItems, "无", 5)}`);
       }
     }
+  }
+
+  if (sectionDeltaLines.length) {
+    lines.push("", "Section Diagnostics Delta");
+    sectionDeltaLines.forEach((line) => {
+      lines.push(line);
+    });
+  }
+
+  if (offlineDeltaLines.length) {
+    lines.push("", "Offline Regression Delta");
+    offlineDeltaLines.forEach((line) => {
+      lines.push(line);
+    });
   }
 
   if (comparison.changedSections.length) {

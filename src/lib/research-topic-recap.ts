@@ -1,4 +1,5 @@
 import type {
+  ApiResearchOfflineEvaluation,
   ApiResearchRankedEntity,
   ApiResearchTrackingTopic,
   ApiResearchTrackingTopicTimelineEvent,
@@ -62,6 +63,7 @@ export interface ResearchTopicRecapMarkdownOptions {
   sourceContributionPanels: ResearchTopicRecapSourceContributionPanel[];
   timelineEvents: ApiResearchTrackingTopicTimelineEvent[];
   generatedAt?: Date;
+  offlineEvaluation?: ApiResearchOfflineEvaluation | null;
 }
 
 export interface ResearchTopicRecapEvidenceSummary {
@@ -75,12 +77,26 @@ export interface ResearchTopicRecapEvidenceSummary {
   fieldsWithoutEvidence: string[];
 }
 
+export interface ResearchTopicSectionDiagnosticsSummary {
+  baselineWeakSectionCount: number;
+  currentWeakSectionCount: number;
+  newlyWeakSections: string[];
+  resolvedSections: string[];
+  quotaRiskSectionCount: number;
+  contradictionSectionCount: number;
+  highlightedSections: string[];
+}
+
 type ResearchTopicWeakSection = {
   title: string;
   status: string;
   insufficiencySummary: string;
   insufficiencyReasons: string[];
   nextVerificationSteps: string[];
+  evidenceQuota: number;
+  meetsEvidenceQuota: boolean;
+  quotaGap: number;
+  contradictionDetected: boolean;
 };
 
 function normalizeText(value: unknown): string {
@@ -276,12 +292,22 @@ function extractTopicWeakSections(version: ApiResearchTrackingTopicVersionDetail
       insufficiencySummary: normalizeText(section.insufficiency_summary || ""),
       insufficiencyReasons: uniqueTake(section.insufficiency_reasons || [], 3),
       nextVerificationSteps: uniqueTake(section.next_verification_steps || [], 3),
+      evidenceQuota: Math.max(0, Number(section.evidence_quota || 0)),
+      meetsEvidenceQuota: Boolean(section.meets_evidence_quota),
+      quotaGap: Math.max(0, Number(section.quota_gap || 0)),
+      contradictionDetected: Boolean(section.contradiction_detected),
     }))
     .filter((section) => {
       if (!section.title) {
         return false;
       }
-      return section.status === "needs_evidence" || section.status === "degraded" || Boolean(section.insufficiencySummary);
+      return (
+        section.status === "needs_evidence" ||
+        section.status === "degraded" ||
+        Boolean(section.insufficiencySummary) ||
+        (section.evidenceQuota > 0 && !section.meetsEvidenceQuota) ||
+        section.contradictionDetected
+      );
     })
     .slice(0, 4);
 }
@@ -299,6 +325,29 @@ function buildTopicWeakSectionSummary(
     currentSections,
     newlyWeakSections: currentSections.filter((section) => !baselineTitles.has(section.title)).map((section) => section.title),
     resolvedSections: baselineSections.filter((section) => !currentTitles.has(section.title)).map((section) => section.title),
+  };
+}
+
+function buildTopicSectionDiagnosticsSummary(
+  baselineVersion: ApiResearchTrackingTopicVersionDetail | null,
+  currentVersion: ApiResearchTrackingTopicVersionDetail | null,
+): ResearchTopicSectionDiagnosticsSummary {
+  const weakSummary = buildTopicWeakSectionSummary(baselineVersion, currentVersion);
+  return {
+    baselineWeakSectionCount: weakSummary.baselineSections.length,
+    currentWeakSectionCount: weakSummary.currentSections.length,
+    newlyWeakSections: weakSummary.newlyWeakSections,
+    resolvedSections: weakSummary.resolvedSections,
+    quotaRiskSectionCount: weakSummary.currentSections.filter(
+      (section) => (section.evidenceQuota > 0 && !section.meetsEvidenceQuota) || section.quotaGap > 0,
+    ).length,
+    contradictionSectionCount: weakSummary.currentSections.filter((section) => section.contradictionDetected).length,
+    highlightedSections: uniqueTake(
+      weakSummary.currentSections.map((section) =>
+        section.quotaGap > 0 ? `${section.title}（待补 ${section.quotaGap}）` : section.title,
+      ),
+      8,
+    ),
   };
 }
 
@@ -334,6 +383,35 @@ export function summarizeResearchTopicRecapEvidence(
   return buildTopicEvidenceSummary(fieldDiffRows);
 }
 
+export function summarizeResearchTopicSectionDiagnostics(
+  baselineVersion: ApiResearchTrackingTopicVersionDetail | null,
+  currentVersion: ApiResearchTrackingTopicVersionDetail | null,
+): ResearchTopicSectionDiagnosticsSummary {
+  return buildTopicSectionDiagnosticsSummary(baselineVersion, currentVersion);
+}
+
+function offlineStatusLabel(status: string): string {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
+}
+
+function buildOfflineEvaluationLines(
+  offlineEvaluation: ApiResearchOfflineEvaluation | null | undefined,
+): string[] {
+  if (!offlineEvaluation?.metrics?.length) {
+    return [];
+  }
+  const lines = offlineEvaluation.metrics.map((metric) => {
+    const benchmark = Math.round(Number(metric.benchmark || 0) * 100);
+    return `${metric.label} ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${benchmark}%）`;
+  });
+  if (offlineEvaluation.summary_lines?.length) {
+    lines.push(...offlineEvaluation.summary_lines.slice(0, 2));
+  }
+  return uniqueTake(lines, 5);
+}
+
 export function buildResearchTopicRecapExportFilename(topicName: string, generatedAt: Date = new Date()): string {
   return `${buildResearchTopicFilenameBase(topicName, "research-topic-recap", generatedAt)}.md`;
 }
@@ -352,6 +430,8 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
   const currentVersion = options.currentVersion;
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(baselineVersion, currentVersion);
+  const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(baselineVersion, currentVersion);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "# 专题版本复盘报告",
     "",
@@ -412,6 +492,17 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
     });
   }
 
+  if (sectionDiagnostics.currentWeakSectionCount || sectionDiagnostics.baselineWeakSectionCount) {
+    lines.push("", "## Section Diagnostics Summary", "");
+    lines.push(`- 基线待补证章节: ${sectionDiagnostics.baselineWeakSectionCount}`);
+    lines.push(`- 对照待补证章节: ${sectionDiagnostics.currentWeakSectionCount}`);
+    lines.push(`- 新增待补证章节: ${formatInlineList(sectionDiagnostics.newlyWeakSections, "无", 4)}`);
+    lines.push(`- 已解决章节: ${formatInlineList(sectionDiagnostics.resolvedSections, "无", 4)}`);
+    lines.push(`- 配额未达标章节: ${sectionDiagnostics.quotaRiskSectionCount}`);
+    lines.push(`- 矛盾章节: ${sectionDiagnostics.contradictionSectionCount}`);
+    lines.push(`- 重点章节: ${formatInlineList(sectionDiagnostics.highlightedSections, "无", 5)}`);
+  }
+
   if (options.fieldDiffRows.length) {
     lines.push("## 字段级 Diff", "");
     options.fieldDiffRows.forEach((row) => {
@@ -465,6 +556,14 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
     });
   }
 
+  if (offlineEvaluationLines.length) {
+    lines.push("## Offline Regression Snapshot", "");
+    offlineEvaluationLines.forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+    lines.push("");
+  }
+
   if (options.timelineEvents.length) {
     lines.push("## 时间线摘录", "");
     options.timelineEvents.slice(0, 8).forEach((event) => {
@@ -507,6 +606,8 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
   const generatedAt = options.generatedAt instanceof Date ? options.generatedAt : new Date();
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(options.baselineVersion, options.currentVersion);
+  const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(options.baselineVersion, options.currentVersion);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "# Topic Exec Brief",
     "",
@@ -517,6 +618,7 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
     `- 对照版本: ${formatVersionSummary(options.currentVersion)}`,
     `- 证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`,
     `- 待补证字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 4)}`,
+    `- Section 诊断: 待补证章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
 
   lines.push("", "## 版本判断", "");
@@ -544,6 +646,13 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
     });
   }
 
+  if (offlineEvaluationLines.length) {
+    lines.push("", "## 离线回归", "");
+    offlineEvaluationLines.slice(0, 3).forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+  }
+
   lines.push("", "## 后续动作", "");
   lines.push(`- 优先补证 ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "暂无", 3)} 这类还没有直接证据的变化字段。`);
   if (options.sourceContributionPanels.length) {
@@ -561,6 +670,8 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
   const generatedAt = options.generatedAt instanceof Date ? options.generatedAt : new Date();
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(options.baselineVersion, options.currentVersion);
+  const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(options.baselineVersion, options.currentVersion);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "专题版本复盘报告",
     `导出时间: ${formatDateTimeStamp(generatedAt)}`,
@@ -571,6 +682,7 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
     `行业筛选: ${normalizeText(options.topic.industry_filter) || "全部"}`,
     `基线版本: ${formatVersionSummary(options.baselineVersion)}`,
     `对照版本: ${formatVersionSummary(options.currentVersion)}`,
+    `Section 诊断: 待补证章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
     "",
     "版本结论",
   ];
@@ -595,6 +707,13 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
       if (section.nextVerificationSteps.length) {
         lines.push(`建议补证: ${formatInlineList(section.nextVerificationSteps, "无", 3)}`);
       }
+    });
+  }
+
+  if (offlineEvaluationLines.length) {
+    lines.push("", "Offline Regression Snapshot");
+    offlineEvaluationLines.forEach((line) => {
+      lines.push(line);
     });
   }
 

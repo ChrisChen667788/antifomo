@@ -1,11 +1,11 @@
 {
   "name": "anti-fomo-demo",
-  "version": "0.2.0",
+  "version": "0.3.0+20260423",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3010",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start --port 3010",
     "lint": "eslint",
     "test:backend": "cd backend && .venv311/bin/pytest -q",
     "check": "npm run lint && npm run build && npm run test:backend",

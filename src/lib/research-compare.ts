@@ -1,4 +1,8 @@
-import type { ApiKnowledgeEntry, ApiResearchCompareSnapshotLinkedVersionDiff } from "@/lib/api";
+import type {
+  ApiKnowledgeEntry,
+  ApiResearchCompareSnapshotLinkedVersionDiff,
+  ApiResearchOfflineEvaluation,
+} from "@/lib/api";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import { getResearchFacets } from "@/lib/research-facets";
 
@@ -44,6 +48,10 @@ export interface ResearchCompareMarkdownOptions {
   linkedVersionTitle?: string;
   linkedVersionRefreshedAt?: string | null;
   linkedDiff?: ApiResearchCompareSnapshotLinkedVersionDiff | null;
+  offlineEvaluation?: ApiResearchOfflineEvaluation | null;
+  hasFrozenSnapshotMetadata?: boolean;
+  snapshotMetadataOrigin?: string | null;
+  snapshotMetadataBackfilledAt?: string | null;
 }
 
 export interface ResearchCompareEvidenceSummary {
@@ -54,6 +62,14 @@ export interface ResearchCompareEvidenceSummary {
   aggregateEvidenceCount: number;
   uncoveredEntities: string[];
   officialCoverageLeaders: string[];
+}
+
+export interface ResearchCompareSectionDiagnosticsSummary {
+  sourceReportCount: number;
+  weakSectionCount: number;
+  quotaRiskSectionCount: number;
+  contradictionSectionCount: number;
+  highlightedSections: string[];
 }
 
 type ReportPayload = {
@@ -88,6 +104,10 @@ type ReportPayload = {
     insufficiency_summary?: string;
     insufficiency_reasons?: string[];
     next_verification_steps?: string[];
+    evidence_quota?: number;
+    meets_evidence_quota?: boolean;
+    quota_gap?: number;
+    contradiction_detected?: boolean;
   }>;
   sources?: Array<{ title?: string; url?: string; source_tier?: string; source_label?: string; source_type?: string; domain?: string }>;
 };
@@ -98,6 +118,10 @@ type ResearchCompareWeakSection = {
   insufficiencySummary: string;
   insufficiencyReasons: string[];
   nextVerificationSteps: string[];
+  evidenceQuota: number;
+  meetsEvidenceQuota: boolean;
+  quotaGap: number;
+  contradictionDetected: boolean;
 };
 
 const ORG_PATTERN =
@@ -245,12 +269,22 @@ function extractWeakSections(report: ReportPayload): ResearchCompareWeakSection[
       insufficiencySummary: normalizeText(section.insufficiency_summary || ""),
       insufficiencyReasons: uniqueTake(section.insufficiency_reasons || [], 3),
       nextVerificationSteps: uniqueTake(section.next_verification_steps || [], 3),
+      evidenceQuota: Math.max(0, Number(section.evidence_quota || 0)),
+      meetsEvidenceQuota: Boolean(section.meets_evidence_quota),
+      quotaGap: Math.max(0, Number(section.quota_gap || 0)),
+      contradictionDetected: Boolean(section.contradiction_detected),
     }))
     .filter((section) => {
       if (!section.title) {
         return false;
       }
-      return section.status === "needs_evidence" || section.status === "degraded" || Boolean(section.insufficiencySummary);
+      return (
+        section.status === "needs_evidence" ||
+        section.status === "degraded" ||
+        Boolean(section.insufficiencySummary) ||
+        (section.evidenceQuota > 0 && !section.meetsEvidenceQuota) ||
+        section.contradictionDetected
+      );
     })
     .slice(0, 3);
 }
@@ -274,6 +308,25 @@ function buildCompareWeakSectionGroups(rows: ResearchCompareRow[]): Array<{
     });
   });
   return [...groups.values()];
+}
+
+function buildCompareSectionDiagnosticsSummary(rows: ResearchCompareRow[]): ResearchCompareSectionDiagnosticsSummary {
+  const groups = buildCompareWeakSectionGroups(rows);
+  const sections = groups.flatMap((group) => group.sections);
+  return {
+    sourceReportCount: groups.length,
+    weakSectionCount: sections.length,
+    quotaRiskSectionCount: sections.filter(
+      (section) => (section.evidenceQuota > 0 && !section.meetsEvidenceQuota) || section.quotaGap > 0,
+    ).length,
+    contradictionSectionCount: sections.filter((section) => section.contradictionDetected).length,
+    highlightedSections: uniqueTake(
+      sections.map((section) =>
+        section.quotaGap > 0 ? `${section.title}（待补 ${section.quotaGap}）` : section.title,
+      ),
+      8,
+    ),
+  };
 }
 
 function buildRoleRows(
@@ -507,8 +560,52 @@ function buildPriorityEntityLines(rows: ResearchCompareRow[]): string[] {
   });
 }
 
+function offlineStatusLabel(status: string): string {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
+}
+
+function buildOfflineEvaluationLines(
+  offlineEvaluation: ApiResearchOfflineEvaluation | null | undefined,
+): string[] {
+  if (!offlineEvaluation?.metrics?.length) {
+    return [];
+  }
+  const lines = offlineEvaluation.metrics.map((metric) => {
+    const benchmark = Math.round(Number(metric.benchmark || 0) * 100);
+    return `${metric.label} ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${benchmark}%）`;
+  });
+  if (offlineEvaluation.summary_lines?.length) {
+    lines.push(...offlineEvaluation.summary_lines.slice(0, 2));
+  }
+  return uniqueTake(lines, 5);
+}
+
+function buildSnapshotFreezeDisclosureLines(options: ResearchCompareMarkdownOptions = {}): string[] {
+  if (options.snapshotMetadataOrigin === "legacy_backfill") {
+    const backfilledAt = options.snapshotMetadataBackfilledAt
+      ? formatDateTime(options.snapshotMetadataBackfilledAt)
+      : "未知时间";
+    return [
+      `快照冻结状态: 旧快照已补冻结（补冻结时间 ${backfilledAt}）`,
+      "说明: 该快照原始 metadata 缺失，系统后补了章节证据诊断和离线回归快照；以下指标以补冻结时点为准。",
+    ];
+  }
+  if (options.hasFrozenSnapshotMetadata) {
+    return ["快照冻结状态: 已冻结（沿用 snapshot 保存时写入的指标时点）"];
+  }
+  return [];
+}
+
 export function summarizeResearchCompareEvidence(rows: ResearchCompareRow[]): ResearchCompareEvidenceSummary {
   return buildCompareDeliverySummary(rows);
+}
+
+export function summarizeResearchCompareSectionDiagnostics(
+  rows: ResearchCompareRow[],
+): ResearchCompareSectionDiagnosticsSummary {
+  return buildCompareSectionDiagnosticsSummary(rows);
 }
 
 export function buildResearchCompareExportFilename(options: ResearchCompareMarkdownOptions = {}): string {
@@ -531,6 +628,9 @@ export function buildResearchCompareMarkdown(
   const roleCounts: ResearchCompareRole[] = ["甲方", "中标方", "竞品", "伙伴"];
   const linkedDiff = options.linkedDiff && options.linkedDiff.status !== "unavailable" ? options.linkedDiff : null;
   const evidenceSummary = buildCompareDeliverySummary(rows);
+  const sectionDiagnostics = buildCompareSectionDiagnosticsSummary(rows);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
+  const snapshotFreezeDisclosureLines = buildSnapshotFreezeDisclosureLines(options);
   const lines = [
     "# 甲方 / 中标方 / 竞品 / 伙伴 对比矩阵",
     "",
@@ -552,6 +652,13 @@ export function buildResearchCompareMarkdown(
     );
   }
 
+  if (snapshotFreezeDisclosureLines.length) {
+    lines.push("", "## 快照时点说明", "");
+    snapshotFreezeDisclosureLines.forEach((line) => {
+      lines.push(`- ${line}`);
+    });
+  }
+
   lines.push("", "## 交付摘要", "");
   lines.push(`- 来源研报数: ${evidenceSummary.sourceEntryCount}`);
   lines.push(`- 直接证据链接: ${evidenceSummary.directEvidenceCount}`);
@@ -561,6 +668,12 @@ export function buildResearchCompareMarkdown(
   lines.push(`- 无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`);
   if (evidenceSummary.officialCoverageLeaders.length) {
     lines.push(`- 官方补证命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
+  }
+  if (sectionDiagnostics.weakSectionCount) {
+    lines.push(
+      `- Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+    );
+    lines.push(`- 重点章节: ${formatInlineList(sectionDiagnostics.highlightedSections, "无", 5)}`);
   }
 
   if (linkedDiff) {
@@ -581,6 +694,13 @@ export function buildResearchCompareMarkdown(
         lines.push(`  - 关联版本独有: ${formatInlineList(axis.linked_only, "无", 4)}`);
       });
     }
+  }
+
+  if (offlineEvaluationLines.length) {
+    lines.push("", "## Offline Regression Snapshot", "");
+    offlineEvaluationLines.forEach((line) => {
+      lines.push(`- ${line}`);
+    });
   }
 
   const weakSectionGroups = buildCompareWeakSectionGroups(rows);
@@ -668,6 +788,9 @@ export function buildResearchCompareExecBrief(
   const roleCounts: ResearchCompareRole[] = ["甲方", "中标方", "竞品", "伙伴"];
   const linkedDiff = options.linkedDiff && options.linkedDiff.status !== "unavailable" ? options.linkedDiff : null;
   const evidenceSummary = buildCompareDeliverySummary(rows);
+  const sectionDiagnostics = buildCompareSectionDiagnosticsSummary(rows);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
+  const snapshotFreezeDisclosureLines = buildSnapshotFreezeDisclosureLines(options);
   const lines = [
     "# Compare Exec Brief",
     "",
@@ -677,7 +800,12 @@ export function buildResearchCompareExecBrief(
     `- 实体概览: ${rows.length} 个实体；${roleCounts.map((role) => `${role} ${rows.filter((row) => row.role === role).length}`).join(" | ")}`,
     `- 直接证据: ${evidenceSummary.directEvidenceCount} 条，其中官方源 ${evidenceSummary.officialEvidenceCount} 条`,
     `- 无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 4)}`,
+    `- Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
+
+  snapshotFreezeDisclosureLines.forEach((line) => {
+    lines.push(`- ${line}`);
+  });
 
   if (options.linkedVersionTitle || options.linkedVersionRefreshedAt) {
     lines.push(
@@ -696,6 +824,13 @@ export function buildResearchCompareExecBrief(
         .map((section) => `${section.title}：${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 2)}`)
         .join("；");
       lines.push(`- ${group.sourceEntryTitle}: ${sectionLines || "仍需补证章节"}`);
+    });
+  }
+
+  if (offlineEvaluationLines.length) {
+    lines.push("", "## 离线回归", "");
+    offlineEvaluationLines.slice(0, 3).forEach((line) => {
+      lines.push(`- ${line}`);
     });
   }
 
@@ -733,6 +868,9 @@ export function buildResearchComparePlainText(
   const roleCounts: ResearchCompareRole[] = ["甲方", "中标方", "竞品", "伙伴"];
   const linkedDiff = options.linkedDiff && options.linkedDiff.status !== "unavailable" ? options.linkedDiff : null;
   const evidenceSummary = buildCompareDeliverySummary(rows);
+  const sectionDiagnostics = buildCompareSectionDiagnosticsSummary(rows);
+  const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
+  const snapshotFreezeDisclosureLines = buildSnapshotFreezeDisclosureLines(options);
   const lines = [
     "甲方 / 中标方 / 竞品 / 伙伴 对比矩阵",
     `导出时间: ${formatDateTimeStamp(generatedAt)}`,
@@ -749,7 +887,12 @@ export function buildResearchComparePlainText(
     `直接证据链接: ${evidenceSummary.directEvidenceCount}`,
     `证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`,
     `无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`,
+    `Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
+
+  snapshotFreezeDisclosureLines.forEach((line) => {
+    lines.push(line);
+  });
 
   if (evidenceSummary.officialCoverageLeaders.length) {
     lines.push(`官方补证命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
@@ -760,6 +903,12 @@ export function buildResearchComparePlainText(
         normalizeText(options.linkedVersionTitle || "") || "未绑定"
       }${options.linkedVersionRefreshedAt ? ` (${formatDateTime(options.linkedVersionRefreshedAt)})` : ""}`,
     );
+  }
+  if (offlineEvaluationLines.length) {
+    lines.push("", "Offline Regression Snapshot");
+    offlineEvaluationLines.forEach((line) => {
+      lines.push(line);
+    });
   }
   if (linkedDiff) {
     lines.push("", "版本差异摘要");

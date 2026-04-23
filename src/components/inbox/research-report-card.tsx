@@ -274,6 +274,7 @@ export function ResearchReportCard({
     aggregate: report.sources.filter((source) => classifySourceTier(source) === "aggregate"),
   };
   const diagnostics = report.source_diagnostics;
+  const followupDiagnostics = report.followup_diagnostics;
   const guardedBacklog = isGuardedBacklog(diagnostics);
   const guardedReasonLabels = dedupeTextList(getGuardedRewriteReasonLabels(diagnostics));
   const evidenceMode = evidenceModeMeta(diagnostics?.evidence_mode || "fallback");
@@ -286,6 +287,11 @@ export function ResearchReportCard({
   const matchedSourceLabels = dedupeTextList(diagnostics?.matched_source_labels || []);
   const topicAnchorTerms = dedupeTextList(diagnostics?.topic_anchor_terms || []);
   const matchedThemeLabels = dedupeTextList(diagnostics?.matched_theme_labels || []);
+  const followupFilters = dedupeTextList([
+    ...(followupDiagnostics?.rebuilt_regions || []),
+    ...(followupDiagnostics?.rebuilt_industries || []),
+    ...(followupDiagnostics?.rebuilt_clients || []),
+  ]);
   const candidateProfileCompanies = dedupeTextList(diagnostics?.candidate_profile_companies || []);
   const candidateProfileSourceLabels = dedupeTextList(diagnostics?.candidate_profile_source_labels || []);
   const coreEntities = dedupeByKey(report.entity_graph?.entities || [], (entity) => String(entity?.canonical_name || "").trim(), 6);
@@ -333,6 +339,54 @@ export function ResearchReportCard({
     reviewQueue[0]?.summary ||
     reviewQueue[0]?.recommended_action ||
     "优先补官方源、账户支撑和关键章节的交叉验证。";
+  const retrievalRoutingCards = [
+    {
+      title: "范围锁定",
+      value: scopeClients.length
+        ? `账户 ${scopeClients.length} 个`
+        : scopeRegions.length || scopeIndustries.length
+          ? "已限定范围"
+          : "范围仍偏泛",
+      detail:
+        followupFilters.slice(0, 3).join(" / ") ||
+        dedupeTextList([...scopeRegions, ...scopeIndustries, ...scopeClients]).slice(0, 3).join(" / ") ||
+        "当前仍待继续收敛到区域、行业或目标账户。",
+      tone: "border-sky-100/90 bg-sky-50/78 text-sky-900",
+    },
+    {
+      title: "查询策略",
+      value: diagnostics?.strategy_query_expansion_count
+        ? `扩展 ${diagnostics.strategy_query_expansion_count} 条`
+        : followupDiagnostics?.decomposition_queries?.length
+          ? `追问拆出 ${followupDiagnostics.decomposition_queries.length} 条`
+          : "基础混合检索",
+      detail:
+        followupDiagnostics?.summary ||
+        diagnostics?.strategy_scope_summary ||
+        "当前已启用混合检索，并用总览块优先路由到章节与证据块。",
+      tone: "border-violet-100/90 bg-violet-50/78 text-violet-900",
+    },
+    {
+      title: "账户支撑",
+      value: unsupportedTargetAccounts.length
+        ? `待补证 ${unsupportedTargetAccounts.length} 个`
+        : supportedTargetAccounts.length
+          ? `已支撑 ${supportedTargetAccounts.length} 个`
+          : "未锁定账户",
+      detail: targetSupportDetail,
+      tone: unsupportedTargetAccounts.length
+        ? "border-rose-100/90 bg-rose-50/82 text-rose-900"
+        : "border-emerald-100/90 bg-emerald-50/78 text-emerald-900",
+    },
+    {
+      title: "证据门槛",
+      value: verificationValue,
+      detail: verificationDetail,
+      tone: guardedBacklog || !readiness?.evidence_gate_passed
+        ? "border-amber-100/90 bg-amber-50/82 text-amber-900"
+        : "border-emerald-100/90 bg-emerald-50/78 text-emerald-900",
+    },
+  ];
   const reportSurfaceCopy = {
     readinessTitle: "推进就绪度",
     playbookTitle: "推进要点",
@@ -897,6 +951,21 @@ export function ResearchReportCard({
                 <p className="mt-2 text-xs leading-5">
                   {evidenceMode.note}
                 </p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {retrievalRoutingCards.map((card) => (
+                    <div key={card.title} className={`rounded-[18px] border px-3 py-3 ${card.tone}`}>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                        {card.title}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-6">
+                        {card.value}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 opacity-80">
+                        {card.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
                 {pipelineStages.length ? (
                   <div className="af-report-stage-grid mt-3">
                     {pipelineStages.map((stage) => (
