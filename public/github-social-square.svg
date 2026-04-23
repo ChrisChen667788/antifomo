@@ -1,0 +1,35 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x1="90" y1="70" x2="1100" y2="1100" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#F4FBF8"/>
+    <stop offset="0.52" stop-color="#F2F5FF"/>
+    <stop offset="1" stop-color="#FFF4D3"/>
+  </linearGradient>
+  <radialGradient id="orb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(250 226) rotate(90) scale(190)">
+    <stop stop-color="#9DE8D0" stop-opacity="0.42"/>
+    <stop offset="1" stop-color="#9DE8D0" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="strip" x1="120" y1="1008" x2="540" y2="1008" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#19C7A3"/>
+    <stop offset="1" stop-color="#2BA8FF"/>
+  </linearGradient>
+  <filter id="shadow" x="500" y="470" width="560" height="390" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#0F172A" flood-opacity="0.18"/>
+  </filter>
+</defs>
+<rect width="1200" height="1200" rx="56" fill="url(#bg)"/>
+<circle cx="250" cy="226" r="190" fill="url(#orb)"/>
+<rect x="120" y="94" width="544" height="58" rx="29" fill="rgba(255,255,255,0.74)"/>
+<text x="156" y="132" fill="#576B67" font-size="20" font-weight="700" letter-spacing="0.13em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">OPEN SOURCE · WECHAT-FIRST RESEARCH</text>
+<text x="120" y="292" fill="#0F172A" font-size="70" font-weight="720" letter-spacing="-0.055em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">Turn signal</text>
+<text x="120" y="370" fill="#0F172A" font-size="70" font-weight="720" letter-spacing="-0.055em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">into calm.</text>
+<text x="120" y="724" fill="#4A615C" font-size="28" font-weight="560" letter-spacing="-0.03em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">WeChat capture, AI briefs,</text>
+<text x="120" y="764" fill="#4A615C" font-size="28" font-weight="560" letter-spacing="-0.03em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">focus sessions, and action cards.</text>
+<rect x="120" y="968" width="420" height="62" rx="31" fill="url(#strip)"/>
+<text x="158" y="1009" fill="#F8FAFC" font-size="26" font-weight="700" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">Collect · Focus · Action</text>
+<g filter="url(#shadow)"><rect x="540" y="500" width="480" height="300" rx="38" fill="#111A2B"/></g>
+<text x="590" y="566" fill="#84F1D5" font-size="22" font-weight="700" letter-spacing="0.13em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">WHY IT MATTERS</text>
+<text x="590" y="628" fill="#F8FAFC" font-size="42" font-weight="720" letter-spacing="-0.045em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">Reduce noise.</text>
+<text x="590" y="676" fill="#F8FAFC" font-size="42" font-weight="720" letter-spacing="-0.045em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">Keep signal.</text>
+<text x="590" y="734" fill="#C8D2E3" font-size="22" font-weight="600" letter-spacing="-0.03em" font-family="SF Pro Display, Inter, Segoe UI, sans-serif">WeChat-first research workspace</text>
+</svg>
