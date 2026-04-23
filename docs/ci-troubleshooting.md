@@ -48,7 +48,7 @@ SMOKE_ARTIFACT_DIR=.tmp/smoke-artifacts SMOKE_REPORT_FILE=.tmp/smoke-report.json
 
 ### `focus-e2e`
 
-Make sure frontend is reachable on `http://127.0.0.1:3000`, then run:
+Make sure frontend is reachable on `http://127.0.0.1:3010`, then run:
 
 ```bash
 cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo

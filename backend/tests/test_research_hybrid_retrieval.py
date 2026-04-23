@@ -50,6 +50,44 @@ def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
     assert all("广州大学" not in hit.title for hit in ranked[:2])
 
 
+def test_hybrid_rank_does_not_promote_search_query_only_overlap_noise() -> None:
+    keyword = "政务云预算窗口"
+    research_focus = "梳理江苏重点甲方、采购意向和预算路径"
+    scope_hints = {
+        "regions": ["江苏"],
+        "industries": ["政务云"],
+        "clients": ["南京市数据局"],
+    }
+    hits = [
+        research_service.SearchHit(
+            title="某高校论坛圆桌回顾",
+            url="https://news.example.edu.cn/forum-roundtable",
+            snippet="围绕 AI 教学、论坛活动和研究分享。",
+            search_query='site:gov.cn "南京市数据局" 政务云预算窗口 规划 预算',
+            source_hint="web",
+        ),
+        research_service.SearchHit(
+            title="南京市数据局电子政务云平台采购意向公告",
+            url="https://www.nanjing.gov.cn/data/procurement-intent",
+            snippet="公告披露电子政务云平台采购意向、预算安排与项目建设路径。",
+            search_query='site:ccgp.gov.cn "南京市数据局" 政务云预算窗口 采购意向 中标',
+            source_hint="policy",
+            source_label="中国政府网政策/讲话",
+        ),
+    ]
+
+    ranked = research_service._hybrid_rank_hits(
+        hits,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+    )
+
+    assert ranked
+    assert ranked[0].url == "https://www.nanjing.gov.cn/data/procurement-intent"
+    assert all("论坛" not in hit.title for hit in ranked[:1])
+
+
 def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
     keyword = "AI漫剧头部公司"
     research_focus = "分析快手可灵、阅文、中文在线这些公司的AI商机"
@@ -96,6 +134,55 @@ def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
 
     assert ranked[0].url == "https://www.kuaishou.com/brand/kling-ai-comic"
     assert ranked[0].content_status == "browser_extracted"
+
+
+def test_source_rerank_does_not_promote_query_only_overlap_noise() -> None:
+    keyword = "政务云预算窗口"
+    research_focus = "梳理江苏重点甲方、采购意向和预算路径"
+    scope_hints = {
+        "regions": ["江苏"],
+        "industries": ["政务云"],
+        "clients": ["南京市数据局"],
+    }
+    sources = [
+        research_service.SourceDocument(
+            title="某高校数字化论坛纪要",
+            url="https://news.example.edu.cn/forum-roundtable",
+            domain="news.example.edu.cn",
+            snippet="论坛讨论 AI 教学、数字化趋势和经验分享。",
+            search_query='site:gov.cn "南京市数据局" 政务云预算窗口 规划 预算',
+            source_type="web",
+            content_status="body_acquired",
+            excerpt="内容主要围绕高校数字化论坛与教学案例，并未涉及南京市数据局采购意向。",
+            source_label="互联网公开网页",
+            source_tier="media",
+            source_origin="search",
+        ),
+        research_service.SourceDocument(
+            title="南京市数据局电子政务云平台采购意向公告",
+            url="https://www.nanjing.gov.cn/data/procurement-intent",
+            domain="www.nanjing.gov.cn",
+            snippet="公告披露电子政务云平台采购意向、预算安排与项目建设路径。",
+            search_query='site:ccgp.gov.cn "南京市数据局" 政务云预算窗口 采购意向 中标',
+            source_type="policy",
+            content_status="browser_extracted",
+            excerpt="公告明确电子政务云平台采购意向、预算安排和后续项目建设路径。",
+            source_label="中国政府网政策/讲话",
+            source_tier="official",
+            source_origin="search",
+        ),
+    ]
+
+    ranked = research_service._rerank_sources_hybrid(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+    )
+
+    assert ranked
+    assert ranked[0].url == "https://www.nanjing.gov.cn/data/procurement-intent"
+    assert "论坛" not in ranked[0].title
 
 
 def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:

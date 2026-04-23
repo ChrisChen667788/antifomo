@@ -21,6 +21,7 @@ from app.schemas.knowledge import (
     KnowledgeEntryListResponse,
     KnowledgeMarkdownOut,
     KnowledgeEntryOut,
+    KnowledgeRetrievalPreviewOut,
     KnowledgeOpportunityListResponse,
     KnowledgeMergePreviewOut,
     KnowledgeMergePreviewRequest,
@@ -41,6 +42,7 @@ from app.services.knowledge_intelligence_service import (
     update_review_queue_resolution,
 )
 from app.services.knowledge_service import ensure_knowledge_rule
+from app.services.knowledge_retrieval_service import retrieve_knowledge_entry_matches
 from app.services.user_context import ensure_demo_user
 
 
@@ -89,7 +91,11 @@ def _resolve_entry_title(entry: KnowledgeEntry) -> str:
     return raw_title or "知识卡片"
 
 
-def _to_entry_out(entry: KnowledgeEntry) -> KnowledgeEntryOut:
+def _to_entry_out(
+    entry: KnowledgeEntry,
+    *,
+    retrieval_preview: dict | KnowledgeRetrievalPreviewOut | None = None,
+) -> KnowledgeEntryOut:
     payload = apply_review_queue_resolutions(entry.metadata_payload if isinstance(entry.metadata_payload, dict) else None)
     commercial_intelligence = extract_commercial_intelligence(payload)
     return KnowledgeEntryOut(
@@ -99,6 +105,11 @@ def _to_entry_out(entry: KnowledgeEntry) -> KnowledgeEntryOut:
         content=entry.content,
         source_domain=entry.source_domain,
         metadata_payload=payload,
+        retrieval_preview=(
+            retrieval_preview
+            if isinstance(retrieval_preview, KnowledgeRetrievalPreviewOut)
+            else (KnowledgeRetrievalPreviewOut(**retrieval_preview) if isinstance(retrieval_preview, dict) else None)
+        ),
         commercial_intelligence=commercial_intelligence,
         collection_name=entry.collection_name,
         is_pinned=entry.is_pinned,
@@ -201,6 +212,29 @@ def _compute_related_score(target: KnowledgeEntry, candidate: KnowledgeEntry) ->
     return score
 
 
+def _build_entry_query(
+    *,
+    item_id: UUID | None = None,
+    focus_reference_only: bool = False,
+    source_domain: str | None = None,
+    collection_name: str | None = None,
+):
+    stmt = (
+        select(KnowledgeEntry)
+        .where(KnowledgeEntry.user_id == settings.single_user_id)
+        .options(selectinload(KnowledgeEntry.item))
+    )
+    if item_id is not None:
+        stmt = stmt.where(KnowledgeEntry.item_id == item_id)
+    if focus_reference_only:
+        stmt = stmt.where(KnowledgeEntry.is_focus_reference.is_(True))
+    if source_domain:
+        stmt = stmt.where(KnowledgeEntry.source_domain == source_domain.strip())
+    if collection_name:
+        stmt = stmt.where(KnowledgeEntry.collection_name == collection_name.strip())
+    return stmt
+
+
 @router.get("/rules", response_model=KnowledgeRuleOut)
 def get_knowledge_rule(db: Session = Depends(get_db)) -> KnowledgeRuleOut:
     ensure_demo_user(db)
@@ -253,31 +287,42 @@ def list_knowledge_entries(
     db: Session = Depends(get_db),
 ) -> KnowledgeEntryListResponse:
     ensure_demo_user(db)
-    stmt = (
-        select(KnowledgeEntry)
-        .where(KnowledgeEntry.user_id == settings.single_user_id)
-        .options(selectinload(KnowledgeEntry.item))
-        .order_by(
-            desc(KnowledgeEntry.is_focus_reference),
-            desc(KnowledgeEntry.is_pinned),
-            desc(KnowledgeEntry.created_at),
-        )
-        .limit(max(1, min(limit, 100)))
+    capped_limit = max(1, min(limit, 100))
+    base_stmt = _build_entry_query(
+        item_id=item_id,
+        focus_reference_only=focus_reference_only,
+        source_domain=source_domain,
+        collection_name=collection_name,
     )
-    if item_id is not None:
-        stmt = stmt.where(KnowledgeEntry.item_id == item_id)
-    if focus_reference_only:
-        stmt = stmt.where(KnowledgeEntry.is_focus_reference.is_(True))
-    if source_domain:
-        stmt = stmt.where(KnowledgeEntry.source_domain == source_domain.strip())
-    if collection_name:
-        stmt = stmt.where(KnowledgeEntry.collection_name == collection_name.strip())
-    if query:
-        normalized_query = f"%{query.strip()}%"
-        stmt = stmt.where(
-            KnowledgeEntry.title.ilike(normalized_query) | KnowledgeEntry.content.ilike(normalized_query)
+    ordered_stmt = base_stmt.order_by(
+        desc(KnowledgeEntry.is_focus_reference),
+        desc(KnowledgeEntry.is_pinned),
+        desc(KnowledgeEntry.created_at),
+    )
+
+    normalized_query = (query or "").strip()
+    if normalized_query:
+        candidates = list(db.scalars(ordered_stmt))
+        ranked_matches = retrieve_knowledge_entry_matches(candidates, normalized_query, limit=capped_limit)
+        if ranked_matches:
+            return KnowledgeEntryListResponse(
+                items=[
+                    _to_entry_out(match.entry, retrieval_preview=match.preview.to_payload())
+                    for match in ranked_matches
+                ]
+            )
+
+        fallback_stmt = (
+            ordered_stmt.where(
+                KnowledgeEntry.title.ilike(f"%{normalized_query}%")
+                | KnowledgeEntry.content.ilike(f"%{normalized_query}%")
+            )
+            .limit(capped_limit)
         )
-    items = list(db.scalars(stmt))
+        items = list(db.scalars(fallback_stmt))
+        return KnowledgeEntryListResponse(items=[_to_entry_out(item) for item in items])
+
+    items = list(db.scalars(ordered_stmt.limit(capped_limit)))
     return KnowledgeEntryListResponse(
         items=[_to_entry_out(item) for item in items]
     )

@@ -21,6 +21,10 @@ import {
 } from "@/lib/research-markdown-archive-recap";
 import {
   archiveDeliveryMetricToneClassName,
+  extractArchiveOfflineEvaluationSnapshot,
+  extractArchiveSectionDiagnosticsSummary,
+  type ArchiveOfflineEvaluationSnapshot,
+  type ArchiveSectionDiagnosticsSummary,
   buildArchiveDeliveryDigest,
 } from "@/lib/research-archive-metadata";
 import { buildSimplePdfFromText, triggerFileDownload } from "@/lib/research-delivery-export";
@@ -101,6 +105,18 @@ function archiveSourceCompareHref(archive: ApiResearchMarkdownArchiveDetail) {
   const currentArchiveId = typeof metadata.current_archive_id === "string" ? metadata.current_archive_id.trim() : "";
   const compareArchiveId = typeof metadata.compare_archive_id === "string" ? metadata.compare_archive_id.trim() : "";
   return buildOriginalArchiveCompareHref(currentArchiveId, compareArchiveId);
+}
+
+function offlineStatusTone(status: string) {
+  if (status === "good") return "bg-emerald-100 text-emerald-700";
+  if (status === "watch") return "bg-amber-100 text-amber-700";
+  return "bg-rose-100 text-rose-700";
+}
+
+function offlineStatusLabel(status: string) {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
 }
 
 function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
@@ -581,6 +597,10 @@ function ArchiveComparisonSummary({
   archive,
   compareArchive,
   comparison,
+  currentSectionSummary,
+  compareSectionSummary,
+  currentOfflineSnapshot,
+  compareOfflineSnapshot,
   onExportRecapMarkdown,
   onExportRecapPdf,
   onExportRecapExecBrief,
@@ -593,6 +613,10 @@ function ArchiveComparisonSummary({
   archive: ApiResearchMarkdownArchiveDetail;
   compareArchive: ApiResearchMarkdownArchiveDetail;
   comparison: ArchiveComparison;
+  currentSectionSummary: ArchiveSectionDiagnosticsSummary | null;
+  compareSectionSummary: ArchiveSectionDiagnosticsSummary | null;
+  currentOfflineSnapshot: ArchiveOfflineEvaluationSnapshot | null;
+  compareOfflineSnapshot: ArchiveOfflineEvaluationSnapshot | null;
   onExportRecapMarkdown: () => void;
   onExportRecapPdf: () => void;
   onExportRecapExecBrief: () => void;
@@ -707,6 +731,90 @@ function ArchiveComparisonSummary({
           </p>
         </div>
       </div>
+
+      {(currentSectionSummary || compareSectionSummary || currentOfflineSnapshot || compareOfflineSnapshot) ? (
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Section Diagnostics</p>
+                <h4 className="mt-2 text-base font-semibold text-slate-900">章节风险对照</h4>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-[20px] border border-sky-100 bg-sky-50/70 p-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-sky-600">当前归档</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  待补证 {currentSectionSummary?.mode === "compare" ? currentSectionSummary.weakSectionCount : currentSectionSummary?.currentWeakSectionCount || 0}
+                  {" / "}配额风险 {currentSectionSummary?.quotaRiskSectionCount || 0}
+                  {" / "}矛盾 {currentSectionSummary?.contradictionSectionCount || 0}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  重点章节 · {currentSectionSummary?.highlightedSections?.length ? currentSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
+                </p>
+              </div>
+              <div className="rounded-[20px] border border-amber-100 bg-amber-50/70 p-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">对照归档</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  待补证 {compareSectionSummary?.mode === "compare" ? compareSectionSummary.weakSectionCount : compareSectionSummary?.currentWeakSectionCount || 0}
+                  {" / "}配额风险 {compareSectionSummary?.quotaRiskSectionCount || 0}
+                  {" / "}矛盾 {compareSectionSummary?.contradictionSectionCount || 0}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  重点章节 · {compareSectionSummary?.highlightedSections?.length ? compareSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Offline Regression</p>
+                <h4 className="mt-2 text-base font-semibold text-slate-900">离线回归快照对照</h4>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {[{
+                label: "当前归档",
+                value: currentOfflineSnapshot,
+                tone: "sky",
+              }, {
+                label: "对照归档",
+                value: compareOfflineSnapshot,
+                tone: "amber",
+              }].map((item) => (
+                <div
+                  key={item.label}
+                  className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-sky-100 bg-sky-50/70" : "border-amber-100 bg-amber-50/70"}`}
+                >
+                  <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-sky-600" : "text-amber-600"}`}>
+                    {item.label}
+                  </p>
+                  {item.value?.metrics?.length ? (
+                    <>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.value.metrics.slice(0, 3).map((metric) => (
+                          <span key={`${item.label}-${metric.key}`} className={`rounded-full px-2.5 py-1 text-xs font-medium ${offlineStatusTone(metric.status)}`}>
+                            {metric.label} {metric.percent}% · {offlineStatusLabel(metric.status)}
+                          </span>
+                        ))}
+                      </div>
+                      {item.value.summaryLines.length ? (
+                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                          {item.value.summaryLines[0]}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-3 text-sm text-slate-500">没有可用回归快照。</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="rounded-[24px] border border-white/70 bg-white/85 p-5">
@@ -851,6 +959,10 @@ export function ResearchMarkdownArchiveViewer({
   const compareSummaryFocused = activeHash === `#${RESEARCH_MARKDOWN_ARCHIVE_COMPARE_SUMMARY_ANCHOR}`;
   const archiveDigest = buildArchiveDeliveryDigest(archive);
   const compareArchiveDigest = compareArchive ? buildArchiveDeliveryDigest(compareArchive) : null;
+  const currentSectionSummary = extractArchiveSectionDiagnosticsSummary(archive.metadata_payload);
+  const compareSectionSummary = compareArchive ? extractArchiveSectionDiagnosticsSummary(compareArchive.metadata_payload) : null;
+  const currentOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(archive.metadata_payload);
+  const compareOfflineSnapshot = compareArchive ? extractArchiveOfflineEvaluationSnapshot(compareArchive.metadata_payload) : null;
 
   useEffect(() => {
     const syncHash = () => {
@@ -976,6 +1088,22 @@ export function ResearchMarkdownArchiveViewer({
             compareMetadata.evidence_appendix_summary && typeof compareMetadata.evidence_appendix_summary === "object"
               ? compareMetadata.evidence_appendix_summary
               : {},
+          current_section_diagnostics_summary:
+            archiveMetadata.section_diagnostics_summary && typeof archiveMetadata.section_diagnostics_summary === "object"
+              ? archiveMetadata.section_diagnostics_summary
+              : {},
+          compare_section_diagnostics_summary:
+            compareMetadata.section_diagnostics_summary && typeof compareMetadata.section_diagnostics_summary === "object"
+              ? compareMetadata.section_diagnostics_summary
+              : {},
+          current_offline_evaluation_snapshot:
+            archiveMetadata.offline_evaluation_snapshot && typeof archiveMetadata.offline_evaluation_snapshot === "object"
+              ? archiveMetadata.offline_evaluation_snapshot
+              : {},
+          compare_offline_evaluation_snapshot:
+            compareMetadata.offline_evaluation_snapshot && typeof compareMetadata.offline_evaluation_snapshot === "object"
+              ? compareMetadata.offline_evaluation_snapshot
+              : {},
           current_linked_report_diff_status:
             typeof archiveMetadata.linked_report_diff_status === "string" ? archiveMetadata.linked_report_diff_status : "",
           compare_linked_report_diff_status:
@@ -1082,13 +1210,17 @@ export function ResearchMarkdownArchiveViewer({
       ) : null}
 
       {comparison && compareArchive ? (
-        <ArchiveComparisonSummary
-          archive={archive}
-          compareArchive={compareArchive}
-          comparison={comparison}
-          onExportRecapMarkdown={handleExportCompareRecapMarkdown}
-          onExportRecapPdf={handleExportCompareRecapPdf}
-          onExportRecapExecBrief={handleExportCompareRecapExecBrief}
+          <ArchiveComparisonSummary
+            archive={archive}
+            compareArchive={compareArchive}
+            comparison={comparison}
+            currentSectionSummary={currentSectionSummary}
+            compareSectionSummary={compareSectionSummary}
+            currentOfflineSnapshot={currentOfflineSnapshot}
+            compareOfflineSnapshot={compareOfflineSnapshot}
+            onExportRecapMarkdown={handleExportCompareRecapMarkdown}
+            onExportRecapPdf={handleExportCompareRecapPdf}
+            onExportRecapExecBrief={handleExportCompareRecapExecBrief}
           onSaveRecap={() => void handleSaveCompareRecap()}
           onCopySectionLink={handleCopySectionLink}
           savingRecap={savingRecap}

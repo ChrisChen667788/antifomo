@@ -21,6 +21,7 @@ from app.schemas.research import (
     ResearchMarkdownArchiveDetailOut,
     ResearchMarkdownArchiveOut,
     ResearchLowQualityReviewActionResponse,
+    ResearchOfflineEvaluationOut,
     ResearchLowQualityReviewQueueOut,
     ResearchLowQualityReviewResolveRequest,
     ResearchActionPlanRequest,
@@ -61,6 +62,7 @@ from app.schemas.research import (
     ResearchWatchlistUpdateRequest,
     ResearchWorkspaceOut,
 )
+from app.services.research_evaluation_service import build_offline_research_evaluation
 from app.services.daily_brief_service import build_daily_brief_snapshot, serialize_daily_brief
 from app.services.research_conversation_service import (
     add_research_conversation_message,
@@ -567,6 +569,18 @@ def get_research_daily_brief(
     ensure_demo_user(db)
     snapshot = build_daily_brief_snapshot(db, user_id=settings.single_user_id, force_refresh=force_refresh)
     return MobileDailyBriefResponse(**serialize_daily_brief(snapshot))
+
+
+@router.get("/evaluation/offline", response_model=ResearchOfflineEvaluationOut)
+def get_research_offline_evaluation(
+    weakest_limit: int = 6,
+    db: Session = Depends(get_db),
+) -> ResearchOfflineEvaluationOut:
+    ensure_demo_user(db)
+    return build_offline_research_evaluation(
+        db,
+        weakest_limit=max(1, min(weakest_limit, 12)),
+    )
 
 
 @router.get("/review-queue/low-quality", response_model=ResearchLowQualityReviewQueueOut)

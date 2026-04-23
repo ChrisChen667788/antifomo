@@ -172,6 +172,7 @@ class ResearchCompareSnapshot(Base):
     role_filter: Mapped[str] = mapped_column(String(20), nullable=False, default="all", server_default="all")
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     rows_payload: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    metadata_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

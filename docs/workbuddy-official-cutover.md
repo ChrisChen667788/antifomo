@@ -52,7 +52,7 @@ Expected after login:
 
 Open:
 
-- `http://127.0.0.1:3000/settings`
+- `http://127.0.0.1:3010/settings`
 
 Check the `WorkBuddy` panel:
 
@@ -63,7 +63,7 @@ Check the `WorkBuddy` panel:
 
 Open:
 
-- `http://127.0.0.1:3000/focus`
+- `http://127.0.0.1:3010/focus`
 
 Trigger a `WorkBuddy` action.
 

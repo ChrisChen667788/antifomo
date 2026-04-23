@@ -59,6 +59,241 @@ def _coerce_uuid(value: Any) -> uuid.UUID:
     return uuid.uuid4()
 
 
+def _normalize_text(value: Any) -> str:
+    return " ".join(str(value or "").split()).strip()
+
+
+def _unique_take(values: list[Any], limit: int) -> list[str]:
+    seen: set[str] = set()
+    items: list[str] = []
+    for value in values:
+        normalized = _normalize_text(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        items.append(normalized)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _compare_snapshot_row_evidence_links(row: dict[str, Any]) -> list[dict[str, str]]:
+    links: list[dict[str, str]] = []
+    for item in list(row.get("evidenceLinks") or []):
+        if not isinstance(item, dict):
+            continue
+        url = _normalize_text(item.get("url"))
+        if not url:
+            continue
+        source_tier = _normalize_text(item.get("sourceTier")).lower() or "media"
+        if source_tier not in {"official", "media", "aggregate"}:
+            source_tier = "media"
+        links.append(
+            {
+                "url": url,
+                "sourceTier": source_tier,
+                "title": _normalize_text(item.get("title")) or "参考来源",
+                "sourceLabel": _normalize_text(item.get("sourceLabel")),
+            }
+        )
+    return links
+
+
+def _compare_snapshot_row_weak_sections(row: dict[str, Any]) -> list[dict[str, Any]]:
+    sections: list[dict[str, Any]] = []
+    for item in list(row.get("weakSections") or []):
+        if not isinstance(item, dict):
+            continue
+        title = _normalize_text(item.get("title"))
+        if not title:
+            continue
+        evidence_quota = max(_safe_int(item.get("evidenceQuota") or 0), 0)
+        quota_gap = max(_safe_int(item.get("quotaGap") or 0), 0)
+        meets_evidence_quota = bool(item.get("meetsEvidenceQuota"))
+        contradiction_detected = bool(item.get("contradictionDetected"))
+        status = _normalize_text(item.get("status"))
+        insufficiency_summary = _normalize_text(item.get("insufficiencySummary"))
+        if not (
+            status in {"needs_evidence", "degraded"}
+            or insufficiency_summary
+            or (evidence_quota > 0 and not meets_evidence_quota)
+            or contradiction_detected
+        ):
+            continue
+        sections.append(
+            {
+                "title": title,
+                "evidenceQuota": evidence_quota,
+                "meetsEvidenceQuota": meets_evidence_quota,
+                "quotaGap": quota_gap,
+                "contradictionDetected": contradiction_detected,
+            }
+        )
+    return sections[:3]
+
+
+def _summarize_compare_snapshot_evidence(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    seen_urls: set[str] = set()
+    evidence_links: list[dict[str, str]] = []
+    uncovered_entities: list[str] = []
+    official_leaders: list[tuple[int, int, str]] = []
+    source_entry_ids = {
+        _normalize_text(row.get("sourceEntryId"))
+        for row in rows
+        if _normalize_text(row.get("sourceEntryId"))
+    }
+
+    for row in rows:
+        row_links = _compare_snapshot_row_evidence_links(row)
+        for item in row_links:
+            if item["url"] in seen_urls:
+                continue
+            seen_urls.add(item["url"])
+            evidence_links.append(item)
+        if not row_links:
+            uncovered_entities.extend([_normalize_text(row.get("name"))])
+        official_hits = max(_safe_int(row.get("candidateProfileOfficialHitCount") or 0), 0)
+        total_hits = max(_safe_int(row.get("candidateProfileHitCount") or 0), 0)
+        name = _normalize_text(row.get("name"))
+        if official_hits > 0 and name:
+            official_leaders.append((official_hits, total_hits, f"{name} ×{official_hits}"))
+
+    official_leader_labels = _unique_take(
+        [
+            label
+            for _official_hits, _total_hits, label in sorted(
+                official_leaders,
+                key=lambda item: (-item[0], -item[1], item[2]),
+            )
+        ],
+        4,
+    )
+    return {
+        "sourceEntryCount": len(source_entry_ids),
+        "directEvidenceCount": len(evidence_links),
+        "officialEvidenceCount": len([item for item in evidence_links if item["sourceTier"] == "official"]),
+        "mediaEvidenceCount": len([item for item in evidence_links if item["sourceTier"] == "media"]),
+        "aggregateEvidenceCount": len([item for item in evidence_links if item["sourceTier"] == "aggregate"]),
+        "uncoveredEntities": _unique_take(uncovered_entities, 12),
+        "officialCoverageLeaders": official_leader_labels,
+    }
+
+
+def _summarize_compare_snapshot_section_diagnostics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    groups: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        sections = _compare_snapshot_row_weak_sections(row)
+        if not sections:
+            continue
+        group_key = (
+            _normalize_text(row.get("sourceEntryId"))
+            or _normalize_text(row.get("sourceEntryTitle"))
+            or _normalize_text(row.get("id"))
+            or _normalize_text(row.get("name"))
+        )
+        if not group_key or group_key in groups:
+            continue
+        groups[group_key] = {
+            "sourceEntryId": _normalize_text(row.get("sourceEntryId")),
+            "sections": sections,
+        }
+    sections = [section for group in groups.values() for section in list(group.get("sections") or [])]
+    highlighted_sections = _unique_take(
+        [
+            (
+                f"{section['title']}（待补 {section['quotaGap']}）"
+                if _safe_int(section.get("quotaGap") or 0) > 0
+                else str(section.get("title") or "")
+            )
+            for section in sections
+        ],
+        8,
+    )
+    return {
+        "sourceReportCount": len(groups),
+        "weakSectionCount": len(sections),
+        "quotaRiskSectionCount": len(
+            [
+                section
+                for section in sections
+                if (_safe_int(section.get("evidenceQuota") or 0) > 0 and not bool(section.get("meetsEvidenceQuota")))
+                or _safe_int(section.get("quotaGap") or 0) > 0
+            ]
+        ),
+        "contradictionSectionCount": len(
+            [section for section in sections if bool(section.get("contradictionDetected"))]
+        ),
+        "highlightedSections": highlighted_sections,
+    }
+
+
+def _compare_snapshot_metadata_missing_fields(metadata_payload: Any) -> list[str]:
+    metadata = metadata_payload if isinstance(metadata_payload, dict) else {}
+    missing_fields: list[str] = []
+    for field in (
+        "evidence_appendix_summary",
+        "section_diagnostics_summary",
+        "offline_evaluation_snapshot",
+    ):
+        if not isinstance(metadata.get(field), dict) or not metadata.get(field):
+            missing_fields.append(field)
+    return missing_fields
+
+
+def _backfill_compare_snapshot_metadata(
+    db: Session,
+    snapshots: list[ResearchCompareSnapshot],
+) -> int:
+    eligible_snapshots = [
+        snapshot
+        for snapshot in snapshots
+        if snapshot is not None and _compare_snapshot_metadata_missing_fields(snapshot.metadata_payload)
+    ]
+    if not eligible_snapshots:
+        return 0
+
+    offline_evaluation_payload: dict[str, Any] | None = None
+    updated_count = 0
+    backfilled_at = _utc_now().isoformat()
+    for snapshot in eligible_snapshots:
+        existing_metadata = snapshot.metadata_payload if isinstance(snapshot.metadata_payload, dict) else {}
+        missing_fields = _compare_snapshot_metadata_missing_fields(existing_metadata)
+        if not missing_fields:
+            continue
+        if "offline_evaluation_snapshot" in missing_fields and offline_evaluation_payload is None:
+            from app.services.research_evaluation_service import build_offline_research_evaluation
+
+            offline_evaluation_payload = build_offline_research_evaluation(db).model_dump(mode="json")
+        rows = [row for row in list(snapshot.rows_payload or []) if isinstance(row, dict)]
+        next_metadata = dict(existing_metadata)
+        if "evidence_appendix_summary" in missing_fields:
+            next_metadata["evidence_appendix_summary"] = _summarize_compare_snapshot_evidence(rows)
+        if "section_diagnostics_summary" in missing_fields:
+            next_metadata["section_diagnostics_summary"] = _summarize_compare_snapshot_section_diagnostics(rows)
+        if "offline_evaluation_snapshot" in missing_fields:
+            next_metadata["offline_evaluation_snapshot"] = dict(offline_evaluation_payload or {})
+        next_metadata["snapshot_metadata_origin"] = _normalize_text(
+            next_metadata.get("snapshot_metadata_origin")
+        ) or "legacy_backfill"
+        next_metadata["snapshot_metadata_backfilled_at"] = _normalize_text(
+            next_metadata.get("snapshot_metadata_backfilled_at")
+        ) or backfilled_at
+        next_metadata["snapshot_metadata_backfilled_fields"] = _unique_take(missing_fields, 6)
+        snapshot.metadata_payload = next_metadata
+        db.add(snapshot)
+        updated_count += 1
+    if updated_count:
+        db.commit()
+    return updated_count
+
+
 def _read_legacy_workspace() -> dict[str, list[dict[str, Any]]]:
     if not LEGACY_WORKSPACE_FILE.exists():
         return {"saved_views": [], "tracking_topics": [], "markdown_archives": []}
@@ -479,6 +714,7 @@ def _serialize_compare_snapshot(
         "roles": _snapshot_roles(rows),
         "preview_names": _snapshot_preview_names(rows),
         "linked_report_diff": linked_report_diff,
+        "metadata_payload": snapshot.metadata_payload if isinstance(snapshot.metadata_payload, dict) else {},
         "created_at": snapshot.created_at,
         "updated_at": snapshot.updated_at,
     }
@@ -788,6 +1024,7 @@ def list_compare_snapshots(db: Session) -> list[dict[str, Any]]:
         .where(ResearchCompareSnapshot.user_id == settings.single_user_id)
         .order_by(desc(ResearchCompareSnapshot.updated_at), desc(ResearchCompareSnapshot.created_at))
     ).all()
+    _backfill_compare_snapshot_metadata(db, snapshots)
     return [_serialize_compare_snapshot(item) for item in snapshots]
 
 
@@ -877,6 +1114,7 @@ def save_compare_snapshot(db: Session, payload: dict[str, Any]) -> dict[str, Any
         role_filter=str(payload.get("role_filter") or "all"),
         summary=str(payload.get("summary") or ""),
         rows_payload=rows,
+        metadata_payload=payload.get("metadata_payload") if isinstance(payload.get("metadata_payload"), dict) else {},
     )
     db.add(snapshot)
     db.commit()
@@ -986,6 +1224,7 @@ def get_compare_snapshot(db: Session, snapshot_id: str) -> dict[str, Any] | None
     )
     if snapshot is None:
         return None
+    _backfill_compare_snapshot_metadata(db, [snapshot])
     return _serialize_compare_snapshot(snapshot, include_rows=True)
 
 

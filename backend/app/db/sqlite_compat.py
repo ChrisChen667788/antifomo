@@ -101,6 +101,12 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
         statements.append(
             "ALTER TABLE research_compare_snapshots ADD COLUMN report_version_id CHAR(32) NULL"
         )
+    if _table_exists(engine, "research_compare_snapshots") and not _table_has_column(
+        engine, "research_compare_snapshots", "metadata_payload"
+    ):
+        statements.append(
+            "ALTER TABLE research_compare_snapshots ADD COLUMN metadata_payload JSON NULL"
+        )
 
     if not statements:
         return

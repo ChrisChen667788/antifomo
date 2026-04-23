@@ -49,7 +49,7 @@ cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
 npm run demo:start
 ```
 
-This starts backend + frontend in background and opens `http://localhost:3000`.
+This starts backend + frontend in background and opens `http://localhost:3010`.
 Stop all with:
 
 ```bash
@@ -75,16 +75,16 @@ cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
 npm run demo:frontend
 ```
 
-Frontend runs at `http://localhost:3000`.
+Frontend runs at `http://localhost:3010`.
 
 ## 5) Demo flow checklist
 
-1. Open `http://localhost:3000/inbox`, submit URL or text.
-2. Open `http://localhost:3000`, check Feed cards and click like/ignore/save/open detail.
+1. Open `http://localhost:3010/inbox`, submit URL or text.
+2. Open `http://localhost:3010`, check Feed cards and click like/ignore/save/open detail.
 3. Open one item detail, click feedback + reprocess.
-4. Open `http://localhost:3000/focus`, start and finish a session.
-5. Open `http://localhost:3000/session-summary`, generate markdown/reading-list/todo.
-6. Open `http://localhost:3000/saved`, verify saved list.
+4. Open `http://localhost:3010/focus`, start and finish a session.
+5. Open `http://localhost:3010/session-summary`, generate markdown/reading-list/todo.
+6. Open `http://localhost:3010/saved`, verify saved list.
 
 ## 6) Chrome extension quick-send
 
@@ -124,7 +124,7 @@ npm run demo:smoke
 
 ## 8.1) Optional: Focus runtime E2E + diagnostics
 
-If frontend is already running on `http://127.0.0.1:3000`, you can run:
+If frontend is already running on `http://127.0.0.1:3010`, you can run:
 
 ```bash
 cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
@@ -173,7 +173,7 @@ npm run research:rewrite:low-quality
 说明：系统不能直接读取你私有微信账号数据；你需要提供你可浏览的公众号文章链接（`mp.weixin.qq.com/s?...`）列表。
 
 方式 A（推荐，快）：
-1. 打开 `http://localhost:3000/inbox`
+1. 打开 `http://localhost:3010/inbox`
 2. 在“批量 URL 输入（每行一个）”粘贴 30 条链接
 3. 点击“批量提交 URL”，等待状态变为 `ready`
 

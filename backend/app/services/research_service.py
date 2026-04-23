@@ -9,16 +9,21 @@ from html.parser import HTMLParser
 import json
 import re
 import ssl
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 from urllib import parse, request
 
+from sqlalchemy import desc, or_, select
+
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.models.entities import KnowledgeEntry
 from app.schemas.research import (
     ResearchActionCardOut,
     ResearchCommercialSummaryOut,
     ResearchEntityGraphOut,
     ResearchEntityEvidenceOut,
     ResearchFollowupContextOut,
+    ResearchFollowupDiagnosticsOut,
     ResearchNormalizedEntityOut,
     ResearchReportDocument,
     ResearchReportRequest,
@@ -40,6 +45,11 @@ from app.services.content_extractor import (
     extract_from_reader_proxy,
     extract_from_url,
     normalize_text,
+)
+from app.services.knowledge_retrieval_service import (
+    TextRetrievalCandidate,
+    retrieve_knowledge_entry_matches,
+    retrieve_text_matches,
 )
 from app.services.language import localized_text
 from app.services.llm_parser import (
@@ -1565,6 +1575,12 @@ def _resolved_company_anchor_terms(
     return _dedupe_strings(cleaned, 12)
 
 
+def _search_query_text_for_matching(source: SearchHit | SourceDocument) -> str:
+    if isinstance(source, SearchHit):
+        return str(getattr(source, "search_query", "") or "")
+    return ""
+
+
 def _source_matches_company_anchor(source: SearchHit | SourceDocument, company_anchor_terms: list[str]) -> bool:
     if not company_anchor_terms:
         return True
@@ -1574,7 +1590,7 @@ def _source_matches_company_anchor(source: SearchHit | SourceDocument, company_a
                 str(getattr(source, "title", "") or ""),
                 str(getattr(source, "snippet", "") or ""),
                 str(getattr(source, "excerpt", "") or ""),
-                str(getattr(source, "search_query", "") or ""),
+                _search_query_text_for_matching(source),
                 str(getattr(source, "source_label", "") or ""),
                 str(getattr(source, "url", "") or ""),
                 str(getattr(source, "domain", "") or ""),
@@ -1756,6 +1772,107 @@ def _rrf_score(rank: int, *, k: int = 60) -> float:
     return 1.0 / float(k + max(rank, 1))
 
 
+def _build_search_hit_retrieval_query(
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object] | None = None,
+) -> str:
+    scope = scope_hints or {}
+    candidates: list[str] = [
+        normalize_text(keyword),
+        normalize_text(research_focus or ""),
+        *_extract_topic_anchor_terms(keyword, research_focus),
+        *_resolved_company_anchor_terms(keyword, research_focus, scope),
+        *(normalize_text(str(item)) for item in scope.get("clients", []) or [] if normalize_text(str(item))),
+        *(normalize_text(str(item)) for item in scope.get("regions", []) or [] if normalize_text(str(item))),
+        *(normalize_text(str(item)) for item in scope.get("industries", []) or [] if normalize_text(str(item))),
+        *(
+            normalize_text(str(item))
+            for item in scope.get("strategy_must_include_terms", []) or []
+            if normalize_text(str(item))
+        ),
+        *(
+            normalize_text(str(item))
+            for item in scope.get("strategy_query_expansions", []) or []
+            if normalize_text(str(item))
+        ),
+    ]
+    return normalize_text(" ".join(_dedupe_strings(candidates, 18)))
+
+
+def _build_search_hit_retrieval_candidates(hit: SearchHit) -> list[TextRetrievalCandidate]:
+    normalized_url = normalize_text(hit.url)
+    if not normalized_url:
+        return []
+    domain = extract_domain(hit.url)
+    source_type = hit.source_hint or _classify_source_type(hit.url)
+    source_label = _derive_source_label(
+        source_type=source_type,
+        domain=domain,
+        fallback=hit.source_label,
+    )
+    source_tier = _classify_source_tier(
+        source_type=source_type,
+        domain=domain,
+        source_label=source_label,
+    )
+    priority = 0
+    if source_tier == "official":
+        priority += 10
+    elif source_tier == "aggregate":
+        priority += 5
+    if source_type in {"policy", "procurement", "filing"}:
+        priority += 3
+    elif source_type == "wechat":
+        priority += 2
+    if normalize_text(hit.snippet):
+        priority += 2
+
+    primary_text = normalize_text(
+        " ".join(
+            part
+            for part in [
+                hit.title,
+                hit.snippet,
+                source_label or "",
+                domain or "",
+                hit.url,
+            ]
+            if normalize_text(part)
+        )
+    )
+    title_text = normalize_text(
+        " ".join(
+            part
+            for part in [
+                hit.title,
+                source_label or "",
+                domain or "",
+            ]
+            if normalize_text(part)
+        )
+    )
+
+    candidates = [
+        TextRetrievalCandidate(
+            key=normalized_url,
+            text=primary_text,
+            source_tier=source_tier,
+            priority=priority,
+        )
+    ]
+    if title_text and title_text != primary_text:
+        candidates.append(
+            TextRetrievalCandidate(
+                key=normalized_url,
+                text=title_text,
+                source_tier=source_tier,
+                priority=max(1, priority - 2),
+            )
+        )
+    return candidates
+
+
 def _hybrid_rank_hits(
     hits: Iterable[SearchHit],
     *,
@@ -1767,19 +1884,20 @@ def _hybrid_rank_hits(
     if not deduped_hits:
         return []
 
-    lexical_scores: dict[str, int] = {}
+    retrieval_scores: dict[str, float] = {}
     semantic_scores: dict[str, int] = {}
     scope_scores: dict[str, int] = {}
     hits_by_url: dict[str, SearchHit] = {}
     theme_terms = _build_theme_terms(keyword, research_focus, scope_hints or {})
     company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
+    retrieval_candidates: list[TextRetrievalCandidate] = []
 
     for hit in deduped_hits:
         normalized_url = normalize_text(hit.url)
         if not normalized_url:
             continue
         hits_by_url[normalized_url] = hit
-        lexical_scores[normalized_url] = _score_hit(hit, keyword=keyword, research_focus=research_focus)[0]
+        retrieval_candidates.extend(_build_search_hit_retrieval_candidates(hit))
         semantic_scores[normalized_url] = _semantic_score_hit(
             hit,
             keyword=keyword,
@@ -1793,13 +1911,29 @@ def _hybrid_rank_hits(
             theme_terms=theme_terms,
         )
 
-    lexical_ranked = [url for url, _ in sorted(lexical_scores.items(), key=lambda item: item[1], reverse=True) if _ > 0]
+    retrieval_query = _build_search_hit_retrieval_query(keyword, research_focus, scope_hints)
+    retrieval_matches = retrieve_text_matches(
+        retrieval_candidates,
+        retrieval_query,
+        limit=max(40, len(retrieval_candidates)),
+    )
+    retrieval_scores = {
+        match.key: match.score
+        for match in retrieval_matches
+        if match.key in hits_by_url and match.score > 0
+    }
+
+    retrieval_ranked = [
+        match.key
+        for match in retrieval_matches
+        if match.key in hits_by_url and match.score > 0
+    ]
     semantic_ranked = [url for url, _ in sorted(semantic_scores.items(), key=lambda item: item[1], reverse=True) if _ > 0]
     scope_ranked = [url for url, _ in sorted(scope_scores.items(), key=lambda item: item[1], reverse=True) if _ > 0]
 
     hybrid_scores: dict[str, float] = {}
     for ranked_urls, score_map in (
-        (lexical_ranked, lexical_scores),
+        (retrieval_ranked, retrieval_scores),
         (semantic_ranked, semantic_scores),
         (scope_ranked, scope_scores),
     ):
@@ -1810,13 +1944,119 @@ def _hybrid_rank_hits(
         hybrid_scores,
         key=lambda url: (
             hybrid_scores.get(url, 0.0),
-            lexical_scores.get(url, 0),
+            retrieval_scores.get(url, 0.0),
             semantic_scores.get(url, 0),
             scope_scores.get(url, 0),
         ),
         reverse=True,
     )
-    return [hits_by_url[url] for url in ordered_urls if hybrid_scores.get(url, 0.0) > 0]
+    ranked_hits: list[SearchHit] = []
+    for url in ordered_urls:
+        hit = hits_by_url[url]
+        if hybrid_scores.get(url, 0.0) <= 0:
+            continue
+        if (
+            bool((scope_hints or {}).get("prefer_company_entities"))
+            and company_anchor_terms
+            and not _source_matches_company_anchor(hit, company_anchor_terms)
+        ):
+            continue
+        if (
+            retrieval_scores.get(url, 0.0) <= 0
+            and semantic_scores.get(url, 0) <= 0
+            and scope_scores.get(url, 0) <= 0
+        ):
+            continue
+        ranked_hits.append(hit)
+    return ranked_hits
+
+
+def _build_source_retrieval_candidates(source: SourceDocument) -> list[TextRetrievalCandidate]:
+    normalized_url = normalize_text(source.url)
+    if not normalized_url:
+        return []
+    domain = normalize_text(source.domain or "") or extract_domain(source.url) or ""
+    source_type = normalize_text(source.source_type) or _classify_source_type(source.url)
+    source_label = _derive_source_label(
+        source_type=source_type,
+        domain=domain,
+        fallback=source.source_label,
+    )
+    source_tier = normalize_text(source.source_tier) or _classify_source_tier(
+        source_type=source_type,
+        domain=domain,
+        source_label=source_label,
+    )
+    priority = 0
+    if source_tier == "official":
+        priority += 10
+    elif source_tier == "aggregate":
+        priority += 5
+    if source.content_status == "browser_extracted":
+        priority += 8
+    elif source.content_status == "extracted":
+        priority += 6
+    elif source.content_status == "reader_proxy":
+        priority += 4
+    elif source.content_status in {"snippet_only", "fetch_failed"}:
+        priority -= 4
+    excerpt = normalize_text(source.excerpt)
+    if len(excerpt) >= 260:
+        priority += 3
+
+    primary_text = normalize_text(
+        " ".join(
+            part
+            for part in [
+                source.title,
+                source.snippet,
+                excerpt,
+                source_label or "",
+                domain,
+                source.url,
+            ]
+            if normalize_text(part)
+        )
+    )
+    title_text = normalize_text(
+        " ".join(
+            part
+            for part in [
+                source.title,
+                source_label or "",
+                domain,
+            ]
+            if normalize_text(part)
+        )
+    )
+
+    candidates = [
+        TextRetrievalCandidate(
+            key=normalized_url,
+            text=primary_text,
+            source_tier=source_tier,
+            priority=max(0, priority),
+        )
+    ]
+    if title_text and title_text != primary_text:
+        candidates.append(
+            TextRetrievalCandidate(
+                key=normalized_url,
+                text=title_text,
+                source_tier=source_tier,
+                priority=max(0, priority - 2),
+            )
+        )
+    if excerpt and excerpt not in {primary_text, title_text}:
+        candidates.append(
+            TextRetrievalCandidate(
+                key=normalized_url,
+                text=normalize_text(" ".join(part for part in [source.title, excerpt] if normalize_text(part))),
+                source_tier=source_tier,
+                priority=max(0, priority - 1),
+            )
+        )
+    return candidates
 
 
 def _source_rerank_score(
@@ -1840,7 +2080,6 @@ def _source_rerank_score(
                 source.title,
                 source.snippet,
                 source.excerpt,
-                source.search_query,
                 source.source_label or "",
                 source.url,
                 source.domain or "",
@@ -1883,32 +2122,74 @@ def _rerank_sources_hybrid(
     deduped_sources = _dedupe_sources(sources)
     if not deduped_sources:
         return []
-    ranked = sorted(
-        deduped_sources,
-        key=lambda source: (
-            _source_rerank_score(
-                source,
-                keyword=keyword,
-                research_focus=research_focus,
-                scope_hints=scope_hints,
-            ),
-            1 if source.source_tier == "official" else 0,
-            len(normalize_text(source.excerpt)),
-        ),
-        reverse=True,
-    )
-    filtered = [
-        source
-        for source in ranked
-        if _source_rerank_score(
+    quality_scores: dict[str, int] = {}
+    sources_by_url: dict[str, SourceDocument] = {}
+    retrieval_candidates: list[TextRetrievalCandidate] = []
+    company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
+
+    for source in deduped_sources:
+        normalized_url = normalize_text(source.url)
+        if not normalized_url:
+            continue
+        sources_by_url[normalized_url] = source
+        quality_scores[normalized_url] = _source_rerank_score(
             source,
             keyword=keyword,
             research_focus=research_focus,
             scope_hints=scope_hints,
         )
-        > 0
+        retrieval_candidates.extend(_build_source_retrieval_candidates(source))
+
+    retrieval_query = _build_search_hit_retrieval_query(keyword, research_focus, scope_hints)
+    retrieval_matches = retrieve_text_matches(
+        retrieval_candidates,
+        retrieval_query,
+        limit=max(40, len(retrieval_candidates)),
+    )
+    retrieval_scores = {
+        match.key: match.score
+        for match in retrieval_matches
+        if match.key in sources_by_url and match.score > 0
+    }
+    retrieval_ranked = [
+        match.key
+        for match in retrieval_matches
+        if match.key in sources_by_url and match.score > 0
     ]
-    return filtered or ranked
+    quality_ranked = [url for url, score in sorted(quality_scores.items(), key=lambda item: item[1], reverse=True) if score > 0]
+
+    hybrid_scores: dict[str, float] = {}
+    for ranked_urls, score_map in (
+        (retrieval_ranked, retrieval_scores),
+        (quality_ranked, quality_scores),
+    ):
+        for index, url in enumerate(ranked_urls, start=1):
+            hybrid_scores[url] = hybrid_scores.get(url, 0.0) + _rrf_score(index) + float(score_map.get(url, 0)) / 1000.0
+
+    ranked_urls = sorted(
+        sources_by_url,
+        key=lambda url: (
+            hybrid_scores.get(url, 0.0),
+            retrieval_scores.get(url, 0.0),
+            quality_scores.get(url, 0),
+            1 if normalize_text(sources_by_url[url].source_tier) == "official" else 0,
+            len(normalize_text(sources_by_url[url].excerpt)),
+        ),
+        reverse=True,
+    )
+    ranked: list[SourceDocument] = []
+    for url in ranked_urls:
+        source = sources_by_url[url]
+        if (
+            bool((scope_hints or {}).get("prefer_company_entities"))
+            and company_anchor_terms
+            and not _source_matches_company_anchor(source, company_anchor_terms)
+        ):
+            continue
+        if hybrid_scores.get(url, 0.0) <= 0 and quality_scores.get(url, 0) <= 0:
+            continue
+        ranked.append(source)
+    return ranked or [sources_by_url[url] for url in ranked_urls]
 
 
 def _refine_sources_for_report(
@@ -1950,7 +2231,7 @@ def _source_scope_match_score(
                     source.title,
                     source.snippet,
                     str(getattr(source, "excerpt", "") or ""),
-                    source.search_query,
+                    _search_query_text_for_matching(source),
                     str(getattr(source, "source_label", "") or ""),
                     str(getattr(source, "domain", "") or ""),
                     source.url,
@@ -3120,6 +3401,20 @@ FIELD_ROW_NOISE_TOKENS = (
 )
 
 ENTITY_LEADING_NOISE_PREFIXES = (
+    "新增范围锁定到",
+    "新增范围集中到",
+    "新增重点锁定到",
+    "新增重点集中到",
+    "范围锁定到",
+    "范围集中到",
+    "重点锁定到",
+    "重点集中到",
+    "锁定到",
+    "集中到",
+    "收敛到",
+    "聚焦到",
+    "落到",
+    "落在",
     "其中就包括",
     "其中包括",
     "其中有",
@@ -10842,6 +11137,263 @@ def _build_followup_planning_focus(
     return _sanitize_research_focus_text(merged) or None
 
 
+def _followup_context_sections(followup_context: ResearchFollowupContextOut) -> list[tuple[str, str]]:
+    sections = [
+        ("上一版执行摘要", normalize_text(followup_context.followup_report_summary or "")),
+        ("人工补充新需求", normalize_text(followup_context.supplemental_requirements or "")),
+        ("人工补充新信息", normalize_text(followup_context.supplemental_context or "")),
+        ("人工补充新证据/待核验线索", normalize_text(followup_context.supplemental_evidence or "")),
+    ]
+    return [(label, value) for label, value in sections if value]
+
+
+def _split_followup_research_segments(value: str, *, limit: int) -> list[str]:
+    segments: list[str] = []
+    for raw in re.split(r"[；;。！？!?、\n]+", value):
+        normalized = normalize_text(raw.strip("：:，, "))
+        if not normalized or len(normalized) < 4:
+            continue
+        if _looks_like_source_noise_segment(normalized, raw_value=raw):
+            continue
+        if normalized in segments:
+            continue
+        segments.append(normalized)
+        if len(segments) >= limit:
+            break
+    return segments
+
+
+def _merge_scope_hints_with_followup_context(
+    base: dict[str, object],
+    followup: dict[str, object],
+) -> dict[str, object]:
+    if not followup:
+        return dict(base)
+    merged = _merge_scope_hints(base, followup)
+    followup_regions = [normalize_text(str(item)) for item in followup.get("regions", []) or [] if normalize_text(str(item))]
+    followup_industries = [normalize_text(str(item)) for item in followup.get("industries", []) or [] if normalize_text(str(item))]
+    followup_clients = [normalize_text(str(item)) for item in followup.get("clients", []) or [] if normalize_text(str(item))]
+    followup_company_anchors = [
+        normalize_text(str(item))
+        for item in followup.get("company_anchors", []) or []
+        if normalize_text(str(item))
+    ]
+    if followup_regions:
+        merged["regions"] = _dedupe_strings([*followup_regions, *(merged.get("regions", []) or [])], 4)
+    if followup_industries:
+        merged["industries"] = _prune_industry_hints([*followup_industries, *(merged.get("industries", []) or [])])
+    if followup_clients:
+        merged["clients"] = _dedupe_strings([*followup_clients, *(merged.get("clients", []) or [])], 4)
+    if followup_company_anchors:
+        merged["company_anchors"] = _dedupe_strings([*followup_company_anchors, *(merged.get("company_anchors", []) or [])], 6)
+    merged["strategy_must_include_terms"] = _dedupe_strings(
+        [
+            *(followup.get("strategy_must_include_terms", []) or []),
+            *(merged.get("strategy_must_include_terms", []) or []),
+        ],
+        10,
+    )
+    merged["strategy_exclusion_terms"] = _dedupe_strings(
+        [
+            *(followup.get("strategy_exclusion_terms", []) or []),
+            *(merged.get("strategy_exclusion_terms", []) or []),
+        ],
+        10,
+    )
+    merged["strategy_query_expansions"] = _dedupe_strings(
+        [
+            *(followup.get("strategy_query_expansions", []) or []),
+            *(merged.get("strategy_query_expansions", []) or []),
+        ],
+        12,
+    )
+    anchor_segments = [
+        *[normalize_text(str(item)) for item in merged.get("regions", []) or [] if normalize_text(str(item))][:2],
+        *[normalize_text(str(item)) for item in merged.get("industries", []) or [] if normalize_text(str(item))][:2],
+        *[normalize_text(str(item)) for item in merged.get("clients", []) or [] if normalize_text(str(item))][:2],
+    ]
+    merged["anchor_text"] = normalize_text(" / ".join(anchor_segments)) or normalize_text(
+        str(followup.get("anchor_text", ""))
+    ) or normalize_text(str(base.get("anchor_text", "")))
+    if normalize_text(str(followup.get("strategy_scope_summary", ""))):
+        merged["strategy_scope_summary"] = normalize_text(str(followup.get("strategy_scope_summary", "")))
+    return merged
+
+
+def _build_followup_research_diagnostics(
+    *,
+    keyword: str,
+    report_research_focus: str | None,
+    followup_context: ResearchFollowupContextOut,
+    include_wechat: bool,
+    base_scope_hints: dict[str, object],
+) -> tuple[dict[str, object], ResearchFollowupDiagnosticsOut]:
+    sections = _followup_context_sections(followup_context)
+    if not sections:
+        return {}, ResearchFollowupDiagnosticsOut()
+
+    planning_focus = _build_followup_planning_focus(
+        report_research_focus,
+        followup_context=followup_context,
+    ) or normalize_text(report_research_focus or "")
+    signal_text = "；".join(
+        value
+        for value in [
+            normalize_text(followup_context.supplemental_requirements or ""),
+            normalize_text(followup_context.supplemental_context or ""),
+            _truncate_text(normalize_text(followup_context.supplemental_evidence or ""), 900),
+        ]
+        if value
+    )
+    inferred_scope_hints = _infer_input_scope_hints(keyword, signal_text or planning_focus)
+    theme_labels = _theme_labels_from_scope(
+        base_scope_hints,
+        keyword=keyword,
+        research_focus=planning_focus or report_research_focus,
+    )
+    cleaned_entities = _clean_scope_entity_names(
+        [
+            *(normalize_text(str(item)) for item in inferred_scope_hints.get("clients", []) or [] if normalize_text(str(item))),
+            *(normalize_text(str(item)) for item in inferred_scope_hints.get("company_anchors", []) or [] if normalize_text(str(item))),
+            *(normalize_text(match) for match in ORG_PATTERN.findall(signal_text) if normalize_text(match)),
+        ],
+        limit=6,
+        theme_labels=theme_labels,
+    )
+    if cleaned_entities:
+        inferred_scope_hints["clients"] = _dedupe_strings(cleaned_entities, 4)
+        inferred_scope_hints["company_anchors"] = _dedupe_strings(
+            [
+                *cleaned_entities,
+                *(normalize_text(str(item)) for item in inferred_scope_hints.get("company_anchors", []) or [] if normalize_text(str(item))),
+            ],
+            6,
+        )
+
+    segment_candidates: list[str] = []
+    for label, value in sections:
+        per_section_limit = 2 if "证据" in label or "需求" in label else 1
+        segment_candidates.extend(_split_followup_research_segments(value, limit=per_section_limit))
+    segment_candidates = _dedupe_strings(segment_candidates, 5)
+
+    rebuilt_scope_hints = _merge_scope_hints_with_followup_context(base_scope_hints, inferred_scope_hints)
+
+    decomposition_queries: list[str] = []
+    if planning_focus:
+        decomposition_queries.extend(
+            _build_query_plan(
+                keyword,
+                planning_focus,
+                include_wechat=False,
+                scope_hints=rebuilt_scope_hints,
+                limit=4,
+            )[:3]
+        )
+    for segment in segment_candidates:
+        segment_scope_hints = _merge_scope_hints_with_followup_context(
+            rebuilt_scope_hints,
+            _infer_input_scope_hints(keyword, segment),
+        )
+        decomposition_queries.extend(
+            _build_query_plan(
+                keyword,
+                segment,
+                include_wechat=False,
+                scope_hints=segment_scope_hints,
+                limit=4,
+            )[:2]
+        )
+    if include_wechat and rebuilt_scope_hints.get("clients"):
+        primary_client = normalize_text(str((rebuilt_scope_hints.get("clients") or [""])[0]))
+        if primary_client:
+            decomposition_queries.append(f'site:mp.weixin.qq.com "{primary_client}" {keyword}')
+    decomposition_queries = _dedupe_strings(decomposition_queries, 8)
+
+    rebuilt_scope_hints = _merge_scope_hints_with_followup_context(
+        rebuilt_scope_hints,
+        {
+            "strategy_query_expansions": decomposition_queries,
+            "strategy_must_include_terms": _dedupe_strings(
+                [
+                    *(
+                        normalize_text(term)
+                        for segment in segment_candidates[:4]
+                        for term in _extract_topic_anchor_terms(keyword, segment)[:3]
+                        if normalize_text(term)
+                    ),
+                    *(normalize_text(str(item)) for item in inferred_scope_hints.get("strategy_must_include_terms", []) or [] if normalize_text(str(item))),
+                ],
+                10,
+            ),
+        },
+    )
+    summary_parts: list[str] = [f"已根据 {len(sections)} 组追问/补证输入重建二次检索范围"]
+    rebuilt_filters: list[str] = []
+    if rebuilt_scope_hints.get("regions"):
+        rebuilt_filters.append(f"区域 { '/'.join(list(rebuilt_scope_hints.get('regions', []) or [])[:2]) }")
+    if rebuilt_scope_hints.get("industries"):
+        rebuilt_filters.append(f"行业 { '/'.join(list(rebuilt_scope_hints.get('industries', []) or [])[:2]) }")
+    if rebuilt_scope_hints.get("clients"):
+        rebuilt_filters.append(f"账户 { '/'.join(list(rebuilt_scope_hints.get('clients', []) or [])[:2]) }")
+    if rebuilt_filters:
+        summary_parts.append("，".join(rebuilt_filters))
+    if decomposition_queries:
+        summary_parts.append(f"并拆出 {len(decomposition_queries)} 条优先补证子查询")
+    summary = "；".join(part for part in summary_parts if part)
+
+    diagnostics = ResearchFollowupDiagnosticsOut(
+        enabled=True,
+        input_sections=[label for label, _ in sections],
+        planning_focus=planning_focus,
+        summary=summary,
+        scope_rebuilt=bool(
+            rebuilt_scope_hints.get("regions")
+            or rebuilt_scope_hints.get("industries")
+            or rebuilt_scope_hints.get("clients")
+            or rebuilt_scope_hints.get("company_anchors")
+        ),
+        query_decomposition_applied=bool(decomposition_queries),
+        decomposition_queries=decomposition_queries,
+        rebuilt_regions=[normalize_text(str(item)) for item in rebuilt_scope_hints.get("regions", []) or [] if normalize_text(str(item))],
+        rebuilt_industries=[normalize_text(str(item)) for item in rebuilt_scope_hints.get("industries", []) or [] if normalize_text(str(item))],
+        rebuilt_clients=[normalize_text(str(item)) for item in rebuilt_scope_hints.get("clients", []) or [] if normalize_text(str(item))],
+        rebuilt_company_anchors=[
+            normalize_text(str(item))
+            for item in rebuilt_scope_hints.get("company_anchors", []) or []
+            if normalize_text(str(item))
+        ],
+        rebuilt_must_include_terms=[
+            normalize_text(str(item))
+            for item in rebuilt_scope_hints.get("strategy_must_include_terms", []) or []
+            if normalize_text(str(item))
+        ],
+        rebuilt_exclusion_terms=[
+            normalize_text(str(item))
+            for item in rebuilt_scope_hints.get("strategy_exclusion_terms", []) or []
+            if normalize_text(str(item))
+        ],
+    )
+    return rebuilt_scope_hints, diagnostics
+
+
+def _render_followup_diagnostics_prompt_context(followup_diagnostics: ResearchFollowupDiagnosticsOut) -> str:
+    if not followup_diagnostics.enabled:
+        return "无"
+    lines = [f"- 二次检索摘要: {normalize_text(followup_diagnostics.summary)}"]
+    if followup_diagnostics.rebuilt_regions:
+        lines.append(f"- 重建区域过滤: {' / '.join(followup_diagnostics.rebuilt_regions[:3])}")
+    if followup_diagnostics.rebuilt_industries:
+        lines.append(f"- 重建行业过滤: {' / '.join(followup_diagnostics.rebuilt_industries[:3])}")
+    if followup_diagnostics.rebuilt_clients:
+        lines.append(f"- 重建目标账户过滤: {' / '.join(followup_diagnostics.rebuilt_clients[:3])}")
+    if followup_diagnostics.rebuilt_must_include_terms:
+        lines.append(f"- 强制命中词: {' / '.join(followup_diagnostics.rebuilt_must_include_terms[:5])}")
+    if followup_diagnostics.decomposition_queries:
+        lines.append("- 优先子查询:")
+        lines.extend(f"  - {query}" for query in followup_diagnostics.decomposition_queries[:6])
+    return "\n".join(lines)
+
+
 def _render_followup_prompt_context(followup_context: ResearchFollowupContextOut) -> str:
     sections = [
         ("上一版研报标题", followup_context.followup_report_title),
@@ -10852,6 +11404,445 @@ def _render_followup_prompt_context(followup_context: ResearchFollowupContextOut
     ]
     lines = [f"- {label}: {value}" for label, value in sections if normalize_text(value)]
     return "\n".join(lines) if lines else "无"
+
+
+def _research_archive_query_text(
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+) -> str:
+    parts = [
+        normalize_text(keyword),
+        normalize_text(research_focus or ""),
+        *[
+            normalize_text(str(item))
+            for key in ("regions", "industries", "clients", "company_anchors")
+            for item in scope_hints.get(key, []) or []
+            if normalize_text(str(item))
+        ],
+    ]
+    return "；".join(item for item in _dedupe_strings(parts, 12) if item)
+
+
+def _entry_report_payload(entry: KnowledgeEntry) -> ResearchReportResponse | None:
+    payload = entry.metadata_payload if isinstance(entry.metadata_payload, dict) else None
+    raw_report = payload.get("report") if isinstance(payload, dict) else None
+    if not isinstance(raw_report, dict):
+        return None
+    try:
+        return ResearchReportResponse.model_validate(raw_report)
+    except Exception:
+        return None
+
+
+def _build_archive_report_scope_hints(report: ResearchReportResponse) -> dict[str, object]:
+    diagnostics = report.source_diagnostics if getattr(report, "source_diagnostics", None) else ResearchSourceDiagnosticsOut()
+    stored_clients = _dedupe_strings(
+        [
+            normalize_text(item)
+            for item in [
+                *(normalize_text(item) for item in diagnostics.scope_clients if normalize_text(item)),
+                *(
+                    normalize_text(item)
+                    for item in _stored_report_concrete_targets(report)
+                    if normalize_text(item)
+                ),
+            ]
+            if normalize_text(item)
+        ],
+        4,
+    )
+    return {
+        "regions": _dedupe_strings([normalize_text(item) for item in diagnostics.scope_regions if normalize_text(item)], 3),
+        "industries": _prune_industry_hints([normalize_text(item) for item in diagnostics.scope_industries if normalize_text(item)]),
+        "clients": stored_clients,
+        "company_anchors": _dedupe_strings(stored_clients, 4),
+        "anchor_text": normalize_text(" / ".join(stored_clients[:2])),
+    }
+
+
+def _build_archive_context_item(
+    *,
+    entry: KnowledgeEntry,
+    match: Any,
+    scope_hints: dict[str, object],
+) -> dict[str, object] | None:
+    title = normalize_text(getattr(entry, "title", "")) or "知识卡片"
+    preview = getattr(match, "preview", None)
+    snippet = normalize_text(getattr(preview, "snippet", "")) or _truncate_text(normalize_text(entry.content or ""), 220)
+    match_label = normalize_text(getattr(preview, "label", "")) or "知识命中"
+    source_tier = normalize_text(getattr(preview, "source_tier", "")) or "media"
+    score = float(getattr(match, "score", 0.0) or 0.0)
+    match_modes = [normalize_text(item) for item in getattr(preview, "match_modes", ()) if normalize_text(item)]
+    matched_terms = [normalize_text(item) for item in getattr(preview, "matched_terms", ()) if normalize_text(item)]
+
+    report = _entry_report_payload(entry)
+    if report is not None:
+        reference_timestamp = getattr(report, "generated_at", None) or getattr(entry, "updated_at", None) or getattr(entry, "created_at", None)
+        source_documents = _report_sources_to_source_documents(report.sources)
+        report_scope_hints = _merge_scope_hints(
+            _infer_input_scope_hints(report.keyword, report.research_focus),
+            _build_archive_report_scope_hints(report),
+        )
+        if source_documents:
+            report_scope_hints = _merge_scope_hints(
+                report_scope_hints,
+                _infer_scope_hints(report.keyword, report.research_focus, source_documents),
+            )
+        rewrite_mode, _, _ = _assess_stored_report_rewrite_mode(
+            report,
+            source_documents=source_documents,
+            scope_hints=report_scope_hints,
+        )
+        if rewrite_mode == "guarded":
+            return None
+
+        _concrete_targets, supported_targets, _unsupported_targets = _resolve_stored_report_target_support(
+            report,
+            source_documents=source_documents,
+            scope_hints=report_scope_hints,
+        )
+        theme_labels = _theme_labels_from_scope(scope_hints, keyword=report.keyword, research_focus=report.research_focus)
+        trusted_targets = _dedupe_strings(
+            [
+                _sanitize_entity_row("target_accounts", target)
+                for target in supported_targets
+                if normalize_text(target)
+                and _is_trustworthy_scope_client_name(normalize_text(target), theme_labels=theme_labels)
+            ],
+            4,
+        )
+        diagnostics = report.source_diagnostics if getattr(report, "source_diagnostics", None) else ResearchSourceDiagnosticsOut()
+        official_ratio = float(diagnostics.official_source_ratio or 0.0)
+        readiness = _resolved_report_readiness(report)
+        if not trusted_targets and readiness.status != "ready" and official_ratio < 0.25 and report.source_count < 4:
+            return None
+        if trusted_targets and not any(target in snippet for target in trusted_targets):
+            snippet = f"{trusted_targets[0]} · {snippet}" if snippet else trusted_targets[0]
+
+        return {
+            "kind": "stored_report",
+            "entry_id": str(entry.id),
+            "title": normalize_text(report.report_title) or title,
+            "match_label": match_label,
+            "match_snippet": snippet,
+            "match_modes": match_modes,
+            "matched_terms": matched_terms[:6],
+            "score": round(score, 4),
+            "source_tier": source_tier if source_tier in {"official", "media", "aggregate"} else "media",
+            "summary": _truncate_text(normalize_text(report.executive_summary), 240),
+            "supported_targets": trusted_targets,
+            "target_departments": _dedupe_strings(
+                [normalize_text(item) for item in report.target_departments if normalize_text(item)],
+                3,
+            ),
+            "budget_signals": _dedupe_strings(
+                [normalize_text(item) for item in report.budget_signals if normalize_text(item)],
+                3,
+            ),
+            "source_count": int(report.source_count or 0),
+            "official_source_ratio": round(official_ratio, 4),
+            "retrieval_quality": normalize_text(diagnostics.retrieval_quality),
+            "evidence_mode": normalize_text(diagnostics.evidence_mode),
+            "updated_at": reference_timestamp.isoformat() if isinstance(reference_timestamp, datetime) else None,
+        }
+
+    if not entry.is_focus_reference and not entry.is_pinned:
+        return None
+    note_timestamp = getattr(entry, "updated_at", None) or getattr(entry, "created_at", None)
+    return {
+        "kind": "knowledge_note",
+        "entry_id": str(entry.id),
+        "title": title,
+        "match_label": match_label,
+        "match_snippet": snippet,
+        "match_modes": match_modes,
+        "matched_terms": matched_terms[:6],
+        "score": round(score, 4),
+        "source_tier": source_tier if source_tier in {"official", "media", "aggregate"} else "media",
+        "summary": _truncate_text(normalize_text(entry.content or ""), 220),
+        "supported_targets": [],
+        "target_departments": [],
+        "budget_signals": [],
+        "source_count": 0,
+        "official_source_ratio": 0.0,
+        "retrieval_quality": "",
+        "evidence_mode": "",
+        "updated_at": note_timestamp.isoformat() if isinstance(note_timestamp, datetime) else None,
+    }
+
+
+def _load_research_archive_context(
+    *,
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+    limit: int,
+) -> list[dict[str, object]]:
+    query_text = _research_archive_query_text(keyword, research_focus, scope_hints)
+    if not query_text:
+        return []
+    try:
+        with SessionLocal() as db:
+            candidates = list(
+                db.scalars(
+                    select(KnowledgeEntry)
+                    .where(KnowledgeEntry.user_id == get_settings().single_user_id)
+                    .where(
+                        or_(
+                            KnowledgeEntry.source_domain == "research.report",
+                            KnowledgeEntry.is_focus_reference.is_(True),
+                            KnowledgeEntry.is_pinned.is_(True),
+                        )
+                    )
+                    .order_by(desc(KnowledgeEntry.updated_at), desc(KnowledgeEntry.created_at))
+                    .limit(240)
+                )
+            )
+    except Exception:
+        return []
+    if not candidates:
+        return []
+
+    matches = retrieve_knowledge_entry_matches(candidates, query_text, limit=max(8, limit * 2))
+    context_items: list[dict[str, object]] = []
+    seen_entry_ids: set[str] = set()
+    for match in matches:
+        entry = getattr(match, "entry", None)
+        entry_id = str(getattr(entry, "id", "") or "")
+        if not entry_id or entry_id in seen_entry_ids:
+            continue
+        item = _build_archive_context_item(entry=entry, match=match, scope_hints=scope_hints)
+        if item is None:
+            continue
+        seen_entry_ids.add(entry_id)
+        context_items.append(item)
+        if len(context_items) >= limit:
+            break
+    return context_items
+
+
+def _merge_scope_hints_with_archive_context(
+    scope_hints: dict[str, object],
+    archive_context_items: list[dict[str, object]],
+    *,
+    keyword: str,
+    research_focus: str | None,
+) -> dict[str, object]:
+    if not archive_context_items:
+        return scope_hints
+
+    queryworthy_items = [item for item in archive_context_items if _archive_item_is_queryworthy(item)]
+    if not queryworthy_items:
+        return scope_hints
+
+    trusted_targets = _dedupe_strings(
+        [
+            normalize_text(str(target))
+            for item in queryworthy_items
+            for target in item.get("supported_targets", []) or []
+            if normalize_text(str(target))
+        ],
+        4,
+    )
+    if not trusted_targets:
+        return scope_hints
+
+    trusted_departments = _sanitize_report_field_rows(
+        "target_departments",
+        [
+            normalize_text(str(department))
+            for item in queryworthy_items
+            for department in item.get("target_departments", []) or []
+            if normalize_text(str(department))
+        ],
+    )[:4]
+    trusted_budget_terms = _dedupe_strings(
+        [
+            _archive_budget_query_term(normalize_text(str(row)))
+            for item in queryworthy_items
+            for row in item.get("budget_signals", []) or []
+            if normalize_text(str(row))
+        ],
+        3,
+    )
+
+    merged_clients = _dedupe_strings(
+        [
+            *(normalize_text(str(item)) for item in scope_hints.get("clients", []) or [] if normalize_text(str(item))),
+            *trusted_targets,
+        ],
+        4,
+    )
+    merged_company_anchors = _dedupe_strings(
+        [
+            *(normalize_text(str(item)) for item in scope_hints.get("company_anchors", []) or [] if normalize_text(str(item))),
+            *trusted_targets,
+        ],
+        6,
+    )
+    archive_query_expansions = _build_archive_query_expansions(
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        targets=trusted_targets,
+        departments=trusted_departments,
+        budget_terms=trusted_budget_terms,
+    )
+    return {
+        **scope_hints,
+        "clients": merged_clients if bool(scope_hints.get("prefer_company_entities")) or bool(scope_hints.get("clients")) else list(scope_hints.get("clients", []) or []),
+        "company_anchors": merged_company_anchors,
+        "archive_targets": trusted_targets,
+        "archive_target_departments": trusted_departments,
+        "archive_budget_signals": trusted_budget_terms,
+        "strategy_query_expansions": _dedupe_strings(
+            [
+                *(normalize_text(str(item)) for item in scope_hints.get("strategy_query_expansions", []) or [] if normalize_text(str(item))),
+                *archive_query_expansions,
+            ],
+            12,
+        ),
+        "anchor_text": normalize_text(
+            " / ".join(
+                [
+                    *[normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))][:2],
+                    *[normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))][:2],
+                    *merged_clients[:2],
+                ]
+            )
+        ),
+    }
+
+
+def _render_archive_prompt_context(archive_context_items: list[dict[str, object]]) -> str:
+    if not archive_context_items:
+        return "无"
+    lines: list[str] = []
+    for index, item in enumerate(archive_context_items[:5], start=1):
+        title = normalize_text(str(item.get("title") or "")) or f"历史条目 {index}"
+        match_label = normalize_text(str(item.get("match_label") or "")) or "知识命中"
+        score = float(item.get("score") or 0.0)
+        kind = normalize_text(str(item.get("kind") or "")) or "archive"
+        lines.append(f"{index}. [{kind}] {title} | 命中: {match_label} | score={score:.3f}")
+        match_snippet = normalize_text(str(item.get("match_snippet") or ""))
+        if match_snippet:
+            lines.append(f"   - 命中片段: {match_snippet}")
+        summary = normalize_text(str(item.get("summary") or ""))
+        if summary:
+            lines.append(f"   - 历史摘要: {summary}")
+        supported_targets = [normalize_text(str(target)) for target in item.get("supported_targets", []) or [] if normalize_text(str(target))]
+        if supported_targets:
+            lines.append(f"   - 历史支撑账户: {'；'.join(supported_targets[:3])}")
+        target_departments = [normalize_text(str(dept)) for dept in item.get("target_departments", []) or [] if normalize_text(str(dept))]
+        if target_departments:
+            lines.append(f"   - 历史组织入口: {'；'.join(target_departments[:3])}")
+        budget_signals = [normalize_text(str(row)) for row in item.get("budget_signals", []) or [] if normalize_text(str(row))]
+        if budget_signals:
+            lines.append(f"   - 历史预算/节奏: {'；'.join(budget_signals[:3])}")
+        source_count = int(item.get("source_count") or 0)
+        official_ratio = float(item.get("official_source_ratio") or 0.0)
+        if source_count > 0:
+            lines.append(f"   - 历史证据强度: 来源 {source_count} 条 / 官方占比 {round(official_ratio * 100)}%")
+    return "\n".join(lines) if lines else "无"
+
+
+def _parse_archive_context_datetime(value: object) -> datetime | None:
+    raw = normalize_text(str(value or ""))
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+
+
+def _archive_item_is_queryworthy(item: dict[str, object]) -> bool:
+    if normalize_text(str(item.get("kind") or "")) != "stored_report":
+        return False
+    supported_targets = [
+        normalize_text(str(target))
+        for target in item.get("supported_targets", []) or []
+        if normalize_text(str(target))
+    ]
+    if not supported_targets:
+        return False
+    source_count = int(item.get("source_count") or 0)
+    official_ratio = float(item.get("official_source_ratio") or 0.0)
+    retrieval_quality = normalize_text(str(item.get("retrieval_quality") or "")).lower()
+    if source_count < 2 or official_ratio < 0.25:
+        return False
+    updated_at = _parse_archive_context_datetime(item.get("updated_at"))
+    if updated_at is not None:
+        age_days = max(0.0, (datetime.now(timezone.utc) - updated_at.astimezone(timezone.utc)).total_seconds() / 86400.0)
+        if age_days > 720 and (official_ratio < 0.6 or source_count < 4):
+            return False
+    if retrieval_quality == "low" and official_ratio < 0.5:
+        return False
+    return True
+
+
+def _archive_budget_query_term(value: str) -> str:
+    normalized = normalize_text(value)
+    if not _is_actionable_budget_row(normalized):
+        return ""
+    first_segment = re.split(r"[，,；;。]", normalized, maxsplit=1)[0]
+    compact = normalize_text(first_segment)
+    if len(compact) > 26:
+        compact = _truncate_text(compact, 26)
+    if not any(token in compact for token in ("预算", "采购", "招标", "中标", "立项", "经费", "扩容", "合同")):
+        return ""
+    return compact
+
+
+def _build_archive_query_expansions(
+    *,
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+    targets: list[str],
+    departments: list[str],
+    budget_terms: list[str],
+) -> list[str]:
+    if not targets:
+        return []
+    keyword_seed = _strip_query_noise(keyword) or normalize_text(keyword)
+    focus_seed = _sanitize_research_focus_text(research_focus)
+    regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
+    industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+
+    queries: list[str] = []
+    for target in _dedupe_strings(targets, 2):
+        queries.extend(
+            [
+                f"\"{target}\" {keyword_seed} 预算 采购 立项",
+                f"\"{target}\" {keyword_seed} 招标 项目 采购",
+            ]
+        )
+        if regions:
+            queries.append(f"\"{target}\" {regions[0]} {keyword_seed} 招标 项目")
+        if industries:
+            queries.append(f"\"{target}\" {industries[0]} {keyword_seed} 预算 采购")
+        if focus_seed:
+            queries.append(f"\"{target}\" {keyword_seed} {focus_seed}")
+        for department in _dedupe_strings(departments, 2):
+            queries.append(f"\"{target}\" \"{department}\" {keyword_seed}")
+            queries.append(f"\"{target}\" \"{department}\" 预算 采购")
+        for budget_term in _dedupe_strings(budget_terms, 1):
+            queries.append(f"\"{target}\" {keyword_seed} {budget_term}")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for query in queries:
+        normalized = normalize_text(query)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+        if len(deduped) >= 6:
+            break
+    return deduped
 
 
 def _to_research_source_outputs(sources: list[SourceDocument]) -> list[ResearchSourceOut]:
@@ -10877,6 +11868,8 @@ def _build_partial_report_result(
     research_focus: str | None,
     output_language: str,
     research_mode: str,
+    archive_context: str,
+    followup_diagnostics: str,
     source_intelligence: dict[str, list[str]],
     scope_hints: dict[str, object],
     llm: object | None,
@@ -10928,6 +11921,8 @@ def _build_partial_report_result(
                 "output_language": output_language,
                 "research_mode": research_mode,
                 "scope_hints": json.dumps(scope_hints, ensure_ascii=False),
+                "archive_context": archive_context,
+                "followup_diagnostics": followup_diagnostics,
                 "source_intelligence": json.dumps(source_intelligence, ensure_ascii=False),
                 "industry_methodology_context": _render_industry_methodology_context(scope_hints),
                 "__timeout_seconds": str(max(14, min(llm_timeout_seconds, 24))),
@@ -12413,6 +13408,14 @@ def generate_research_report(
     keyword = normalize_text(payload.keyword)
     report_research_focus = normalize_text(payload.research_focus or "") or None
     followup_context = _build_followup_context(payload)
+    base_input_scope_hints = _infer_input_scope_hints(keyword, report_research_focus)
+    followup_scope_hints, followup_diagnostics = _build_followup_research_diagnostics(
+        keyword=keyword,
+        report_research_focus=report_research_focus,
+        followup_context=followup_context,
+        include_wechat=payload.include_wechat,
+        base_scope_hints=base_input_scope_hints,
+    )
     research_focus = _build_followup_planning_focus(
         report_research_focus,
         followup_context=followup_context,
@@ -12427,11 +13430,25 @@ def generate_research_report(
         else ()
     )
     input_scope_hints = _infer_input_scope_hints(keyword, research_focus)
+    input_scope_hints = _merge_scope_hints_with_followup_context(input_scope_hints, followup_scope_hints)
     input_scope_hints = _apply_strategy_scope_planning(
         keyword=keyword,
         research_focus=research_focus,
         output_language=output_language,
         input_scope_hints=input_scope_hints,
+    )
+    archive_context_items = _load_research_archive_context(
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=input_scope_hints,
+        limit=3 if research_mode == "fast" else 5,
+    )
+    archive_context = _render_archive_prompt_context(archive_context_items)
+    input_scope_hints = _merge_scope_hints_with_archive_context(
+        input_scope_hints,
+        archive_context_items,
+        keyword=keyword,
+        research_focus=research_focus,
     )
 
     _emit_research_progress(
@@ -12448,6 +13465,11 @@ def generate_research_report(
         preferred_wechat_accounts=preferred_wechat_accounts,
         limit=int(runtime["query_limit"]),
     )
+    if followup_diagnostics.enabled and followup_diagnostics.decomposition_queries:
+        query_plan = _dedupe_strings(
+            [*followup_diagnostics.decomposition_queries, *query_plan],
+            max(int(runtime["query_limit"]) + 4, len(followup_diagnostics.decomposition_queries) + 2),
+        )
     _emit_research_progress(
         progress_callback,
         "adapters",
@@ -12998,6 +14020,8 @@ def generate_research_report(
         research_focus=research_focus,
         output_language=output_language,
         research_mode=research_mode,
+        archive_context=archive_context,
+        followup_diagnostics=_render_followup_diagnostics_prompt_context(followup_diagnostics),
         source_intelligence=source_intelligence,
         scope_hints=scope_hints,
         llm=llm,
@@ -13050,9 +14074,11 @@ def generate_research_report(
             "query_plan": " | ".join(effective_query_plan),
             "__timeout_seconds": str(int(runtime["llm_timeout_seconds"])),
             "source_count": str(len(sources)),
+            "archive_context": archive_context,
             "source_summary": source_summary,
             "source_digest": source_digest,
             "followup_context": _render_followup_prompt_context(followup_context),
+            "followup_diagnostics": _render_followup_diagnostics_prompt_context(followup_diagnostics),
             "followup_report_title": followup_context.followup_report_title,
             "followup_report_summary": followup_context.followup_report_summary,
             "supplemental_context": followup_context.supplemental_context,
@@ -13402,6 +14428,7 @@ def generate_research_report(
         keyword=keyword,
         research_focus=report_research_focus,
         followup_context=followup_context,
+        followup_diagnostics=followup_diagnostics,
         output_language=output_language,
         research_mode=research_mode,
         report_title=parsed.report_title,

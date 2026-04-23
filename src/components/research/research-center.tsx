@@ -9,6 +9,7 @@ import {
   ApiResearchLowQualityReviewQueue,
   ApiResearchLowQualityReviewQueueItem,
   ApiResearchMarkdownArchive,
+  ApiResearchOfflineEvaluation,
   ApiResearchSavedView,
   ApiResearchSourceSettings,
   ApiResearchTrackingTopic,
@@ -23,6 +24,7 @@ import {
   getLowQualityResearchReviewQueue,
   getResearchDailyBrief,
   getResearchMarkdownArchive,
+  getResearchOfflineEvaluation,
   getResearchWatchlistAutomationStatus,
   listResearchWatchlists,
   getResearchSourceSettings,
@@ -543,6 +545,18 @@ function lowQualityReviewStatusTone(status: ApiResearchLowQualityReviewQueueItem
   return "bg-rose-100 text-rose-700";
 }
 
+function offlineEvaluationStatusLabel(status: string) {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
+}
+
+function offlineEvaluationStatusTone(status: string) {
+  if (status === "good") return "border-emerald-200 bg-emerald-50/75 text-emerald-700";
+  if (status === "watch") return "border-amber-200 bg-amber-50/75 text-amber-700";
+  return "border-rose-200 bg-rose-50/75 text-rose-700";
+}
+
 function watchlistAutomationStatusLabel(status?: string | null) {
   if (status === "ok") return "最近运行正常";
   if (status === "partial_failure") return "最近运行部分失败";
@@ -660,6 +674,9 @@ export function ResearchCenter() {
   const [dailyBriefError, setDailyBriefError] = useState("");
   const [lowQualityQueue, setLowQualityQueue] = useState<ApiResearchLowQualityReviewQueue | null>(null);
   const [lowQualityLoading, setLowQualityLoading] = useState(true);
+  const [offlineEvaluation, setOfflineEvaluation] = useState<ApiResearchOfflineEvaluation | null>(null);
+  const [offlineEvaluationLoading, setOfflineEvaluationLoading] = useState(true);
+  const [offlineEvaluationRefreshing, setOfflineEvaluationRefreshing] = useState(false);
   const [lowQualityActionKey, setLowQualityActionKey] = useState("");
   const [lowQualityMessage, setLowQualityMessage] = useState("");
   const [lowQualityError, setLowQualityError] = useState("");
@@ -820,6 +837,27 @@ export function ResearchCenter() {
 
   useEffect(() => {
     let active = true;
+    setOfflineEvaluationLoading(true);
+    getResearchOfflineEvaluation(6)
+      .then((res) => {
+        if (!active) return;
+        setOfflineEvaluation(res);
+      })
+      .catch(() => {
+        if (!active) return;
+        setOfflineEvaluation(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setOfflineEvaluationLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     setLoading(true);
     setError("");
     Promise.all([
@@ -878,6 +916,18 @@ export function ResearchCenter() {
     return queue;
   };
 
+  const refreshOfflineEvaluation = async () => {
+    setOfflineEvaluationRefreshing(true);
+    try {
+      const evaluation = await getResearchOfflineEvaluation(6);
+      setOfflineEvaluation(evaluation);
+      return evaluation;
+    } finally {
+      setOfflineEvaluationLoading(false);
+      setOfflineEvaluationRefreshing(false);
+    }
+  };
+
   const handleRefreshDailyBrief = async () => {
     setDailyBriefRefreshing(true);
     setDailyBriefError("");
@@ -898,7 +948,7 @@ export function ResearchCenter() {
     setLowQualityError("");
     try {
       await rewriteLowQualityResearchReviewItem(entryId);
-      await Promise.all([refreshLowQualityQueue(), refreshResearchCards()]);
+      await Promise.all([refreshLowQualityQueue(), refreshResearchCards(), refreshOfflineEvaluation()]);
       setLowQualityMessage("已生成 rewrite diff，请复核后接受或回退。");
     } catch {
       setLowQualityError("低质量研报重写失败，请稍后重试。");
@@ -913,7 +963,7 @@ export function ResearchCenter() {
     setLowQualityError("");
     try {
       await resolveLowQualityResearchReviewItem(entryId, action);
-      await refreshLowQualityQueue();
+      await Promise.all([refreshLowQualityQueue(), refreshOfflineEvaluation()]);
       if (action === "revert") {
         await refreshResearchCards();
         setLowQualityMessage("已回退到 rewrite 前版本。");
@@ -1743,6 +1793,166 @@ export function ResearchCenter() {
           keyword: item.keyword,
         }))}
       />
+
+      <section className="af-glass rounded-[30px] p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-3xl">
+            <p className="af-kicker">Offline Evaluation</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-900">离线回归评估</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              将检索命中率、目标账户支撑率和章节证据配额通过率前台化，方便每轮 rewrite 后快速回看质量回归。
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs font-medium text-slate-500">
+              扫描研报 · {offlineEvaluation?.total_reports ?? 0}
+            </div>
+            <div className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs font-medium text-slate-500">
+              可评估 · {offlineEvaluation?.evaluated_reports ?? 0}
+            </div>
+            {(offlineEvaluation?.invalid_payloads ?? 0) > 0 ? (
+              <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                schema 异常 · {offlineEvaluation?.invalid_payloads ?? 0}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void refreshOfflineEvaluation()}
+              disabled={offlineEvaluationRefreshing}
+              className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+            >
+              {offlineEvaluationRefreshing ? "刷新中..." : "刷新评估"}
+            </button>
+          </div>
+        </div>
+
+        {offlineEvaluationLoading ? (
+          <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中")}</p>
+        ) : (
+          <>
+            {offlineEvaluation?.generated_at ? (
+              <p className="mt-3 text-xs text-slate-500">更新于 · {formatWatchlistTime(offlineEvaluation.generated_at)}</p>
+            ) : null}
+
+            {offlineEvaluation?.metrics?.length ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {offlineEvaluation.metrics.map((metric) => (
+                  <div
+                    key={metric.key}
+                    className={`rounded-[24px] border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)] ${offlineEvaluationStatusTone(metric.status)}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold">{sanitizeExternalDisplayText(metric.label)}</p>
+                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                        {offlineEvaluationStatusLabel(metric.status)}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-3xl font-semibold tracking-[-0.05em]">{metric.percent}%</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      当前 {metric.numerator}/{metric.denominator} · 基准 {Math.round(metric.benchmark * 100)}%
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {sanitizeExternalDisplayText(metric.summary)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">当前暂无离线回归样本。</p>
+            )}
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
+              <div className="rounded-[24px] border border-white/70 bg-white/68 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">回归摘要</p>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Regression Notes</span>
+                </div>
+                {offlineEvaluation?.summary_lines?.length ? (
+                  <div className="mt-3 space-y-2">
+                    {offlineEvaluation.summary_lines.map((line) => (
+                      <div key={line} className="rounded-[18px] border border-slate-200/70 bg-slate-50/85 px-3 py-2 text-sm leading-6 text-slate-600">
+                        {sanitizeExternalDisplayText(line)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">当前没有额外摘要。</p>
+                )}
+              </div>
+
+              <div className="rounded-[24px] border border-white/70 bg-white/68 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">弱样本回归列表</p>
+                    <p className="mt-1 text-xs text-slate-500">优先处理目标账户缺支撑、章节配额未达标和检索命中偏弱的旧报告。</p>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+                    Top {Math.min(offlineEvaluation?.weakest_reports?.length ?? 0, 4)}
+                  </span>
+                </div>
+                {offlineEvaluation?.weakest_reports?.length ? (
+                  <div className="mt-3 space-y-3">
+                    {offlineEvaluation.weakest_reports.slice(0, 4).map((item) => {
+                      const quotaGap = Math.max(item.quota_total_section_count - item.quota_passed_section_count, 0);
+                      const reportTitle = sanitizeExternalDisplayText(item.report_title || item.entry_title || "知识卡片");
+                      return (
+                        <div key={item.entry_id} className="rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <Link href={`/knowledge/${item.entry_id}`} className="block">
+                                <p className="text-sm font-semibold text-slate-900 transition hover:text-sky-700">{reportTitle}</p>
+                              </Link>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {sanitizeExternalDisplayText(item.keyword || "未标注关键词")}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-medium text-rose-700">
+                              弱度 {item.weakness_score}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-600">
+                            <span className={`rounded-full px-2.5 py-1 font-medium ${item.retrieval_hit ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                              {item.retrieval_hit ? "检索命中已过线" : "检索命中偏弱"}
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1">
+                              目标支撑 {item.supported_target_accounts}/{item.supported_target_accounts + item.unsupported_target_accounts}
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1">
+                              章节配额 {item.quota_passed_section_count}/{item.quota_total_section_count}
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1">
+                              官方源 {Math.round(item.official_source_ratio * 100)}%
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1">
+                              严格命中 {Math.round(item.strict_match_ratio * 100)}%
+                            </span>
+                          </div>
+                          {(item.unsupported_targets.length || item.failing_sections.length) ? (
+                            <div className="mt-3 space-y-2">
+                              {item.unsupported_targets.length ? (
+                                <p className="text-sm leading-6 text-slate-600">
+                                  待补证账户 · {sanitizeExternalDisplayText(item.unsupported_targets.join(" / "))}
+                                </p>
+                              ) : null}
+                              {item.failing_sections.length ? (
+                                <p className="text-sm leading-6 text-slate-600">
+                                  未过配额章节 · {sanitizeExternalDisplayText(item.failing_sections.join(" / "))} {quotaGap > 0 ? `(${quotaGap} 处待补)` : ""}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">当前没有需要优先回归的弱样本。</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[300px,minmax(0,1fr)]">
         <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">

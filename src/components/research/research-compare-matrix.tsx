@@ -9,9 +9,11 @@ import {
   createResearchMarkdownArchive,
   createResearchCompareSnapshot,
   getResearchCompareSnapshot,
+  getResearchOfflineEvaluation,
   listKnowledgeEntries,
   type ApiKnowledgeEntry,
   type ApiResearchCompareSnapshotDetail,
+  type ApiResearchOfflineEvaluation,
 } from "@/lib/api";
 import {
   buildResearchCompareExecBrief,
@@ -22,6 +24,7 @@ import {
   buildResearchComparePlainText,
   buildResearchCompareRows,
   summarizeResearchCompareEvidence,
+  summarizeResearchCompareSectionDiagnostics,
   type ResearchCompareRow,
   type ResearchCompareRole,
 } from "@/lib/research-compare";
@@ -50,6 +53,130 @@ function diffStatusLabel(status: string, t: (key: string, fallback: string) => s
   if (status === "trimmed") return t("research.compareSnapshotDiffTrimmed", "快照收敛");
   if (status === "mixed") return t("research.compareSnapshotDiffMixed", "双向差异");
   return t("research.compareSnapshotDiffUnavailable", "无法比较");
+}
+
+function offlineStatusTone(status: string) {
+  if (status === "good") return "bg-emerald-100 text-emerald-700";
+  if (status === "watch") return "bg-amber-100 text-amber-700";
+  return "bg-rose-100 text-rose-700";
+}
+
+function offlineStatusLabel(status: string) {
+  if (status === "good") return "达标";
+  if (status === "watch") return "观察";
+  return "偏弱";
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function asPositiveNumber(value: unknown): number {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
+}
+
+function asStringList(value: unknown, limit = 8): string[] {
+  return Array.isArray(value)
+    ? value
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .filter((item, index, list) => list.indexOf(item) === index)
+        .slice(0, limit)
+    : [];
+}
+
+function asCleanString(value: unknown): string {
+  return String(value || "").trim();
+}
+
+function formatSnapshotMetadataTime(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString();
+}
+
+function parseSnapshotOfflineEvaluation(metadata: Record<string, unknown> | null | undefined): ApiResearchOfflineEvaluation | null {
+  const summary = asRecord(asRecord(metadata).offline_evaluation_snapshot);
+  if (!Object.keys(summary).length) {
+    return null;
+  }
+  const metrics = Array.isArray(summary.metrics)
+    ? summary.metrics
+        .map((metric) => {
+          const record = asRecord(metric);
+          const key = String(record.key || "").trim();
+          const label = String(record.label || "").trim();
+          if (!key && !label) {
+            return null;
+          }
+          return {
+            key: key || label,
+            label: label || key,
+            numerator: asPositiveNumber(record.numerator),
+            denominator: asPositiveNumber(record.denominator),
+            rate: Number(record.rate || 0),
+            percent: asPositiveNumber(record.percent),
+            benchmark: Number(record.benchmark || 0),
+            status: String(record.status || "bad"),
+            summary: String(record.summary || "").trim(),
+          };
+        })
+        .filter((metric): metric is ApiResearchOfflineEvaluation["metrics"][number] => Boolean(metric))
+    : [];
+  return {
+    generated_at: String(summary.generated_at || new Date().toISOString()),
+    total_reports: asPositiveNumber(summary.total_reports),
+    evaluated_reports: asPositiveNumber(summary.evaluated_reports),
+    invalid_payloads: asPositiveNumber(summary.invalid_payloads),
+    metrics,
+    weakest_reports: Array.isArray(summary.weakest_reports)
+      ? summary.weakest_reports
+          .map((item) => {
+            const record = asRecord(item);
+            return {
+              entry_id: String(record.entry_id || ""),
+              entry_title: String(record.entry_title || ""),
+              report_title: String(record.report_title || ""),
+              keyword: String(record.keyword || ""),
+              weakness_score: asPositiveNumber(record.weakness_score),
+              retrieval_hit: Boolean(record.retrieval_hit),
+              supported_target_accounts: asPositiveNumber(record.supported_target_accounts),
+              unsupported_target_accounts: asPositiveNumber(record.unsupported_target_accounts),
+              unsupported_targets: asStringList(record.unsupported_targets, 6),
+              quota_passed_section_count: asPositiveNumber(record.quota_passed_section_count),
+              quota_total_section_count: asPositiveNumber(record.quota_total_section_count),
+              failing_sections: asStringList(record.failing_sections, 6),
+              official_source_ratio: Number(record.official_source_ratio || 0),
+              strict_match_ratio: Number(record.strict_match_ratio || 0),
+              retrieval_quality: String(record.retrieval_quality || "low"),
+            };
+          })
+          .filter((item) => item.entry_id || item.entry_title || item.report_title)
+      : [],
+    summary_lines: asStringList(summary.summary_lines, 6),
+  };
+}
+
+function parseSnapshotSectionDiagnosticsSummary(
+  metadata: Record<string, unknown> | null | undefined,
+): ReturnType<typeof summarizeResearchCompareSectionDiagnostics> | null {
+  const summary = asRecord(asRecord(metadata).section_diagnostics_summary);
+  if (!Object.keys(summary).length) {
+    return null;
+  }
+  return {
+    sourceReportCount: asPositiveNumber(summary.sourceReportCount ?? summary.source_report_count),
+    weakSectionCount: asPositiveNumber(summary.weakSectionCount ?? summary.weak_section_count),
+    quotaRiskSectionCount: asPositiveNumber(summary.quotaRiskSectionCount ?? summary.quota_risk_section_count),
+    contradictionSectionCount: asPositiveNumber(summary.contradictionSectionCount ?? summary.contradiction_section_count),
+    highlightedSections: asStringList(summary.highlightedSections ?? summary.highlighted_sections, 8),
+  };
 }
 
 function sortEntries(items: ApiKnowledgeEntry[]): ApiKnowledgeEntry[] {
@@ -98,6 +225,7 @@ export function ResearchCompareMatrix({
   const [statusNotice, setStatusNotice] = useState("");
   const [statusTone, setStatusTone] = useState<"success" | "error">("success");
   const [snapshotDetail, setSnapshotDetail] = useState<ApiResearchCompareSnapshotDetail | null>(null);
+  const [offlineEvaluation, setOfflineEvaluation] = useState<ApiResearchOfflineEvaluation | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [snapshotError, setSnapshotError] = useState("");
   const [savingSnapshot, setSavingSnapshot] = useState(false);
@@ -126,6 +254,22 @@ export function ResearchCompareMatrix({
       active = false;
     };
   }, [initialQuery]);
+
+  useEffect(() => {
+    let active = true;
+    getResearchOfflineEvaluation(6)
+      .then((evaluation) => {
+        if (!active) return;
+        setOfflineEvaluation(evaluation);
+      })
+      .catch(() => {
+        if (!active) return;
+        setOfflineEvaluation(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!initialSnapshotId) {
@@ -198,6 +342,27 @@ export function ResearchCompareMatrix({
       }),
     [rows, roleFilter, regionFilter, industryFilter, query],
   );
+  const evidenceSummary = useMemo(() => summarizeResearchCompareEvidence(visibleRows), [visibleRows]);
+  const derivedSectionDiagnosticsSummary = useMemo(
+    () => summarizeResearchCompareSectionDiagnostics(visibleRows),
+    [visibleRows],
+  );
+  const snapshotOfflineEvaluation = useMemo(
+    () => parseSnapshotOfflineEvaluation(snapshotDetail?.metadata_payload),
+    [snapshotDetail],
+  );
+  const snapshotSectionDiagnosticsSummary = useMemo(
+    () => parseSnapshotSectionDiagnosticsSummary(snapshotDetail?.metadata_payload),
+    [snapshotDetail],
+  );
+  const snapshotMetadata = useMemo(() => asRecord(snapshotDetail?.metadata_payload), [snapshotDetail]);
+  const snapshotMetadataOrigin = asCleanString(snapshotMetadata.snapshot_metadata_origin);
+  const snapshotMetadataBackfilledAt = asCleanString(snapshotMetadata.snapshot_metadata_backfilled_at) || null;
+  const snapshotMetadataBackfilledAtLabel = formatSnapshotMetadataTime(snapshotMetadataBackfilledAt);
+  const isLegacyBackfilledSnapshot = snapshotMetadataOrigin === "legacy_backfill";
+  const effectiveOfflineEvaluation = snapshotOfflineEvaluation || offlineEvaluation;
+  const effectiveSectionDiagnosticsSummary = snapshotSectionDiagnosticsSummary || derivedSectionDiagnosticsSummary;
+  const hasFrozenSnapshotMetadata = Boolean(snapshotOfflineEvaluation || snapshotSectionDiagnosticsSummary);
 
   const roleStats = useMemo(
     () =>
@@ -230,6 +395,10 @@ export function ResearchCompareMatrix({
       linkedVersionTitle: snapshotDetail?.report_version_title || undefined,
       linkedVersionRefreshedAt: snapshotDetail?.report_version_refreshed_at || null,
       linkedDiff: snapshotDetail?.linked_report_diff || null,
+      offlineEvaluation: effectiveOfflineEvaluation,
+      hasFrozenSnapshotMetadata,
+      snapshotMetadataOrigin,
+      snapshotMetadataBackfilledAt,
     };
     return {
       markdownFilename: buildResearchCompareExportFilename(exportOptions),
@@ -238,7 +407,9 @@ export function ResearchCompareMatrix({
       markdown: buildResearchCompareMarkdown(visibleRows, exportOptions),
       plainText: buildResearchComparePlainText(visibleRows, exportOptions),
       execBrief: buildResearchCompareExecBrief(visibleRows, exportOptions),
-      evidenceSummary: summarizeResearchCompareEvidence(visibleRows),
+      evidenceSummary,
+      sectionDiagnosticsSummary: effectiveSectionDiagnosticsSummary,
+      offlineEvaluationSnapshot: effectiveOfflineEvaluation,
     };
   };
 
@@ -304,6 +475,10 @@ export function ResearchCompareMatrix({
           snapshot_name: snapshotDetail?.name || "",
           linked_report_diff_status: snapshotDetail?.linked_report_diff?.status || "unavailable",
           evidence_appendix_summary: bundle.evidenceSummary,
+          section_diagnostics_summary: bundle.sectionDiagnosticsSummary,
+          offline_evaluation_snapshot: bundle.offlineEvaluationSnapshot || {},
+          snapshot_metadata_origin: snapshotMetadataOrigin,
+          snapshot_metadata_backfilled_at: snapshotMetadataBackfilledAt,
         },
       });
       setStatusTone("success");
@@ -326,6 +501,7 @@ export function ResearchCompareMatrix({
     if (!name) return;
     setSavingSnapshot(true);
     try {
+      const savedAt = new Date().toISOString();
       const saved = await createResearchCompareSnapshot({
         name,
         query: query.trim(),
@@ -339,6 +515,13 @@ export function ResearchCompareMatrix({
             .join(" / ") || "当前筛选角色"
         }`,
         rows: serializeSnapshotRows(visibleRows),
+        metadata_payload: {
+          evidence_appendix_summary: evidenceSummary,
+          section_diagnostics_summary: derivedSectionDiagnosticsSummary,
+          offline_evaluation_snapshot: offlineEvaluation || {},
+          snapshot_metadata_origin: "saved",
+          snapshot_metadata_saved_at: savedAt,
+        },
       });
       setStatusTone("success");
       setStatusNotice(t("research.compareSnapshotSaved", `已保存对比快照：${saved.name}`));
@@ -384,7 +567,23 @@ export function ResearchCompareMatrix({
                     {t("research.compareSnapshotVersion", "关联版本")} · {snapshotDetail.report_version_title}
                   </span>
                 ) : null}
+                {isLegacyBackfilledSnapshot ? (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                    旧快照已补冻结
+                  </span>
+                ) : hasFrozenSnapshotMetadata ? (
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                    指标时点已冻结
+                  </span>
+                ) : null}
               </div>
+              {isLegacyBackfilledSnapshot ? (
+                <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800">
+                  旧快照已补冻结：该快照原始 metadata 缺失，系统已
+                  {snapshotMetadataBackfilledAtLabel ? `于 ${snapshotMetadataBackfilledAtLabel} ` : ""}
+                  补写章节证据诊断和离线回归快照；当前页面和导出文件都会固定使用这份补冻结时点。
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href={liveCompareHref} className="af-btn af-btn-secondary border px-4 py-2 text-sm">
@@ -511,6 +710,11 @@ export function ResearchCompareMatrix({
             </Link>
           </div>
         </div>
+        {isLegacyBackfilledSnapshot ? (
+          <div className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-800">
+            导出说明 · 旧快照已补冻结。导出 Markdown / PDF / Exec Brief 会在文件头部写入补冻结说明，并沿用补冻结时点的 evidence appendix、section diagnostics 与 offline regression snapshot。
+          </div>
+        ) : null}
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {roleStats.map((item) => (
             <div key={item.role} className="rounded-[24px] border border-white/60 bg-white/72 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
@@ -518,6 +722,86 @@ export function ResearchCompareMatrix({
               <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-900">{item.count}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+          <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Section Diagnostics</p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">章节证据诊断</h3>
+              </div>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
+                来源研报 · {effectiveSectionDiagnosticsSummary.sourceReportCount}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">待补证章节</p>
+                <p className="mt-2 text-2xl font-semibold text-amber-700">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
+              </div>
+              <div className="rounded-[20px] border border-rose-100 bg-rose-50/80 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-rose-600">配额风险</p>
+                <p className="mt-2 text-2xl font-semibold text-rose-700">{effectiveSectionDiagnosticsSummary.quotaRiskSectionCount}</p>
+              </div>
+              <div className="rounded-[20px] border border-slate-200 bg-slate-50/90 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">矛盾章节</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{effectiveSectionDiagnosticsSummary.contradictionSectionCount}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              重点章节 · {effectiveSectionDiagnosticsSummary.highlightedSections.length ? effectiveSectionDiagnosticsSummary.highlightedSections.join(" / ") : "当前筛选下没有显著章节风险。"}
+            </p>
+          </article>
+
+          <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Offline Regression</p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">
+                  {isLegacyBackfilledSnapshot ? "补冻结离线回归" : hasFrozenSnapshotMetadata ? "快照时点离线回归" : "主库离线回归"}
+                </h3>
+              </div>
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
+                {effectiveOfflineEvaluation ? `已评估 ${effectiveOfflineEvaluation.evaluated_reports} 份` : "暂未加载"}
+              </span>
+            </div>
+            {effectiveOfflineEvaluation?.metrics?.length ? (
+              <>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {effectiveOfflineEvaluation.metrics.slice(0, 3).map((metric) => (
+                    <span
+                      key={metric.key}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${offlineStatusTone(metric.status)}`}
+                    >
+                      {metric.label} {metric.percent}% · {offlineStatusLabel(metric.status)}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+                  {effectiveOfflineEvaluation.summary_lines.slice(0, 2).map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+                {effectiveOfflineEvaluation.weakest_reports.length ? (
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    弱样本 · {effectiveOfflineEvaluation.weakest_reports.slice(0, 3).map((item) => item.report_title || item.entry_title).join(" / ")}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-xs text-slate-500">
+                  {isLegacyBackfilledSnapshot
+                    ? `旧快照已补冻结；该面板展示补冻结时点的回归快照${
+                        snapshotMetadataBackfilledAtLabel ? `（${snapshotMetadataBackfilledAtLabel}）` : ""
+                      }。`
+                    : hasFrozenSnapshotMetadata
+                      ? "该面板优先展示 snapshot 保存时冻结的回归快照。"
+                      : "该面板反映的是当前主库离线回归结果；老 snapshot 若未冻结 metadata，仍会读取当前值。"}
+                </p>
+              </>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">当前没有可展示的离线回归结果。</p>
+            )}
+          </article>
         </div>
       </section>
 

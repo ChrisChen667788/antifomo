@@ -219,6 +219,12 @@ export function InboxForm() {
   const guardedReasonLabels = dedupeTextList(
     researchDiagnostics ? getGuardedRewriteReasonLabels(researchDiagnostics) : [],
   );
+  const followupDiagnostics = researchReport?.followup_diagnostics || null;
+  const followupFilters = dedupeTextList([
+    ...(followupDiagnostics?.rebuilt_regions || []),
+    ...(followupDiagnostics?.rebuilt_industries || []),
+    ...(followupDiagnostics?.rebuilt_clients || []),
+  ]);
   const supportedTargetAccounts = dedupeTextList(researchDiagnostics?.supported_target_accounts || []);
   const unsupportedTargetAccounts = dedupeTextList(researchDiagnostics?.unsupported_target_accounts || []);
   const enabledSourceLabels = dedupeTextList(researchDiagnostics?.enabled_source_labels || []);
@@ -1055,6 +1061,54 @@ export function InboxForm() {
                 <p className="mt-1 text-xs leading-5 text-slate-500">
                   这一步会把当前研报结论和你补充的新信息一起送回研究链路，重新检索、交叉验证并生成新版研报。
                 </p>
+                {followupDiagnostics?.enabled ? (
+                  <div className="mt-4 rounded-[20px] border border-amber-200/80 bg-amber-50/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                      二次检索诊断
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {followupDiagnostics.summary || "当前补证输入已接入二次检索。"}
+                    </p>
+                    {followupDiagnostics.planning_focus ? (
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        规划焦点：{followupDiagnostics.planning_focus}
+                      </p>
+                    ) : null}
+                    {followupDiagnostics.input_sections?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {followupDiagnostics.input_sections.map((label) => (
+                          <span key={`followup-input-${label}`} className="rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {followupFilters.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {followupFilters.map((label) => (
+                          <span
+                            key={`followup-filter-${label}`}
+                            className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] text-amber-700"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {followupDiagnostics.decomposition_queries?.length ? (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">优先补证子查询</p>
+                        <div className="space-y-2">
+                          {followupDiagnostics.decomposition_queries.slice(0, 4).map((query) => (
+                            <div key={`followup-query-${query}`} className="rounded-2xl border border-white/90 bg-white/75 px-3 py-2 text-xs leading-5 text-slate-600">
+                              {query}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                   追问重点
                 </label>
