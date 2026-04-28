@@ -35,6 +35,7 @@ from app.schemas.research import (
     ResearchEntityAliasResolveRequest,
     ResearchEntityDetailOut,
     ResearchConnectorStatusOut,
+    ResearchGoldenEvaluationOut,
     ResearchJobCreateRequest,
     ResearchJobOut,
     ResearchJobTimelineEventOut,
@@ -42,6 +43,14 @@ from app.schemas.research import (
     ResearchReportResponse,
     ResearchReportSaveRequest,
     ResearchReportSaveResponse,
+    ResearchRetrievalIndexRebuildOut,
+    ResearchRetrievalIndexRebuildRequest,
+    ResearchRetrievalIndexSearchHitOut,
+    ResearchRetrievalIndexSearchOut,
+    ResearchSectionRetrievalPackOut,
+    ResearchSectionRetrievalPackRequest,
+    ResearchSolutionDeliveryPackOut,
+    ResearchSolutionDeliveryRequest,
     ResearchSavedViewCreateRequest,
     ResearchSavedViewOut,
     ResearchSourceSettingsOut,
@@ -62,7 +71,14 @@ from app.schemas.research import (
     ResearchWatchlistUpdateRequest,
     ResearchWorkspaceOut,
 )
-from app.services.research_evaluation_service import build_offline_research_evaluation
+from app.services.research_solution_intelligence_service import build_market_intelligence_pack, build_solution_delivery_pack
+from app.services.research_evaluation_service import build_golden_research_evaluation, build_offline_research_evaluation
+from app.services.research_retrieval_index_service import (
+    build_research_retrieval_index,
+    rebuild_persistent_research_retrieval_index,
+    search_persistent_research_retrieval_index,
+)
+from app.services.research_section_retrieval_service import build_section_retrieval_packs
 from app.services.daily_brief_service import build_daily_brief_snapshot, serialize_daily_brief
 from app.services.research_conversation_service import (
     add_research_conversation_message,
@@ -580,6 +596,131 @@ def get_research_offline_evaluation(
     return build_offline_research_evaluation(
         db,
         weakest_limit=max(1, min(weakest_limit, 12)),
+    )
+
+
+@router.get("/evaluation/golden", response_model=ResearchGoldenEvaluationOut)
+def get_research_golden_evaluation() -> ResearchGoldenEvaluationOut:
+    return build_golden_research_evaluation()
+
+
+@router.post("/retrieval/section-packs", response_model=list[ResearchSectionRetrievalPackOut])
+def build_research_section_retrieval_packs(
+    payload: ResearchSectionRetrievalPackRequest,
+    db: Session = Depends(get_db),
+) -> list[ResearchSectionRetrievalPackOut]:
+    ensure_demo_user(db)
+    index = build_research_retrieval_index(
+        db,
+        user_id=settings.single_user_id,
+        limit_per_source=payload.limit_per_source,
+    )
+    return build_section_retrieval_packs(
+        payload.report,
+        index,
+        limit_per_section=payload.limit_per_section,
+    )
+
+
+@router.post("/solution-delivery-pack", response_model=ResearchSolutionDeliveryPackOut)
+def build_research_solution_delivery_pack(
+    payload: ResearchSolutionDeliveryRequest,
+) -> ResearchSolutionDeliveryPackOut:
+    return build_solution_delivery_pack(
+        payload.report,
+        scenario=payload.scenario,
+        target_customer=payload.target_customer,
+        vertical_scene=payload.vertical_scene,
+        supplemental_context=payload.supplemental_context,
+    )
+
+
+@router.post("/solution-intelligence/refresh", response_model=ResearchReportResponse)
+def refresh_research_solution_intelligence(
+    payload: ResearchSolutionDeliveryRequest,
+) -> ResearchReportResponse:
+    report = payload.report
+    market_intelligence = build_market_intelligence_pack(
+        report,
+        scenario=payload.scenario,
+        target_customer=payload.target_customer,
+        vertical_scene=payload.vertical_scene,
+    )
+    solution_delivery_pack = build_solution_delivery_pack(
+        report,
+        scenario=payload.scenario,
+        target_customer=payload.target_customer,
+        vertical_scene=payload.vertical_scene,
+        supplemental_context=payload.supplemental_context,
+    )
+    return report.model_copy(
+        update={
+            "market_intelligence": market_intelligence,
+            "solution_delivery_pack": solution_delivery_pack,
+        }
+    )
+
+
+@router.post("/retrieval-index/rebuild", response_model=ResearchRetrievalIndexRebuildOut)
+def rebuild_research_retrieval_index(
+    payload: ResearchRetrievalIndexRebuildRequest,
+    db: Session = Depends(get_db),
+) -> ResearchRetrievalIndexRebuildOut:
+    ensure_demo_user(db)
+    result = rebuild_persistent_research_retrieval_index(
+        db,
+        user_id=settings.single_user_id,
+        limit_per_source=payload.limit_per_source,
+        batch_size=payload.batch_size,
+        max_chunks=payload.max_chunks,
+        resume=payload.resume,
+        reset=payload.reset,
+    )
+    return ResearchRetrievalIndexRebuildOut(**result.to_payload())
+
+
+def _retrieval_hit_out(hit: object) -> ResearchRetrievalIndexSearchHitOut:
+    chunk = hit.chunk  # type: ignore[attr-defined]
+    snippet = str(chunk.text or "").strip()
+    if len(snippet) > 260:
+        snippet = f"{snippet[:260]}..."
+    return ResearchRetrievalIndexSearchHitOut(
+        chunk_id=chunk.chunk_id,
+        document_id=chunk.document_id,
+        document_type=chunk.document_type,
+        title=chunk.title,
+        snippet=snippet,
+        field_key=chunk.field_key,
+        label=chunk.label,
+        source_tier=chunk.source_tier,
+        source_url=chunk.source_url,
+        topic_id=chunk.topic_id,
+        topic_name=chunk.topic_name,
+        score=round(float(getattr(hit, "score", 0.0) or 0.0), 4),
+        matched_terms=list(getattr(hit, "matched_terms", ()) or ()),
+        match_modes=list(getattr(hit, "match_modes", ()) or ()),
+    )
+
+
+@router.get("/retrieval-index/search", response_model=ResearchRetrievalIndexSearchOut)
+def search_research_retrieval_index_endpoint(
+    query: str,
+    limit: int = 10,
+    topic_id: str | None = None,
+    db: Session = Depends(get_db),
+) -> ResearchRetrievalIndexSearchOut:
+    ensure_demo_user(db)
+    hits = search_persistent_research_retrieval_index(
+        db,
+        query,
+        user_id=settings.single_user_id,
+        limit=max(1, min(limit, 40)),
+        topic_id=topic_id,
+    )
+    return ResearchRetrievalIndexSearchOut(
+        query=query,
+        hit_count=len(hits),
+        hits=[_retrieval_hit_out(hit) for hit in hits],
     )
 
 

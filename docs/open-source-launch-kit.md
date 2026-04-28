@@ -2,18 +2,26 @@
 
 ## One-line pitch
 
-Anti-FOMO is an open-source research workspace for high-signal intake, WeChat-first collection, AI-assisted reports, focus sessions, and action cards.
+Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
 
 ## GitHub About
 
 ### Description
 
-Open-source AI research workspace for signal triage, WeChat-first collection, focus sessions, and action cards.
+Open-source AI research workspace for turning noisy web + WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+
+### Homepage
+
+`https://github.com/ChrisChen667788/antifomo#quick-start`
 
 ### Topics
 
 - `research-workspace`
 - `wechat`
+- `market-intelligence`
+- `sales-intelligence`
+- `competitive-intelligence`
+- `rag`
 - `nextjs`
 - `fastapi`
 - `knowledge-management`
@@ -22,59 +30,61 @@ Open-source AI research workspace for signal triage, WeChat-first collection, fo
 
 ## Short launch summary
 
-Anti-FOMO is now open source. The project combines collection, filtering, research, focus sessions, and action outputs into one workflow, with a strong emphasis on WeChat-heavy information environments and actionable research artifacts.
+Anti-FOMO is an open-source workspace for people who need more than save-later and AI summaries. It combines collection, filtering, retrieval-backed research, focus sessions, and action outputs into one workflow, with a strong emphasis on WeChat-heavy information environments and evidence-aware delivery artifacts.
 
-## Release callout for v0.1.0
+## Release callout for the current baseline
 
 Highlights:
 
-- open-source preview published
-- web app, backend, browser extension, and miniapp all included
-- public repository sanitized for release
-- local-first demo flow available without external keys
+- research center, compare workspace, archives, watchlists, and daily brief
+- retrieval-backed report quality layer with section evidence diagnostics
+- WeChat-first collection chain, collector ops, browser extension, and miniapp shell
+- market-intelligence packs, formal document export, and client-facing delivery outlines
+- local-first demo flow with testable Next.js + FastAPI stack
 
 ## X / Twitter post
 
 Open sourced Anti-FOMO today.
 
-It is a research workspace for turning noisy information flows into useful output:
+It is an open-source AI research workspace for turning noisy web and WeChat signals into useful output:
 
 - WeChat-first collection
-- AI-assisted report drafts
-- focus sessions
-- action cards
-- local-first demo flow
+- evidence-backed report drafts
+- retrieval-backed quality checks
+- focus sessions and action cards
+- formal delivery exports
 
 Repo: https://github.com/ChrisChen667788/antifomo
-Release: https://github.com/ChrisChen667788/antifomo/releases/tag/v0.1.0
+Quick start: https://github.com/ChrisChen667788/antifomo#quick-start
 
 ## LinkedIn post
 
 I just open sourced Anti-FOMO.
 
-The project grew out of a simple frustration: a lot of information tools stop at saving links or generating summaries, but real work needs a full loop from collection to research to action.
+The project grew out of a simple frustration: a lot of information tools stop at saving links or generating summaries, but real work needs a full loop from collection to research to execution.
 
 Anti-FOMO is my attempt to bring those pieces together:
 
 - WeChat-first collection workflows
-- AI-assisted report drafting
+- evidence-backed report drafting
+- retrieval-backed research quality checks
 - focus sessions for execution
-- action cards and reusable research outputs
+- action cards and reusable delivery outputs
 - a local-first demo setup that is easy to inspect and extend
 
 Repository: https://github.com/ChrisChen667788/antifomo
 
 ## Hacker News title ideas
 
-- Show HN: Anti-FOMO, an open-source WeChat-first research workspace
-- Show HN: Anti-FOMO, a local-first workspace for research, focus sessions, and action cards
-- Show HN: An open-source workflow for collection, AI reports, and action cards
+- Show HN: Anti-FOMO, an open-source WeChat-first AI research workspace
+- Show HN: Anti-FOMO, a local-first workspace for evidence-backed reports and action workflows
+- Show HN: An open-source workflow for collection, research, compare, and follow-up
 
 ## Reddit title ideas
 
-- Open source: Anti-FOMO, a research workspace for WeChat-first collection and AI-assisted reports
-- I built an open-source workspace for collection, research, focus sessions, and action cards
-- Anti-FOMO is now open source: local-first research workflow with Next.js and FastAPI
+- Open source: Anti-FOMO, a research workspace for noisy web + WeChat signals
+- I built an open-source workspace for collection, evidence-backed reports, and execution
+- Anti-FOMO is now open source: local-first AI research workflow with Next.js and FastAPI
 
 ## Screenshot order for README and social posts
 
@@ -95,4 +105,4 @@ Upload:
 
 Recommended alt text:
 
-Anti-FOMO, an open-source AI research workspace for signal triage, WeChat-first collection, focus sessions, and action cards.
+Anti-FOMO, an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.

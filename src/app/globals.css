@@ -18,16 +18,17 @@
   --text-strong: #0f172a;
   --text-soft: #525256;
   --af-font-scale: 1;
-  --af-font-family:
+  --font-geist-sans:
     "SF Pro Display",
     "SF Pro Text",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    var(--font-geist-sans),
     "PingFang SC",
     "Helvetica Neue",
     sans-serif;
+  --font-geist-mono: "SF Mono", "Menlo", "Monaco", "JetBrains Mono", "Cascadia Mono", monospace;
+  --af-font-family: var(--font-geist-sans);
   --orb-left: radial-gradient(circle at center, rgba(51, 112, 255, 0.18), transparent 68%);
   --orb-right: radial-gradient(circle at center, rgba(46, 208, 173, 0.18), transparent 70%);
   color-scheme: light;
@@ -67,16 +68,7 @@ html[data-af-text-size="lg"] {
 }
 
 html[data-af-font="system"] {
-  --af-font-family:
-    "SF Pro Display",
-    "SF Pro Text",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    var(--font-geist-sans),
-    "PingFang SC",
-    "Helvetica Neue",
-    sans-serif;
+  --af-font-family: var(--font-geist-sans);
 }
 
 html[data-af-font="serif"] {

@@ -107,6 +107,68 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
         statements.append(
             "ALTER TABLE research_compare_snapshots ADD COLUMN metadata_payload JSON NULL"
         )
+    if not _table_exists(engine, "research_retrieval_index_chunks"):
+        statements.extend(
+            [
+                """
+                CREATE TABLE research_retrieval_index_chunks (
+                    id CHAR(32) NOT NULL PRIMARY KEY,
+                    user_id CHAR(32) NOT NULL,
+                    chunk_key VARCHAR(160) NOT NULL,
+                    schema_version INTEGER NOT NULL DEFAULT 1,
+                    document_id VARCHAR(80) NOT NULL,
+                    document_type VARCHAR(40) NOT NULL,
+                    title TEXT NOT NULL DEFAULT '',
+                    text TEXT NOT NULL DEFAULT '',
+                    field_key VARCHAR(80) NOT NULL DEFAULT 'content',
+                    label VARCHAR(120) NOT NULL DEFAULT '',
+                    source_tier VARCHAR(20) NOT NULL DEFAULT 'media',
+                    source_url TEXT NOT NULL DEFAULT '',
+                    parent_chunk_id VARCHAR(160) NOT NULL DEFAULT '',
+                    topic_id VARCHAR(80) NOT NULL DEFAULT '',
+                    topic_name VARCHAR(120) NOT NULL DEFAULT '',
+                    region VARCHAR(80) NOT NULL DEFAULT '',
+                    industry VARCHAR(80) NOT NULL DEFAULT '',
+                    priority INTEGER NOT NULL DEFAULT 0,
+                    metadata_payload JSON NOT NULL DEFAULT '{}',
+                    indexed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uq_research_retrieval_chunks_user_key UNIQUE (user_id, chunk_key),
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_research_retrieval_chunks_user_updated ON research_retrieval_index_chunks (user_id, updated_at)",
+                "CREATE INDEX IF NOT EXISTS idx_research_retrieval_chunks_document ON research_retrieval_index_chunks (document_type, document_id)",
+                "CREATE INDEX IF NOT EXISTS idx_research_retrieval_chunks_topic ON research_retrieval_index_chunks (topic_id)",
+                "CREATE INDEX IF NOT EXISTS idx_research_retrieval_chunks_source_tier ON research_retrieval_index_chunks (source_tier)",
+            ]
+        )
+    if not _table_exists(engine, "research_retrieval_index_checkpoints"):
+        statements.extend(
+            [
+                """
+                CREATE TABLE research_retrieval_index_checkpoints (
+                    id CHAR(32) NOT NULL PRIMARY KEY,
+                    user_id CHAR(32) NOT NULL,
+                    schema_version INTEGER NOT NULL DEFAULT 1,
+                    backend VARCHAR(30) NOT NULL DEFAULT 'sqlite',
+                    status VARCHAR(20) NOT NULL DEFAULT 'idle',
+                    total_chunks INTEGER NOT NULL DEFAULT 0,
+                    indexed_chunks INTEGER NOT NULL DEFAULT 0,
+                    next_offset INTEGER NOT NULL DEFAULT 0,
+                    checkpoint_payload JSON NOT NULL DEFAULT '{}',
+                    started_at DATETIME NULL,
+                    completed_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uq_research_retrieval_checkpoint_user_schema UNIQUE (user_id, schema_version, backend),
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_research_retrieval_checkpoint_user_updated ON research_retrieval_index_checkpoints (user_id, updated_at)",
+            ]
+        )
 
     if not statements:
         return

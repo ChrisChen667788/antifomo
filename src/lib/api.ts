@@ -385,6 +385,150 @@ export interface ApiResearchReviewQueueItem {
   resolved_at?: string | null;
 }
 
+export interface ApiResearchQualityDimension {
+  key: "professional_rigor" | "intelligence_value" | "actionability" | "evidence_strength";
+  label: string;
+  score: number;
+  status: "strong" | "usable" | "weak";
+  summary: string;
+  evidence: string[];
+  next_steps: string[];
+}
+
+export interface ApiResearchMethodologyAxis {
+  key: string;
+  label: string;
+  checkpoints: string[];
+  passed: string[];
+  missing: string[];
+  implication: string;
+}
+
+export interface ApiResearchIndustryMethodology {
+  industry_key: string;
+  industry_label: string;
+  framework_name: string;
+  summary: string;
+  axes: ApiResearchMethodologyAxis[];
+  recommended_questions: string[];
+}
+
+export interface ApiResearchSectionEvidencePack {
+  section_title: string;
+  status: "ready" | "degraded" | "needs_evidence";
+  support_score: number;
+  evidence_count: number;
+  official_evidence_count: number;
+  quota_gap: number;
+  source_titles: string[];
+  risks: string[];
+  next_steps: string[];
+}
+
+export interface ApiResearchSectionRetrievalHit {
+  chunk_id: string;
+  document_id: string;
+  document_type: string;
+  title: string;
+  snippet: string;
+  field_key: string;
+  label: string;
+  source_tier: "official" | "media" | "aggregate";
+  source_url: string;
+  score: number;
+  matched_terms: string[];
+  match_modes: string[];
+}
+
+export interface ApiResearchSectionRetrievalPack {
+  section_title: string;
+  query: string;
+  target_axes: string[];
+  status: "ready" | "degraded" | "needs_evidence";
+  hit_count: number;
+  official_hit_count: number;
+  support_score: number;
+  hits: ApiResearchSectionRetrievalHit[];
+  missing_terms: string[];
+  next_steps: string[];
+}
+
+export interface ApiResearchQualityProfile {
+  overall_score: number;
+  status: "high_value" | "usable" | "needs_evidence";
+  headline: string;
+  professional_score: number;
+  intelligence_value_score: number;
+  actionability_score: number;
+  evidence_score: number;
+  dimensions: ApiResearchQualityDimension[];
+  methodology: ApiResearchIndustryMethodology;
+  section_evidence_packs: ApiResearchSectionEvidencePack[];
+  section_retrieval_packs: ApiResearchSectionRetrievalPack[];
+  strengths: string[];
+  gaps: string[];
+  next_actions: string[];
+}
+
+export interface ApiResearchTenderProject {
+  project_name: string;
+  buyer: string;
+  region: string;
+  industry_or_scene: string;
+  notice_type: string;
+  publish_date: string;
+  amount: string;
+  winning_vendor: string;
+  source_title: string;
+  source_url: string;
+  source_tier: "official" | "media" | "aggregate";
+  relevance_score: number;
+  extracted_requirements: string[];
+  technical_parameters: string[];
+}
+
+export interface ApiResearchProductRequirement {
+  name: string;
+  category: string;
+  source_context: string;
+  evidence_urls: string[];
+  linked_projects: string[];
+  technical_parameters: string[];
+}
+
+export interface ApiResearchMarketIntelligencePack {
+  lookback_years: number;
+  window_start: string;
+  window_end: string;
+  source_scope_summary: string;
+  tender_projects: ApiResearchTenderProject[];
+  tender_keywords: string[];
+  product_catalog: ApiResearchProductRequirement[];
+  technical_parameter_catalog: ApiResearchProductRequirement[];
+  external_source_queries: string[];
+  intelligence_gaps: string[];
+  export_markdown: string;
+}
+
+export interface ApiResearchSolutionOutlineSection {
+  title: string;
+  bullets: string[];
+}
+
+export interface ApiResearchSolutionDeliveryPack {
+  scenario: string;
+  target_customer: string;
+  vertical_scene: string;
+  clarification_questions: string[];
+  intelligence_summary: string[];
+  feasibility_outline: ApiResearchSolutionOutlineSection[];
+  project_proposal_outline: ApiResearchSolutionOutlineSection[];
+  client_ppt_outline: ApiResearchSolutionOutlineSection[];
+  review_checklist: string[];
+  next_steps: string[];
+  export_markdown: string;
+}
+
 export interface ApiResearchFollowupContext {
   followup_report_title: string;
   followup_report_summary: string;
@@ -455,6 +599,9 @@ export interface ApiResearchReport {
   commercial_summary?: ApiResearchCommercialSummary;
   technical_appendix?: ApiResearchTechnicalAppendix;
   review_queue?: ApiResearchReviewQueueItem[];
+  quality_profile?: ApiResearchQualityProfile;
+  market_intelligence?: ApiResearchMarketIntelligencePack;
+  solution_delivery_pack?: ApiResearchSolutionDeliveryPack;
   generated_at: string;
 }
 
@@ -987,6 +1134,68 @@ export interface ApiResearchOfflineEvaluation {
   metrics: ApiResearchOfflineEvaluationMetric[];
   weakest_reports: ApiResearchOfflineEvaluationWeakReport[];
   summary_lines: string[];
+}
+
+export interface ApiResearchGoldenEvaluationCase {
+  case_id: string;
+  title: string;
+  expected_methodology: string;
+  professional_score: number;
+  intelligence_value_score: number;
+  target_support_rate: number;
+  section_quota_pass_rate: number;
+  passed: boolean;
+  issues: string[];
+}
+
+export interface ApiResearchGoldenEvaluation {
+  generated_at: string;
+  total_cases: number;
+  passed_cases: number;
+  average_professional_score: number;
+  average_intelligence_value_score: number;
+  average_target_support_rate: number;
+  average_section_quota_pass_rate: number;
+  cases: ApiResearchGoldenEvaluationCase[];
+  summary_lines: string[];
+}
+
+export interface ApiResearchRetrievalIndexRebuildResult {
+  user_id: string;
+  schema_version: number;
+  total_chunks: number;
+  indexed_chunks: number;
+  start_offset: number;
+  next_offset: number;
+  completed: boolean;
+  batch_commits: number;
+  source_counts: Record<string, number>;
+  backend: string;
+  checkpoint_status: "idle" | "running" | "completed" | "failed" | string;
+  message: string;
+}
+
+export interface ApiResearchRetrievalIndexSearchHit {
+  chunk_id: string;
+  document_id: string;
+  document_type: string;
+  title: string;
+  snippet: string;
+  field_key: string;
+  label: string;
+  source_tier: "official" | "media" | "aggregate";
+  source_url: string;
+  topic_id: string;
+  topic_name: string;
+  score: number;
+  matched_terms: string[];
+  match_modes: string[];
+}
+
+export interface ApiResearchRetrievalIndexSearchResult {
+  query: string;
+  hit_count: number;
+  hits: ApiResearchRetrievalIndexSearchHit[];
 }
 
 export interface ApiResearchTrackingTopicRefresh {
@@ -2150,6 +2359,91 @@ export function getResearchOfflineEvaluation(weakestLimit = 6): Promise<ApiResea
   }));
 }
 
+export function getResearchGoldenEvaluation(): Promise<ApiResearchGoldenEvaluation> {
+  return request<ApiResearchGoldenEvaluation>("/api/research/evaluation/golden", {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_cases: 0,
+    passed_cases: 0,
+    average_professional_score: 0,
+    average_intelligence_value_score: 0,
+    average_target_support_rate: 0,
+    average_section_quota_pass_rate: 0,
+    cases: [],
+    summary_lines: [],
+  }));
+}
+
+export function buildResearchSectionRetrievalPacks(payload: {
+  report: ApiResearchReport;
+  limit_per_section?: number;
+  limit_per_source?: number;
+}): Promise<ApiResearchSectionRetrievalPack[]> {
+  return request<ApiResearchSectionRetrievalPack[]>("/api/research/retrieval/section-packs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function buildResearchSolutionDeliveryPack(payload: {
+  report: ApiResearchReport;
+  scenario?: string;
+  target_customer?: string;
+  vertical_scene?: string;
+  supplemental_context?: string;
+  detail_level?: "outline" | "review_draft" | "final";
+}): Promise<ApiResearchSolutionDeliveryPack> {
+  return request<ApiResearchSolutionDeliveryPack>("/api/research/solution-delivery-pack", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function refreshResearchSolutionIntelligence(payload: {
+  report: ApiResearchReport;
+  scenario?: string;
+  target_customer?: string;
+  vertical_scene?: string;
+  supplemental_context?: string;
+  detail_level?: "outline" | "review_draft" | "final";
+}): Promise<ApiResearchReport> {
+  return request<ApiResearchReport>("/api/research/solution-intelligence/refresh", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function rebuildResearchRetrievalIndex(payload: {
+  limit_per_source?: number;
+  batch_size?: number;
+  max_chunks?: number | null;
+  resume?: boolean;
+  reset?: boolean;
+} = {}): Promise<ApiResearchRetrievalIndexRebuildResult> {
+  return request<ApiResearchRetrievalIndexRebuildResult>("/api/research/retrieval-index/rebuild", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function searchResearchRetrievalIndex(
+  query: string,
+  options: { limit?: number; topic_id?: string | null } = {},
+): Promise<ApiResearchRetrievalIndexSearchResult> {
+  const params = new URLSearchParams();
+  params.set("query", query);
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.topic_id) {
+    params.set("topic_id", options.topic_id);
+  }
+  return request<ApiResearchRetrievalIndexSearchResult>(`/api/research/retrieval-index/search?${params.toString()}`, {
+    method: "GET",
+  });
+}
+
 export function rewriteLowQualityResearchReviewItem(entryId: string): Promise<ApiResearchLowQualityReviewActionResponse> {
   return request<ApiResearchLowQualityReviewActionResponse>(`/api/research/review-queue/low-quality/${entryId}/rewrite`, {
     method: "POST",
@@ -2814,6 +3108,8 @@ export function sendWorkBuddyWebhook(payload: {
     | "export_feasibility_study_pdf"
     | "export_project_proposal_word"
     | "export_project_proposal_pdf"
+    | "export_research_market_intelligence_markdown"
+    | "export_research_solution_delivery_markdown"
     | "export_exec_brief"
     | "export_sales_brief"
     | "export_outreach_draft"
@@ -2841,6 +3137,8 @@ export function createTask(payload: {
     | "export_feasibility_study_pdf"
     | "export_project_proposal_word"
     | "export_project_proposal_pdf"
+    | "export_research_market_intelligence_markdown"
+    | "export_research_solution_delivery_markdown"
     | "export_exec_brief"
     | "export_sales_brief"
     | "export_outreach_draft"
