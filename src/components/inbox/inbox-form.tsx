@@ -14,6 +14,7 @@ import {
   createTask,
   getResearchJob,
   listKnowledgeEntries,
+  refreshResearchSolutionIntelligence,
   saveResearchActionCards,
   saveResearchReport,
 } from "@/lib/api";
@@ -39,6 +40,9 @@ type ResearchFormalExportFormat =
 type ResearchDeliverySupplement = {
   project_name: string;
   project_owner: string;
+  solution_scenario: string;
+  target_customer: string;
+  vertical_scene: string;
   project_region: string;
   implementation_window: string;
   investment_estimate: string;
@@ -55,6 +59,17 @@ function buildResearchDeliverySupplement(report: ApiResearchReport): ResearchDel
   return {
     project_name: report.report_title || report.keyword,
     project_owner: report.top_target_accounts?.[0]?.name || report.target_accounts?.[0] || "",
+    solution_scenario: report.solution_delivery_pack?.scenario || report.keyword,
+    target_customer:
+      report.solution_delivery_pack?.target_customer ||
+      report.top_target_accounts?.[0]?.name ||
+      report.target_accounts?.[0] ||
+      "",
+    vertical_scene:
+      report.solution_delivery_pack?.vertical_scene ||
+      report.research_focus ||
+      report.market_intelligence?.tender_projects?.[0]?.industry_or_scene ||
+      "",
     project_region: report.source_diagnostics?.scope_regions?.join(" / ") || "",
     implementation_window: report.tender_timeline?.[0] || "",
     investment_estimate: report.budget_signals?.[0] || "",
@@ -200,6 +215,9 @@ export function InboxForm() {
   const [deliverySupplement, setDeliverySupplement] = useState<ResearchDeliverySupplement>({
     project_name: "",
     project_owner: "",
+    solution_scenario: "",
+    target_customer: "",
+    vertical_scene: "",
     project_region: "",
     implementation_window: "",
     investment_estimate: "",
@@ -212,6 +230,10 @@ export function InboxForm() {
     supplemental_requirements: "",
   });
   const [exportingFormalDocument, setExportingFormalDocument] = useState<ResearchFormalExportFormat>("");
+  const [refreshingSolutionIntelligence, setRefreshingSolutionIntelligence] = useState(false);
+  const [exportingSolutionArtifact, setExportingSolutionArtifact] = useState<
+    "" | "market_intelligence_markdown" | "solution_delivery_markdown"
+  >("");
   const [planningResearchActions, setPlanningResearchActions] = useState(false);
   const [savingResearchActions, setSavingResearchActions] = useState(false);
   const [seededConversationJobId, setSeededConversationJobId] = useState("");
@@ -660,6 +682,64 @@ export function InboxForm() {
       );
     } finally {
       setExportingFormalDocument("");
+    }
+  };
+
+  const refreshSolutionIntelligence = async () => {
+    if (!researchReport) return;
+    setRefreshingSolutionIntelligence(true);
+    setResearchMessage("");
+    try {
+      const nextReport = await refreshResearchSolutionIntelligence({
+        report: researchReport,
+        scenario: deliverySupplement.solution_scenario,
+        target_customer: deliverySupplement.target_customer || deliverySupplement.project_owner,
+        vertical_scene: deliverySupplement.vertical_scene,
+        supplemental_context: deliverySupplement.supplemental_context,
+        detail_level: "review_draft",
+      });
+      setResearchReport(nextReport);
+      setResearchMessage("已按当前场景/客户/垂直场景重建近三年情报包和方案交付大纲。");
+    } catch {
+      setResearchMessage("重建近三年情报包和方案交付大纲失败，请稍后重试。");
+    } finally {
+      setRefreshingSolutionIntelligence(false);
+    }
+  };
+
+  const exportSolutionArtifact = async (
+    kind: "market_intelligence_markdown" | "solution_delivery_markdown",
+  ) => {
+    if (!researchReport) return;
+    setExportingSolutionArtifact(kind);
+    setResearchMessage("");
+    const taskType =
+      kind === "market_intelligence_markdown"
+        ? "export_research_market_intelligence_markdown"
+        : "export_research_solution_delivery_markdown";
+    try {
+      const task = await createTask({
+        task_type: taskType,
+        input_payload: {
+          report: researchReport,
+          output_language: preferences.language,
+          delivery_supplement: deliverySupplement,
+        },
+      });
+      downloadResearchTask(task);
+      setResearchMessage(
+        kind === "market_intelligence_markdown"
+          ? "近三年招投标/产品/技术参数情报包已导出"
+          : "方案交付包与对客汇报 PPT 大纲已导出",
+      );
+    } catch {
+      setResearchMessage(
+        kind === "market_intelligence_markdown"
+          ? "导出近三年情报包失败，请稍后重试"
+          : "导出方案交付包失败，请稍后重试",
+      );
+    } finally {
+      setExportingSolutionArtifact("");
     }
   };
 
@@ -1179,11 +1259,47 @@ export function InboxForm() {
               </div>
 
               <div className="rounded-[24px] border border-white/80 bg-white/68 p-4">
-                <p className="text-sm font-semibold text-slate-900">正式文档输出</p>
+                <p className="text-sm font-semibold text-slate-900">正式文档与方案交付输出</p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  输出前可补充项目名称、建设单位、区域、投资口径和交叉验证说明，导出时会自动套用正式模板。
+                  先确认具体场景、目标客户和垂直场景，再导出近三年情报包、方案/PPT 大纲、可研和项目建议书。
                 </p>
                 <div className="mt-4 grid gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      解决方案场景
+                    </label>
+                    <input
+                      type="text"
+                      value={deliverySupplement.solution_scenario}
+                      onChange={(event) => updateDeliverySupplementField("solution_scenario", event.target.value)}
+                      placeholder="例如：电商数字人 / 文旅AIGC平台 / AI营销平台 / 政务AI解决方案"
+                      className="af-input mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      目标客户
+                    </label>
+                    <input
+                      type="text"
+                      value={deliverySupplement.target_customer}
+                      onChange={(event) => updateDeliverySupplementField("target_customer", event.target.value)}
+                      placeholder="例如：某文旅集团 / 某电商平台 / 某市数据局"
+                      className="af-input mt-2"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      更垂直的场景
+                    </label>
+                    <input
+                      type="text"
+                      value={deliverySupplement.vertical_scene}
+                      onChange={(event) => updateDeliverySupplementField("vertical_scene", event.target.value)}
+                      placeholder="例如：景区数字人导览 / 私域AI营销助手 / 政务热线AI坐席"
+                      className="af-input mt-2"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                       项目名称
@@ -1244,6 +1360,38 @@ export function InboxForm() {
                       className="af-input mt-2"
                     />
                   </div>
+                </div>
+                <div className="mt-4 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void refreshSolutionIntelligence();
+                    }}
+                    disabled={refreshingSolutionIntelligence}
+                    className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {refreshingSolutionIntelligence ? "重建中..." : "按当前场景重建情报包与方案大纲"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void exportSolutionArtifact("market_intelligence_markdown");
+                    }}
+                    disabled={!!exportingSolutionArtifact}
+                    className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {exportingSolutionArtifact === "market_intelligence_markdown" ? "导出中..." : "导出近三年情报包 Markdown"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void exportSolutionArtifact("solution_delivery_markdown");
+                    }}
+                    disabled={!!exportingSolutionArtifact}
+                    className="af-btn af-btn-primary px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {exportingSolutionArtifact === "solution_delivery_markdown" ? "导出中..." : "导出方案交付包 / PPT 大纲 Markdown"}
+                  </button>
                 </div>
                 <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                   建设依据 / 报告引用口径

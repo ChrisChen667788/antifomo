@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import desc, select
+from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -15,6 +16,8 @@ from app.models.research_entities import (
     ResearchCompareSnapshot,
     ResearchMarkdownArchive,
     ResearchReportVersion,
+    ResearchRetrievalIndexBuildCheckpoint,
+    ResearchRetrievalIndexChunkRecord,
     ResearchTrackingTopic,
 )
 from app.services.content_extractor import normalize_text
@@ -121,6 +124,38 @@ class ResearchRetrievalIndexHit:
             "lexical_overlap": self.lexical_overlap,
             "dense_similarity": round(self.dense_similarity, 4),
             "exact_query_hit": self.exact_query_hit,
+        }
+
+
+@dataclass(slots=True)
+class ResearchRetrievalIndexRebuildResult:
+    user_id: str
+    schema_version: int
+    total_chunks: int
+    indexed_chunks: int
+    start_offset: int
+    next_offset: int
+    completed: bool
+    batch_commits: int
+    source_counts: dict[str, int]
+    backend: str = "sqlite"
+    checkpoint_status: str = "idle"
+    message: str = ""
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "schema_version": self.schema_version,
+            "total_chunks": self.total_chunks,
+            "indexed_chunks": self.indexed_chunks,
+            "start_offset": self.start_offset,
+            "next_offset": self.next_offset,
+            "completed": self.completed,
+            "batch_commits": self.batch_commits,
+            "source_counts": dict(self.source_counts),
+            "backend": self.backend,
+            "checkpoint_status": self.checkpoint_status,
+            "message": self.message,
         }
 
 
@@ -682,3 +717,286 @@ def search_research_retrieval_index(
         if len(hits) >= max(1, min(limit, 40)):
             break
     return hits
+
+
+def _chunk_key(chunk: ResearchRetrievalIndexChunk) -> str:
+    raw = "|".join(
+        [
+            chunk.document_type,
+            chunk.document_id,
+            chunk.field_key,
+            chunk.label,
+            chunk.source_url,
+            normalize_text(chunk.text)[:500],
+        ]
+    )
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _record_to_chunk(record: ResearchRetrievalIndexChunkRecord) -> ResearchRetrievalIndexChunk:
+    return ResearchRetrievalIndexChunk(
+        chunk_id=record.chunk_key,
+        document_id=record.document_id,
+        document_type=record.document_type,
+        title=record.title,
+        text=record.text,
+        field_key=record.field_key,
+        label=record.label,
+        source_tier=_safe_source_tier(record.source_tier),
+        source_url=record.source_url,
+        parent_chunk_id=record.parent_chunk_id,
+        topic_id=record.topic_id,
+        topic_name=record.topic_name,
+        region=record.region,
+        industry=record.industry,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        priority=int(record.priority or 0),
+        metadata=dict(record.metadata_payload or {}),
+    )
+
+
+def _apply_chunk_to_record(
+    record: ResearchRetrievalIndexChunkRecord,
+    *,
+    chunk: ResearchRetrievalIndexChunk,
+    user_id: UUID,
+    chunk_key: str,
+) -> None:
+    record.user_id = user_id
+    record.chunk_key = chunk_key
+    record.schema_version = RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION
+    record.document_id = chunk.document_id
+    record.document_type = chunk.document_type
+    record.title = chunk.title
+    record.text = chunk.text
+    record.field_key = chunk.field_key
+    record.label = chunk.label
+    record.source_tier = _safe_source_tier(chunk.source_tier)
+    record.source_url = chunk.source_url
+    record.parent_chunk_id = chunk.parent_chunk_id
+    record.topic_id = chunk.topic_id
+    record.topic_name = chunk.topic_name
+    record.region = chunk.region
+    record.industry = chunk.industry
+    record.priority = int(chunk.priority or 0)
+    record.metadata_payload = dict(chunk.metadata or {})
+    record.indexed_at = datetime.now(timezone.utc)
+
+
+def persist_research_retrieval_index_chunks(
+    db: Session,
+    chunks: list[ResearchRetrievalIndexChunk],
+    *,
+    user_id: UUID | None = None,
+    commit: bool = True,
+) -> int:
+    settings = get_settings()
+    resolved_user_id = user_id or settings.single_user_id
+    chunk_keys = [_chunk_key(chunk) for chunk in chunks]
+    existing_records = db.scalars(
+        select(ResearchRetrievalIndexChunkRecord)
+        .where(ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id)
+        .where(ResearchRetrievalIndexChunkRecord.chunk_key.in_(chunk_keys))
+    ).all() if chunk_keys else []
+    by_key = {record.chunk_key: record for record in existing_records}
+    indexed = 0
+    for chunk, key in zip(chunks, chunk_keys, strict=True):
+        record = by_key.get(key)
+        if record is None:
+            record = ResearchRetrievalIndexChunkRecord(user_id=resolved_user_id, chunk_key=key)
+            db.add(record)
+        _apply_chunk_to_record(record, chunk=chunk, user_id=resolved_user_id, chunk_key=key)
+        indexed += 1
+    if commit:
+        db.commit()
+    return indexed
+
+
+def _get_or_create_checkpoint(
+    db: Session,
+    *,
+    user_id: UUID,
+    backend: str = "sqlite",
+) -> ResearchRetrievalIndexBuildCheckpoint:
+    checkpoint = db.scalars(
+        select(ResearchRetrievalIndexBuildCheckpoint)
+        .where(ResearchRetrievalIndexBuildCheckpoint.user_id == user_id)
+        .where(ResearchRetrievalIndexBuildCheckpoint.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
+        .where(ResearchRetrievalIndexBuildCheckpoint.backend == backend)
+    ).first()
+    if checkpoint is not None:
+        return checkpoint
+    checkpoint = ResearchRetrievalIndexBuildCheckpoint(
+        user_id=user_id,
+        schema_version=RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
+        backend=backend,
+        status="idle",
+    )
+    db.add(checkpoint)
+    db.flush()
+    return checkpoint
+
+
+def _update_checkpoint(
+    db: Session,
+    *,
+    user_id: UUID,
+    total_chunks: int,
+    indexed_chunks: int,
+    next_offset: int,
+    status: str,
+    source_counts: dict[str, int],
+    backend: str = "sqlite",
+) -> ResearchRetrievalIndexBuildCheckpoint:
+    checkpoint = _get_or_create_checkpoint(db, user_id=user_id, backend=backend)
+    now = datetime.now(timezone.utc)
+    checkpoint.status = status
+    checkpoint.total_chunks = total_chunks
+    checkpoint.indexed_chunks = indexed_chunks
+    checkpoint.next_offset = next_offset
+    checkpoint.checkpoint_payload = {
+        "source_counts": dict(source_counts),
+        "schema_version": RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
+        "updated_at": now.isoformat(),
+    }
+    if status == "running" and checkpoint.started_at is None:
+        checkpoint.started_at = now
+    if status == "completed":
+        checkpoint.completed_at = now
+    return checkpoint
+
+
+def rebuild_persistent_research_retrieval_index(
+    db: Session,
+    *,
+    user_id: UUID | None = None,
+    limit_per_source: int = 240,
+    batch_size: int = 200,
+    max_chunks: int | None = None,
+    resume: bool = True,
+    reset: bool = False,
+) -> ResearchRetrievalIndexRebuildResult:
+    settings = get_settings()
+    resolved_user_id = user_id or settings.single_user_id
+    index = build_research_retrieval_index(db, user_id=resolved_user_id, limit_per_source=limit_per_source)
+    checkpoint = _get_or_create_checkpoint(db, user_id=resolved_user_id)
+    start_offset = int(checkpoint.next_offset or 0) if resume and checkpoint.status == "running" and not reset else 0
+    if reset:
+        db.execute(delete(ResearchRetrievalIndexChunkRecord).where(ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id))
+        start_offset = 0
+    total_chunks = len(index.chunks)
+    capped_batch_size = max(1, min(int(batch_size or 200), 1000))
+    remaining_limit = max_chunks if max_chunks is not None else total_chunks
+    end_offset = min(total_chunks, start_offset + max(0, int(remaining_limit or 0)))
+    indexed_chunks = 0
+    batch_commits = 0
+
+    if start_offset >= total_chunks:
+        checkpoint = _update_checkpoint(
+            db,
+            user_id=resolved_user_id,
+            total_chunks=total_chunks,
+            indexed_chunks=total_chunks,
+            next_offset=total_chunks,
+            status="completed",
+            source_counts=index.source_counts,
+        )
+        db.commit()
+        return ResearchRetrievalIndexRebuildResult(
+            user_id=str(resolved_user_id),
+            schema_version=RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
+            total_chunks=total_chunks,
+            indexed_chunks=0,
+            start_offset=start_offset,
+            next_offset=total_chunks,
+            completed=True,
+            batch_commits=1,
+            source_counts=index.source_counts,
+            checkpoint_status=checkpoint.status,
+            message="持久化索引已是最新断点。",
+        )
+
+    next_offset = start_offset
+    while next_offset < end_offset:
+        batch_end = min(next_offset + capped_batch_size, end_offset)
+        batch = index.chunks[next_offset:batch_end]
+        indexed_chunks += persist_research_retrieval_index_chunks(
+            db,
+            batch,
+            user_id=resolved_user_id,
+            commit=False,
+        )
+        next_offset = batch_end
+        completed = next_offset >= total_chunks
+        checkpoint = _update_checkpoint(
+            db,
+            user_id=resolved_user_id,
+            total_chunks=total_chunks,
+            indexed_chunks=next_offset,
+            next_offset=next_offset,
+            status="completed" if completed else "running",
+            source_counts=index.source_counts,
+        )
+        db.commit()
+        batch_commits += 1
+
+    completed = next_offset >= total_chunks
+    return ResearchRetrievalIndexRebuildResult(
+        user_id=str(resolved_user_id),
+        schema_version=RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
+        total_chunks=total_chunks,
+        indexed_chunks=indexed_chunks,
+        start_offset=start_offset,
+        next_offset=next_offset,
+        completed=completed,
+        batch_commits=batch_commits,
+        source_counts=index.source_counts,
+        checkpoint_status=checkpoint.status if "checkpoint" in locals() else "idle",
+        message="持久化索引重建完成。" if completed else "持久化索引已写入分批断点，可继续 resume。",
+    )
+
+
+def load_persistent_research_retrieval_index(
+    db: Session,
+    *,
+    user_id: UUID | None = None,
+    limit: int = 10000,
+) -> ResearchRetrievalIndex:
+    settings = get_settings()
+    resolved_user_id = user_id or settings.single_user_id
+    capped_limit = max(1, min(int(limit or 10000), 50000))
+    records = db.scalars(
+        select(ResearchRetrievalIndexChunkRecord)
+        .where(ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id)
+        .where(ResearchRetrievalIndexChunkRecord.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
+        .order_by(desc(ResearchRetrievalIndexChunkRecord.priority), desc(ResearchRetrievalIndexChunkRecord.updated_at))
+        .limit(capped_limit)
+    ).all()
+    chunks = [_record_to_chunk(record) for record in records]
+    return ResearchRetrievalIndex(
+        chunks=chunks,
+        built_at=datetime.now(timezone.utc),
+        source_counts=dict(Counter(chunk.document_type for chunk in chunks)),
+    )
+
+
+def search_persistent_research_retrieval_index(
+    db: Session,
+    query: str,
+    *,
+    user_id: UUID | None = None,
+    limit: int = 10,
+    document_types: set[str] | None = None,
+    topic_id: str | None = None,
+    source_tiers: set[str] | None = None,
+) -> list[ResearchRetrievalIndexHit]:
+    index = load_persistent_research_retrieval_index(db, user_id=user_id)
+    return search_research_retrieval_index(
+        index,
+        query,
+        limit=limit,
+        document_types=document_types,
+        topic_id=topic_id,
+        source_tiers=source_tiers,
+    )

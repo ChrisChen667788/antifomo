@@ -213,6 +213,24 @@ export function ResearchReportCard({
     if (score >= 55) return { label: "普通价值", className: "bg-amber-100 text-amber-700" };
     return { label: "低价值", className: "bg-slate-100 text-slate-500" };
   };
+  const qualityProfileMeta = (value?: string) => {
+    if (value === "high_value") {
+      return {
+        label: "高情报价值",
+        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
+      };
+    }
+    if (value === "usable") {
+      return {
+        label: "可用待补强",
+        className: "border-amber-200/90 bg-amber-50 text-amber-800",
+      };
+    }
+    return {
+      label: "质量待补证",
+      className: "border-slate-200/90 bg-slate-100 text-slate-700",
+    };
+  };
   const factorBucket = (score: number) => {
     if (score >= 14) return { label: "强支撑", className: "bg-emerald-100 text-emerald-700" };
     if (score >= 6) return { label: "中支撑", className: "bg-amber-100 text-amber-700" };
@@ -300,6 +318,10 @@ export function ResearchReportCard({
   const commercialSummary = report.commercial_summary;
   const technicalAppendix = report.technical_appendix;
   const reviewQueue = report.review_queue || [];
+  const qualityProfile = report.quality_profile;
+  const qualityProfileState = qualityProfileMeta(qualityProfile?.status);
+  const marketIntelligence = report.market_intelligence;
+  const solutionDeliveryPack = report.solution_delivery_pack;
   const weakSections = (report.sections || [])
     .filter((section) => {
       const status = String(section.status || "").trim();
@@ -591,6 +613,194 @@ export function ResearchReportCard({
           <p className="mt-3 text-sm leading-6 text-sky-900">{report.consulting_angle}</p>
         </div>
       </div>
+
+      {qualityProfile ? (
+        <article className="mt-5 af-report-surface rounded-2xl border border-emerald-100/90 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">研报质量画像</p>
+              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+                {qualityProfile.methodology?.industry_label || "通用 B2B 解决方案研究"} · {qualityProfile.methodology?.framework_name || "方法论校验"}
+              </h4>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {qualityProfile.headline || qualityProfile.methodology?.summary || "当前报告已生成基础质量画像。"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className={`rounded-full border px-2.5 py-1 font-semibold ${qualityProfileState.className}`}>
+                {qualityProfileState.label}
+              </span>
+              <span className="rounded-full bg-slate-900 px-2.5 py-1 font-semibold text-white">
+                总分 {qualityProfile.overall_score}
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            {[
+              { label: "专业度", value: qualityProfile.professional_score },
+              { label: "情报价值", value: qualityProfile.intelligence_value_score },
+              { label: "行动价值", value: qualityProfile.actionability_score },
+              { label: "证据强度", value: qualityProfile.evidence_score },
+            ].map((item) => {
+              const bucket = valueBucket(item.value);
+              return (
+                <div key={`quality-score-${item.label}`} className="rounded-2xl border border-white/80 bg-white/84 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">{item.value}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] ${bucket.className}`}>{bucket.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {(qualityProfile.gaps?.length || qualityProfile.next_actions?.length) ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {qualityProfile.gaps?.length ? (
+                <div className="rounded-2xl border border-amber-100/90 bg-amber-50/80 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">质量缺口</p>
+                  <ul className="mt-2 space-y-2 text-sm leading-6 text-amber-900">
+                    {qualityProfile.gaps.slice(0, 4).map((value) => (
+                      <li key={`quality-gap-${value}`} className="flex gap-2">
+                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-amber-300" />
+                        <span>{value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {qualityProfile.next_actions?.length ? (
+                <div className="rounded-2xl border border-emerald-100/90 bg-emerald-50/76 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">下一轮提质动作</p>
+                  <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-950">
+                    {qualityProfile.next_actions.slice(0, 4).map((value) => (
+                      <li key={`quality-action-${value}`} className="flex gap-2">
+                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                        <span>{value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {qualityProfile.section_evidence_packs?.length ? (
+            <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">章节证据包</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {qualityProfile.section_evidence_packs.slice(0, 4).map((pack) => (
+                  <div key={`section-pack-${pack.section_title}`} className="rounded-2xl border border-white/80 bg-white/88 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">{pack.section_title}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] ${qualityTone(pack.status === "ready" ? "high" : pack.status === "degraded" ? "medium" : "low")}`}>
+                        {pack.support_score}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      证据 {pack.evidence_count} 条，官方 {pack.official_evidence_count} 条{pack.quota_gap ? `，缺口 ${pack.quota_gap}` : ""}
+                    </p>
+                    {pack.risks?.length ? (
+                      <p className="mt-2 text-xs leading-5 text-amber-700">{pack.risks.slice(0, 2).join(" / ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </article>
+      ) : null}
+
+      {(marketIntelligence?.tender_projects?.length ||
+        marketIntelligence?.product_catalog?.length ||
+        solutionDeliveryPack?.client_ppt_outline?.length) ? (
+        <article className="mt-5 af-report-surface rounded-2xl border border-blue-100/90 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">近三年公开情报与交付包</p>
+              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+                招投标明细、产品清单、技术参数和方案材料大纲
+              </h4>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {marketIntelligence?.source_scope_summary ||
+                  "基于公开网页、政府采购、公共资源交易、招投标公开平台、企业官网/产品页和行业媒体整理。"}
+              </p>
+            </div>
+            {marketIntelligence?.window_start && marketIntelligence?.window_end ? (
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                {marketIntelligence.window_start} - {marketIntelligence.window_end}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">招投标项目明细</p>
+              <div className="mt-3 space-y-2">
+                {(marketIntelligence?.tender_projects || []).slice(0, 4).map((item) => (
+                  <div key={`${item.project_name}-${item.source_url}`} className="rounded-xl bg-blue-50/70 px-3 py-2">
+                    <p className="text-sm font-semibold text-slate-900">{item.project_name}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      {item.notice_type || "公开线索"} · {item.publish_date || "日期待核验"} · {item.amount || "金额待核验"}
+                    </p>
+                    {item.source_url ? (
+                      <a className="mt-1 block truncate text-xs text-blue-600 hover:text-blue-700" href={item.source_url} target="_blank" rel="noreferrer">
+                        {item.source_title || item.source_url}
+                      </a>
+                    ) : null}
+                  </div>
+                ))}
+                {!(marketIntelligence?.tender_projects || []).length ? (
+                  <p className="text-sm leading-6 text-slate-500">当前未形成可引用项目明细，需继续补公开招采来源。</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">产品清单与技术参数</p>
+              <div className="mt-3 space-y-2">
+                {(marketIntelligence?.product_catalog || []).slice(0, 5).map((item) => (
+                  <div key={`product-${item.name}`} className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      {(item.technical_parameters || []).slice(0, 2).join(" / ") || item.source_context || "参数待补"}
+                    </p>
+                  </div>
+                ))}
+                {marketIntelligence?.intelligence_gaps?.length ? (
+                  <p className="text-xs leading-5 text-amber-700">{marketIntelligence.intelligence_gaps[0]}</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">交付材料大纲</p>
+              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+                <p>场景：{solutionDeliveryPack?.scenario || report.keyword}</p>
+                <p>目标客户：{solutionDeliveryPack?.target_customer || report.target_accounts[0] || "待确认"}</p>
+                <p>可研章节：{solutionDeliveryPack?.feasibility_outline?.length || 0} 个</p>
+                <p>建议书章节：{solutionDeliveryPack?.project_proposal_outline?.length || 0} 个</p>
+                <p>PPT 页纲：{solutionDeliveryPack?.client_ppt_outline?.length || 0} 页</p>
+              </div>
+              {solutionDeliveryPack?.review_checklist?.length ? (
+                <p className="mt-2 text-xs leading-5 text-blue-700">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
+              ) : null}
+            </div>
+          </div>
+
+          {marketIntelligence?.external_source_queries?.length ? (
+            <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">后续全网公开源检索清单</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {marketIntelligence.external_source_queries.slice(0, 6).map((query) => (
+                  <span key={`external-query-${query}`} className="rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                    {query}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </article>
+      ) : null}
 
       {(readiness || commercialSummary) ? (
         <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">

@@ -29,9 +29,11 @@ from app.services.work_task_service import (
     build_markdown_summary,
     build_project_proposal_pdf_document,
     build_project_proposal_word_document,
+    build_research_market_intelligence_markdown,
     build_research_pdf_document,
     build_reading_list,
     build_research_markdown,
+    build_research_solution_delivery_markdown,
     build_research_word_document,
     build_artifact_item_snapshots,
     build_exec_brief,
@@ -479,6 +481,8 @@ def create_and_execute_task(
             "export_feasibility_study_pdf",
             "export_project_proposal_word",
             "export_project_proposal_pdf",
+            "export_research_market_intelligence_markdown",
+            "export_research_solution_delivery_markdown",
         }:
             if not isinstance(input_payload, dict) or not isinstance(input_payload.get("report"), dict):
                 raise ValueError(f"input_payload.report is required for {task_type}")
@@ -582,6 +586,38 @@ def create_and_execute_task(
                         "mime_type": mime_type,
                         "output_language": resolved_language,
                         "document_kind": "project_proposal",
+                    },
+                )
+            elif task_type == "export_research_market_intelligence_markdown":
+                filename, content = build_research_market_intelligence_markdown(
+                    input_payload["report"],
+                    output_language=resolved_language,
+                    delivery_supplement=delivery_supplement,
+                )
+                complete_task(
+                    task,
+                    content=content,
+                    extra_payload={
+                        "format": "markdown",
+                        "filename": filename,
+                        "output_language": resolved_language,
+                        "document_kind": "market_intelligence",
+                    },
+                )
+            elif task_type == "export_research_solution_delivery_markdown":
+                filename, content = build_research_solution_delivery_markdown(
+                    input_payload["report"],
+                    output_language=resolved_language,
+                    delivery_supplement=delivery_supplement,
+                )
+                complete_task(
+                    task,
+                    content=content,
+                    extra_payload={
+                        "format": "markdown",
+                        "filename": filename,
+                        "output_language": resolved_language,
+                        "document_kind": "solution_delivery",
                     },
                 )
             else:

@@ -1,6 +1,6 @@
 {
   "name": "anti-fomo-demo",
-  "version": "0.3.0+20260423",
+  "version": "0.4.2+20260424",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3010",

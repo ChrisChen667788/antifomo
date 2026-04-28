@@ -252,6 +252,74 @@ class ResearchMarkdownArchive(Base):
     )
 
 
+class ResearchRetrievalIndexChunkRecord(Base):
+    __tablename__ = "research_retrieval_index_chunks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "chunk_key", name="uq_research_retrieval_chunks_user_key"),
+        Index("idx_research_retrieval_chunks_user_updated", "user_id", "updated_at"),
+        Index("idx_research_retrieval_chunks_document", "document_type", "document_id"),
+        Index("idx_research_retrieval_chunks_topic", "topic_id"),
+        Index("idx_research_retrieval_chunks_source_tier", "source_tier"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    chunk_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    document_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    document_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    text: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    field_key: Mapped[str] = mapped_column(String(80), nullable=False, default="content", server_default="content")
+    label: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    source_tier: Mapped[str] = mapped_column(String(20), nullable=False, default="media", server_default="media")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    parent_chunk_id: Mapped[str] = mapped_column(String(160), nullable=False, default="", server_default="")
+    topic_id: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    topic_name: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    region: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    industry: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    metadata_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ResearchRetrievalIndexBuildCheckpoint(Base):
+    __tablename__ = "research_retrieval_index_checkpoints"
+    __table_args__ = (
+        UniqueConstraint("user_id", "schema_version", "backend", name="uq_research_retrieval_checkpoint_user_schema"),
+        Index("idx_research_retrieval_checkpoint_user_updated", "user_id", "updated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    backend: Mapped[str] = mapped_column(String(30), nullable=False, default="sqlite", server_default="sqlite")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="idle", server_default="idle")
+    total_chunks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    indexed_chunks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    next_offset: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    checkpoint_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class ResearchWatchlist(Base):
     __tablename__ = "research_watchlists"
     __table_args__ = (

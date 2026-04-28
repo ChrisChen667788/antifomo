@@ -7,217 +7,183 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
-![AntiFomo hero](./docs/assets/github-hero.svg)
+![Anti-FOMO hero](./docs/assets/github-hero.svg)
 
-Anti-FOMO 是一个开源研究工作台，围绕高信号内容采集、AI 辅助研报、专注会话、行动卡片和面向微信场景的收集流程构建。
+把嘈杂的网页与微信信息流，变成有证据的研报、专注执行和可交付动作。
 
-如果这个项目对你有帮助，欢迎点一个 star。它会让仓库更容易被发现，也能帮助后续贡献者更快找到它。
+Anti-FOMO 是一个开源 AI 研究工作台，适合咨询顾问、创业者、BD / 售前、策略团队和需要持续盯高信号内容的人。它不是“收藏稍后读 + AI 摘要”的叠加，而是把完整闭环重新接起来：
+
+`collect -> clean -> research -> compare -> focus -> action`
 
 先看这里：
-- 路线图：[Public roadmap issue](https://github.com/ChrisChen667788/antifomo/issues/1)
-- 适合新贡献者的入口：[good first issue](https://github.com/ChrisChen667788/antifomo/issues/2)
-- 微信采集可靠性改进：[help wanted issue](https://github.com/ChrisChen667788/antifomo/issues/3)
-- 讨论区：[GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
-- 宣发素材包：[docs/open-source-launch-kit.md](./docs/open-source-launch-kit.md)
-- 增长文案包：[docs/open-source-growth-copy.md](./docs/open-source-growth-copy.md)
-- 公开 backlog：[docs/open-source-backlog.md](./docs/open-source-backlog.md)
+- [快速开始](#快速开始)
+- [公开路线图](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [适合新贡献者的入口](https://github.com/ChrisChen667788/antifomo/issues/2)
+- [微信采集可靠性 help wanted](https://github.com/ChrisChen667788/antifomo/issues/3)
+- [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
+- [开源宣发素材包](./docs/open-source-launch-kit.md)
+- [增长文案包](./docs/open-source-growth-copy.md)
 
 ## 为什么做 Anti-FOMO
 
-很多信息工具只覆盖这几个层级中的一部分：
+大多数信息工具通常只覆盖其中一个环节：
 
-- 稍后再读
-- 新闻分流
-- AI 摘要
-- 任务导出
+- 收藏
+- 摘要
+- 搜索
+- 导出笔记
 
-Anti-FOMO 想连接完整回路：
+Anti-FOMO 关注的是整条工作链路：
 
-`collect -> filter -> research -> focus -> action`
+- 把 URL、文本、Feed 和微信重场景输入收进来
+- 在清洗层尽量打掉 OCR 噪声、markdown/source dump、奖项论坛和弱 vendor 推进稿
+- 基于证据生成研报、对比快照、历史版本和正式交付材料
+- 用专注会话、行动卡、brief 和 watchlist 把研究继续推进成动作
 
-它的目标不是只让人“看更多内容”，而是把高信号信息真正转成研究、判断和执行。
+## 为什么更容易吸引用户
+
+- `WeChat-first`：不是泛网页收藏器，而是把微信信息环境当一等输入面。
+- `Evidence-aware`：来源质量、章节证据配额、目标账户支撑率、官方源占比都被前台化。
+- `Execution-oriented`：研报不是终点，后面还有专注会话、行动卡、brief、可研、项目建议书和对客 PPT 大纲。
+- `Hackable`：本地优先的 Next.js + FastAPI 架构，附带浏览器扩展、小程序外壳、采集器和可跑的测试链路。
+
+## 当前已经能做什么
+
+### 1. 高信号采集
+
+- URL、纯文本、RSS、Newsletter、文件、YouTube transcript 输入
+- 浏览器扩展快速采集当前页面
+- 微信 URL-first 采集、Collector 运维、Wechat PC Agent 工具链
+- 针对截图 OCR、markdown dump、论坛奖项噪声、弱 vendor 推进稿的清洗规则
+
+### 2. 研究工作台
+
+- 关键词研究和结构化研报生成
+- 追问 / 二次思考 / 补证后的二轮研报
+- Compare Workspace、历史归档、字段 diff、导出链路
+- Watchlists、Daily Brief、Knowledge Intelligence、Commercial Hub
+
+### 3. 检索增强与质量层
+
+- 本地 research retrieval index，支持持久化 rebuild、resume 和 search
+- 章节级 retrieval pack 和 section 级证据诊断
+- canonical org linking、guarded backlog、低质量研报 rewrite / backfill
+- 近 3 年招投标/产品/技术参数情报包和方案交付包
+
+### 4. 执行与交付
+
+- 专注会话和会话总结导出
+- 行动卡、老板简报、销售简报、外联草稿、watchlist digest
+- 可行性研究报告、项目建议书、对客 PPT 大纲导出
+- 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档
 
 ## 适合谁
 
 - 咨询顾问和策略团队
-- 创业者和业务负责人
-- BD、市场研究和行业分析团队
-- 需要持续盯微信信息流的人
-- 想要可本地运行、可改造研究工作台的开发者
-
-## 核心能力
-
-### 1. 高信号采集
-
-- 提交 URL、纯文本和关键词研究请求
-- 浏览器扩展快速采集页面
-- 多格式采集链路
-- 面向微信公众号的 URL-first 采集路径
-
-### 2. 研究工作台
-
-- 生成结构化研报草稿
-- 对比多个研究主题
-- 跟踪研究版本和 watchlist
-- 将研报沉淀成行动卡片
-
-### 3. 专注与执行
-
-- 运行带目标的专注会话
-- 自动生成专注会话产物
-- 导出后续待办、brief 和阅读清单
-- 把研究结果继续桥接到执行流程
-
-### 4. 多端表面
-
-- Web 应用
-- FastAPI 后端
-- 微信小程序
-- Chrome 扩展
-
-## 它和普通信息工具有什么不一样
-
-- `WeChat-first`：不是只面向泛网页链接
-- `evidence-aware`：围绕来源质量和研报迭代来设计
-- `execution-oriented`：行动卡和会话产物是一等能力
-- `hackable`：容易本地运行、检查和二次改造
+- 创业者、产品负责人和行业研究人员
+- BD / 售前 / 解决方案团队
+- 需要持续盯公众号和高频公开信号的人
+- 想要本地运行、可改造、可验证的开源研究工作台的开发者
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 一次性安装
 
 ```bash
-npm install
-python3 -m venv backend/.venv
-source backend/.venv/bin/activate
-pip install -r backend/requirements.txt
+cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+npm run demo:setup
 ```
 
-### 2. 配置环境变量
+这会安装前端依赖、后端 Python 依赖，并创建 `backend/.env`。
+
+### 2. 一条命令启动
 
 ```bash
-cp backend/.env.example backend/.env
-cp .env.local.example .env.local
-```
-
-默认模式使用 mock LLM 行为和本地 SQLite，所以可以在没有外部 API key 的情况下先跑起来。
-
-### 3. 启动后端
-
-```bash
-source backend/.venv/bin/activate
-uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
-```
-
-### 4. 启动前端
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
+cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+npm run demo:start
 ```
 
 打开：
-- Web：`http://127.0.0.1:3000`
-- API：`http://127.0.0.1:8000`
 
-这些回环地址只用于本地 demo 和 smoke test。
+- Web：`http://localhost:3010`
+- Backend API：`http://localhost:8000`
 
-如果你要把 Anti-FOMO 部署到云端，请替换成：
+停止：
 
-- 你自己的前端域名
-- 你自己的后端 API 地址
-- 你自己的 webhook / callback 地址
+```bash
+npm run demo:stop
+```
+
+### 3. 回归基线
+
+```bash
+cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+npm run check
+npm run demo:smoke
+```
+
+如果要跑专注会话 E2E 和模拟流程：
+
+```bash
+npm run demo:focus-e2e -- --report-file .tmp/focus-e2e-report.json --artifact-dir .tmp/focus-e2e-artifacts
+npm run demo:simulate
+```
+
+## 主要入口
+
+- `http://localhost:3010/inbox`：采集、关键词研究、研报生成、正式文档导出
+- `http://localhost:3010/research`：研究中心、Topics、Compare、Archive、检索增强分析
+- `http://localhost:3010/focus`：专注会话和会话产物
+- `http://localhost:3010/knowledge`：知识库、账户视图和 merge 工作流
+- `browser-extension/chrome`：把当前页面快速送进 Anti-FOMO
+- `miniapp`：微信小程序壳层
+- `scripts/`：采集器、watchlist、插件验证和 smoke helpers
 
 ## 仓库结构
 
 ```text
 .
-├── src/                    # Next.js web app
-├── backend/                # FastAPI backend, models, services, tests
-├── miniapp/                # WeChat mini program
-├── browser-extension/      # Chrome extension
-├── scripts/                # automation and smoke helpers
-└── public/                 # static assets
+├── src/                    # Next.js Web 应用
+├── backend/                # FastAPI 后端、模型、服务、测试
+├── miniapp/                # 微信小程序
+├── browser-extension/      # Chrome 扩展
+├── scripts/                # 采集器 / 自动化 / smoke helpers
+├── docs/                   # 路线图、宣发素材、增长文案、设计资产
+└── public/                 # 静态资源和 social preview
 ```
 
-## 项目状态
+## 当前项目状态
 
-当前仓库状态：
-- 活跃的本地优先原型
-- 已完成开源发布脱敏
-- Web 构建通过
-- 后端测试通过
+当前代码基线：
 
-公开仓库中有意不包含：
-- 运行时 `.env`
+- 本地优先、可直接运行的产品原型
+- 当前版本：`0.4.2+20260424`
+- Web 构建可通过
+- 后端测试可通过 `npm run check`
+- 仓库已做开源脱敏
+
+公开仓库刻意不包含：
+
+- 运行时 `.env` 密钥
 - 个人数据
-- 本地数据库
-- `.tmp` 采集日志和截图
-- 真实微信小程序 `AppID`
+- 本地采集日志和截图
+- 私有数据库或未声明的付费信源
+- 真实小程序生产凭证
 
-## 配置
+## 社区与宣发资源
 
-### 后端
+- 产品想法和需求：开 Discussion 或 Issue
+- Bug：附带复现步骤和日志
+- 代码贡献：见 [CONTRIBUTING.md](./CONTRIBUTING.md)
+- 安全问题：见 [SECURITY.md](./SECURITY.md)
 
-详见 `backend/.env.example`。
+仓库内已附带一套可直接复用的宣发资产：
 
-关键分组：
-- `DATABASE_URL`：SQLite 或 PostgreSQL
-- `LLM_PROVIDER`：`mock` 或 OpenAI-compatible provider
-- `OPENAI_*`：主模型配置
-- `STRATEGY_OPENAI_*`：可选第二模型配置
-- `WORKBUDDY_*`：回调和 webhook 集成
+- [开源宣发素材包](./docs/open-source-launch-kit.md)
+- [增长文案包](./docs/open-source-growth-copy.md)
+- [公开 backlog](./docs/open-source-backlog.md)
+- [GitHub hero 图](./docs/assets/github-hero.svg)
+- [GitHub social preview](./docs/assets/github-social-preview.png)
+- [仓库 banner](./public/repo-banner.png)
 
-### 小程序
-
-`miniapp/project.config.json` 中的 `appid` 默认是空的。
-
-导入微信开发者工具前：
-1. 填入你自己的小程序 `AppID`
-2. 把 API 地址改成你的本地或局域网后端
-
-如果要做公开或团队部署，请把小程序和浏览器扩展都改到你自己的线上后端地址，不要继续使用 `127.0.0.1` / `localhost`。
-
-### 浏览器扩展
-
-扩展位于 `browser-extension/chrome`。在 Chrome 开发者模式加载后，把后端地址指向你自己的环境即可。
-
-## 路线图
-
-近期最值得推进的方向：
-- 微信采集可靠性进一步增强
-- 研报 grounding 和来源可追溯性更强
-- watchlist 和实体工作流更顺手
-- 专注到行动产物的质量更高
-- 更好的公开 demo 资源和演示材料
-
-## 社区
-
-- 想法和产品建议：发 Discussion 或 Feature Request
-- Bug：带复现步骤开 Issue
-- 代码贡献：见 `CONTRIBUTING.md`
-- 安全报告：见 `SECURITY.md`
-
-## 开源宣发素材包
-
-仓库里已经附带一套公开传播可直接用的素材：
-
-- [docs/open-source-launch-kit.md](./docs/open-source-launch-kit.md)
-- [docs/open-source-growth-copy.md](./docs/open-source-growth-copy.md)
-- [docs/open-source-backlog.md](./docs/open-source-backlog.md)
-- [docs/assets/github-hero.svg](./docs/assets/github-hero.svg)
-- [docs/assets/github-hero.png](./docs/assets/github-hero.png)
-- [docs/assets/github-social-preview.png](./docs/assets/github-social-preview.png)
-- [public/github-social-square.png](./public/github-social-square.png)
-- [public/repo-banner.png](./public/repo-banner.png)
-
-里面包括：
-
-- GitHub About 文案
-- 仓库置顶和个人主页简介文案
-- 中英文社媒发布帖草稿
-- 面向贡献者的 backlog 入口
-- 可直接上传的 social preview 素材
-
-## License
-
-MIT，见 `LICENSE`。
+如果 Anti-FOMO 对你的工作流有价值，点一个 star 依然是最直接的支持方式。它能显著提升仓库曝光，也能帮助后续用户和贡献者更快发现它。

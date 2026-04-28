@@ -305,6 +305,76 @@ class ResearchOfflineEvaluationOut(BaseModel):
     summary_lines: list[str] = Field(default_factory=list)
 
 
+class ResearchGoldenEvaluationCaseOut(BaseModel):
+    case_id: str
+    title: str
+    expected_methodology: str = ""
+    professional_score: int = 0
+    intelligence_value_score: int = 0
+    target_support_rate: float = 0.0
+    section_quota_pass_rate: float = 0.0
+    passed: bool = False
+    issues: list[str] = Field(default_factory=list)
+
+
+class ResearchGoldenEvaluationOut(BaseModel):
+    generated_at: datetime
+    total_cases: int = 0
+    passed_cases: int = 0
+    average_professional_score: int = 0
+    average_intelligence_value_score: int = 0
+    average_target_support_rate: float = 0.0
+    average_section_quota_pass_rate: float = 0.0
+    cases: list[ResearchGoldenEvaluationCaseOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
+class ResearchRetrievalIndexRebuildRequest(BaseModel):
+    limit_per_source: int = Field(default=240, ge=1, le=500)
+    batch_size: int = Field(default=200, ge=1, le=1000)
+    max_chunks: int | None = Field(default=None, ge=1, le=10000)
+    resume: bool = True
+    reset: bool = False
+
+
+class ResearchRetrievalIndexRebuildOut(BaseModel):
+    user_id: str
+    schema_version: int = 1
+    total_chunks: int = 0
+    indexed_chunks: int = 0
+    start_offset: int = 0
+    next_offset: int = 0
+    completed: bool = False
+    batch_commits: int = 0
+    source_counts: dict[str, int] = Field(default_factory=dict)
+    backend: str = "sqlite"
+    checkpoint_status: Literal["idle", "running", "completed", "failed"] = "idle"
+    message: str = ""
+
+
+class ResearchRetrievalIndexSearchHitOut(BaseModel):
+    chunk_id: str
+    document_id: str
+    document_type: str
+    title: str
+    snippet: str = ""
+    field_key: str = ""
+    label: str = ""
+    source_tier: Literal["official", "media", "aggregate"] = "media"
+    source_url: str = ""
+    topic_id: str = ""
+    topic_name: str = ""
+    score: float = 0.0
+    matched_terms: list[str] = Field(default_factory=list)
+    match_modes: list[str] = Field(default_factory=list)
+
+
+class ResearchRetrievalIndexSearchOut(BaseModel):
+    query: str
+    hit_count: int = 0
+    hits: list[ResearchRetrievalIndexSearchHitOut] = Field(default_factory=list)
+
+
 class ResearchCompareSnapshotCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     query: str = Field(default="", max_length=120)
@@ -704,6 +774,165 @@ class ResearchReviewQueueItemOut(BaseModel):
     resolved_at: datetime | None = None
 
 
+class ResearchQualityDimensionOut(BaseModel):
+    key: Literal["professional_rigor", "intelligence_value", "actionability", "evidence_strength"]
+    label: str
+    score: int = 0
+    status: Literal["strong", "usable", "weak"] = "weak"
+    summary: str = ""
+    evidence: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class ResearchMethodologyAxisOut(BaseModel):
+    key: str
+    label: str
+    checkpoints: list[str] = Field(default_factory=list)
+    passed: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    implication: str = ""
+
+
+class ResearchIndustryMethodologyOut(BaseModel):
+    industry_key: str = "generic"
+    industry_label: str = "通用 B2B 解决方案研究"
+    framework_name: str = "市场-账户-预算-竞争-落地五段式"
+    summary: str = ""
+    axes: list[ResearchMethodologyAxisOut] = Field(default_factory=list)
+    recommended_questions: list[str] = Field(default_factory=list)
+
+
+class ResearchSectionEvidencePackOut(BaseModel):
+    section_title: str
+    status: Literal["ready", "degraded", "needs_evidence"] = "needs_evidence"
+    support_score: int = 0
+    evidence_count: int = 0
+    official_evidence_count: int = 0
+    quota_gap: int = 0
+    source_titles: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class ResearchSectionRetrievalHitOut(BaseModel):
+    chunk_id: str
+    document_id: str
+    document_type: str
+    title: str
+    snippet: str = ""
+    field_key: str = ""
+    label: str = ""
+    source_tier: Literal["official", "media", "aggregate"] = "media"
+    source_url: str = ""
+    score: float = 0.0
+    matched_terms: list[str] = Field(default_factory=list)
+    match_modes: list[str] = Field(default_factory=list)
+
+
+class ResearchSectionRetrievalPackOut(BaseModel):
+    section_title: str
+    query: str
+    target_axes: list[str] = Field(default_factory=list)
+    status: Literal["ready", "degraded", "needs_evidence"] = "needs_evidence"
+    hit_count: int = 0
+    official_hit_count: int = 0
+    support_score: int = 0
+    hits: list[ResearchSectionRetrievalHitOut] = Field(default_factory=list)
+    missing_terms: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class ResearchSectionRetrievalPackRequest(BaseModel):
+    report: "ResearchReportDocument"
+    limit_per_section: int = Field(default=4, ge=1, le=10)
+    limit_per_source: int = Field(default=240, ge=1, le=500)
+
+
+class ResearchTenderProjectOut(BaseModel):
+    project_name: str
+    buyer: str = ""
+    region: str = ""
+    industry_or_scene: str = ""
+    notice_type: str = ""
+    publish_date: str = ""
+    amount: str = ""
+    winning_vendor: str = ""
+    source_title: str = ""
+    source_url: str = ""
+    source_tier: Literal["official", "media", "aggregate"] = "media"
+    relevance_score: int = 0
+    extracted_requirements: list[str] = Field(default_factory=list)
+    technical_parameters: list[str] = Field(default_factory=list)
+
+
+class ResearchProductRequirementOut(BaseModel):
+    name: str
+    category: str = ""
+    source_context: str = ""
+    evidence_urls: list[str] = Field(default_factory=list)
+    linked_projects: list[str] = Field(default_factory=list)
+    technical_parameters: list[str] = Field(default_factory=list)
+
+
+class ResearchMarketIntelligencePackOut(BaseModel):
+    lookback_years: int = 3
+    window_start: str = ""
+    window_end: str = ""
+    source_scope_summary: str = ""
+    tender_projects: list[ResearchTenderProjectOut] = Field(default_factory=list)
+    tender_keywords: list[str] = Field(default_factory=list)
+    product_catalog: list[ResearchProductRequirementOut] = Field(default_factory=list)
+    technical_parameter_catalog: list[ResearchProductRequirementOut] = Field(default_factory=list)
+    external_source_queries: list[str] = Field(default_factory=list)
+    intelligence_gaps: list[str] = Field(default_factory=list)
+    export_markdown: str = ""
+
+
+class ResearchSolutionOutlineSectionOut(BaseModel):
+    title: str
+    bullets: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionDeliveryPackOut(BaseModel):
+    scenario: str = ""
+    target_customer: str = ""
+    vertical_scene: str = ""
+    clarification_questions: list[str] = Field(default_factory=list)
+    intelligence_summary: list[str] = Field(default_factory=list)
+    feasibility_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
+    project_proposal_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
+    client_ppt_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
+    review_checklist: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    export_markdown: str = ""
+
+
+class ResearchSolutionDeliveryRequest(BaseModel):
+    report: "ResearchReportResponse"
+    scenario: str = Field(default="", max_length=160)
+    target_customer: str = Field(default="", max_length=160)
+    vertical_scene: str = Field(default="", max_length=240)
+    supplemental_context: str = Field(default="", max_length=2400)
+    detail_level: Literal["outline", "review_draft", "final"] = "outline"
+
+
+class ResearchQualityProfileOut(BaseModel):
+    overall_score: int = 0
+    status: Literal["high_value", "usable", "needs_evidence"] = "needs_evidence"
+    headline: str = ""
+    professional_score: int = 0
+    intelligence_value_score: int = 0
+    actionability_score: int = 0
+    evidence_score: int = 0
+    dimensions: list[ResearchQualityDimensionOut] = Field(default_factory=list)
+    methodology: ResearchIndustryMethodologyOut = Field(default_factory=ResearchIndustryMethodologyOut)
+    section_evidence_packs: list[ResearchSectionEvidencePackOut] = Field(default_factory=list)
+    section_retrieval_packs: list[ResearchSectionRetrievalPackOut] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list)
+
+
 class ResearchTrackingTopicReportVersionOut(BaseModel):
     id: str
     entry_id: str | None = None
@@ -763,6 +992,9 @@ class ResearchReportDocument(BaseModel):
     commercial_summary: ResearchCommercialSummaryOut = Field(default_factory=ResearchCommercialSummaryOut)
     technical_appendix: ResearchTechnicalAppendixOut = Field(default_factory=ResearchTechnicalAppendixOut)
     review_queue: list[ResearchReviewQueueItemOut] = Field(default_factory=list)
+    quality_profile: ResearchQualityProfileOut = Field(default_factory=ResearchQualityProfileOut)
+    market_intelligence: ResearchMarketIntelligencePackOut = Field(default_factory=ResearchMarketIntelligencePackOut)
+    solution_delivery_pack: ResearchSolutionDeliveryPackOut = Field(default_factory=ResearchSolutionDeliveryPackOut)
 
 
 class ResearchReportResponse(ResearchReportDocument):
@@ -960,3 +1192,5 @@ ResearchWorkspaceOut.model_rebuild()
 ResearchLowQualityReviewQueueItemOut.model_rebuild()
 ResearchLowQualityReviewQueueOut.model_rebuild()
 ResearchLowQualityReviewActionResponse.model_rebuild()
+ResearchSectionRetrievalPackRequest.model_rebuild()
+ResearchSolutionDeliveryRequest.model_rebuild()

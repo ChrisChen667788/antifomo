@@ -13,6 +13,10 @@ from app.services.session_service import SessionMetrics
 from app.services.language import localized_text, normalize_output_language
 from app.schemas.research import ResearchReportDocument
 from app.services.research_service import build_research_report_markdown
+from app.services.research_solution_intelligence_service import (
+    build_market_intelligence_pack,
+    build_solution_delivery_pack,
+)
 
 _WECHAT_AUTO_PREFIX_RE = re.compile(r"^(?:主题[:：]\s*)?(?:wechat\s*(?:auto|ocr)|截图ocr)\b.*$", re.IGNORECASE)
 _WECHAT_AUTO_LABEL_RE = re.compile(r"^(?:主题[:：]\s*)?(?:wechat\s*(?:auto|ocr)|截图ocr)\b[\s\S]*?[：:]\s*", re.IGNORECASE)
@@ -831,7 +835,7 @@ def _build_simple_pdf(lines: list[str]) -> bytes:
     return bytes(output)
 
 
-def _context_text(value: Any) -> str:
+def _context_text(value: Any, *, preserve_labels: bool = False) -> str:
     raw = _normalize_briefing_text(str(value or ""))
     if not raw:
         return ""
@@ -844,7 +848,8 @@ def _context_text(value: Any) -> str:
 
     text = _CONTEXT_MARKDOWN_LINK_RE.sub(_replace_markdown_link, raw)
     text = text.replace("](", " ")
-    text = _normalize_briefing_text(text).strip("，,、:：- ")
+    strip_chars = "，,、- " if preserve_labels else "，,、:：- "
+    text = _normalize_briefing_text(text).strip(strip_chars)
     if not text:
         return ""
     candidate_clauses: list[str] = []
@@ -868,23 +873,24 @@ def _context_text(value: Any) -> str:
         return ""
     if _looks_like_briefing_meta_heavy(text):
         return ""
-    for _ in range(2):
-        if "：" not in text:
+    if not preserve_labels:
+        for _ in range(2):
+            if "：" not in text:
+                break
+            head, tail = text.split("：", 1)
+            head = _normalize_briefing_text(head)
+            tail = _normalize_briefing_text(tail).strip("，,、:：- ")
+            if tail and (head.startswith("短期") or head.startswith("中期") or head.startswith("长期") or len(head) <= 8):
+                text = tail
+                continue
             break
-        head, tail = text.split("：", 1)
-        head = _normalize_briefing_text(head)
-        tail = _normalize_briefing_text(tail).strip("，,、:：- ")
-        if tail and (head.startswith("短期") or head.startswith("中期") or head.startswith("长期") or len(head) <= 8):
-            text = tail
-            continue
-        break
 
     meaningful = _CONTEXT_URL_RE.sub("", text)
     meaningful = _CONTEXT_DOMAIN_RE.sub("", meaningful)
     meaningful = re.sub(r"[\W_]+", "", meaningful, flags=re.UNICODE)
     if len(meaningful) < 6 and (_CONTEXT_URL_RE.search(text) or _CONTEXT_DOMAIN_RE.search(text)):
         return ""
-    text = _CONTEXT_DOMAIN_RE.sub("", text).strip("，,、:：- ")
+    text = _CONTEXT_DOMAIN_RE.sub("", text).strip(strip_chars)
     text = _normalize_briefing_text(text)
     if not text:
         return ""
@@ -1085,6 +1091,9 @@ def _normalize_research_delivery_supplement(raw: dict | None) -> dict[str, str]:
     return {
         "project_name": _context_text(raw.get("project_name")),
         "project_owner": _context_text(raw.get("project_owner")),
+        "solution_scenario": _context_text(raw.get("solution_scenario")),
+        "target_customer": _context_text(raw.get("target_customer")),
+        "vertical_scene": _context_text(raw.get("vertical_scene")),
         "project_region": _context_text(raw.get("project_region")),
         "implementation_window": _context_text(raw.get("implementation_window")),
         "investment_estimate": _context_text(raw.get("investment_estimate")),
@@ -1098,10 +1107,10 @@ def _normalize_research_delivery_supplement(raw: dict | None) -> dict[str, str]:
     }
 
 
-def _dedupe_export_rows(values: list[str], *, limit: int = 6) -> list[str]:
+def _dedupe_export_rows(values: list[str], *, limit: int = 6, preserve_labels: bool = False) -> list[str]:
     rows: list[str] = []
     for value in values:
-        normalized = _context_text(value)
+        normalized = _context_text(value, preserve_labels=preserve_labels)
         if normalized and normalized not in rows:
             rows.append(normalized)
     return rows[:limit]
@@ -1159,25 +1168,58 @@ def _build_formal_document_context(
     resolved_language = normalize_output_language(output_language or report.output_language)
     supplement = _normalize_research_delivery_supplement(delivery_supplement)
     scope_regions = _context_list(getattr(getattr(report, "source_diagnostics", None), "scope_regions", []), limit=2)
-    project_owner = (
-        supplement.get("project_owner")
+    solution_pack = getattr(report, "solution_delivery_pack", None)
+    target_customer = (
+        supplement.get("target_customer")
         or next((item.name for item in report.top_target_accounts if getattr(item, "name", "")), "")
         or next((item for item in report.target_accounts if _context_text(item)), "")
+    )
+    solution_scenario = (
+        supplement.get("solution_scenario")
+        or _context_text(getattr(solution_pack, "scenario", ""))
+        or report.keyword
+        or report.report_title
+    )
+    vertical_scene = (
+        supplement.get("vertical_scene")
+        or _context_text(getattr(solution_pack, "vertical_scene", ""))
+        or report.research_focus
+        or ""
+    )
+    project_owner = (
+        supplement.get("project_owner")
+        or target_customer
         or localized_text(
             resolved_language,
             {"zh-CN": "待补充业主/建设单位", "zh-TW": "待補充業主/建設單位", "en": "Owner to be confirmed"},
             "待补充业主/建设单位",
         )
     )
+    default_project_name = (
+        f"{target_customer}{solution_scenario}"
+        if target_customer and solution_scenario
+        else (
+            f"{solution_scenario}建设项目"
+            if solution_scenario
+            else (
+                f"{vertical_scene}建设项目"
+                if vertical_scene
+                else report.report_title
+            )
+        )
+    )
     context = {
         "project_name": supplement.get("project_name")
-        or report.report_title
+        or default_project_name
         or localized_text(
             resolved_language,
             {"zh-CN": "专题研究项目", "zh-TW": "專題研究專案", "en": "Research Project"},
             "专题研究项目",
         ),
         "project_owner": project_owner,
+        "target_customer": target_customer or project_owner,
+        "solution_scenario": solution_scenario,
+        "vertical_scene": vertical_scene,
         "project_region": supplement.get("project_region") or " / ".join(scope_regions) or report.keyword,
         "implementation_window": supplement.get("implementation_window")
         or next((item for item in report.tender_timeline if _context_text(item)), "")
@@ -1216,6 +1258,28 @@ def _build_formal_document_context(
     return report, supplement, context
 
 
+def _build_runtime_formal_document_packs(
+    report: ResearchReportDocument,
+    *,
+    context: dict[str, str],
+    supplement: dict[str, str],
+):
+    market_pack = build_market_intelligence_pack(
+        report,
+        scenario=context.get("solution_scenario", ""),
+        target_customer=context.get("target_customer", "") or context.get("project_owner", ""),
+        vertical_scene=context.get("vertical_scene", ""),
+    )
+    solution_pack = build_solution_delivery_pack(
+        report,
+        scenario=context.get("solution_scenario", ""),
+        target_customer=context.get("target_customer", "") or context.get("project_owner", ""),
+        vertical_scene=context.get("vertical_scene", ""),
+        supplemental_context=supplement.get("supplemental_context", ""),
+    )
+    return market_pack, solution_pack
+
+
 def _build_formal_document_sections(
     *,
     report: ResearchReportDocument,
@@ -1236,6 +1300,35 @@ def _build_formal_document_sections(
             *_report_followup_rows(report),
         ],
         limit=8,
+        preserve_labels=True,
+    )
+    market_pack, solution_pack = _build_runtime_formal_document_packs(
+        report,
+        context=context,
+        supplement=supplement,
+    )
+    tender_rows = _dedupe_export_rows(
+        [
+            *[
+                f"{item.project_name}（{item.notice_type or '公开线索'} / {item.publish_date or '日期待核验'} / {item.amount or '金额待核验'}）"
+                for item in list(getattr(market_pack, "tender_projects", []) or [])[:6]
+            ],
+            *list(getattr(market_pack, "intelligence_gaps", []) or [])[:3],
+        ],
+        limit=8,
+    )
+    product_rows = _dedupe_export_rows(
+        [
+            *[
+                f"{item.name}：{'；'.join((item.technical_parameters or [])[:3]) or item.source_context or '参数待核验'}"
+                for item in list(getattr(market_pack, "product_catalog", []) or [])[:6]
+            ],
+            *[
+                f"{section.title}：{'；'.join((section.bullets or [])[:3])}"
+                for section in list(getattr(solution_pack, "client_ppt_outline", []) or [])[:3]
+            ],
+        ],
+        limit=10,
     )
     feasibility_sections = [
         (
@@ -1244,11 +1337,15 @@ def _build_formal_document_sections(
                 [
                     f"项目名称：{context['project_name']}",
                     f"建议业主/建设单位：{context['project_owner']}",
+                    f"目标客户：{context['target_customer']}",
+                    f"项目/方案场景：{context['solution_scenario']}",
+                    f"垂直场景：{context['vertical_scene']}",
                     f"建议区域/范围：{context['project_region']}",
                     f"实施窗口：{context['implementation_window']}",
                     f"核心结论：{report.executive_summary}",
                 ],
-                limit=6,
+                limit=8,
+                preserve_labels=True,
             ),
         ),
         (
@@ -1260,6 +1357,7 @@ def _build_formal_document_sections(
             _dedupe_export_rows(
                 [
                     report.consulting_angle,
+                    *tender_rows[:4],
                     *report.commercial_summary.account_focus,
                     *report.budget_signals,
                     *report.leadership_focus,
@@ -1273,6 +1371,8 @@ def _build_formal_document_sections(
             _dedupe_export_rows(
                 [
                     context.get("scope_statement", ""),
+                    f"项目/方案场景：{context['solution_scenario']}",
+                    f"垂直场景：{context['vertical_scene']}",
                     supplement.get("supplemental_requirements", ""),
                     *report.strategic_directions,
                     *report.project_distribution,
@@ -1286,6 +1386,7 @@ def _build_formal_document_sections(
             _dedupe_export_rows(
                 [
                     *_report_section_rows(report, "solution_design", limit=6),
+                    *product_rows,
                     *report.benchmark_cases,
                     *report.flagship_products,
                     *report.public_contact_channels,
@@ -1304,6 +1405,7 @@ def _build_formal_document_sections(
                     *report.five_year_outlook,
                 ],
                 limit=8,
+                preserve_labels=True,
             ),
         ),
         (
@@ -1339,11 +1441,15 @@ def _build_formal_document_sections(
                 [
                     f"项目名称：{context['project_name']}",
                     f"建议建设单位：{context['project_owner']}",
+                    f"目标客户：{context['target_customer']}",
+                    f"项目/方案场景：{context['solution_scenario']}",
+                    f"垂直场景：{context['vertical_scene']}",
                     f"建议建设区域：{context['project_region']}",
                     report.executive_summary,
                     context.get("construction_basis", ""),
                 ],
-                limit=6,
+                limit=8,
+                preserve_labels=True,
             ),
         ),
         (
@@ -1351,9 +1457,12 @@ def _build_formal_document_sections(
             _dedupe_export_rows(
                 [
                     context.get("scope_statement", ""),
+                    f"项目/方案场景：{context['solution_scenario']}",
+                    f"垂直场景：{context['vertical_scene']}",
                     supplement.get("supplemental_requirements", ""),
                     *report.strategic_directions,
                     *report.target_departments,
+                    *product_rows[:4],
                 ],
                 limit=8,
             ),
@@ -1363,6 +1472,7 @@ def _build_formal_document_sections(
             _dedupe_export_rows(
                 [
                     *_report_section_rows(report, "solution_design", limit=6),
+                    *product_rows,
                     *report.benchmark_cases,
                     *report.flagship_products,
                     *report.ecosystem_partners,
@@ -1380,6 +1490,7 @@ def _build_formal_document_sections(
                     *_report_section_rows(report, "sales_strategy", limit=5),
                 ],
                 limit=8,
+                preserve_labels=True,
             ),
         ),
         (
@@ -1392,6 +1503,7 @@ def _build_formal_document_sections(
                     *report.five_year_outlook,
                 ],
                 limit=8,
+                preserve_labels=True,
             ),
         ),
         (
@@ -1416,6 +1528,7 @@ def _build_formal_document_sections(
                     *evidence_rows,
                 ],
                 limit=8,
+                preserve_labels=True,
             ),
         ),
     ]
@@ -1497,6 +1610,9 @@ def _build_formal_document_bundle(
         [
             f"项目名称：{context['project_name']}",
             f"建议业主/建设单位：{context['project_owner']}",
+            f"目标客户：{context['target_customer']}",
+            f"项目/方案场景：{context['solution_scenario']}",
+            f"垂直场景：{context['vertical_scene']}",
             f"建议区域：{context['project_region']}",
             f"实施窗口：{context['implementation_window']}",
             f"投资估算：{context['investment_estimate']}",
@@ -1504,6 +1620,7 @@ def _build_formal_document_bundle(
             supplement.get("cross_validation_notes", ""),
         ],
         limit=8,
+        preserve_labels=True,
     )
     sections = _build_formal_document_sections(
         report=report,
@@ -1558,6 +1675,67 @@ def build_feasibility_study_pdf_document(
     filename_seed = "".join(ch for ch in title if ch.isalnum() or ch in {" ", "-", "_"}) or "feasibility-study"
     pdf_bytes = _build_simple_pdf(plain_text.splitlines())
     return f"{filename_seed[:48].replace(' ', '_')}.pdf", plain_text, b64encode(pdf_bytes).decode("ascii"), "application/pdf"
+
+
+def build_research_market_intelligence_markdown(
+    report_payload: dict,
+    *,
+    output_language: str = "zh-CN",
+    delivery_supplement: dict | None = None,
+) -> tuple[str, str]:
+    report = ResearchReportDocument.model_validate(report_payload)
+    supplement = _normalize_research_delivery_supplement(delivery_supplement)
+    pack = build_market_intelligence_pack(
+        report,
+        scenario=supplement.get("solution_scenario", ""),
+        target_customer=supplement.get("target_customer", "") or supplement.get("project_owner", ""),
+        vertical_scene=supplement.get("vertical_scene", ""),
+    )
+    filename_seed = "".join(
+        ch
+        for ch in (
+            supplement.get("solution_scenario")
+            or supplement.get("vertical_scene")
+            or supplement.get("target_customer")
+            or report.keyword
+            or "market-intelligence"
+        )
+        if ch.isalnum() or ch in {" ", "-", "_"}
+    ).strip().replace(" ", "_")
+    if not filename_seed:
+        filename_seed = "market-intelligence"
+    return f"{filename_seed[:48]}-intelligence-pack.md", pack.export_markdown
+
+
+def build_research_solution_delivery_markdown(
+    report_payload: dict,
+    *,
+    output_language: str = "zh-CN",
+    delivery_supplement: dict | None = None,
+) -> tuple[str, str]:
+    report = ResearchReportDocument.model_validate(report_payload)
+    supplement = _normalize_research_delivery_supplement(delivery_supplement)
+    pack = build_solution_delivery_pack(
+        report,
+        scenario=supplement.get("solution_scenario", ""),
+        target_customer=supplement.get("target_customer", "") or supplement.get("project_owner", ""),
+        vertical_scene=supplement.get("vertical_scene", ""),
+        supplemental_context=supplement.get("supplemental_context", ""),
+    )
+    filename_seed = "".join(
+        ch
+        for ch in (
+            supplement.get("solution_scenario")
+            or supplement.get("vertical_scene")
+            or supplement.get("target_customer")
+            or report.keyword
+            or "solution-delivery"
+        )
+        if ch.isalnum() or ch in {" ", "-", "_"}
+    ).strip().replace(" ", "_")
+    if not filename_seed:
+        filename_seed = "solution-delivery"
+    return f"{filename_seed[:48]}-solution-delivery.md", pack.export_markdown
 
 
 def build_project_proposal_word_document(

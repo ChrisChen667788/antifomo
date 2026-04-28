@@ -58,6 +58,11 @@ from app.services.llm_parser import (
     parse_research_strategy_scope_response,
     parse_research_strategy_refine_response,
 )
+from app.services.research_quality_service import build_research_quality_profile
+from app.services.research_solution_intelligence_service import (
+    build_market_intelligence_pack,
+    build_solution_delivery_pack,
+)
 from app.services.llm_service import get_llm_service, get_strategy_llm_service
 from app.services.research_source_adapters import (
     CURATED_WECHAT_CHANNELS,
@@ -9556,6 +9561,13 @@ def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchRepor
             "review_queue": _build_review_queue(enriched),
         }
     )
+    enriched = enriched.model_copy(update={"quality_profile": build_research_quality_profile(enriched)})
+    enriched = enriched.model_copy(
+        update={
+            "market_intelligence": build_market_intelligence_pack(enriched),
+            "solution_delivery_pack": build_solution_delivery_pack(enriched),
+        }
+    )
     return _apply_report_readiness_guardrails(enriched)
 
 
@@ -10886,6 +10898,64 @@ def build_research_report_markdown(
             ]
         )
         lines.extend([f"- {query}" for query in report.query_plan])
+    if getattr(report, "market_intelligence", None):
+        market_pack = report.market_intelligence
+        if market_pack.tender_projects or market_pack.product_catalog or market_pack.external_source_queries:
+            lines.extend(
+                [
+                    "",
+                    f"## {localized_text(resolved_language, {'zh-CN': '近三年招投标与产品技术参数情报', 'zh-TW': '近三年招投標與產品技術參數情報', 'en': '3-Year Tender and Product Intelligence'}, '近三年招投标与产品技术参数情报')}",
+                    "",
+                    f"- 时间窗口: {market_pack.window_start} 至 {market_pack.window_end}",
+                    f"- 来源范围: {market_pack.source_scope_summary}",
+                ]
+            )
+            if market_pack.tender_projects:
+                lines.extend(["", "### 招投标项目明细"])
+                for item in market_pack.tender_projects[:10]:
+                    lines.append(
+                        f"- {item.project_name} | {item.notice_type or '待核验'} | {item.publish_date or '待核验'} | {item.amount or '金额待核验'} | {item.source_url}"
+                    )
+                    if item.technical_parameters:
+                        lines.append(f"  技术参数: {'；'.join(item.technical_parameters[:4])}")
+            if market_pack.product_catalog:
+                lines.extend(["", "### 产品清单"])
+                for item in market_pack.product_catalog[:10]:
+                    lines.append(f"- {item.name}: {item.source_context}")
+                    if item.technical_parameters:
+                        lines.append(f"  参数: {'；'.join(item.technical_parameters[:5])}")
+            if market_pack.external_source_queries:
+                lines.extend(["", "### 后续全网公开源检索清单"])
+                lines.extend([f"- {query}" for query in market_pack.external_source_queries[:10]])
+            if market_pack.intelligence_gaps:
+                lines.extend(["", "### 待补证缺口"])
+                lines.extend([f"- {gap}" for gap in market_pack.intelligence_gaps])
+    if getattr(report, "solution_delivery_pack", None):
+        delivery_pack = report.solution_delivery_pack
+        if delivery_pack.feasibility_outline or delivery_pack.project_proposal_outline or delivery_pack.client_ppt_outline:
+            lines.extend(
+                [
+                    "",
+                    f"## {localized_text(resolved_language, {'zh-CN': '解决方案交付包大纲', 'zh-TW': '解決方案交付包大綱', 'en': 'Solution Delivery Package Outline'}, '解决方案交付包大纲')}",
+                    "",
+                    f"- 场景: {delivery_pack.scenario or '待确认'}",
+                    f"- 目标客户: {delivery_pack.target_customer or '待确认'}",
+                    f"- 垂直场景: {delivery_pack.vertical_scene or '待确认'}",
+                ]
+            )
+            for title, outline in [
+                ("可行性研究报告大纲", delivery_pack.feasibility_outline),
+                ("项目建议书大纲", delivery_pack.project_proposal_outline),
+                ("对客汇报 PPT 大纲", delivery_pack.client_ppt_outline),
+            ]:
+                if not outline:
+                    continue
+                lines.extend(["", f"### {title}"])
+                for section in outline[:8]:
+                    lines.append(f"- {section.title}: {'；'.join(section.bullets[:4])}")
+            if delivery_pack.review_checklist:
+                lines.extend(["", "### 审阅确认清单"])
+                lines.extend([f"- {item}" for item in delivery_pack.review_checklist])
     if followup_context and (
         normalize_text(getattr(followup_context, "followup_report_summary", ""))
         or normalize_text(getattr(followup_context, "supplemental_context", ""))

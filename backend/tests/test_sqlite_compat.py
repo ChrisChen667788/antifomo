@@ -114,3 +114,18 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
 
     compare_snapshot_columns = _columns_for(engine, "research_compare_snapshots")
     assert {"report_version_id", "metadata_payload"}.issubset(compare_snapshot_columns)
+
+    retrieval_chunk_columns = _columns_for(engine, "research_retrieval_index_chunks")
+    assert {
+        "user_id",
+        "chunk_key",
+        "schema_version",
+        "document_id",
+        "document_type",
+        "metadata_payload",
+    }.issubset(retrieval_chunk_columns)
+
+    retrieval_checkpoint_columns = _columns_for(engine, "research_retrieval_index_checkpoints")
+    assert {"user_id", "schema_version", "backend", "status", "next_offset"}.issubset(
+        retrieval_checkpoint_columns
+    )
