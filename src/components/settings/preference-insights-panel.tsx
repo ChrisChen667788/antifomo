@@ -76,7 +76,7 @@ export function PreferenceInsightsPanel() {
       setMessage("");
     } catch {
       setSummary(null);
-      setMessage(t("preferences.loadFailed", "偏好数据暂时不可用，请确认后端已启动。"));
+      setMessage(t("preferences.loadFailed", "偏好数据暂时不可用，请稍后重试。"));
     } finally {
       setLoading(false);
     }

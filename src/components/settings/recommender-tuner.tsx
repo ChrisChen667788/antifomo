@@ -101,7 +101,7 @@ export function RecommenderTuner() {
         const config = await getLLMConfig();
         setLlmConfigText(JSON.stringify(config, null, 2));
       } catch {
-        setLlmConfigText(t("tuner.configReadFailed", "读取失败，请确认后端已启动。"));
+        setLlmConfigText(t("tuner.configReadFailed", "读取失败，请确认服务已启动。"));
       }
     };
     void loadConfig();
@@ -116,7 +116,7 @@ export function RecommenderTuner() {
       setLlmDryRunText(JSON.stringify(result, null, 2));
     } catch {
       setLlmDryRunText(
-        t("tuner.dryRunFailed", "联调失败，请确认后端 /api/system/llm/dry-run 可访问。"),
+        t("tuner.dryRunFailed", "测试失败，请稍后重试。"),
       );
     } finally {
       setLlmLoading(false);
@@ -214,9 +214,9 @@ export function RecommenderTuner() {
       </section>
 
       <section className="af-glass rounded-[30px] p-5 md:p-6">
-        <p className="af-kicker">{t("tuner.llmDryRun", "LLM Dry-Run")}</p>
+        <p className="af-kicker">{t("tuner.llmDryRun", "连接测试")}</p>
         <p className="mt-2 text-xs text-slate-500">
-          {t("tuner.llmDryRunDesc", "用于联调当前 provider 是否可用（mock/openai/fallback）。")}
+          {t("tuner.llmDryRunDesc", "检查当前智能服务是否可用。")}
         </p>
         <div className="mt-3 flex gap-2">
           <button

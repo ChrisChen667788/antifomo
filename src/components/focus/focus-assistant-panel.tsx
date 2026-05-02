@@ -100,11 +100,11 @@ export function FocusAssistantPanel({
     <section className="mt-5 rounded-3xl border border-white/85 bg-white/55 p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="af-kicker">{t("focus.assistant.title", "Focus Assistant")}</p>
+          <p className="af-kicker">{t("focus.assistant.title", "专注助手")}</p>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             {t(
               "focus.assistant.subtitle",
-              "先生成安全动作计划，再确认是否通过 WorkBuddy 或直连通道执行。",
+              "先整理可执行动作，再选择是否立即执行。",
             )}
           </p>
         </div>
@@ -133,7 +133,7 @@ export function FocusAssistantPanel({
                 {t("common.minutes", "分钟")}：{plan.duration_minutes || duration}
               </span>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-                Focus Ref：{plan.focus_reference_count}
+                Focus 参考：{plan.focus_reference_count}
               </span>
             </div>
           </div>
@@ -166,7 +166,7 @@ export function FocusAssistantPanel({
                       <WorkBuddyMark size={14} />
                       {executingKey === `${action.key}:workbuddy`
                         ? t("focus.assistant.executing", "执行中...")
-                        : t("focus.assistant.toWorkBuddy", "交给 WorkBuddy")}
+                        : t("focus.assistant.toWorkBuddy", "开始执行")}
                     </button>
                     <button
                       type="button"
@@ -179,7 +179,7 @@ export function FocusAssistantPanel({
                       <AppIcon name="summary" className="h-4 w-4" />
                       {executingKey === `${action.key}:direct`
                         ? t("focus.assistant.executing", "执行中...")
-                        : t("focus.assistant.direct", "直接执行")}
+                        : t("focus.assistant.direct", "备用执行")}
                     </button>
                   </div>
                 </div>

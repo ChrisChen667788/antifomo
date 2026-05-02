@@ -49,7 +49,7 @@ const PRODUCTIZED_DISPLAY_RULES: TextRule[] = [
   },
   {
     pattern: /把脚本级 audit \/ rewrite 收成可审查队列，先看 diff，再决定接受还是回退。?/gi,
-    replacement: "将 audit / rewrite 治理沉淀为可审查队列，支持先查看 diff，再决定接受或回退。",
+    replacement: "将低质量条目沉淀为可审查队列，支持先查看修订差异，再决定接受或回退。",
   },
   {
     pattern: /把专题刷新结果沉淀成变化摘要，快速知道今天新增了什么。?/g,

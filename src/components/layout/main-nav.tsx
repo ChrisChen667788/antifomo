@@ -12,7 +12,7 @@ const navItems = [
   { href: "/saved", labelKey: "nav.saved", fallback: "Saved", icon: "bookmark" as const },
   { href: "/knowledge", labelKey: "nav.knowledge", fallback: "知识库", icon: "knowledge" as const },
   { href: "/focus", labelKey: "nav.focus", fallback: "Focus", icon: "focus" as const },
-  { href: "/session-summary", labelKey: "nav.summary", fallback: "Session Summary", icon: "summary" as const },
+  { href: "/session-summary", labelKey: "nav.summary", fallback: "专注总结", icon: "summary" as const },
   { href: "/collector", labelKey: "nav.collector", fallback: "Collector", icon: "collector" as const },
   { href: "/settings", labelKey: "nav.settings", fallback: "设置", icon: "settings" as const },
 ];

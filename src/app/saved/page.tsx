@@ -10,7 +10,7 @@ async function loadSavedItems(): Promise<{ items: FeedItem[]; message: string }>
     if (!response.items.length) {
       return {
         items: [],
-        message: "暂无真实收藏数据，当前不再自动回退演示卡片。",
+        message: "暂无收藏数据。",
       };
     }
     return {
@@ -44,7 +44,7 @@ async function loadSavedItems(): Promise<{ items: FeedItem[]; message: string }>
   } catch {
     return {
       items: [],
-      message: "收藏页当前未连上 API，已停止自动显示演示卡片。",
+      message: "收藏页暂时无法读取实时数据。",
     };
   }
 }

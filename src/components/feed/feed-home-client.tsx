@@ -117,7 +117,7 @@ export function FeedHomeClient() {
       }
     } catch {
       setItems([]);
-      setMessage(t("feed.status.apiOfflineNoMock", "API 未连接，当前不再自动回退演示卡片。"));
+      setMessage(t("feed.status.apiOfflineNoMock", "暂时无法读取实时数据，当前不再自动显示演示卡片。"));
       setDataSource("api_offline");
     } finally {
       setLastRefreshedAt(
@@ -168,9 +168,9 @@ export function FeedHomeClient() {
             <p className="mt-1 text-xs text-slate-500">
               {t("feed.status.dataSource", "数据源")}：
               {dataSource === "api"
-                ? t("data.api", "实时 API")
+                ? t("data.api", "实时数据")
                 : dataSource === "api_offline"
-                  ? t("feed.status.apiOffline", "API 离线")
+                  ? t("feed.status.apiOffline", "实时数据暂不可用")
                   : t("feed.status.noRealDataShort", "无真实数据")} ·{" "}
               {t("feed.status.lastRefreshed", "最近刷新")}：{lastRefreshedAt || "--:--:--"}
             </p>

@@ -10,7 +10,7 @@ interface WorkBuddyMarkProps extends HTMLAttributes<HTMLSpanElement> {
 export function WorkBuddyMark({
   size = 18,
   withLabel = false,
-  label = "WorkBuddy",
+  label = "导出",
   className = "",
   ...props
 }: WorkBuddyMarkProps) {
@@ -21,7 +21,7 @@ export function WorkBuddyMark({
     >
       <Image
         src="/brand/workbuddy.png"
-        alt="WorkBuddy"
+        alt="导出"
         width={size}
         height={size}
         className="h-auto w-auto object-contain"

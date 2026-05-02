@@ -114,7 +114,7 @@ export function MultiFormatImportPanel() {
       setRssTitle("");
       setRssNote("");
     } catch {
-      setError("RSS 导入失败，请检查源地址或后端服务。");
+      setError("RSS 导入失败，请检查源地址后重试。");
     } finally {
       setBusy(false);
     }

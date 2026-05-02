@@ -103,7 +103,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
       setApiMessage(`${t("action.feedbackSynced", "已同步反馈")}：${feedbackType}`);
     } catch {
       setApiMessage(
-        t("action.feedbackLocalOnly", "本地已记录，API 未连接（可稍后重试）"),
+        t("action.feedbackLocalOnly", "已在本机记录，稍后会再同步。"),
       );
     }
   };

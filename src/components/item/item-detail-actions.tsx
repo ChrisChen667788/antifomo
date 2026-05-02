@@ -105,7 +105,7 @@ export function ItemDetailActions({ itemId, sourceUrl }: ItemDetailActionsProps)
       setApiMessage(`${t("action.feedbackSynced", "已同步反馈")}：${feedbackType}`);
     } catch {
       setApiMessage(
-        t("action.feedbackLocalOnly", "本地已记录，API 未连接（可稍后重试）"),
+        t("action.feedbackLocalOnly", "已在本机记录，稍后会再同步。"),
       );
     }
   };
@@ -116,7 +116,7 @@ export function ItemDetailActions({ itemId, sourceUrl }: ItemDetailActionsProps)
       await reprocessItem(itemId, { output_language: preferences.language });
       setApiMessage(t("action.reprocessSubmitted", "已提交重新处理任务"));
     } catch {
-      setApiMessage(t("action.feedbackLocalOnly", "本地已记录，API 未连接（可稍后重试）"));
+      setApiMessage(t("action.feedbackLocalOnly", "已在本机记录，稍后会再同步。"));
     }
     window.setTimeout(() => {
       setReprocessState("done");

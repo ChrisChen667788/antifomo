@@ -233,7 +233,7 @@ export function FocusTimer() {
         }
         if (isFinished) {
           return prev === ""
-            ? t("focus.sessionFinished", "本轮 Focus Session 已结束并生成回流摘要。")
+            ? t("focus.sessionFinished", "本轮专注已结束，摘要已准备好。")
             : prev;
         }
         return prev;
@@ -366,13 +366,13 @@ export function FocusTimer() {
       try {
         await finishSession(sessionId, { output_language: preferences.language });
         setSessionMessage(
-          t("focus.sessionFinished", "本轮 Focus Session 已结束并生成回流摘要。"),
+          t("focus.sessionFinished", "本轮专注已结束，摘要已准备好。"),
         );
       } catch {
         setSessionMessage(
           t(
             "focus.sessionFinishedFallback",
-            "本轮已结束，待后端可用时可补发 session finish。",
+            "本轮已结束，稍后可再同步总结。",
           ),
         );
       } finally {
@@ -413,7 +413,7 @@ export function FocusTimer() {
         window.localStorage.setItem(SESSION_ID_KEY, nextSessionId);
       }
       setSessionMessage(
-        t("focus.sessionStarted", "Focus Session 已启动。"),
+        t("focus.sessionStarted", "本轮专注已开始。"),
       );
     } catch {
       if (!isFocusBootstrapActive(bootstrapToken)) {
@@ -421,7 +421,7 @@ export function FocusTimer() {
       }
       setTransportMode("local");
       setSessionMessage(
-        t("focus.sessionLocalMode", "后端未连接，当前以本地计时模式运行。"),
+        t("focus.sessionLocalMode", "当前仅保留本地计时，稍后可重新开始正式记录。"),
       );
     }
   };
@@ -615,7 +615,7 @@ export function FocusTimer() {
     transportMode === "bootstrapping"
       ? t("focus.transport.bootstrapping", "接入中")
       : transportMode === "live"
-        ? t("focus.transport.live", "Live Session")
+        ? t("focus.transport.live", "记录中")
         : transportMode === "local"
           ? t("focus.transport.local", "本地模式")
           : t("focus.transport.idle", "未接入");
@@ -634,7 +634,7 @@ export function FocusTimer() {
     ? sessionId && !sessionClosed
       ? t(
           "focus.status.pausedRemoteDetail",
-          "后端 session 与页面倒计时都已暂停；点击继续会从当前剩余时间恢复。",
+          "点击继续后，会从当前剩余时间恢复。",
         )
       : t(
           "focus.status.pausedLocalDetail",
@@ -643,26 +643,26 @@ export function FocusTimer() {
     : running && transportMode === "bootstrapping"
       ? t(
           "focus.status.bootstrappingDetail",
-          "点击开始后倒计时会立刻响应；专注会话和公众号采集在后台异步接入。",
+          "倒计时已经开始，本轮记录和采集会随后准备好。",
         )
       : running && transportMode === "local"
         ? t(
             "focus.status.localDetail",
-            "当前仅运行本地倒计时，不会生成后端专注记录；后端恢复后可重新开启正式 session。",
+            "当前只保留本地倒计时，稍后可重新开始正式记录。",
           )
         : running
           ? t(
               "focus.status.liveDetail",
-              "后端 session 已连接，新增内容会持续归档到本轮专注窗口中。",
+              "新增内容会归入本轮专注，结束后统一查看。",
             )
           : secondsLeft === 0
             ? t(
                 "focus.status.doneDetail",
-                "你可以查看回流摘要，或直接重置开始下一轮。",
+                "你可以查看总结，或直接重置开始下一轮。",
               )
             : t(
                 "focus.status.readyDetail",
-                "设置目标后点击开始，倒计时会立即启动，后台再补齐 session 与采集。",
+                "设置目标后点击开始，倒计时会立即启动。",
               );
   const phaseBadgeClass = running
     ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700"
@@ -876,7 +876,7 @@ export function FocusTimer() {
       <section className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl">
-            <p className="af-kicker">{t("focus.statusKicker", "Session 状态")}</p>
+            <p className="af-kicker">{t("focus.statusKicker", "专注状态")}</p>
             <p className="mt-2 text-base font-semibold text-slate-900">{focusStatusTitle}</p>
             <p className="mt-1 text-sm text-slate-500">{focusStatusDetail}</p>
           </div>
@@ -965,7 +965,7 @@ export function FocusTimer() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
-              <p>{t("focus.collectorSubmittedOcr", "OCR兜底")}</p>
+              <p>{t("focus.collectorSubmittedOcr", "OCR 补录")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">
                 {submittedOcr}
               </p>

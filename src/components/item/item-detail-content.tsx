@@ -149,12 +149,12 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
         {item.diagnostics ? (
           <div className="mt-4 rounded-[22px] border border-sky-200/80 bg-sky-50/60 px-4 py-3 text-sm text-slate-700">
             <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
-              <span>Route · {item.diagnostics.ingestRoute}</span>
-              <span>Status · {item.diagnostics.contentAcquisitionStatus}</span>
-              <span>Body · {item.diagnostics.bodySource}</span>
-              <span>Attempts · {item.diagnostics.attemptCount}</span>
-              <span>Processing · {item.diagnostics.processingStatus}</span>
-              {item.diagnostics.fallbackUsed ? <span>Fallback Used</span> : null}
+              <span>来源 · {item.diagnostics.ingestRoute}</span>
+              <span>采集状态 · {item.diagnostics.contentAcquisitionStatus}</span>
+              <span>正文来源 · {item.diagnostics.bodySource}</span>
+              <span>尝试次数 · {item.diagnostics.attemptCount}</span>
+              <span>处理状态 · {item.diagnostics.processingStatus}</span>
+              {item.diagnostics.fallbackUsed ? <span>已使用可用内容</span> : null}
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {item.diagnostics.contentAcquisitionNote}

@@ -184,9 +184,9 @@ function defaultResearchPipelineSummary(key: ResearchPipelineKey) {
     return "汇总定向源、公开网页和公众号候选结果。";
   }
   if (key === "clean") {
-    return "抽取正文、去重、筛掉越界来源并做纠错补证。";
+    return "抽取正文、去重，并筛掉不匹配的来源。";
   }
-  return "综合证据、排序公司与伙伴，并整理结构化结论。";
+  return "综合依据、排序公司与伙伴，并整理结构化结论。";
 }
 
 export function InboxForm() {
@@ -301,7 +301,7 @@ export function InboxForm() {
         setResearchError(
           t(
             "inbox.error.researchBackendUnavailable",
-            "后端研究服务暂不可用：当前前端无法继续轮询研报任务，请检查 API 是否运行。",
+            "研究服务暂时不可用，请稍后刷新或重试。",
           ),
         );
       }
@@ -379,7 +379,7 @@ export function InboxForm() {
       });
       setUrl("");
     } catch {
-      setError(t("inbox.error.submitFailed", "提交失败，请检查后端服务是否启动。"));
+      setError(t("inbox.error.submitFailed", "提交失败，请稍后重试。"));
     } finally {
       setSubmitting(false);
     }
@@ -402,7 +402,7 @@ export function InboxForm() {
       });
       setRawText("");
     } catch {
-      setError(t("inbox.error.submitFailed", "提交失败，请检查后端服务是否启动。"));
+      setError(t("inbox.error.submitFailed", "提交失败，请稍后重试。"));
     } finally {
       setSubmitting(false);
     }
@@ -440,7 +440,7 @@ export function InboxForm() {
       );
       setBatchUrls("");
     } catch {
-      setError(t("inbox.error.batchFailed", "批量提交失败，请检查后端服务是否启动。"));
+      setError(t("inbox.error.batchFailed", "批量提交失败，请稍后重试。"));
     } finally {
       setSubmitting(false);
     }
@@ -511,7 +511,7 @@ export function InboxForm() {
       setResearchError(
         t(
           "inbox.error.researchBackendUnavailable",
-          "后端研究服务暂不可用：当前前端无法创建研报任务，请检查 API 是否运行。",
+          "研究服务暂时不可用，请稍后刷新或重试。",
         ),
       );
     } finally {
@@ -789,12 +789,12 @@ export function InboxForm() {
 
   const researchProgress = Math.max(0, Math.min(100, Number(researchJob?.progress_percent || 0)));
   const researchStageLabel =
-    researchJob?.stage_label || t("inbox.researchingTitle", "正在汇总多源内容并生成研报");
+    researchJob?.stage_label || t("inbox.researchingTitle", "正在整理公开信息");
   const researchStageMessage =
     researchJob?.message ||
     t(
       "inbox.researchingDesc",
-      "系统会先检索公开网页和公众号结果，再提炼政策、预算、项目分期和销售/投标建议。",
+      "正在汇总公开网页和公众号结果，并整理政策、预算、项目分期和销售/投标建议。",
     );
   const researchKeywordGroups = buildResearchKeywordGroups(
     researchJob?.keyword || researchKeyword,
@@ -849,7 +849,7 @@ export function InboxForm() {
             {t("inbox.intakeTitle", "添加新内容")}
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            {t("inbox.intakeDesc", "粘贴链接、文本，或输入关键词生成多源研究报告。")}
+            {t("inbox.intakeDesc", "粘贴链接或文本，整理成摘要、标签和建议动作。")}
           </p>
         </div>
 
@@ -958,7 +958,7 @@ export function InboxForm() {
             <p className="mt-1.5 max-w-[560px] text-[10px] leading-[1.7] text-slate-500">
               {t(
                 "inbox.keywordDesc",
-                "系统会搜索公开网页与公众号相关文章，自动生成偏咨询顾问风格、关注未来五年预算/招标/生态的专题研报。",
+                "围绕公开网页和公众号内容，整理预算、招标、生态与客户线索。",
               )}
             </p>
           </div>
@@ -1023,7 +1023,7 @@ export function InboxForm() {
           <p className="text-[10px] leading-[1.7] text-slate-500">
             {t(
               "inbox.keywordHelper",
-              "建议输入“行业 + 场景 + 项目阶段/预算/中标/招标”等组合关键词，系统会更关注未来五年的刚需场景与预算节奏。",
+              "建议输入“行业 + 场景 + 项目阶段/预算/中标/招标”等组合关键词，结果会更聚焦可推进的业务线索。",
             )}
           </p>
           <p className="text-[10px] leading-[1.7] text-slate-400">{researchModeHint}</p>
@@ -1038,7 +1038,7 @@ export function InboxForm() {
             disabled={researching}
             className="inline-flex min-w-[98px] items-center justify-center rounded-full bg-[linear-gradient(180deg,#3c91ff,#1f73f0)] px-5 py-2 text-[12px] font-semibold text-white shadow-[0_14px_24px_-18px_rgba(31,115,240,0.72)] transition hover:brightness-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {researching ? t("inbox.generatingResearch", "生成中...") : t("inbox.submitKeywordResearch", "生成研报")}
+            {researching ? t("inbox.generatingResearch", "生成中...") : t("inbox.submitKeywordResearch", "开始研究")}
           </button>
         </div>
 
@@ -1067,8 +1067,8 @@ export function InboxForm() {
             titleLabel={t("inbox.researchTitle", "关键词情报简报")}
             summaryLabel={t("inbox.researchSummary", "执行摘要")}
             angleLabel={t("inbox.researchAngle", "咨询价值")}
-            queryPlanLabel={t("inbox.researchQueries", "检索路径")}
-            sourcesLabel={t("inbox.researchSources", "来源与证据")}
+            queryPlanLabel={t("inbox.researchQueries", "搜索范围")}
+            sourcesLabel={t("inbox.researchSources", "参考来源")}
             sourceCountLabel={t("inbox.researchSourceCount", "来源数")}
             generatedAtLabel={t("inbox.researchGeneratedAt", "生成于")}
             saveLabel={t("inbox.researchSave", "加入知识库")}
@@ -1123,9 +1123,9 @@ export function InboxForm() {
           <section className="af-glass rounded-[30px] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">Research Follow-up</p>
+                <p className="af-kicker">补充与导出</p>
                 <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
-                  追问补证与正式文档输出
+                  补充信息并更新研报
                 </h3>
                 <p className="mt-2 text-sm text-slate-500">
                   在当前研报基础上补充新信息、新证据和新需求，可继续生成新版研报，或直接导出可行性研究报告与项目建议书。
@@ -1137,21 +1137,21 @@ export function InboxForm() {
             </div>
             <div className="mt-4 grid gap-4">
               <div className="rounded-[24px] border border-white/80 bg-white/68 p-4">
-                <p className="text-sm font-semibold text-slate-900">研报追问 / 补证后二次生成</p>
+                <p className="text-sm font-semibold text-slate-900">补充后重新整理</p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  这一步会把当前研报结论和你补充的新信息一起送回研究链路，重新检索、交叉验证并生成新版研报。
+                  把补充信息加入当前研报后，重新整理公开信息并输出新版研报。
                 </p>
                 {followupDiagnostics?.enabled ? (
                   <div className="mt-4 rounded-[20px] border border-amber-200/80 bg-amber-50/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                      二次检索诊断
+                      补充信息状态
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-700">
-                      {followupDiagnostics.summary || "当前补证输入已接入二次检索。"}
+                      {followupDiagnostics.summary || "补充信息已纳入本次更新。"}
                     </p>
                     {followupDiagnostics.planning_focus ? (
                       <p className="mt-2 text-xs leading-5 text-slate-500">
-                        规划焦点：{followupDiagnostics.planning_focus}
+                        关注重点：{followupDiagnostics.planning_focus}
                       </p>
                     ) : null}
                     {followupDiagnostics.input_sections?.length ? (
@@ -1182,6 +1182,63 @@ export function InboxForm() {
                           {followupDiagnostics.decomposition_queries.slice(0, 4).map((query) => (
                             <div key={`followup-query-${query}`} className="rounded-2xl border border-white/90 bg-white/75 px-3 py-2 text-xs leading-5 text-slate-600">
                               {query}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {(followupDiagnostics.title_resolution || followupDiagnostics.summary_resolution) &&
+                    followupDiagnostics.enabled ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-full border border-white/90 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                          标题：
+                          {followupDiagnostics.title_resolution === "corrected"
+                            ? "已按追问纠偏"
+                            : followupDiagnostics.title_resolution === "reused"
+                              ? "沿用基线"
+                              : "基线生成"}
+                        </span>
+                        <span className="rounded-full border border-white/90 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                          摘要：
+                          {followupDiagnostics.summary_resolution === "corrected"
+                            ? "已按追问纠偏"
+                            : followupDiagnostics.summary_resolution === "reused"
+                              ? "沿用基线"
+                              : "基线生成"}
+                        </span>
+                      </div>
+                    ) : null}
+                    {followupDiagnostics.impacted_sections?.length ? (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">重点影响章节</p>
+                        <div className="grid gap-2">
+                          {followupDiagnostics.impacted_sections.slice(0, 4).map((section) => (
+                            <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-white/90 bg-white/75 px-3 py-3 text-xs leading-5 text-slate-600">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-slate-900">{section.section_title}</span>
+                                <span
+                                  className={`rounded-full px-2.5 py-1 ${
+                                    section.impact_label === "high"
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : section.impact_label === "medium"
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  影响度 {section.impact_score}
+                                </span>
+                              </div>
+                              <p className="mt-2">{section.reason}</p>
+                              {section.matched_inputs?.length ? (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {section.matched_inputs.slice(0, 3).map((value) => (
+                                    <span key={`${section.section_title}-${value}`} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
+                                      {value}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <p className="mt-2 text-[11px] text-slate-500">{section.next_action}</p>
                             </div>
                           ))}
                         </div>
@@ -1246,8 +1303,8 @@ export function InboxForm() {
                         supplementalRequirements: deliverySupplement.supplemental_requirements,
                         queuedMessage:
                           researchMode === "deep"
-                            ? "已启动补证后二次深度研究，正在结合上一版结论与新增输入重新检索。"
-                            : "已启动补证后二次极速研究，正在优先校验新增输入与高信号来源。",
+                            ? "已开始深度更新，正在结合上一版结论与新增信息重新整理。"
+                            : "已开始快速更新，正在优先核验新增信息与高质量来源。",
                       });
                     }}
                     disabled={researching}
@@ -1489,7 +1546,7 @@ export function InboxForm() {
               <div>
                 <p className="af-kicker">{t("inbox.researchSources", "来源样本")}</p>
                 <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
-                  {t("inbox.researchSourceTitle", "参考来源与采集诊断")}
+                  {t("inbox.researchSourceTitle", "参考来源与来源检查")}
                 </h3>
                 <p className="mt-2 text-sm text-slate-500">
                   {t("inbox.researchSourceHint", "仅保留近 7 年内可验证来源；优先显示官方、招采与高信号聚合源。")}
@@ -1502,12 +1559,12 @@ export function InboxForm() {
             {researchReport.source_diagnostics ? (
               <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white/70 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  {t("inbox.researchDiagnostics", "采集诊断")}
+                  {t("inbox.researchDiagnostics", "来源检查")}
                 </p>
                 {isGuardedBacklog(researchReport.source_diagnostics) ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                     <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
-                      已降级为 guarded backlog
+                      已加入待复核
                     </span>
                     {guardedReasonLabels.map((label) => (
                       <span key={label} className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
@@ -1521,7 +1578,7 @@ export function InboxForm() {
                     {t("inbox.researchDiagnosticsEnabled", "启用源")} {enabledSourceLabels.length}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                    {t("inbox.researchDiagnosticsAdapters", "命中爬虫源")} {researchReport.source_diagnostics.adapter_hit_count}
+                    {t("inbox.researchDiagnosticsAdapters", "命中公开源")} {researchReport.source_diagnostics.adapter_hit_count}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
                     {t("inbox.researchDiagnosticsSearch", "命中搜索源")} {researchReport.source_diagnostics.search_hit_count}

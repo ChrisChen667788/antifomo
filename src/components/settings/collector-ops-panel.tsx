@@ -185,11 +185,11 @@ function localText(language: AppLanguage, key: string): string {
       ko: "Browser plugin",
     },
     daemonUrlFallbackCount: {
-      "zh-CN": "URL Fallback",
-      "zh-TW": "URL Fallback",
-      en: "URL fallback",
-      ja: "URL fallback",
-      ko: "URL fallback",
+      "zh-CN": "链接补录",
+      "zh-TW": "連結補錄",
+      en: "URL recovery",
+      ja: "URL recovery",
+      ko: "URL recovery",
     },
     daemonFailedCount: {
       "zh-CN": "失败数",
@@ -220,30 +220,30 @@ function localText(language: AppLanguage, key: string): string {
       ko: "실행 출력",
     },
     wechatAgentTitle: {
-      "zh-CN": "微信 PC 全自动 Agent",
-      "zh-TW": "微信 PC 全自動 Agent",
-      en: "WeChat PC Full-Auto Agent",
+      "zh-CN": "微信 PC 自动采集",
+      "zh-TW": "微信 PC 自動採集",
+      en: "WeChat PC Auto Collection",
       ja: "WeChat PC 全自動 Agent",
       ko: "WeChat PC 풀오토 Agent",
     },
     wechatAgentHint: {
-      "zh-CN": "自动点击公众号列表，优先提取真链并入库；只有明确开启时才使用 OCR 兜底。连续命中同一篇时会自动加大翻页幅度。需先给 Terminal/IDE 开启辅助功能与屏幕录制权限。",
-      "zh-TW": "自動點擊公眾號列表，優先提取真鏈並入庫；只有明確開啟時才使用 OCR 兜底。連續命中同一篇時會自動加大翻頁幅度。需先為 Terminal/IDE 開啟輔助功能與螢幕錄製權限。",
+      "zh-CN": "自动打开公众号列表，优先提取文章链接并入库；只有明确开启时才使用 OCR 补录。连续命中同一篇时会自动加大翻页幅度。需先给 Terminal/IDE 开启辅助功能与屏幕录制权限。",
+      "zh-TW": "自動打開公眾號列表，優先提取文章連結並入庫；只有明確開啟時才使用 OCR 補錄。連續命中同一篇時會自動加大翻頁幅度。需先為 Terminal/IDE 開啟輔助功能與螢幕錄製權限。",
       en: "Auto clicks the OA list, prioritizes real article URLs, and only falls back to OCR when explicitly enabled. Repeated hits on the same article now trigger larger list jumps. Requires Accessibility + Screen Recording permissions.",
       ja: "公式アカウント一覧を自動クリックし、まず実URLの取得を優先し、明示的に有効化した場合のみOCRにフォールバックします。同じ記事を連続で拾った場合は自動で送り幅を広げます。Accessibility と Screen Recording 権限が必要です。",
       ko: "공식계정 목록을 자동 클릭하고 실제 링크 추출을 우선하며, 명시적으로 켠 경우에만 OCR 폴백을 사용합니다. 같은 글이 반복되면 목록 점프 폭을 자동으로 키웁니다. 접근성/화면 녹화 권한이 필요합니다.",
     },
     wechatAgentStart: {
-      "zh-CN": "启动微信 Agent",
-      "zh-TW": "啟動微信 Agent",
-      en: "Start WeChat Agent",
+      "zh-CN": "启动微信采集",
+      "zh-TW": "啟動微信採集",
+      en: "Start WeChat Collection",
       ja: "WeChat Agent 開始",
       ko: "WeChat Agent 시작",
     },
     wechatAgentStop: {
-      "zh-CN": "停止微信 Agent",
-      "zh-TW": "停止微信 Agent",
-      en: "Stop WeChat Agent",
+      "zh-CN": "停止微信采集",
+      "zh-TW": "停止微信採集",
+      en: "Stop WeChat Collection",
       ja: "WeChat Agent 停止",
       ko: "WeChat Agent 중지",
     },
@@ -311,9 +311,9 @@ function localText(language: AppLanguage, key: string): string {
       ko: "URL 수집",
     },
     wechatAgentBatchSubmittedOcr: {
-      "zh-CN": "OCR兜底",
-      "zh-TW": "OCR兜底",
-      en: "OCR fallback",
+      "zh-CN": "OCR 补录",
+      "zh-TW": "OCR 補錄",
+      en: "OCR Recovery",
       ja: "OCRフォールバック",
       ko: "OCR 폴백",
     },
@@ -423,9 +423,9 @@ function localText(language: AppLanguage, key: string): string {
       ko: "이번 신규 카드",
     },
     wechatAgentBatchItemsHint: {
-      "zh-CN": "与 Session Summary 使用同一组新增卡片，可直接打开详情或回到总结页继续筛选。",
-      "zh-TW": "與 Session Summary 使用同一組新增卡片，可直接打開詳情或回到總結頁繼續篩選。",
-      en: "This uses the same new-card set as Session Summary. Open detail directly or continue filtering there.",
+      "zh-CN": "与专注总结使用同一组新增卡片，可直接打开详情或回到总结页继续筛选。",
+      "zh-TW": "與專注總結使用同一組新增卡片，可直接打開詳情或回到總結頁繼續篩選。",
+      en: "This uses the same new-card set as Focus Summary. Open detail directly or continue filtering there.",
       ja: "Session Summary と同じ新規カード群です。詳細を開くか、Summary で続けて絞り込めます。",
       ko: "Session Summary와 같은 신규 카드 묶음입니다. 바로 상세를 열거나 Summary에서 계속 필터링할 수 있습니다.",
     },
@@ -570,9 +570,9 @@ function localText(language: AppLanguage, key: string): string {
       ko: "최근 체크포인트",
     },
     wechatAgentConfigTitle: {
-      "zh-CN": "微信 Agent 坐标配置",
-      "zh-TW": "微信 Agent 座標配置",
-      en: "WeChat Agent Coordinates",
+      "zh-CN": "微信采集坐标配置",
+      "zh-TW": "微信採集座標配置",
+      en: "WeChat Collection Coordinates",
       ja: "WeChat Agent 座標設定",
       ko: "WeChat Agent 좌표 설정",
     },
@@ -1462,7 +1462,7 @@ export function CollectorOpsPanel() {
         article_link_menu_offsets: parsedMenuOffsets as WechatAgentConfig["article_link_menu_offsets"],
       });
       setWechatAgentConfig(saved);
-      setMessage("wechat agent config saved");
+      setMessage("微信采集配置已保存");
       await refreshStatus();
     } catch (error) {
       setMessage(String(error instanceof Error ? error.message : error));
@@ -2063,14 +2063,14 @@ export function CollectorOpsPanel() {
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                         <span className="rounded-full bg-sky-50 px-2.5 py-1 font-semibold text-sky-700">
-                          route · {item.ingest_route || "unknown"}
+                          来源 · {item.ingest_route || "unknown"}
                         </span>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-                          body · {item.content_acquisition_status || "pending"}
+                          正文 · {item.content_acquisition_status || "pending"}
                         </span>
                         {item.fallback_used ? (
                           <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-                            fallback
+                            已使用可用内容
                           </span>
                         ) : null}
                       </div>

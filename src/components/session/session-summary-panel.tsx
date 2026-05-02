@@ -224,7 +224,7 @@ function fallbackMarkdown(
 
 - ${t("summary.block.markdown", "Markdown 总结")}: ${now}
 - ${t("focus.goal", "本次目标")}: ${metrics.goalText || t("common.notSet", "未设置")}
-- ${t("summary.metric.duration", "Session 时长")}: ${formatDuration(metrics.durationMinutes, t)}
+- ${t("summary.metric.duration", "专注时长")}: ${formatDuration(metrics.durationMinutes, t)}
 - ${t("summary.metric.newContent", "新增内容数")}: ${metrics.newContentCount}
 - ${t("summary.metric.deepRead", "推荐深读数")}: ${metrics.deepReadCount}
 - ${t("summary.metric.later", "稍后读数")}: ${metrics.laterCount}
@@ -600,7 +600,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         setSessionItems([]);
         setRecommendedDeepReads([]);
         setTaskMessage(
-          t("summary.task.localSession", "未能读取实时 Session，当前展示本地汇总。"),
+          t("summary.task.localSession", "暂时没有读取到本轮记录，当前展示本地汇总。"),
         );
       } finally {
         setLoadingSession(false);
@@ -756,7 +756,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
     const fallback = fallbackTodoDraft(t);
     setRunningTask("export_todo_draft");
     setTaskMessage(
-      t("summary.task.runningWorkbuddy", "正在通过 WorkBuddy 执行任务，失败会自动回退。"),
+      t("summary.task.runningWorkbuddy", "正在整理，请稍候。"),
     );
     try {
       const { task, channel } = await runTask("export_todo_draft");
@@ -769,13 +769,13 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
       }));
       setTaskMessage(
         channel === "workbuddy"
-          ? t("summary.task.doneWorkbuddy", "已通过 WorkBuddy 完成导出。")
-          : t("summary.task.doneDirectFallback", "WorkBuddy 不可用，已自动回退直连导出。"),
+          ? t("summary.task.doneWorkbuddy", "已完成导出。")
+          : t("summary.task.doneDirectFallback", "已完成导出。"),
       );
       return resolved;
     } catch {
       setTodoDraft(fallback);
-      setTaskMessage(t("summary.task.failed", "导出任务失败，已回退本地生成结果。"));
+      setTaskMessage(t("summary.task.failed", "导出失败，已展示可用的本地结果。"));
       return fallback;
     } finally {
       setRunningTask("");
@@ -942,7 +942,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
     setRunningTask(taskType);
     setTaskContexts((current) => ({ ...current, [taskType]: null }));
     setTaskMessage(
-      t("summary.task.runningWorkbuddy", "正在通过 WorkBuddy 执行任务，失败会自动回退。"),
+      t("summary.task.runningWorkbuddy", "正在整理，请稍候。"),
     );
     try {
       const { task, channel } = await runTask(taskType);
@@ -962,12 +962,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
       }
       setTaskMessage(
         channel === "workbuddy"
-          ? t("summary.task.doneWorkbuddy", "已通过 WorkBuddy 完成导出。")
-          : t("summary.task.doneDirectFallback", "WorkBuddy 不可用，已自动回退直连导出。"),
+          ? t("summary.task.doneWorkbuddy", "已完成导出。")
+          : t("summary.task.doneDirectFallback", "已完成导出。"),
       );
     } catch {
       onDone(fallbackContent);
-      setTaskMessage(t("summary.task.failed", "导出任务失败，已回退本地生成结果。"));
+      setTaskMessage(t("summary.task.failed", "导出失败，已展示可用的本地结果。"));
     } finally {
       setRunningTask("");
     }
@@ -976,7 +976,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <MetricCard label={t("summary.metric.duration", "Session 时长")} value={formatDuration(metrics.durationMinutes, t)} />
+        <MetricCard label={t("summary.metric.duration", "专注时长")} value={formatDuration(metrics.durationMinutes, t)} />
         <MetricCard label={t("summary.metric.newContent", "新增内容数")} value={`${metrics.newContentCount}`} />
         <MetricCard label={t("summary.metric.deepRead", "推荐深读数")} value={`${metrics.deepReadCount}`} />
         <MetricCard label={t("summary.metric.later", "稍后读数")} value={`${metrics.laterCount}`} />
@@ -1220,7 +1220,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                             : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      {entry.evidenceMode === "strong" ? "强证据" : entry.evidenceMode === "provisional" ? "可用初版" : "兜底候选"}
+                      {entry.evidenceMode === "strong" ? "强证据" : entry.evidenceMode === "provisional" ? "可用初版" : "待核实"}
                     </span>
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
                       检索质量 {entry.retrievalQuality === "high" ? "高价值" : entry.retrievalQuality === "medium" ? "普通价值" : "低价值"}
@@ -1275,17 +1275,17 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     ) : null}
                     {entry.correctiveTriggered ? (
                       <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] text-orange-700">
-                        已触发纠错检索
+                        已补充核验
                       </span>
                     ) : null}
                     {entry.candidateProfileCompanies.length ? (
                       <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
-                        候选补证公司 {entry.candidateProfileCompanies.length}
+                        建议核验公司 {entry.candidateProfileCompanies.length}
                       </span>
                     ) : null}
                     {entry.candidateProfileHitCount > 0 ? (
                       <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
-                        补证公开源 {entry.candidateProfileHitCount}
+                        公开来源 {entry.candidateProfileHitCount}
                       </span>
                     ) : null}
                     {entry.candidateProfileOfficialHitCount > 0 ? (
@@ -1429,7 +1429,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <span className="text-xs text-slate-500">
             {t("summary.dataSource", "数据源")}：
             {sessionSource === "api"
-              ? t("summary.dataSource.api", "实时 Session")
+              ? t("summary.dataSource.api", "实时记录")
               : t("summary.dataSource.local", "本地汇总")}
           </span>
         </div>
@@ -1461,7 +1461,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         <div className="af-glass rounded-[30px] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="af-kicker">{t("summary.assistant.title", "Focus Assistant 回流")}</p>
+              <p className="af-kicker">{t("summary.assistant.title", "专注助手")}</p>
               <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
                 {assistantResult.actionTitle}
               </p>
@@ -1469,8 +1469,8 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-sky-200/85 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
                 {assistantResult.channelUsed === "workbuddy"
-                  ? t("summary.assistant.workbuddy", "WorkBuddy")
-                  : t("summary.assistant.direct", "直连")}
+                  ? t("summary.assistant.workbuddy", "已完成")
+                  : t("summary.assistant.direct", "已完成")}
               </span>
               <span className="rounded-full border border-white/85 bg-white/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.14em] text-slate-500">
                 {formatAssistantTime(assistantResult.createdAt, preferences.language)}
@@ -1481,12 +1481,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             {assistantResult.message ||
               t(
                 "summary.assistant.subtitle",
-                "最近一次 Assistant 执行结果已回流到当前 Session Summary。",
+                "最近一次助手结果已保存到本轮总结。",
               )}
           </p>
           <div className="mt-3 rounded-2xl border border-white/85 bg-white/60 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="af-kicker">{t("summary.assistant.output", "输出摘要")}</p>
+              <p className="af-kicker">{t("summary.assistant.output", "结果摘要")}</p>
               {assistantResult.content ? (
                 <button
                   type="button"
@@ -1502,7 +1502,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             </div>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
               {assistantResult.content ||
-                t("summary.assistant.noOutput", "本次动作未返回可展示的文本输出。")}
+                t("summary.assistant.noOutput", "本次没有可展示的结果。")}
             </p>
           </div>
           {assistantHistory.length > 1 ? (
@@ -1523,7 +1523,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                       <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
                         {entry.message ||
                           entry.content ||
-                          t("summary.assistant.noOutput", "本次动作未返回可展示的文本输出。")}
+                          t("summary.assistant.noOutput", "本次没有可展示的结果。")}
                       </p>
                     </div>
                     <span className="shrink-0 text-[11px] font-medium text-slate-400">
@@ -1554,7 +1554,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <WorkBuddyMark size={14} />
             {runningTask === "export_markdown_summary"
               ? t("summary.btn.generating", "生成中...")
-              : t("summary.btn.markdown", "生成 Markdown 总结")}
+              : t("summary.btn.markdown", "整理总结")}
           </button>
           <button
             type="button"
@@ -1567,7 +1567,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <WorkBuddyMark size={14} />
             {runningTask === "export_reading_list"
               ? t("summary.btn.generating", "生成中...")
-              : t("summary.btn.readingList", "生成稍后读清单")}
+              : t("summary.btn.readingList", "整理稍后读清单")}
           </button>
           <button
             type="button"
@@ -1580,7 +1580,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <WorkBuddyMark size={14} />
             {runningTask === "export_todo_draft"
               ? t("summary.btn.generating", "生成中...")
-              : t("summary.btn.todoDraft", "生成待办草稿")}
+              : t("summary.btn.todoDraft", "整理待办草稿")}
           </button>
           <button
             type="button"
@@ -1637,13 +1637,13 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         </div>
         {loadingSession ? (
           <p className="mt-3 text-xs text-slate-500">
-            {t("summary.syncing", "正在同步实时 Session...")}
+            {t("summary.syncing", "正在读取本轮记录...")}
           </p>
         ) : null}
         <p className="mt-3 text-xs text-slate-500">
           {t(
             "summary.task.routeHint",
-            "导出优先通过 WorkBuddy 执行，异常时自动回退到本地 API。",
+            "结果会优先使用最新记录，失败时保留本地可用内容。",
           )}
         </p>
         {taskMessage ? <p className="mt-3 text-xs text-slate-500">{taskMessage}</p> : null}
@@ -1651,7 +1651,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         <OutputBlock
           title={t("summary.block.markdown", "Markdown 总结")}
           content={markdown}
-          emptyText={t("summary.block.emptyMarkdown", "点击“生成 Markdown 总结”后显示结果。")}
+          emptyText={t("summary.block.emptyMarkdown", "点击“整理总结”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
           artifact={latestArtifactsByType.markdown}
@@ -1659,7 +1659,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         <OutputBlock
           title={t("summary.block.readingList", "稍后读清单")}
           content={readingList}
-          emptyText={t("summary.block.emptyReadingList", "点击“生成稍后读清单”后显示结果。")}
+          emptyText={t("summary.block.emptyReadingList", "点击“整理稍后读清单”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
           artifact={latestArtifactsByType.readingList}
@@ -1667,7 +1667,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         <OutputBlock
           title={t("summary.block.todoDraft", "待办草稿")}
           content={todoDraft}
-          emptyText={t("summary.block.emptyTodoDraft", "点击“生成待办草稿”后显示结果。")}
+          emptyText={t("summary.block.emptyTodoDraft", "点击“整理待办草稿”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
           artifact={latestArtifactsByType.todoDraft}
@@ -1693,7 +1693,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           emptyText={t("summary.block.emptyExecBrief", "点击“生成老板简报”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
-          contextBlock={<TaskBriefingContextCard context={taskContexts.export_exec_brief || null} title="执行上下文" />}
+          contextBlock={<TaskBriefingContextCard context={taskContexts.export_exec_brief || null} title="简报依据" />}
         />
         <OutputBlock
           title={t("summary.block.salesBrief", "销售 Brief")}
@@ -1701,7 +1701,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           emptyText={t("summary.block.emptySalesBrief", "点击“生成销售 Brief”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
-          contextBlock={<TaskBriefingContextCard context={taskContexts.export_sales_brief || null} title="账户推进上下文" />}
+          contextBlock={<TaskBriefingContextCard context={taskContexts.export_sales_brief || null} title="账户推进参考" />}
         />
         <OutputBlock
           title={t("summary.block.outreachDraft", "外联草稿")}
@@ -1717,7 +1717,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           emptyText={t("summary.block.emptyWatchlistDigest", "点击“生成 Watchlist Digest”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
-          contextBlock={<TaskBriefingContextCard context={taskContexts.export_watchlist_digest || null} title="监控补充上下文" compact />}
+          contextBlock={<TaskBriefingContextCard context={taskContexts.export_watchlist_digest || null} title="监控参考" compact />}
         />
         <div className="mt-4">
           <p className="af-kicker">{t("summary.block.watchlistPriority", "高优先级 Watchlist 变化")}</p>

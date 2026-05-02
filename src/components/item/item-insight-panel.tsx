@@ -50,7 +50,7 @@ export function ItemInsightPanel({ itemId }: ItemInsightPanelProps) {
       setEntryId(result.entry_id);
       setMessage(t("insight.added", "已加入知识库"));
     } catch {
-      setMessage(t("action.feedbackLocalOnly", "本地已记录，API 未连接（可稍后重试）"));
+      setMessage(t("action.feedbackLocalOnly", "已在本机记录，稍后会再同步。"));
     } finally {
       setSaving(false);
     }

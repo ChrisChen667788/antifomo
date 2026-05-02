@@ -6,12 +6,12 @@ import { AppPreferencesProvider } from "@/components/settings/app-preferences-pr
 export const metadata: Metadata = {
   title: "Anti-FOMO",
   description:
-    "Open-source AI research workspace for signal triage, WeChat-first collection, focus sessions, and action cards.",
+    "A focused workspace for collecting signals, organizing research, and turning useful information into action.",
   metadataBase: new URL("https://github.com/ChrisChen667788/antifomo"),
   openGraph: {
     title: "Anti-FOMO",
     description:
-      "Open-source AI research workspace for signal triage, WeChat-first collection, focus sessions, and action cards.",
+      "A focused workspace for collecting signals, organizing research, and turning useful information into action.",
     images: [
       "https://raw.githubusercontent.com/ChrisChen667788/antifomo/main/public/github-social-preview.png",
     ],
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Anti-FOMO",
     description:
-      "Open-source AI research workspace for signal triage, WeChat-first collection, focus sessions, and action cards.",
+      "A focused workspace for collecting signals, organizing research, and turning useful information into action.",
     images: [
       "https://raw.githubusercontent.com/ChrisChen667788/antifomo/main/public/github-social-preview.png",
     ],
