@@ -406,6 +406,21 @@ def finish_session(
     *,
     output_language: str | None = None,
 ) -> tuple[FocusSession, list[Item], SessionMetrics]:
+    if session.status == "finished":
+        items = list_session_items(db, session, now=_ensure_utc(session.end_time))
+        metrics = compute_session_metrics(items)
+        if not (session.summary_text or "").strip():
+            resolved_language = normalize_output_language(output_language or session.output_language)
+            session.output_language = resolved_language
+            session.summary_text = generate_session_summary_text(
+                session.goal_text,
+                items,
+                metrics,
+                output_language=resolved_language,
+            )
+            db.add(session)
+        return session, items, metrics
+
     if session.status not in {"running", "paused"}:
         raise ValueError("Session is not active")
 

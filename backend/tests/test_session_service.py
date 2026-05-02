@@ -161,6 +161,52 @@ def test_pause_resume_finish_keeps_active_windows_only(monkeypatch) -> None:
         db.close()
 
 
+def test_finish_session_is_idempotent_for_finished_sessions(monkeypatch) -> None:
+    db = _new_session()
+    try:
+        user = User(id=uuid.uuid4(), name="demo")
+        db.add(user)
+        db.flush()
+
+        session = FocusSession(
+            user_id=user.id,
+            goal_text="already done",
+            output_language="zh-CN",
+            duration_minutes=25,
+            start_time=datetime(2026, 4, 4, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 4, 10, 25, tzinfo=timezone.utc),
+            elapsed_seconds=25 * 60,
+            summary_text="existing summary",
+            status="finished",
+        )
+        item = Item(
+            user_id=user.id,
+            source_type="text",
+            title="persisted item",
+            raw_content="demo",
+            status="ready",
+            created_at=datetime(2026, 4, 4, 10, 5, tzinfo=timezone.utc),
+        )
+        db.add_all([session, item])
+        db.flush()
+        db.add(SessionItem(session_id=session.id, item_id=item.id))
+        db.commit()
+
+        def fail_generate_summary(*args, **kwargs):  # noqa: ANN002, ANN003
+            raise AssertionError("finished sessions with summaries should not regenerate")
+
+        monkeypatch.setattr(session_service, "generate_session_summary_text", fail_generate_summary)
+
+        finished_session, items, metrics = finish_session(db, session, output_language="zh-CN")
+
+        assert finished_session.status == "finished"
+        assert finished_session.summary_text == "existing summary"
+        assert [item.title for item in items] == ["persisted item"]
+        assert metrics.new_content_count == 1
+    finally:
+        db.close()
+
+
 def test_sync_running_sessions_for_item_respects_resumed_window_start() -> None:
     db = _new_session()
     try:

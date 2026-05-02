@@ -146,7 +146,7 @@ def finish_user_session(
 ) -> SessionFinishResponse:
     ensure_demo_user(db)
     session = _get_session_or_404(db, session_id)
-    if session.status not in {"running", "paused"}:
+    if session.status not in {"running", "paused", "finished"}:
         raise HTTPException(status_code=400, detail="Session already finished or cancelled")
 
     resolved_language = normalize_output_language(
