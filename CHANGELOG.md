@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.1+20260502 - 2026-05-02
+
+- Added CRAG-style retrieval correction profile that grades each source as accepted / ambiguous / rejected, generates corrective query plans, and renders compressed retrieval context for prompt injection (`research_rag_quality_service`).
+- Added a generation grounding review pass that classifies report claims as supported vs unsupported against the source corpus and emits `generation_grounding_score`, `response_quality_score`, and `generation_review_notes`.
+- Added a research report self-evaluation profile (`research_report_evaluation_service`) covering faithfulness, answer relevancy, context coverage, citation quality, and entity recall, with per-metric evidence and corrective query suggestions surfaced in the report card so weak reports are visible before export.
+- Surfaced supported claims, unsupported claims, and per-metric evidence in the API client types and report card UI.
+- Cross-encoder reranker model integration and offline ms-marco evaluation remain the next 0.5.1.x step.
+
+## 0.5.0+20260502 - 2026-05-02
+
+- Indexed watchlists, watchlist change events, Commercial Hub signals, account context, and archive recap diagnostics as first-class retrieval documents on the unified retrieval substrate (rolls up the in-tree 0.5.0+20260429 draft).
+- Added `knowledge_cleaning_service` for low-signal pruning, row deduplication, and title normalization across knowledge intake (`item_processor`, `knowledge_service`), intelligence (`knowledge_intelligence_service`), and retrieval (`knowledge_retrieval_service`) surfaces.
+- Tightened entity quality pipeline: candidate procurement and organization extraction, role-aware deduplication, and review-queue hand-off so noisy or ambiguous entities no longer leak into account, competitor, and partner rankings.
+- Refreshed knowledge UI cards (detail, account workspace, commercial hub) to render cleaned content and surface low-signal placeholders instead of empty rows.
+- Parent-child chunking, sentence-window chunks, stable chunk IDs across re-index, and broader API filters remain part of the 0.5.0.x follow-up step.
+
+## 0.4.3+20260502 - 2026-05-02
+
+- Added structured follow-up section impact diagnostics (`ResearchFollowupSectionImpactOut`) so every follow-up run lists impacted chapters, reasons, retrieval support score, official-source hit count, and next action instead of generic notes.
+- Distinguished follow-up title and summary resolution (`kept baseline` vs `corrected`) and propagated the result through workspace store, archive cards, topic timeline, and compare/export metadata.
+- Fed impacted-section hints into report generation prompt context so follow-up mode prioritizes affected chapters rather than flattening the whole report.
+- Surfaced impacted sections and follow-up resolution in the research center, topic workspace, archive viewer, compare matrix, and report card.
+
+## Operations and platform - 2026-05-02
+
+- Added LLM provider quota fallback (`openai_fallback_api_key`, `strategy_openai_fallback_api_key`) and a tolerant JSON parser that accepts markdown-fenced and trailing-comma payloads so model responses with near-valid JSON no longer fail validation.
+- Added a summary boilerplate stripper that removes WeChat collector article-metric headers (`本文字数 / 阅读时长 ...`) before prompt rendering, keeping summaries focused on substantive content.
+- Allowed `finish_session` to regenerate summary text on already-finished sessions instead of raising, so users can re-trigger summary generation if the original finish call missed language settings.
+- Added two end-to-end probes (`scripts/wechat_pc_right_click_probe.py`, `scripts/wechat_pc_open_in_browser_probe.py`) for the WeChat PC article window so the collector reliability roadmap item can be validated outside the main daemon.
+
 ## 0.4.2+20260424 - 2026-04-24
 
 - Added a scenario/customer/vertical-scene review loop in the research workspace with direct refresh of market intelligence and solution delivery packs.
@@ -8,6 +38,9 @@
 - Preserved labeled metadata rows in formal documents so target customer, scenario, vertical scene, source count, and evidence notes remain readable in exports.
 - Replaced the remote `next/font/google` Geist dependency with local fallback font stacks so `next build` succeeds in offline or restricted-network environments.
 - Refreshed the GitHub-facing README, Chinese README, repository about copy, homepage link, topics, and launch/growth copy to better position the project for open-source discovery.
+- Added real product screenshots and a reusable `npm run repo:screenshots` capture script for GitHub-facing documentation assets.
+- Brought section-level retrieval packs into generation-time prompt context and delivery-time report enrichment so report chapters use ranked evidence instead of diagnostics-only display.
+- Surfaced follow-up routing diagnostics through topic side-by-side compare, archive compare/export metadata, and delivery digests so title/summary handling and impacted sections stay visible after archival.
 
 ## 0.4.1+20260423 - 2026-04-23
 
