@@ -48,6 +48,31 @@ Anti-FOMO is built for the whole operating loop:
 - `Execution-oriented`: focus sessions, action cards, watchlists, briefs, and export tasks are part of the same workspace.
 - `Hackable`: local-first Next.js + FastAPI stack with browser extension, miniapp, collector scripts, and a testable backend.
 
+## Product screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox research workspace screenshot" />
+      <p><strong>Inbox / research workspace</strong><br />Generate reports, refine scenario inputs, and export formal delivery documents from one surface.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-topic-workspace.png" alt="Research topic workspace screenshot" />
+      <p><strong>Topic workspace</strong><br />Track topic versions, evidence density, and long-running research changes over time.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research compare workspace screenshot" />
+      <p><strong>Compare workspace</strong><br />Review multi-version differences, section evidence, and account-oriented comparison signals.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="Knowledge commercial hub screenshot" />
+      <p><strong>Knowledge commercial hub</strong><br />Turn reports into account objects, opportunities, review queues, and follow-up actions.</p>
+    </td>
+  </tr>
+</table>
+
 ## What you get today
 
 ### 1. High-signal intake

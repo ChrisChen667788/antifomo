@@ -89,13 +89,23 @@ Repository: https://github.com/ChrisChen667788/antifomo
 ## Screenshot order for README and social posts
 
 1. `docs/assets/github-hero.svg`
-2. `docs/assets/github-social-preview.png`
-3. key workflow screenshots from web, miniapp, and collector ops once captured
+2. `docs/assets/screenshots/inbox-research-workspace.png`
+3. `docs/assets/screenshots/research-topic-workspace.png`
+4. `docs/assets/screenshots/research-compare-workspace.png`
+5. `docs/assets/screenshots/knowledge-commercial-hub.png`
+6. `docs/assets/github-social-preview.png`
 
 ## Social assets
 
 - `docs/assets/github-hero.svg`: primary README hero
+- `docs/assets/screenshots/`: real product screenshots for README, repo posts, and release notes
 - `docs/assets/github-social-preview.png`: ready-to-upload GitHub social preview image
+
+Refresh screenshots with:
+
+```bash
+npm run repo:screenshots
+```
 
 ## Manual GitHub social preview suggestion
 

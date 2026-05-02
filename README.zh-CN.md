@@ -47,6 +47,31 @@ Anti-FOMO 关注的是整条工作链路：
 - `Execution-oriented`：研报不是终点，后面还有专注会话、行动卡、brief、可研、项目建议书和对客 PPT 大纲。
 - `Hackable`：本地优先的 Next.js + FastAPI 架构，附带浏览器扩展、小程序外壳、采集器和可跑的测试链路。
 
+## 产品截图
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox 研报工作区截图" />
+      <p><strong>Inbox / 研报工作区</strong><br />在一个界面里完成采集、生成研报、补场景信息和正式文档导出。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-topic-workspace.png" alt="专题工作台截图" />
+      <p><strong>专题工作台</strong><br />连续跟踪专题版本、证据密度和长期变化，而不是只看一次性结果。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="对比矩阵截图" />
+      <p><strong>对比矩阵</strong><br />横向查看多版本差异、章节证据和面向账户推进的对比信号。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="账户情报截图" />
+      <p><strong>账户情报</strong><br />把研报沉淀成甲方对象、商机、待核验队列和下一步动作。</p>
+    </td>
+  </tr>
+</table>
+
 ## 当前已经能做什么
 
 ### 1. 高信号采集
