@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Feedback, Item, KnowledgeEntry, KnowledgeRule
 from app.services.content_extractor import normalize_text
+from app.services.knowledge_cleaning_service import clean_knowledge_content, clean_knowledge_title
 from app.services.language import localized_text, normalize_output_language
 
 
@@ -38,7 +39,7 @@ def resolve_knowledge_title(
     output_language: str = "zh-CN",
 ) -> str:
     resolved_language = normalize_output_language(output_language)
-    normalized_title = normalize_text(title or item.title or "")
+    normalized_title = clean_knowledge_title(title or item.title or "", fallback="")
     is_placeholder = (
         not normalized_title
         or normalized_title.lower().startswith(("wechat auto", "wechat ocr", "untitled"))
@@ -56,7 +57,7 @@ def resolve_knowledge_title(
         ):
             candidate = normalize_text(segment).strip("，,、:：- ")
             if len(candidate) >= 8:
-                return candidate[:80]
+                return clean_knowledge_title(candidate, fallback="知识卡片")[:80]
 
     return localized_text(
         resolved_language,
@@ -81,8 +82,11 @@ def create_or_get_knowledge_entry(
     output_language: str = "zh-CN",
     reuse_existing_item: bool = False,
 ) -> tuple[KnowledgeEntry, bool]:
-    normalized_title = resolve_knowledge_title(item=item, title=title, output_language=output_language)
-    normalized_content = normalize_text(content).strip()
+    normalized_title = clean_knowledge_title(
+        resolve_knowledge_title(item=item, title=title, output_language=output_language),
+        fallback="知识卡片",
+    )[:80]
+    normalized_content = clean_knowledge_content(content).strip()
     if not normalized_content:
         normalized_content = localized_text(
             output_language,
@@ -141,8 +145,8 @@ def create_or_get_standalone_knowledge_entry(
     is_focus_reference: bool = False,
     metadata_payload: dict | None = None,
 ) -> tuple[KnowledgeEntry, bool]:
-    normalized_title = normalize_text(title)[:120] or "知识卡片"
-    normalized_content = normalize_text(content).strip() or "暂无可归档内容"
+    normalized_title = clean_knowledge_title(title, fallback="知识卡片")[:120] or "知识卡片"
+    normalized_content = clean_knowledge_content(content).strip() or "暂无可归档内容"
     normalized_collection = normalize_text(collection_name or "")[:80] or None
     normalized_source = normalize_text(source_domain or "")[:255] or None
 

@@ -152,3 +152,50 @@ def test_process_item_uses_mock_path_for_mock_ocr_fallback(monkeypatch) -> None:
     assert processed.status == "ready"
     assert processed.short_summary
     assert processed.score_value is not None
+
+
+def test_wechat_metric_boilerplate_does_not_become_title_or_summary(monkeypatch) -> None:
+    db = _new_session()
+    user = User(id=uuid.uuid4(), name="demo")
+    db.add(user)
+    db.flush()
+
+    captured: dict[str, str] = {}
+
+    def _summarize(**kwargs):
+        captured["clean_content"] = kwargs["clean_content"]
+        return SummarizeResult(
+            display_title="2026.04.29本文字数：1446，阅读时长大约2分钟",
+            short_summary="近日，因未有效落实人工智能生成合成内容标识规定要求，剪映、猫箱、即梦AI等被网信部门约谈。",
+            long_summary="监管部门围绕 AI 合成内容标识提出整改要求，相关 App 需要完善显著标识、用户提示和平台审核机制。",
+            key_points=["AI 内容标识整改", "相关 App 被约谈"],
+        )
+
+    monkeypatch.setattr(item_processor.summarizer, "summarize", _summarize)
+    monkeypatch.setattr(item_processor.tagger, "extract_tags", lambda **kwargs: TagsResult(tags=["AI治理"]))
+    monkeypatch.setattr(
+        item_processor.scorer,
+        "score",
+        lambda **kwargs: ScoreResult(score_value=4.1, action_suggestion="deep_read"),
+    )
+
+    item = Item(
+        user_id=user.id,
+        source_type="plugin",
+        source_url="https://mp.weixin.qq.com/s/demo-ai-label",
+        title="2026.04.29本文字数：1446，阅读时长大约2分钟",
+        raw_content=(
+            "标题：2026.04.29本文字数：1446，阅读时长大约2分钟\n"
+            "正文：2026.04.29本文字数：1446，阅读时长大约2分钟作者｜第一财经 秦新安"
+            "近日，因未有效落实人工智能生成合成内容标识规定要求，剪映、猫箱、即梦AI网站被网信部门约谈、责令改正、警告。"
+            "相关平台需要补充显式标识、内容审核和用户提示机制。"
+        ),
+        status="pending",
+    )
+
+    processed = item_processor.process_item(db, item, output_language="zh-CN")
+
+    assert "本文字数" not in captured["clean_content"]
+    assert "阅读时长" not in captured["clean_content"]
+    assert "本文字数" not in (processed.title or "")
+    assert "剪映" in (processed.title or "")

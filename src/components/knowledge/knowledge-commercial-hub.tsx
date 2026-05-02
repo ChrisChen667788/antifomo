@@ -167,7 +167,7 @@ export function KnowledgeCommercialHub({
     { label: "高可信研报", value: dashboard.high_confidence_report_count, hint: "可信度较高的研报" },
     { label: "标杆案例", value: dashboard.benchmark_case_count, hint: "可用于客户教育与对标" },
     { label: "规则提醒", value: topAlerts.length, hint: "需优先关注的 Watchlist / 风险 / 审查项" },
-    { label: "审查队列", value: reviewQueue.length, hint: "建议优先人工或模型二次核验的结论" },
+    { label: "审查队列", value: reviewQueue.length, hint: "建议优先人工复核的结论" },
   ];
 
   const handleCommercialAction = async (taskType: CommercialActionTaskType) => {
@@ -304,7 +304,7 @@ export function KnowledgeCommercialHub({
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Review Queue</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{topReviewItem?.title || "暂无待核验结论"}</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {sanitizeExternalDisplayText(topReviewItem?.recommended_action || topReviewItem?.summary || "当前没有需要额外补证的审查项。")}
+              {sanitizeExternalDisplayText(topReviewItem?.recommended_action || topReviewItem?.summary || "当前没有需要额外核验的审查项。")}
             </p>
           </article>
         </div>

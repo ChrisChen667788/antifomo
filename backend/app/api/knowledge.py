@@ -41,6 +41,11 @@ from app.services.knowledge_intelligence_service import (
     list_knowledge_opportunities,
     update_review_queue_resolution,
 )
+from app.services.knowledge_cleaning_service import (
+    clean_knowledge_content,
+    clean_knowledge_title,
+    is_low_signal_knowledge_payload,
+)
 from app.services.knowledge_service import ensure_knowledge_rule
 from app.services.knowledge_retrieval_service import retrieve_knowledge_entry_matches
 from app.services.user_context import ensure_demo_user
@@ -66,16 +71,15 @@ def _resolve_entry_title(entry: KnowledgeEntry) -> str:
     def is_placeholder(value: str) -> bool:
         return value.lower().startswith(("wechat auto", "wechat ocr"))
 
-    raw_title = (entry.title or "").strip()
+    raw_title = clean_knowledge_title(entry.title, fallback="")
     if raw_title and not is_placeholder(raw_title):
         return raw_title
 
-    item_title = (entry.item.title if entry.item else "") or ""
-    item_title = item_title.strip()
+    item_title = clean_knowledge_title((entry.item.title if entry.item else "") or "", fallback="")
     if item_title and not is_placeholder(item_title):
         return item_title
 
-    content = (entry.content or "").replace("\n", " ").strip()
+    content = clean_knowledge_content(entry.content).replace("\n", " ").strip()
     if content.startswith("知识库笔记："):
         content = content.split("：", 1)[1].strip()
     if content.lower().startswith("knowledge note:"):
@@ -91,6 +95,12 @@ def _resolve_entry_title(entry: KnowledgeEntry) -> str:
     return raw_title or "知识卡片"
 
 
+def _is_visible_entry(entry: KnowledgeEntry) -> bool:
+    if isinstance(entry.metadata_payload, dict) and entry.metadata_payload.get("kind") == "research_report":
+        return True
+    return not is_low_signal_knowledge_payload(entry.title, entry.content)
+
+
 def _to_entry_out(
     entry: KnowledgeEntry,
     *,
@@ -102,7 +112,7 @@ def _to_entry_out(
         id=entry.id,
         item_id=entry.item_id,
         title=_resolve_entry_title(entry),
-        content=entry.content,
+        content=clean_knowledge_content(entry.content) or entry.content,
         source_domain=entry.source_domain,
         metadata_payload=payload,
         retrieval_preview=(
@@ -147,8 +157,11 @@ def _build_merge_title(entries: list[KnowledgeEntry]) -> str:
 
 def _build_merge_content(entries: list[KnowledgeEntry]) -> str:
     blocks: list[str] = []
-    for index, entry in enumerate(entries, start=1):
-        blocks.append(f"{index}. {_resolve_entry_title(entry)}\n{entry.content.strip()}")
+    for index, entry in enumerate([entry for entry in entries if _is_visible_entry(entry)], start=1):
+        content = clean_knowledge_content(entry.content)
+        if not content:
+            continue
+        blocks.append(f"{index}. {_resolve_entry_title(entry)}\n{content}")
     return "\n\n".join(blocks)
 
 
@@ -185,7 +198,7 @@ def _build_markdown_content(entry: KnowledgeEntry) -> str:
     if entry.is_focus_reference:
         lines.append("- Focus 参考: 是")
     lines.append(f"- 置顶: {'是' if entry.is_pinned else '否'}")
-    lines.extend(["", "## 卡片内容", "", entry.content.strip()])
+    lines.extend(["", "## 卡片内容", "", clean_knowledge_content(entry.content) or entry.content.strip()])
     return "\n".join(lines)
 
 
@@ -302,7 +315,7 @@ def list_knowledge_entries(
 
     normalized_query = (query or "").strip()
     if normalized_query:
-        candidates = list(db.scalars(ordered_stmt))
+        candidates = [entry for entry in db.scalars(ordered_stmt) if _is_visible_entry(entry)]
         ranked_matches = retrieve_knowledge_entry_matches(candidates, normalized_query, limit=capped_limit)
         if ranked_matches:
             return KnowledgeEntryListResponse(
@@ -319,10 +332,10 @@ def list_knowledge_entries(
             )
             .limit(capped_limit)
         )
-        items = list(db.scalars(fallback_stmt))
+        items = [entry for entry in db.scalars(fallback_stmt) if _is_visible_entry(entry)]
         return KnowledgeEntryListResponse(items=[_to_entry_out(item) for item in items])
 
-    items = list(db.scalars(ordered_stmt.limit(capped_limit)))
+    items = [entry for entry in db.scalars(ordered_stmt.limit(capped_limit * 3)) if _is_visible_entry(entry)][:capped_limit]
     return KnowledgeEntryListResponse(
         items=[_to_entry_out(item) for item in items]
     )
@@ -439,8 +452,8 @@ def merge_knowledge_entries(
     merged_entry = KnowledgeEntry(
         user_id=settings.single_user_id,
         item_id=item_ids.pop() if len(item_ids) == 1 else None,
-        title=(payload.title or "").strip() or _build_merge_title(entries),
-        content=(payload.content or "").strip() or _build_merge_content(entries),
+        title=clean_knowledge_title((payload.title or "").strip() or _build_merge_title(entries), fallback="合并知识卡片"),
+        content=clean_knowledge_content((payload.content or "").strip() or _build_merge_content(entries)) or "暂无可归档内容",
         source_domain=source_domains.pop() if len(source_domains) == 1 else None,
         collection_name=_build_merge_collection_name(entries),
         is_pinned=any(entry.is_pinned for entry in entries),
@@ -579,6 +592,7 @@ def list_related_knowledge_entries(
         (
             (candidate, _compute_related_score(entry, candidate))
             for candidate in candidates
+            if _is_visible_entry(candidate)
         ),
         key=lambda pair: pair[1],
         reverse=True,
@@ -600,9 +614,9 @@ def update_knowledge_entry(
     ensure_demo_user(db)
     entry = _get_entry_or_404(db, entry_id)
     if "title" in payload.model_fields_set and payload.title is not None:
-        entry.title = payload.title.strip()
+        entry.title = clean_knowledge_title(payload.title, fallback=entry.title or "知识卡片")
     if "content" in payload.model_fields_set and payload.content is not None:
-        entry.content = payload.content.strip()
+        entry.content = clean_knowledge_content(payload.content) or payload.content.strip()
     if "collection_name" in payload.model_fields_set:
         normalized_collection = (payload.collection_name or "").strip()
         entry.collection_name = normalized_collection[:80] if normalized_collection else None

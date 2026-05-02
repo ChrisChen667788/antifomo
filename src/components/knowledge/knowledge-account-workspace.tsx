@@ -401,7 +401,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                 </article>
               ))
             ) : (
-              <p className="text-sm text-slate-500">当前暂无显性 pipeline risk。</p>
+              <p className="text-sm text-slate-500">当前暂无明确推进风险。</p>
             )}
           </div>
         </article>

@@ -223,6 +223,26 @@ def _search_terms(text: str) -> list[str]:
     return _dedupe_strings(terms)
 
 
+def _query_variants(query: str) -> list[str]:
+    normalized = normalize_text(query)
+    if not normalized:
+        return []
+    variants = [normalized]
+    lowered = normalized.lower()
+    if any(token in lowered for token in ("预算", "采购", "招标", "中标", "tender", "procurement", "budget")):
+        variants.append(f"{normalized} 采购意向 中标 成交 项目 预算")
+    if any(token in lowered for token in ("方案", "解决方案", "平台", "系统", "产品", "交付", "solution")):
+        variants.append(f"{normalized} 试点 扩容 技术参数 集成 部署")
+    if any(token in lowered for token in ("客户", "甲方", "账户", "部门", "buyer", "account")):
+        variants.append(f"{normalized} 牵头部门 预算归口 采购联系人")
+    if any(token in lowered for token in ("竞品", "竞争", "伙伴", "生态", "competitor", "partner")):
+        variants.append(f"{normalized} 竞品 伙伴 集成商 标杆案例")
+    terms = _search_terms(normalized)
+    if len(terms) >= 4:
+        variants.append(" ".join(terms[:8]))
+    return _dedupe_strings(variants)
+
+
 def _dense_terms(text: str) -> list[str]:
     normalized = normalize_text(text).lower()
     compact = re.sub(r"\s+", "", normalized)
@@ -563,6 +583,43 @@ def _dense_rank(chunks: Sequence[_KnowledgeRetrievalChunk], query_vector: tuple[
     }
 
 
+def _rank_query_variants(
+    chunks: Sequence,
+    query: str,
+) -> tuple[list[str], dict[int, int], dict[int, tuple[int, float]], set[int]]:
+    variants = _query_variants(query)
+    combined_terms = _dedupe_strings([term for variant in variants for term in _search_terms(variant)])
+    merged_sparse: dict[int, int] = {}
+    merged_dense_similarity: dict[int, float] = {}
+    rewritten_hit_ids: set[int] = set()
+    original = normalize_text(query)
+
+    for variant_index, variant in enumerate(variants):
+        terms = _search_terms(variant)
+        variant_sparse = _sparse_rank(chunks, terms)
+        for chunk_id, rank in variant_sparse.items():
+            adjusted_rank = rank + variant_index * 6
+            if chunk_id not in merged_sparse or adjusted_rank < merged_sparse[chunk_id]:
+                merged_sparse[chunk_id] = adjusted_rank
+            if variant != original:
+                rewritten_hit_ids.add(chunk_id)
+
+        variant_dense = _dense_rank(chunks, _dense_vector(variant))
+        for chunk_id, (_rank, similarity) in variant_dense.items():
+            adjusted_similarity = similarity * (0.96 if variant_index else 1.0)
+            if adjusted_similarity > merged_dense_similarity.get(chunk_id, 0.0):
+                merged_dense_similarity[chunk_id] = adjusted_similarity
+            if variant != original:
+                rewritten_hit_ids.add(chunk_id)
+
+    dense_sorted = sorted(merged_dense_similarity.items(), key=lambda item: item[1], reverse=True)
+    merged_dense = {
+        chunk_id: (index, similarity)
+        for index, (chunk_id, similarity) in enumerate(dense_sorted[:120], start=1)
+    }
+    return combined_terms, merged_sparse, merged_dense, rewritten_hit_ids
+
+
 def _expand_routed_candidate_ids(
     chunks: Sequence[_KnowledgeRetrievalChunk],
     candidate_ids: set[int],
@@ -707,7 +764,6 @@ def retrieve_text_matches(
     query_terms = _search_terms(normalized_query)
     if not query_terms:
         return []
-    query_vector = _dense_vector(normalized_query)
 
     chunks = _build_text_retrieval_chunks(candidates)
     if not chunks:
@@ -715,8 +771,7 @@ def retrieve_text_matches(
     for index, chunk in enumerate(chunks, start=1):
         chunk.chunk_id = index
 
-    sparse_ranks = _sparse_rank(chunks, query_terms)
-    dense_ranks = _dense_rank(chunks, query_vector)
+    query_terms, sparse_ranks, dense_ranks, rewritten_hit_ids = _rank_query_variants(chunks, normalized_query)
     by_chunk_id = {chunk.chunk_id: chunk for chunk in chunks}
 
     candidate_ids = set(sparse_ranks) | set(dense_ranks)
@@ -750,6 +805,9 @@ def retrieve_text_matches(
         if exact_query_hit:
             score += 0.06
             match_modes.append("exact")
+        if chunk_id in rewritten_hit_ids and not exact_query_hit:
+            score += 0.035
+            match_modes.append("rewrite")
         score += min(0.08, chunk.priority * 0.005)
         if chunk.source_tier == "official":
             score += 0.04
@@ -811,7 +869,6 @@ def retrieve_knowledge_entry_matches(
     query_terms = _search_terms(normalized_query)
     if not query_terms:
         return []
-    query_vector = _dense_vector(normalized_query)
 
     chunks: list[_KnowledgeRetrievalChunk] = []
     for entry in entries:
@@ -821,8 +878,7 @@ def retrieve_knowledge_entry_matches(
     for index, chunk in enumerate(chunks, start=1):
         chunk.chunk_id = index
 
-    sparse_ranks = _sparse_rank(chunks, query_terms)
-    dense_ranks = _dense_rank(chunks, query_vector)
+    query_terms, sparse_ranks, dense_ranks, rewritten_hit_ids = _rank_query_variants(chunks, normalized_query)
     by_chunk_id = {chunk.chunk_id: chunk for chunk in chunks}
 
     candidate_ids = set(sparse_ranks) | set(dense_ranks)
@@ -858,6 +914,9 @@ def retrieve_knowledge_entry_matches(
         if exact_query_hit:
             score += 0.06
             match_modes.append("exact")
+        if chunk_id in rewritten_hit_ids and not exact_query_hit:
+            score += 0.035
+            match_modes.append("rewrite")
         score += min(0.08, chunk.priority * 0.005)
         if chunk.source_tier == "official":
             score += 0.04

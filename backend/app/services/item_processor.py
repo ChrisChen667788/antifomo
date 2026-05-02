@@ -33,22 +33,100 @@ mock_tagger = Tagger(llm_service=_mock_llm_service)
 mock_scorer = Scorer(llm_service=_mock_llm_service)
 settings = get_settings()
 
+_ARTICLE_METRIC_RE = re.compile(
+    r"20[2-3]\d[./年-]\s*\d{1,2}[./月-]\s*\d{1,2}日?\s*(?:本文)?字数\s*[:：]?\s*\d{2,6}\s*[,，、]?\s*阅读时长[^。；;，,\n]{0,32}",
+    flags=re.IGNORECASE,
+)
+_WECHAT_BOILERPLATE_RE = re.compile(
+    r"(?:原创\s*)?(?:微信扫一扫|听全文|继续滑动看下一个|轻触阅读原文|阅读原文|喜欢此内容的人还喜欢)",
+    flags=re.IGNORECASE,
+)
+_BAD_TITLE_MARKERS = ("本文字数", "阅读时长", "字数：", "字数:", "分钟作者", "微信公众平台")
+
+
+def _looks_like_bad_article_title(value: str) -> bool:
+    normalized = normalize_text(value)
+    if not normalized:
+        return True
+    lowered = normalized.lower()
+    if lowered.startswith(("wechat auto", "wechat ocr", "untitled")):
+        return True
+    if any(marker in normalized for marker in _BAD_TITLE_MARKERS):
+        return True
+    return bool(_ARTICLE_METRIC_RE.search(normalized))
+
+
+def _strip_article_boilerplate(content: str, *, source_domain: str = "") -> str:
+    text = normalize_text(content)
+    if not text:
+        return ""
+    is_wechat = source_domain.endswith("mp.weixin.qq.com") or "mp.weixin.qq.com" in source_domain
+    if is_wechat:
+        text = _WECHAT_BOILERPLATE_RE.sub(" ", text)
+        text = _ARTICLE_METRIC_RE.sub(" ", text, count=2)
+        text = re.sub(
+            r"^(?:作者|来源)\s*[|｜:：]\s*[\u4e00-\u9fffA-Za-z0-9·\s]{2,24}(?=(近日|日前|近来|据|今年|本周|上周|\d{1,2}月))",
+            "",
+            text,
+        )
+        text = re.sub(
+            r"^[\u4e00-\u9fffA-Za-z0-9·]{2,12}\s+[\u4e00-\u9fffA-Za-z·]{2,8}(?=(近日|日前|近来|据|今年|本周|上周|\d{1,2}月))",
+            "",
+            text,
+        )
+    return normalize_text(text).strip("，,、:：- ")
+
+
+def _derive_topic_title_from_text(text: str) -> str:
+    normalized = _strip_article_boilerplate(text, source_domain="mp.weixin.qq.com")
+    if not normalized:
+        return ""
+    quoted_entities = [
+        normalize_text(match.group(1))
+        for match in re.finditer(r"[“\"]([^”\"]{2,16})[”\"]", normalized)
+        if normalize_text(match.group(1))
+    ]
+    if quoted_entities and any(token in normalized for token in ("约谈", "责令改正", "警告", "通报", "处罚")):
+        names = "、".join(quoted_entities[:2])
+        if len(quoted_entities) > 2:
+            names = f"{names}等"
+        if "标识" in normalized and any(token in normalized for token in ("AI", "人工智能", "生成合成")):
+            return f"{names}因AI内容标识问题被约谈"[:36]
+        return f"{names}被监管部门约谈"[:36]
+    if "招标" in normalized and "数字人" in normalized:
+        return "数字人项目招标要求梳理"
+    for sentence in re.split(r"[。！？!?]", normalized):
+        cleaned = normalize_text(sentence).strip("，,、:：- ")
+        if not cleaned:
+            continue
+        cleaned = re.sub(r"^(近日|日前|据悉|今年|本周|上周)[，,]?", "", cleaned).strip("，,、:：- ")
+        if 10 <= len(cleaned) <= 36:
+            return cleaned
+        if len(cleaned) > 36:
+            return cleaned[:36].rstrip("，,、:：- ")
+    return ""
+
 
 def _resolve_display_title(
     *,
     source_title: str,
     llm_display_title: str | None,
     short_summary: str,
+    clean_content: str = "",
     output_language: str,
 ) -> str:
     candidate = normalize_text(llm_display_title or "")
-    if 8 <= len(candidate) <= 36:
+    if 8 <= len(candidate) <= 36 and not _looks_like_bad_article_title(candidate):
         return candidate
 
     fallback = normalize_text(source_title)
     fallback = re.sub(r"^(重磅|深度|终于|彻底|爆火|疯传|独家)[:：]?", "", fallback).strip()
-    if 8 <= len(fallback) <= 36:
+    if 8 <= len(fallback) <= 36 and not _looks_like_bad_article_title(fallback):
         return fallback
+
+    topic_title = _derive_topic_title_from_text(" ".join([short_summary, clean_content]))
+    if 8 <= len(topic_title) <= 36:
+        return topic_title
 
     summary = normalize_text(short_summary)
     for sentence in re.split(r"[。！？!?]", summary):
@@ -135,6 +213,8 @@ def _extract_plugin_structured_content(raw_content: str) -> tuple[str | None, st
     if not title_match:
         title_match = re.search(r"标题[:：]\s*(.+)", text)
     title_hint = normalize_text(title_match.group(1)) if title_match else None
+    if title_hint and _looks_like_bad_article_title(title_hint):
+        title_hint = None
 
     keyword_match = re.search(r"关键词[:：]\s*(.+?)(?:\s+(?:摘要线索[:：]|正文[:：]))", text)
     if not keyword_match:
@@ -143,6 +223,7 @@ def _extract_plugin_structured_content(raw_content: str) -> tuple[str | None, st
 
     body_match = re.search(r"正文[:：]\s*(.+)$", text)
     body_text = normalize_text(body_match.group(1)) if body_match else None
+    body_text = _strip_article_boilerplate(body_text or "", source_domain="mp.weixin.qq.com") if body_text else None
     if body_text and len(body_text) < 60:
         body_text = None
 
@@ -154,6 +235,8 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
     source_domain = extract_domain(item.source_url) or item.source_domain or ""
     title = item.title or ""
     raw_content = normalize_text(item.raw_content or "")
+    if _looks_like_bad_article_title(title):
+        title = ""
 
     # Prefer plugin-provided page content when available.
     if item.source_type == "plugin" and len(raw_content) >= 120:
@@ -161,16 +244,16 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
         if parsed_title and not title:
             title = parsed_title
         if parsed_body:
-            clean_content = parsed_body
+            clean_content = _strip_article_boilerplate(parsed_body, source_domain=source_domain)
             if parsed_keywords:
                 clean_content = f"{clean_content}\n关键词：{parsed_keywords}"
             if not title:
-                title = generate_title(clean_content, source_domain or None)
+                title = _derive_topic_title_from_text(clean_content) or generate_title(clean_content, source_domain or None)
             return source_domain, title, clean_content
 
         if not title:
-            title = generate_title(raw_content, source_domain or None)
-        clean_content = raw_content
+            title = _derive_topic_title_from_text(raw_content) or generate_title(raw_content, source_domain or None)
+        clean_content = _strip_article_boilerplate(raw_content, source_domain=source_domain)
         return source_domain, title, clean_content
 
     # URL/plugin source: try fetch remote content first when URL is available.
@@ -185,7 +268,9 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
-                clean_content = extracted.clean_content
+                clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                if _looks_like_bad_article_title(title):
+                    title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
             except ContentExtractionError:
                 pass
@@ -197,7 +282,9 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
-                clean_content = extracted.clean_content
+                clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                if _looks_like_bad_article_title(title):
+                    title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
             except ContentExtractionError:
                 pass
@@ -210,7 +297,9 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
             source_domain = extracted.source_domain or source_domain
             title = title or (extracted.title or "")
             raw_content = extracted.raw_content
-            clean_content = extracted.clean_content
+            clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+            if _looks_like_bad_article_title(title):
+                title = _derive_topic_title_from_text(clean_content)
             return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
         except ContentExtractionError:
             # Fallback to a reader proxy before giving up.
@@ -222,7 +311,9 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
-                clean_content = extracted.clean_content
+                clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                if _looks_like_bad_article_title(title):
+                    title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
             except ContentExtractionError:
                 # Fallback to existing raw_content if all extraction attempts fail.
@@ -235,7 +326,9 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
         raw_content = _missing_content_hint(source_domain, resolved_language)
     if not title:
         title = _placeholder_title(source_domain, resolved_language)
-    clean_content = raw_content
+    clean_content = _strip_article_boilerplate(raw_content, source_domain=source_domain)
+    if _looks_like_bad_article_title(title):
+        title = _derive_topic_title_from_text(clean_content)
     return source_domain, title, clean_content
 
 
@@ -289,6 +382,7 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
             source_title=source_title,
             llm_display_title=summarize_result.display_title,
             short_summary=summarize_result.short_summary,
+            clean_content=clean_content,
             output_language=resolved_language,
         )
 

@@ -177,6 +177,30 @@ def test_retrieve_text_matches_prefers_official_procurement_candidate() -> None:
     assert matches[0].lexical_overlap >= 2
 
 
+def test_retrieve_text_matches_uses_query_rewrite_for_solution_and_procurement_terms() -> None:
+    matches = retrieve_text_matches(
+        [
+            TextRetrievalCandidate(
+                key="proposal",
+                text="景区数字人导览平台公开招标，包含技术参数、试点部署、接口集成和后续扩容要求。",
+                source_tier="official",
+                priority=3,
+            ),
+            TextRetrievalCandidate(
+                key="noise",
+                text="泛金融芯片行业新闻和资本市场动态。",
+                source_tier="media",
+            ),
+        ],
+        "文旅AIGC解决方案预算怎么做",
+        limit=2,
+    )
+
+    assert matches
+    assert matches[0].key == "proposal"
+    assert "rewrite" in matches[0].match_modes
+
+
 def test_retrieve_knowledge_entry_matches_can_surface_section_summary_parent_chunk() -> None:
     db = _new_session()
     try:

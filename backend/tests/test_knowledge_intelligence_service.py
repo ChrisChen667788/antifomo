@@ -16,7 +16,7 @@ from app.models.research_entities import (
     ResearchWatchlist,
     ResearchWatchlistChangeEvent,
 )
-from app.schemas.research import ResearchActionCardOut, ResearchReportDocument
+from app.schemas.research import ResearchActionCardOut, ResearchNormalizedEntityOut, ResearchReportDocument
 from app.services.knowledge_intelligence_service import (
     _canonicalize_account_name,
     apply_review_queue_resolutions,
@@ -563,6 +563,78 @@ def test_build_report_knowledge_intelligence_filters_low_signal_and_canonicalize
     assert "哔哩哔哩" in account_names
     assert "微短剧服务中心" not in account_names
     assert "科技数码" not in account_names
+
+
+def test_build_report_knowledge_intelligence_rejects_news_sentence_fragments_as_accounts() -> None:
+    report = _sample_report()
+    report.keyword = "长三角生成式AI潜在商机"
+    report.target_accounts = [
+        "新协议保留了两家公司：微软拿 Open AI 技术卖钱",
+        "现在可以通过任何云服务",
+    ]
+    report.top_target_accounts = []
+    report.entity_graph.entities = []
+    report.entity_graph.target_entities = []
+
+    intelligence = build_report_knowledge_intelligence(report, action_cards=[])
+    account_names = [item["name"] for item in intelligence["accounts"] if item["role"] == "target"]
+
+    assert "新协议保留了两家公司" not in account_names
+    assert "现在可以通过任何云服务" not in account_names
+
+
+def test_build_report_knowledge_intelligence_keeps_graph_roles_separate() -> None:
+    report = _sample_report()
+    report.keyword = "长三角生成式AI政务商机"
+    report.top_target_accounts = []
+    report.target_accounts = ["上海市政府", "市发展改革委"]
+    report.top_competitors = []
+    report.competitor_profiles = ["腾讯云", "阿里云"]
+    report.top_ecosystem_partners = []
+    report.ecosystem_partners = []
+    report.entity_graph.entities = [
+        ResearchNormalizedEntityOut(
+            canonical_name="腾讯云",
+            entity_type="competitor",
+            source_count=7,
+            source_tier_counts={"official": 6, "media": 1},
+        ),
+        ResearchNormalizedEntityOut(
+            canonical_name="阿里云",
+            entity_type="competitor",
+            source_count=1,
+            source_tier_counts={"media": 1},
+        ),
+    ]
+    report.entity_graph.target_entities = []
+    report.entity_graph.competitor_entities = list(report.entity_graph.entities)
+    report.entity_graph.partner_entities = []
+
+    intelligence = build_report_knowledge_intelligence(report, action_cards=[])
+    target_names = [item["name"] for item in intelligence["accounts"] if item["role"] == "target"]
+    competitor_names = [item["name"] for item in intelligence["accounts"] if item["role"] == "competitor"]
+
+    assert "上海市政府" in target_names
+    assert "市发展改革委" in target_names
+    assert "腾讯云" not in target_names
+    assert "阿里云" not in target_names
+    assert "腾讯云" in competitor_names
+
+
+def test_canonicalize_account_name_does_not_replace_unmatched_fallback_with_graph_entity() -> None:
+    report = _sample_report()
+    report.entity_graph.entities = [
+        ResearchNormalizedEntityOut(
+            canonical_name="腾讯云",
+            entity_type="competitor",
+            source_count=7,
+            source_tier_counts={"official": 6, "media": 1},
+        )
+    ]
+    report.entity_graph.target_entities = []
+    report.entity_graph.competitor_entities = list(report.entity_graph.entities)
+
+    assert _canonicalize_account_name("上海市政府", report=report, role="target") == "上海市政府"
 
 
 def test_account_aggregation_merges_aliases_and_dedupes_opportunities() -> None:

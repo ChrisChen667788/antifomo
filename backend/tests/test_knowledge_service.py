@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.base import Base
 from app.models.entities import Item, ItemTag, User
 from app.services.feedback_service import apply_feedback
-from app.services.knowledge_service import ensure_knowledge_rule, maybe_auto_archive_item
+from app.services.knowledge_cleaning_service import clean_knowledge_content, is_low_signal_knowledge_payload
+from app.services.knowledge_service import create_or_get_standalone_knowledge_entry, ensure_knowledge_rule, maybe_auto_archive_item
 
 
 def _new_session() -> Session:
@@ -129,5 +130,46 @@ def test_auto_archive_reuses_existing_entry_for_same_item() -> None:
         assert second.status == "existing"
         assert first.entry is not None and second.entry is not None
         assert first.entry.id == second.entry.id
+    finally:
+        db.close()
+
+
+def test_knowledge_cleaning_removes_placeholder_and_duplicate_rows() -> None:
+    content = "\n".join(
+        [
+            "暂无可归档内容",
+            "AI 标识监管要求平台补齐显著标识和用户提示。",
+            "AI 标识监管要求平台补齐显著标识和用户提示。",
+            "微信扫一扫 听全文",
+            "下一步应核验监管公告和平台整改口径。",
+        ]
+    )
+
+    cleaned = clean_knowledge_content(content)
+
+    assert "暂无可归档内容" not in cleaned
+    assert "微信扫一扫" not in cleaned
+    assert cleaned.count("AI 标识监管") == 1
+    assert "下一步应核验" in cleaned
+
+
+def test_standalone_knowledge_entry_sanitizes_low_signal_content() -> None:
+    db = _new_session()
+    try:
+        user = User(id=uuid.uuid4(), name="demo")
+        db.add(user)
+        db.flush()
+
+        entry, created = create_or_get_standalone_knowledge_entry(
+            db,
+            user_id=user.id,
+            title="placeholder",
+            content="暂无可归档内容\n政务云采购项目出现预算和招标窗口。\n政务云采购项目出现预算和招标窗口。",
+        )
+
+        assert created is True
+        assert entry.title == "知识卡片"
+        assert entry.content == "政务云采购项目出现预算和招标窗口。"
+        assert not is_low_signal_knowledge_payload(entry.title, entry.content)
     finally:
         db.close()

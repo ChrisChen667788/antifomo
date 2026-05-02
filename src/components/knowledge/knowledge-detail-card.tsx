@@ -92,9 +92,9 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
       };
     }
     return {
-      label: t("research.evidenceFallback", "兜底候选"),
+      label: t("research.evidenceFallback", "待核实"),
       className: "border-slate-200/90 bg-slate-100 text-slate-700",
-      note: t("research.evidenceFallbackNote", "当前更像高价值候选，不应直接视为最终结论。"),
+      note: t("research.evidenceFallbackNote", "当前线索有价值，但还需要更多公开来源确认。"),
     };
   };
   const confidenceToneMeta = (value?: string) => {
@@ -126,12 +126,21 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     if (score >= 55) return { label: t("summary.score.medium", "普通价值"), className: "bg-amber-100 text-amber-700" };
     return { label: t("summary.score.low", "低价值"), className: "bg-slate-100 text-slate-500" };
   };
+  const followupResolutionMeta = (value?: string) => {
+    if (value === "corrected") {
+      return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
+    }
+    if (value === "reused") {
+      return { label: "沿用基线", className: "border-sky-200/90 bg-sky-50 text-sky-800" };
+    }
+    return { label: "基线生成", className: "border-slate-200/90 bg-slate-100 text-slate-700" };
+  };
   const factorBucket = (score: number) => {
     if (score >= 14) return { label: "强支撑", className: "bg-emerald-100 text-emerald-700" };
     if (score >= 6) return { label: "中支撑", className: "bg-amber-100 text-amber-700" };
     if (score > 0) return { label: "弱支撑", className: "bg-sky-100 text-sky-700" };
     if (score < 0) return { label: "风险提示", className: "bg-rose-100 text-rose-700" };
-    return { label: "待补证据", className: "bg-slate-100 text-slate-500" };
+    return { label: "待补依据", className: "bg-slate-100 text-slate-500" };
   };
   const rankedPanelTone = (tone: RankedPanelTone) => {
     if (tone === "amber") {
@@ -231,6 +240,9 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     ...(followupDiagnostics?.rebuilt_industries || []),
     ...(followupDiagnostics?.rebuilt_clients || []),
   ]);
+  const followupImpactedSections = (followupDiagnostics?.impacted_sections || []).slice(0, 4);
+  const followupTitleResolution = followupResolutionMeta(followupDiagnostics?.title_resolution);
+  const followupSummaryResolution = followupResolutionMeta(followupDiagnostics?.summary_resolution);
   const candidateProfileCompanies = dedupeTextList(researchDiagnostics?.candidate_profile_companies || []);
   const candidateProfileSourceLabels = dedupeTextList(researchDiagnostics?.candidate_profile_source_labels || []);
   const reportSurfaceCopy = {
@@ -239,9 +251,9 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     playbookTitle: t("research.playbookTitle", "推进要点"),
     appendixTitle: t("research.appendixTitle", "方法与边界"),
     reviewQueueTitle: t("research.reviewQueueTitle", "待核验结论"),
-    reviewQueueDesc: t("research.reviewQueueDesc", "把冲突结论、弱证据章节和关键缺口集中出来，优先做二次核验。"),
+    reviewQueueDesc: t("research.reviewQueueDesc", "集中列出冲突结论、依据不足的章节和关键缺口，方便优先复核。"),
     insightsTitle: t("research.deepInsightsTitle", "深度洞察"),
-    insightsDesc: t("research.deepInsightsHint", "按主题继续展开关键判断、证据锚点与补证建议。"),
+    insightsDesc: t("research.deepInsightsHint", "按主题继续展开关键判断、依据和复核建议。"),
     sourceTitle: t("research.sourcesEvidenceTitle", "来源与证据"),
   };
   const pipelineStages = researchDiagnostics?.pipeline_stages || [];
@@ -271,17 +283,17 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
         ? `扩展 ${researchDiagnostics.strategy_query_expansion_count} 条`
         : followupDiagnostics?.decomposition_queries?.length
           ? `追问拆出 ${followupDiagnostics.decomposition_queries.length} 条`
-          : "基础混合检索",
+          : "基础来源整理",
       detail:
         followupDiagnostics?.summary ||
         researchDiagnostics?.strategy_scope_summary ||
-        "当前已启用混合检索，并用总览块优先路由到章节与证据块。",
+        "已结合多个公开来源整理报告，并突出关键章节和依据。",
       tone: "border-violet-100/90 bg-violet-50/78 text-violet-900",
     },
     {
       title: "账户支撑",
       value: unsupportedTargetAccounts.length
-        ? `待补证 ${unsupportedTargetAccounts.length} 个`
+        ? `待核验 ${unsupportedTargetAccounts.length} 个`
         : supportedTargetAccounts.length
           ? `已支撑 ${supportedTargetAccounts.length} 个`
           : "未锁定账户",
@@ -296,7 +308,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     {
       title: "证据门槛",
       value: guardedBacklog
-        ? "Guarded backlog"
+        ? "待复核"
         : reportReadiness?.evidence_gate_passed
           ? "证据门槛已通过"
           : reviewQueue.length
@@ -307,7 +319,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
         reportReadiness?.next_verification_steps?.[0] ||
         reviewQueue[0]?.summary ||
         reviewQueue[0]?.recommended_action ||
-        "优先补官方源、账户支撑和关键章节的交叉验证。",
+        "优先补充官方源、账户支撑和关键章节的交叉验证。",
       tone: guardedBacklog || !reportReadiness?.evidence_gate_passed
         ? "border-amber-100/90 bg-amber-50/82 text-amber-900"
         : "border-emerald-100/90 bg-emerald-50/78 text-emerald-900",
@@ -327,7 +339,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
             {
               title: researchReport.top_target_accounts?.length
                 ? t("research.topTargets", "高价值甲方 Top 3")
-                : t("research.pendingTargets", "待补证甲方候选"),
+                : t("research.pendingTargets", "待核验甲方候选"),
               items: dedupeByKey(
                 researchReport.top_target_accounts?.length
                   ? researchReport.top_target_accounts
@@ -340,7 +352,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
             {
               title: researchReport.top_competitors?.length
                 ? t("research.topCompetitors", "高威胁竞品 Top 3")
-                : t("research.pendingCompetitors", "待补证竞品候选"),
+                : t("research.pendingCompetitors", "待核验竞品候选"),
               items: dedupeByKey(
                 researchReport.top_competitors?.length
                   ? researchReport.top_competitors
@@ -353,7 +365,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
             {
               title: researchReport.top_ecosystem_partners?.length
                 ? t("research.topPartners", "高影响力生态伙伴 Top 3")
-                : t("research.pendingPartners", "待补证生态伙伴候选"),
+                : t("research.pendingPartners", "待核验生态伙伴候选"),
               items: dedupeByKey(
                 researchReport.top_ecosystem_partners?.length
                   ? researchReport.top_ecosystem_partners
@@ -573,7 +585,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
       if (content) {
         triggerMarkdownDownload(filename, content);
       }
-      setMessage(t("knowledge.workbuddyDone", "已通过 WorkBuddy 导出 Markdown"));
+      setMessage(t("knowledge.workbuddyDone", "Markdown 已导出"));
     } catch {
       try {
         const task = await createTask({
@@ -588,7 +600,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
             ? task.output_payload.filename
             : `${entry.title || "knowledge-card"}.md`;
         triggerMarkdownDownload(filename, content);
-        setMessage(t("knowledge.workbuddyFallback", "WorkBuddy 不可用，已回退直连导出"));
+        setMessage(t("knowledge.workbuddyFallback", "已完成 Markdown 导出"));
       } catch {
         setMessage(t("knowledge.workbuddyFailed", "导出失败，请稍后重试"));
       }
@@ -683,7 +695,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
               <WorkBuddyMark size={14} />
               {workBuddyExporting
                 ? t("knowledge.workbuddyExporting", "导出中...")
-                : t("knowledge.workbuddyExport", "通过 WorkBuddy 导出")}
+                : t("knowledge.workbuddyExport", "导出 Markdown")}
             </button>
             <Link href={`/knowledge/${entry.id}/edit`} className="af-btn af-btn-secondary border px-4 py-2">
               <AppIcon name="edit" className="h-4 w-4" />
@@ -724,27 +736,27 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
                     </span>
                     {guardedBacklog ? (
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] text-rose-700">
-                        Guarded backlog
+                        待复核
                       </span>
                     ) : null}
                     {researchDiagnostics.corrective_triggered ? (
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                        {t("research.correctiveTriggered", "已触发纠错检索")}
+                        {t("research.correctiveTriggered", "已补充核验")}
                       </span>
                     ) : null}
                     {researchDiagnostics.expansion_triggered ? (
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                        {t("research.expansionTriggered", "已触发扩搜补证")}
+                        {t("research.expansionTriggered", "已扩展来源")}
                       </span>
                     ) : null}
                     {candidateProfileCompanies.length ? (
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                        {t("research.candidateProfiles", "候选补证公司")} {candidateProfileCompanies.length}
+                        {t("research.candidateProfiles", "建议核验公司")} {candidateProfileCompanies.length}
                       </span>
                     ) : null}
                     {researchDiagnostics.candidate_profile_hit_count > 0 ? (
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                        {t("research.candidateProfileHits", "补证公开源")} {researchDiagnostics.candidate_profile_hit_count}
+                        {t("research.candidateProfileHits", "公开来源")} {researchDiagnostics.candidate_profile_hit_count}
                       </span>
                     ) : null}
                     {researchDiagnostics.candidate_profile_official_hit_count > 0 ? (
@@ -829,6 +841,59 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
               <p className="mt-3 rounded-2xl border border-sky-100/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(238,247,255,0.74))] px-4 py-3 text-sm leading-6 text-sky-900">
                 {researchReport.consulting_angle}
               </p>
+              {followupDiagnostics?.enabled ? (
+                <div className="mt-4 rounded-[24px] border border-amber-100/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,247,237,0.88))] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">补充信息影响</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        {followupDiagnostics.summary || "补充信息已用于更新相关章节。"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupTitleResolution.className}`}>
+                        标题 · {followupTitleResolution.label}
+                      </span>
+                      <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupSummaryResolution.className}`}>
+                        摘要 · {followupSummaryResolution.label}
+                      </span>
+                    </div>
+                  </div>
+                  {followupImpactedSections.length ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {followupImpactedSections.map((section) => (
+                        <div key={`knowledge-followup-impact-${section.section_title}`} className="rounded-[20px] border border-white/90 bg-white/84 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-900">{section.section_title}</span>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] ${
+                                section.impact_label === "high"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : section.impact_label === "medium"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              影响度 {section.impact_score}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">{section.reason}</p>
+                          {section.matched_inputs?.length ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {section.matched_inputs.slice(0, 3).map((value) => (
+                                <span key={`${section.section_title}-${value}`} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
+                                  {value}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          <p className="mt-2 text-[11px] text-slate-500">{section.next_action}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             {(reportReadiness || commercialSummary) ? (
@@ -842,13 +907,13 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
                           {reportReadiness.status === "ready"
                             ? "当前结果已经满足较完整的销售/咨询推进条件。"
                             : reportReadiness.status === "degraded"
-                              ? "当前可以先做候选推进，但仍建议继续补证。"
-                              : "当前更适合作为候选名单和待补证清单。"}
+                              ? "当前可以先做候选推进，但仍建议继续核验。"
+                              : "当前更适合作为候选名单和待核验清单。"}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <span className={`rounded-full px-2.5 py-1 ${reportReadiness.status === "ready" ? "bg-emerald-100 text-emerald-700" : reportReadiness.status === "degraded" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
-                          {reportReadiness.status === "ready" ? "可直接推进" : reportReadiness.status === "degraded" ? "候选推进" : "待补证"}
+                          {reportReadiness.status === "ready" ? "可直接推进" : reportReadiness.status === "degraded" ? "候选推进" : "待核验"}
                         </span>
                         <span className="rounded-full bg-white/86 px-2.5 py-1 text-slate-700">评分 {reportReadiness.score}</span>
                         <span className={`rounded-full px-2.5 py-1 ${reportReadiness.evidence_gate_passed ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
@@ -959,7 +1024,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">可信度卡</p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2.5 py-1 text-xs ${qualityTone(confidenceCard.level || "low")}`}>
-                        {confidenceCard.level === "high" ? "高可信" : confidenceCard.level === "medium" ? "中可信" : "待补证"}
+                        {confidenceCard.level === "high" ? "高可信" : confidenceCard.level === "medium" ? "中可信" : "待核验"}
                       </span>
                       <span className="rounded-full bg-white/86 px-2.5 py-1 text-xs text-slate-700">
                         可信度 {confidenceCard.score}

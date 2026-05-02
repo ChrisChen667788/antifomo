@@ -65,6 +65,9 @@ _GENERIC_EXACT_ENTITY_NAMES = {
     "个人账号",
     "头部公司",
     "MAAS的头部公司",
+    "开发集团",
+    "各有关大学",
+    "并经市政府",
     "社区中心",
     "专家委",
     "前瞻布局",
@@ -113,6 +116,8 @@ _GENERIC_ENTITY_PREFIXES = (
     "今日国务院常务会",
     "消防工作向城乡并重转变",
     "这是在为",
+    "各有关",
+    "并经",
 )
 _GENERIC_ENTITY_CONTAINS = (
     "当前证据不足",
@@ -269,6 +274,8 @@ _OFFICIAL_DOMAIN_NAME_MAP = {
 _KNOWN_ORG_EXACT_NAMES = {
     *_ACCOUNT_ALIAS_MAP.values(),
     *_OFFICIAL_DOMAIN_NAME_MAP.values(),
+    "Microsoft",
+    "OpenAI",
     "腾讯",
     "阿里云",
     "华为云",
@@ -280,6 +287,33 @@ _KNOWN_ORG_EXACT_NAMES = {
     "埃森哲",
     "IBM",
 }
+_SENTENCE_FRAGMENT_ENTITY_TOKENS = (
+    "新协议",
+    "保留了",
+    "两家公司",
+    "几家公司",
+    "多家公司",
+    "现在可以",
+    "可以通过",
+    "任何云服务",
+    "不用再",
+    "不再给",
+    "宣布修订",
+    "长期合作",
+    "绑定关系",
+    "合作协议",
+    "基本框架",
+)
+_SENTENCE_FRAGMENT_ENTITY_PREFIXES = (
+    "现在",
+    "过去",
+    "未来",
+    "同时",
+    "但",
+    "而是",
+    "新协议",
+    "双方",
+)
 
 
 def _slugify(value: str) -> str:
@@ -303,8 +337,20 @@ def _unique_strings(values: list[str] | tuple[str, ...], *, limit: int | None = 
 
 def _entity_name(entity: Any) -> str:
     if isinstance(entity, dict):
-        return normalize_text(entity.get("name"))
-    return normalize_text(getattr(entity, "name", ""))
+        return normalize_text(entity.get("name") or entity.get("canonical_name"))
+    return normalize_text(getattr(entity, "name", "") or getattr(entity, "canonical_name", ""))
+
+
+def _entity_canonical_name(entity: Any) -> str:
+    if isinstance(entity, dict):
+        return _clean_entity_name(entity.get("canonical_name") or entity.get("name") or "")
+    return _clean_entity_name(getattr(entity, "canonical_name", "") or getattr(entity, "name", ""))
+
+
+def _entity_role(entity: Any) -> str:
+    if isinstance(entity, dict):
+        return normalize_text(entity.get("entity_type")).lower()
+    return normalize_text(getattr(entity, "entity_type", "")).lower()
 
 
 def _clean_entity_name(value: str) -> str:
@@ -325,9 +371,26 @@ def _clean_entity_name(value: str) -> str:
     return normalize_text(normalized)
 
 
+def _looks_like_sentence_fragment_entity_name(value: str) -> bool:
+    normalized = _clean_entity_name(value)
+    if not normalized or normalized in _KNOWN_ORG_EXACT_NAMES:
+        return False
+    if re.search(r"(?:一|两|二|几|多|\d+)\s*家(?:公司|企业|厂商|机构)$", normalized):
+        return True
+    if normalized.startswith(_SENTENCE_FRAGMENT_ENTITY_PREFIXES):
+        return True
+    if any(token in normalized for token in _SENTENCE_FRAGMENT_ENTITY_TOKENS):
+        return True
+    if len(normalized) >= 10 and any(token in normalized for token in ("了", "可以", "通过", "不用", "仍是", "仍将", "转向")):
+        return True
+    return False
+
+
 def _looks_like_org_name(value: str) -> bool:
     normalized = _clean_entity_name(value)
     if not normalized:
+        return False
+    if _looks_like_sentence_fragment_entity_name(normalized):
         return False
     if normalized in _KNOWN_ORG_EXACT_NAMES:
         return True
@@ -408,18 +471,19 @@ def _canonical_name_from_evidence_links(evidence_links: list[dict[str, str]] | N
 def _graph_entities_for_role(report: ResearchReportDocument, role: str) -> list[Any]:
     graph = report.entity_graph
     if role == "target":
-        return list(graph.target_entities or graph.entities)
+        return list(graph.target_entities) or [entity for entity in graph.entities if _entity_role(entity) == role]
     if role == "competitor":
-        return list(graph.competitor_entities or graph.entities)
+        return list(graph.competitor_entities) or [entity for entity in graph.entities if _entity_role(entity) == role]
     if role == "partner":
-        return list(graph.partner_entities or graph.entities)
+        return list(graph.partner_entities) or [entity for entity in graph.entities if _entity_role(entity) == role]
     return list(graph.entities)
 
 
 def _graph_entity_quality(entity: Any) -> int:
-    canonical_name = _clean_entity_name(getattr(entity, "canonical_name", ""))
-    official_hits = int((getattr(entity, "source_tier_counts", {}) or {}).get("official") or 0)
-    source_count = int(getattr(entity, "source_count", 0) or 0)
+    canonical_name = _entity_canonical_name(entity)
+    source_tier_counts = (entity.get("source_tier_counts") if isinstance(entity, dict) else getattr(entity, "source_tier_counts", {})) or {}
+    official_hits = int(source_tier_counts.get("official") or 0)
+    source_count = int((entity.get("source_count") if isinstance(entity, dict) else getattr(entity, "source_count", 0)) or 0)
     score = official_hits * 16 + source_count * 6
     score += 12 if _looks_like_org_name(canonical_name) else -12
     score -= 32 if _is_low_signal_entity_name(canonical_name) else 0
@@ -441,23 +505,29 @@ def _best_graph_canonical_name(
     best_name = ""
     best_score = 0
     for entity in _graph_entities_for_role(report, role):
-        canonical_name = _clean_entity_name(getattr(entity, "canonical_name", ""))
+        canonical_name = _entity_canonical_name(entity)
         if not canonical_name or _is_low_signal_entity_name(canonical_name):
             continue
         entity_aliases = {
             _clean_entity_name(alias).lower()
-            for alias in [canonical_name, *(getattr(entity, "aliases", []) or [])]
+            for alias in [
+                canonical_name,
+                *((entity.get("aliases") if isinstance(entity, dict) else getattr(entity, "aliases", [])) or []),
+            ]
             if _clean_entity_name(alias)
         }
         entity_urls = {
-            normalize_text(getattr(link, "url", ""))
-            for link in getattr(entity, "evidence_links", []) or []
-            if normalize_text(getattr(link, "url", ""))
+            normalize_text(link.get("url") if isinstance(link, dict) else getattr(link, "url", ""))
+            for link in ((entity.get("evidence_links") if isinstance(entity, dict) else getattr(entity, "evidence_links", [])) or [])
+            if normalize_text(link.get("url") if isinstance(link, dict) else getattr(link, "url", ""))
         }
-        score = _graph_entity_quality(entity)
-        if aliases & entity_aliases:
-            score += 28
+        direct_match = bool(aliases & entity_aliases)
         shared_urls = raw_urls & entity_urls
+        if not direct_match and not shared_urls:
+            continue
+        score = _graph_entity_quality(entity)
+        if direct_match:
+            score += 28
         if shared_urls:
             score += 22 + len(shared_urls) * 6
         if score > best_score:
@@ -521,6 +591,8 @@ def _is_low_signal_entity_name(value: str) -> bool:
     normalized = _clean_entity_name(value)
     lowered = normalized.lower()
     if not normalized:
+        return True
+    if _looks_like_sentence_fragment_entity_name(normalized):
         return True
     if normalized in _GENERIC_EXACT_ENTITY_NAMES:
         return True
@@ -837,11 +909,12 @@ def _fallback_entities(values: list[str], role: str) -> list[dict[str, Any]]:
 def _graph_candidate_entities(report: ResearchReportDocument, role: str) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for entity in _graph_entities_for_role(report, role):
-        canonical_name = _clean_entity_name(getattr(entity, "canonical_name", ""))
+        canonical_name = _entity_canonical_name(entity)
         if not canonical_name or _is_low_signal_entity_name(canonical_name):
             continue
-        source_count = int(getattr(entity, "source_count", 0) or 0)
-        official_hits = int((getattr(entity, "source_tier_counts", {}) or {}).get("official") or 0)
+        source_tier_counts = (entity.get("source_tier_counts") if isinstance(entity, dict) else getattr(entity, "source_tier_counts", {})) or {}
+        source_count = int((entity.get("source_count") if isinstance(entity, dict) else getattr(entity, "source_count", 0)) or 0)
+        official_hits = int(source_tier_counts.get("official") or 0)
         candidates.append(
             {
                 "name": canonical_name,
