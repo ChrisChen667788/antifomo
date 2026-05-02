@@ -51,7 +51,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "article_row_height": 140,
     "rows_per_batch": 2,
     "batches_per_cycle": 12,
-    "article_open_wait_sec": 1.2,
+    "article_open_wait_sec": 2.5,
     "article_capture_region": {"x": 360, "y": 110, "width": 1020, "height": 860},
     "article_reset_page_up": 3,
     "article_extra_page_down": 0,
@@ -71,6 +71,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "scan_today_unread_only": True,
     "scan_stop_old_article_streak": 2,
     "loop_interval_sec": 300,
+    # Layer 1: right-click on article tab → context menu →
+    #   primary path: "复制链接" (clipboard, no browser)
+    #   fallback:     "使用默认浏览器打开" (browser URL)
+    "wechat_tab_right_click_enabled": True,
+    "wechat_tab_menu_copy_link_index": 7,
+    "wechat_tab_menu_open_in_browser_index": 4,
+    "wechat_tab_close_after_extract": True,
 }
 
 ARTICLE_CAPTURE_VARIANT_PROFILES: dict[str, dict[str, float]] = {
@@ -539,6 +546,26 @@ def is_usable_front_window(app_name: str, *, min_width: int = 900, min_height: i
     return rect[2] >= min_width and rect[3] >= min_height, rect
 
 
+def _resize_wechat_window(app_name: str, width: int = 1400, height: int = 900) -> bool:
+    """Resize the front WeChat window to a usable size and reposition it."""
+    try:
+        _applescript(
+            [
+                'tell application "System Events"',
+                f'tell process "{app_name}"',
+                "set frontmost to true",
+                f"set position of front window to {{0, 25}}",
+                f"set size of front window to {{{width}, {height}}}",
+                "end tell",
+                "end tell",
+            ]
+        )
+        time.sleep(0.4)
+        return True
+    except Exception:
+        return False
+
+
 def get_usable_window_rect(app_name: str, *, min_width: int = 900, min_height: int = 600) -> tuple[bool, tuple[int, int, int, int] | None]:
     rect = get_best_window_rect(app_name, min_width=min_width, min_height=min_height)
     if rect is not None:
@@ -547,6 +574,14 @@ def get_usable_window_rect(app_name: str, *, min_width: int = 900, min_height: i
         front_rect = get_front_window_rect(app_name)
     except Exception:
         return False, None
+    if front_rect and (front_rect[2] < min_width or front_rect[3] < min_height):
+        if _resize_wechat_window(app_name, width=max(min_width, 1400), height=max(min_height, 900)):
+            try:
+                resized_rect = get_front_window_rect(app_name)
+                if resized_rect[2] >= min_width and resized_rect[3] >= min_height:
+                    return True, resized_rect
+            except Exception:
+                pass
     return False, front_rect
 
 
@@ -617,6 +652,395 @@ def key_combo_command(char: str) -> None:
             "end tell",
         ]
     )
+
+
+# === Layer 1: right-click on article tab → "复制链接" / "使用默认浏览器打开" === #
+# WeChat 4.x renders article reading windows with a Safari-style tab bar at
+# the top. Right-clicking on the tab title pops up a Qt-rendered context
+# menu (visible to AppleScript only as a borderless AXWindow with no child
+# UI elements). The full tab menu observed on macOS WeChat 4.x is roughly
+# 239x374 (~11 items); right-clicking on the article BODY produces a much
+# smaller menu (~117x159) that does NOT contain the items we want. So the
+# popup-size thresholds below are tight on purpose — only the wide tab
+# menu qualifies.
+#
+# Menu order observed (1-based, used for keyboard-nav Down × N + Enter):
+#   1. 转发到群发表
+#   2. 分享到朋友圈
+#   3. 收藏
+#   4. 使用默认浏览器打开    ← open_in_browser_index
+#   5. 添加图标
+#   6. 转发文
+#   7. 复制链接              ← copy_link_index (preferred, no browser)
+#   8. 删除
+#   9. 全文翻译
+#  10. 调整文字大小 ▶
+#  11. 查找…
+#
+# Primary path is "复制链接" because it puts the URL on the clipboard
+# without bringing a browser front (faster, no app-switch, no Safari
+# tab pile-up). The browser-open path is only used as a fallback.
+WECHAT_TAB_RIGHT_CLICK_OFFSETS: tuple[tuple[int, int], ...] = (
+    (316, 25),
+    (200, 30),
+    (450, 30),
+    (150, 25),
+)
+WECHAT_TAB_POPUP_MIN_WIDTH = 180
+WECHAT_TAB_POPUP_MIN_HEIGHT = 280
+WECHAT_TAB_POPUP_MAX_WIDTH = 400
+WECHAT_TAB_POPUP_MAX_HEIGHT = 800
+WECHAT_SHELL_TITLES_NO_ARTICLE: frozenset[str] = frozenset({"微信"})
+
+
+def right_click_at(x: int, y: int) -> bool:
+    cliclick = _find_cliclick()
+    if not cliclick:
+        return False
+    try:
+        run = _run_command(
+            [cliclick, f"rc:{x},{y}"],
+            timeout_sec=DEFAULT_UI_ACTION_TIMEOUT_SEC,
+            error_label="cliclick",
+        )
+        return run.returncode == 0
+    except RuntimeError:
+        return False
+
+
+def _list_wechat_window_rects(app_name: str) -> list[dict[str, Any]]:
+    """List all WeChat windows with name + rect, ordered by z-index (front first)."""
+    try:
+        output = _applescript(
+            [
+                'tell application "System Events"',
+                f'tell process "{app_name}"',
+                'set out to ""',
+                "try",
+                "  repeat with w in windows",
+                "    try",
+                "      set wn to name of w as text",
+                "    on error",
+                '      set wn to ""',
+                "    end try",
+                "    try",
+                "      set p to position of w",
+                "      set sz to size of w",
+                '      set out to out & wn & "|" & ((item 1 of p) as text) & "|" & ((item 2 of p) as text) & "|" & ((item 1 of sz) as text) & "|" & ((item 2 of sz) as text) & linefeed',
+                "    end try",
+                "  end repeat",
+                "end try",
+                "return out",
+                "end tell",
+                "end tell",
+            ]
+        )
+    except Exception:
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in str(output or "").splitlines():
+        parts = line.split("|")
+        if len(parts) != 5:
+            continue
+        try:
+            rows.append(
+                {
+                    "name": parts[0],
+                    "x": int(parts[1]),
+                    "y": int(parts[2]),
+                    "w": int(parts[3]),
+                    "h": int(parts[4]),
+                }
+            )
+        except ValueError:
+            continue
+    return rows
+
+
+def _detect_new_article_window(
+    *, before: list[dict[str, Any]], after: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Find an entry in `after` whose (name, x, y, w, h) tuple does not
+    appear in `before`. Uses multiset semantics so duplicates (e.g., two
+    `微信 (窗口)` windows at the same rect) are tracked correctly.
+    """
+    before_count: dict[tuple[Any, ...], int] = {}
+    for w in before:
+        key = (w.get("name"), w.get("x"), w.get("y"), w.get("w"), w.get("h"))
+        before_count[key] = before_count.get(key, 0) + 1
+    for w in after:
+        key = (w.get("name"), w.get("x"), w.get("y"), w.get("w"), w.get("h"))
+        c = before_count.get(key, 0)
+        if c > 0:
+            before_count[key] = c - 1
+            continue
+        if int(w.get("w") or 0) < 400 or int(w.get("h") or 0) < 500:
+            continue
+        if w.get("name") in WECHAT_SHELL_TITLES_NO_ARTICLE:
+            continue
+        return w
+    return None
+
+
+def _pick_topmost_article_window(
+    windows: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    for w in windows:
+        if int(w.get("w") or 0) < 400 or int(w.get("h") or 0) < 500:
+            continue
+        if w.get("name") in WECHAT_SHELL_TITLES_NO_ARTICLE:
+            continue
+        return w
+    return None
+
+
+def _find_wechat_tab_popup_window(app_name: str) -> dict[str, Any] | None:
+    """Find the AXWindow that is the tab right-click context menu.
+
+    Tight size threshold so we don't false-positive on the small body
+    right-click menu (~117x159) or other tooltips.
+    """
+    for w in _list_wechat_window_rects(app_name):
+        ww = int(w.get("w") or 0)
+        wh = int(w.get("h") or 0)
+        if (
+            WECHAT_TAB_POPUP_MIN_WIDTH <= ww <= WECHAT_TAB_POPUP_MAX_WIDTH
+            and WECHAT_TAB_POPUP_MIN_HEIGHT <= wh <= WECHAT_TAB_POPUP_MAX_HEIGHT
+            and not w.get("name")
+        ):
+            return w
+    return None
+
+
+def _open_wechat_tab_context_menu(
+    *,
+    wechat_app_name: str,
+    article_window: dict[str, Any],
+) -> tuple[dict[str, Any] | None, tuple[int, int] | None]:
+    """Right-click the tab title at progressively different offsets
+    until a tab-menu-sized AXWindow appears. Returns (popup, offset)
+    or (None, None) on failure."""
+    for off_x, off_y in WECHAT_TAB_RIGHT_CLICK_OFFSETS:
+        try:
+            tab_x = int(article_window["x"]) + int(off_x)
+            tab_y = int(article_window["y"]) + int(off_y)
+        except Exception:
+            continue
+        if not right_click_at(tab_x, tab_y):
+            continue
+        time.sleep(0.55)
+        popup = _find_wechat_tab_popup_window(wechat_app_name)
+        if popup:
+            return popup, (off_x, off_y)
+        try:
+            key_code(53)  # Esc — dismiss any stray hover/wrong popup
+        except Exception:
+            pass
+        time.sleep(0.18)
+    return None, None
+
+
+def _press_menu_arrow_down_then_return(steps: int, step_delay: float = 0.16) -> None:
+    for _ in range(max(1, int(steps))):
+        try:
+            key_code(125)  # Down
+        except Exception:
+            pass
+        time.sleep(step_delay)
+    try:
+        key_code(36)  # Return
+    except Exception:
+        pass
+
+
+def _click_popup_menu_item(
+    *,
+    popup: dict[str, Any],
+    item_index: int,
+    total_items: int,
+) -> tuple[int, int] | None:
+    """Click at the visual position of menu item ``item_index`` (1-based)
+    inside ``popup``. Returns the screen (x, y) clicked, or None if the
+    geometry is invalid.
+
+    Item Y is computed as the center of equally-spaced rows; items are
+    treated as occupying ``popup.h / total_items`` each. Separators (if
+    any) inflate ``total_items`` so that real items still land on
+    correct rows. The caller chooses ``total_items`` empirically.
+    """
+    try:
+        px = int(popup.get("x"))
+        py = int(popup.get("y"))
+        pw = int(popup.get("w"))
+        ph = int(popup.get("h"))
+    except Exception:
+        return None
+    if pw < 50 or ph < 50:
+        return None
+    if item_index < 1 or item_index > max(1, int(total_items)):
+        return None
+    click_x = px + pw // 2
+    # Use a fractional row position: center of the item-th row.
+    click_y = py + int((float(item_index) - 0.5) * ph / float(max(1, total_items)))
+    click_at(click_x, click_y)
+    return click_x, click_y
+
+
+def try_extract_url_via_tab_right_click(
+    *,
+    wechat_app_name: str,
+    windows_before_click: list[dict[str, Any]] | None = None,
+    copy_link_index: int = 7,
+    open_in_browser_index: int = 4,
+    browser_wait_sec: float = 4.0,
+) -> tuple[str | None, dict[str, Any] | None, dict[str, Any]]:
+    """Right-click the article window's tab → menu navigate to
+    "复制链接" (preferred — clipboard, no app switch) or, on fallback,
+    "使用默认浏览器打开" (browser opens, URL read from address bar).
+
+    Returns ``(url_or_none, ai_opened_window_or_none, telemetry)``.
+    ``ai_opened_window`` is set only when ``windows_before_click`` was
+    provided AND a new window appeared after the click — caller may
+    safely close it with Cmd+W.
+    """
+    telemetry: dict[str, Any] = {
+        "article_window": None,
+        "popup_a_rect": None,
+        "popup_a_offset": None,
+        "popup_b_rect": None,
+        "popup_b_offset": None,
+        "clipboard_a_changed": False,
+        "front_after_b": "",
+        "path_taken": "",
+    }
+    windows_now = _list_wechat_window_rects(wechat_app_name)
+    article_window: dict[str, Any] | None = None
+    ai_opened: dict[str, Any] | None = None
+    if windows_before_click is not None:
+        new_window = _detect_new_article_window(
+            before=windows_before_click, after=windows_now
+        )
+        if new_window:
+            article_window = new_window
+            ai_opened = new_window
+    if article_window is None:
+        article_window = _pick_topmost_article_window(windows_now)
+    if article_window is None:
+        telemetry["path_taken"] = "no_article_window"
+        return None, None, telemetry
+    telemetry["article_window"] = {
+        "x": article_window.get("x"),
+        "y": article_window.get("y"),
+        "w": article_window.get("w"),
+        "h": article_window.get("h"),
+    }
+
+    # === Path A: 复制链接 (preferred) === #
+    clipboard_before = ""
+    try:
+        clipboard_before = read_clipboard_text() or ""
+    except Exception:
+        clipboard_before = ""
+    popup_a, off_a = _open_wechat_tab_context_menu(
+        wechat_app_name=wechat_app_name, article_window=article_window
+    )
+    if popup_a:
+        telemetry["popup_a_rect"] = popup_a
+        telemetry["popup_a_offset"] = off_a
+        _press_menu_arrow_down_then_return(int(copy_link_index))
+        time.sleep(0.45)  # let WeChat write to pasteboard
+        clipboard_after = ""
+        try:
+            clipboard_after = read_clipboard_text() or ""
+        except Exception:
+            clipboard_after = ""
+        clipboard_changed = bool(
+            clipboard_after and clipboard_after.strip() != clipboard_before.strip()
+        )
+        telemetry["clipboard_a_changed"] = clipboard_changed
+        if clipboard_changed:
+            candidate = normalize_http_url(clipboard_after.strip()) or ""
+            if is_allowed_article_url(candidate):
+                telemetry["path_taken"] = "copy_link"
+                return candidate, ai_opened, telemetry
+            # Restore old clipboard so the user's manual copy isn't lost.
+            try:
+                if clipboard_before:
+                    write_clipboard_text(clipboard_before)
+            except Exception:
+                pass
+
+    # === Path B: 使用默认浏览器打开 (fallback) === #
+    popup_b, off_b = _open_wechat_tab_context_menu(
+        wechat_app_name=wechat_app_name, article_window=article_window
+    )
+    if not popup_b:
+        telemetry["path_taken"] = "popup_a_only" if popup_a else "no_popup"
+        return None, ai_opened, telemetry
+    telemetry["popup_b_rect"] = popup_b
+    telemetry["popup_b_offset"] = off_b
+    _press_menu_arrow_down_then_return(int(open_in_browser_index))
+
+    deadline = time.time() + max(1.0, float(browser_wait_sec))
+    front = ""
+    while time.time() < deadline:
+        time.sleep(0.3)
+        f = get_front_process_name()
+        if f:
+            front = f
+        if front in BROWSER_PROCESS_NAMES:
+            break
+    telemetry["front_after_b"] = front
+    if front not in BROWSER_PROCESS_NAMES:
+        telemetry["path_taken"] = "browser_open_no_front"
+        return None, ai_opened, telemetry
+
+    browser_url = wait_for_allowed_front_browser_url(
+        front, timeout_sec=2.5, interval_sec=0.2
+    )
+    if browser_url:
+        telemetry["path_taken"] = "open_in_browser"
+        return browser_url, ai_opened, telemetry
+    telemetry["path_taken"] = "browser_open_no_url"
+    return None, ai_opened, telemetry
+
+
+def close_ai_opened_article_window(
+    *, bundle_id: str, wechat_app_name: str, tracked_window: dict[str, Any]
+) -> bool:
+    """Activate WeChat, verify the front WeChat window matches
+    ``tracked_window``'s rect (so we don't clobber a window the user
+    may have switched to), then send Cmd+W. Returns True iff close
+    was issued.
+    """
+    if not tracked_window:
+        return False
+    try:
+        activate_wechat(bundle_id, wechat_app_name)
+    except Exception:
+        return False
+    time.sleep(0.4)
+    windows = _list_wechat_window_rects(wechat_app_name)
+    front: dict[str, Any] | None = None
+    for w in windows:
+        if int(w.get("w") or 0) < 400 or int(w.get("h") or 0) < 500:
+            continue
+        front = w
+        break
+    if not front:
+        return False
+    if (
+        front.get("x") == tracked_window.get("x")
+        and front.get("y") == tracked_window.get("y")
+        and front.get("w") == tracked_window.get("w")
+        and front.get("h") == tracked_window.get("h")
+    ):
+        try:
+            key_combo_command("w")
+            return True
+        except Exception:
+            return False
+    return False
 
 
 def resolve_point(x: int, y: int, *, coordinate_mode: str, app_name: str) -> tuple[int, int]:
@@ -2284,12 +2708,14 @@ def ensure_batch_result(summary: dict[str, Any], batch_index: int) -> dict[str, 
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
         "deduplicated_existing_url": 0,
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_seen": 0,
         "skipped_invalid_article": 0,
@@ -2396,6 +2822,9 @@ def _ensure_wechat_front_ready(bundle_id: str, app_name: str) -> tuple[bool, tup
                 return True, rect
 
     ready, rect = _is_wechat_front_ready(app_name)
+    if not ready and rect and (rect[2] < 900 or rect[3] < 600):
+        if _resize_wechat_window(app_name):
+            ready, rect = _is_wechat_front_ready(app_name)
     return ready, rect
 
 
@@ -3403,7 +3832,7 @@ def run_cycle(
     row_height = _coerce_int(config.get("article_row_height"), 140, 20, 300)
     rows_per_batch = _coerce_int(config.get("rows_per_batch"), 2, 1, 20)
     batches_per_cycle = _coerce_int(config.get("batches_per_cycle"), 12, 1, 30)
-    open_wait = _coerce_float(config.get("article_open_wait_sec"), 1.4, 0.1, 8.0)
+    open_wait = _coerce_float(config.get("article_open_wait_sec"), 2.5, 0.5, 8.0)
     page_down_wait = _coerce_float(config.get("page_down_wait_sec"), 0.8, 0.1, 4.0)
     between_item_delay = _coerce_float(config.get("between_item_delay_sec"), 0.7, 0.0, 8.0)
     # Stay near the title/share zone by default. A small configurable value can
@@ -3483,8 +3912,12 @@ def run_cycle(
             current_front = get_front_process_name()
             if current_front not in {app_name, "WeChat"}:
                 raise RuntimeError("wechat_not_frontmost_after_activate")
-            rect_text = "unknown" if rect is None else f"{rect[2]}x{rect[3]}"
-            raise RuntimeError(f"wechat_window_too_small:{rect_text}")
+            # Last resort: force-resize the window
+            if _resize_wechat_window(app_name):
+                usable_window, rect = get_usable_window_rect(app_name)
+            if not usable_window:
+                rect_text = "unknown" if rect is None else f"{rect[2]}x{rect[3]}"
+                raise RuntimeError(f"wechat_window_too_small:{rect_text}")
         effective_capture_region_cfg = _calibrate_article_capture_region(
             capture_region_cfg,
             coordinate_mode=coordinate_mode,
@@ -3611,12 +4044,14 @@ def run_cycle(
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
         "deduplicated_existing_url": 0,
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_seen": 0,
         "skipped_low_quality": 0,
@@ -4142,6 +4577,9 @@ def run_cycle(
         elif route_kind == "resolved":
             summary["submitted_url_resolved"] += 1
             increment_batch_metric(summary, batch_idx, "submitted_url_resolved")
+        elif route_kind == "tab_browser_open":
+            summary["submitted_url_tab_browser_open"] += 1
+            increment_batch_metric(summary, batch_idx, "submitted_url_tab_browser_open")
         if deduplicated:
             bump_duplicate_article_streak(
                 batch_idx=batch_idx,
@@ -4161,6 +4599,9 @@ def run_cycle(
             elif route_kind == "resolved":
                 summary["deduplicated_existing_url_resolved"] += 1
                 increment_batch_metric(summary, batch_idx, "deduplicated_existing_url_resolved")
+            elif route_kind == "tab_browser_open":
+                summary["deduplicated_existing_url_tab_browser_open"] += 1
+                increment_batch_metric(summary, batch_idx, "deduplicated_existing_url_tab_browser_open")
         else:
             reset_duplicate_article_streak()
             summary["submitted_new"] += 1
@@ -4301,6 +4742,13 @@ def run_cycle(
                             coordinate_mode=coordinate_mode,
                             app_name=app_name,
                         )
+                        # Snapshot windows BEFORE the click so we can
+                        # diff after the click and identify the new
+                        # article window (if any) for later Cmd+W cleanup.
+                        try:
+                            windows_before_click = _list_wechat_window_rects(app_name)
+                        except Exception:
+                            windows_before_click = []
                         click_at(item_x, item_y)
                         summary["clicked"] += 1
                         increment_batch_metric(summary, batch_idx, "clicked")
@@ -4376,6 +4824,7 @@ def run_cycle(
                         article_url = try_copy_current_article_url(wechat_app_name=app_name)
                         article_url_route_kind = "direct" if article_url else ""
                         article_url_stage_label = "direct_url_detected" if article_url else ""
+                        ai_opened_article_window: dict[str, Any] | None = None
                         route_meta: dict[str, Any] = {}
                         append_stage_log(
                             summary,
@@ -4386,6 +4835,87 @@ def run_cycle(
                             detail=article_url or "miss",
                         )
                         emit_progress()
+                        # === Layer 1: right-click article tab → "使用默认浏览器打开" === #
+                        # Front-most reliable path on Mac WeChat 4.x: right-click the
+                        # tab title, select the menu item by Down × N + Enter, then
+                        # read the URL once the browser comes front. Falls through to
+                        # the legacy share/copy hunting if the popup never appears
+                        # or the keyboard nav lands on the wrong item.
+                        if not article_url and bool(
+                            config.get("wechat_tab_right_click_enabled", True)
+                        ):
+                            append_stage_log(
+                                summary,
+                                batch_index=batch_idx,
+                                row_index=row_idx,
+                                stage="url_extract_tab_right_click",
+                                outcome="info",
+                                detail="start",
+                            )
+                            emit_progress()
+                            tab_url, ai_opened, tab_telemetry = (
+                                try_extract_url_via_tab_right_click(
+                                    wechat_app_name=app_name,
+                                    windows_before_click=windows_before_click,
+                                    copy_link_index=int(
+                                        config.get(
+                                            "wechat_tab_menu_copy_link_index", 7
+                                        )
+                                    ),
+                                    open_in_browser_index=int(
+                                        config.get(
+                                            "wechat_tab_menu_open_in_browser_index", 4
+                                        )
+                                    ),
+                                )
+                            )
+                            ai_opened_article_window = ai_opened
+                            path_taken = str(tab_telemetry.get("path_taken") or "")
+                            tab_detail_parts = [f"path={path_taken or 'unknown'}"]
+                            popup_a = tab_telemetry.get("popup_a_rect")
+                            popup_b = tab_telemetry.get("popup_b_rect")
+                            if popup_a:
+                                tab_detail_parts.append(
+                                    f"popA={int(popup_a.get('w') or 0)}x{int(popup_a.get('h') or 0)}"
+                                )
+                            if popup_b:
+                                tab_detail_parts.append(
+                                    f"popB={int(popup_b.get('w') or 0)}x{int(popup_b.get('h') or 0)}"
+                                )
+                            if tab_telemetry.get("popup_a_offset"):
+                                ox, oy = tab_telemetry["popup_a_offset"]
+                                tab_detail_parts.append(f"offA={ox}x{oy}")
+                            if tab_telemetry.get("popup_b_offset"):
+                                ox, oy = tab_telemetry["popup_b_offset"]
+                                tab_detail_parts.append(f"offB={ox}x{oy}")
+                            if tab_telemetry.get("clipboard_a_changed") is not None:
+                                tab_detail_parts.append(
+                                    f"clipA={'1' if tab_telemetry.get('clipboard_a_changed') else '0'}"
+                                )
+                            if tab_telemetry.get("front_after_b"):
+                                tab_detail_parts.append(
+                                    f"frontB={tab_telemetry['front_after_b']}"
+                                )
+                            append_stage_log(
+                                summary,
+                                batch_index=batch_idx,
+                                row_index=row_idx,
+                                stage="url_extract_tab_right_click",
+                                outcome="success" if tab_url else "info",
+                                detail=tab_url
+                                or (":".join(tab_detail_parts) or "miss"),
+                            )
+                            emit_progress()
+                            if tab_url and is_allowed_article_url(tab_url):
+                                article_url = tab_url
+                                # Reuse existing route_kind so dedup
+                                # metrics + tab cleanup keep working.
+                                article_url_route_kind = "tab_browser_open"
+                                article_url_stage_label = (
+                                    "copy_link_url"
+                                    if path_taken == "copy_link"
+                                    else "tab_browser_open_url"
+                                )
                         if not article_url:
                             template_only_miss_streak = 0
                             for profile_name in _expand_article_link_profiles(article_link_profile):
@@ -4538,8 +5068,100 @@ def run_cycle(
                             ):
                                 reset_non_article_view_streak()
                                 row_done = True
+                                # Close the article tab/window we opened
+                                # via "使用默认浏览器打开" so they don't pile
+                                # up. Skips silently if the front WeChat
+                                # window no longer matches (user may have
+                                # switched contexts).
+                                if (
+                                    article_url_route_kind == "tab_browser_open"
+                                    and ai_opened_article_window
+                                    and bool(
+                                        config.get(
+                                            "wechat_tab_close_after_extract", True
+                                        )
+                                    )
+                                ):
+                                    try:
+                                        closed = close_ai_opened_article_window(
+                                            bundle_id=bundle_id,
+                                            wechat_app_name=app_name,
+                                            tracked_window=ai_opened_article_window,
+                                        )
+                                    except Exception as exc:
+                                        append_stage_log(
+                                            summary,
+                                            batch_index=batch_idx,
+                                            row_index=row_idx,
+                                            stage="tab_close_after_browser",
+                                            outcome="error",
+                                            detail=str(exc)[:120],
+                                        )
+                                    else:
+                                        append_stage_log(
+                                            summary,
+                                            batch_index=batch_idx,
+                                            row_index=row_idx,
+                                            stage="tab_close_after_browser",
+                                            outcome="success" if closed else "info",
+                                            detail=(
+                                                "closed"
+                                                if closed
+                                                else "skipped:front_window_mismatch"
+                                            ),
+                                        )
+                                    emit_progress()
                                 break
                         if normalize_text(str(route_meta.get("surface_state") or "")).lower() == "dark_blank":
+                            # Wait for webview to render and retry URL extraction once
+                            # before escalating to hard_escape.
+                            append_stage_log(
+                                summary,
+                                batch_index=batch_idx,
+                                row_index=row_idx,
+                                stage="url_extract_surface",
+                                outcome="info",
+                                detail="dark_blank:waiting_for_render",
+                            )
+                            emit_progress()
+                            time.sleep(2.0)
+                            dark_blank_retry_url = try_copy_current_article_url(wechat_app_name=app_name)
+                            if not dark_blank_retry_url:
+                                for retry_profile in _expand_article_link_profiles(article_link_profile)[:1]:
+                                    dark_blank_retry_url, _ = try_extract_article_url_from_wechat_ui(
+                                        wechat_app_name=app_name,
+                                        coordinate_mode=coordinate_mode,
+                                        article_region=effective_capture_region_cfg,
+                                        url_strategy=article_url_strategy,
+                                        link_profile=retry_profile,
+                                        share_hotspots=link_hotspots_cfg if isinstance(link_hotspots_cfg, list) else None,
+                                        menu_offsets=link_menu_offsets_cfg if isinstance(link_menu_offsets_cfg, list) else None,
+                                    )
+                                    if dark_blank_retry_url:
+                                        break
+                            if dark_blank_retry_url and is_allowed_article_url(dark_blank_retry_url):
+                                append_stage_log(
+                                    summary,
+                                    batch_index=batch_idx,
+                                    row_index=row_idx,
+                                    stage="url_extract_surface",
+                                    outcome="success",
+                                    detail=f"dark_blank_retry_hit:{dark_blank_retry_url}",
+                                )
+                                emit_progress()
+                                if try_submit_article_url(
+                                    dark_blank_retry_url,
+                                    batch_idx=batch_idx,
+                                    row_idx=row_idx,
+                                    attempt_idx=attempt_idx,
+                                    stage_label="dark_blank_retry_url",
+                                    stage_detail=dark_blank_retry_url,
+                                    route_kind="share_copy",
+                                ):
+                                    reset_non_article_view_streak()
+                                    row_done = True
+                                    break
+                            # Still dark_blank after retry — escalate
                             append_stage_log(
                                 summary,
                                 batch_index=batch_idx,

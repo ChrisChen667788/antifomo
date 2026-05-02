@@ -59,7 +59,7 @@ DEFAULT_WECHAT_AGENT_CONFIG: dict[str, object] = {
     "article_row_height": 140,
     "rows_per_batch": 2,
     "batches_per_cycle": 12,
-    "article_open_wait_sec": 1.2,
+    "article_open_wait_sec": 2.5,
     "article_capture_region": {"x": 360, "y": 110, "width": 1020, "height": 860},
     "article_link_hotspots": [
         {"right_inset": 44, "top_offset": 26},
@@ -92,6 +92,12 @@ DEFAULT_WECHAT_AGENT_CONFIG: dict[str, object] = {
     "scan_stop_old_article_streak": 2,
     "loop_interval_sec": 300,
     "health_stale_minutes": 20,
+    # Layer 1: right-click on article tab → context menu
+    #   primary: "复制链接" (clipboard) ; fallback: "使用默认浏览器打开"
+    "wechat_tab_right_click_enabled": True,
+    "wechat_tab_menu_copy_link_index": 7,
+    "wechat_tab_menu_open_in_browser_index": 4,
+    "wechat_tab_close_after_extract": True,
 }
 
 
@@ -981,6 +987,18 @@ def _sanitize_wechat_agent_config(raw: dict[str, object]) -> dict[str, object]:
         "scan_stop_old_article_streak": _coerce_int(merged.get("scan_stop_old_article_streak"), 2, 1, 6),
         "loop_interval_sec": _coerce_int(merged.get("loop_interval_sec"), 300, 20, 3600),
         "health_stale_minutes": _coerce_int(merged.get("health_stale_minutes"), 20, 3, 240),
+        "wechat_tab_right_click_enabled": bool(
+            merged.get("wechat_tab_right_click_enabled", True)
+        ),
+        "wechat_tab_menu_copy_link_index": _coerce_int(
+            merged.get("wechat_tab_menu_copy_link_index"), 7, 1, 20
+        ),
+        "wechat_tab_menu_open_in_browser_index": _coerce_int(
+            merged.get("wechat_tab_menu_open_in_browser_index"), 4, 1, 20
+        ),
+        "wechat_tab_close_after_extract": bool(
+            merged.get("wechat_tab_close_after_extract", True)
+        ),
     }
 
     if not sanitized["api_base"]:
