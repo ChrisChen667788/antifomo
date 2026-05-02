@@ -83,6 +83,8 @@ Acceptance:
 
 Goal: make follow-up research runs visibly rework only the chapters affected by new evidence, new requirements, or narrowed target-account scope.
 
+Status: delivered as `0.4.3+20260502`.
+
 Scope:
 
 - Add follow-up section impact diagnostics so every follow-up run lists impacted chapters, reasons, support score, and next action.
@@ -100,6 +102,8 @@ Acceptance:
 
 Goal: turn the retrieval index into a shared substrate across reports, watchlists, compare snapshots, archive recap, and knowledge-account context.
 
+Status: first wave delivered as `0.5.0+20260502` (cross-surface indexing + knowledge cleaning + entity quality). Parent-child chunking, sentence-window chunks, stable chunk IDs across re-index, and broader API filters remain a 0.5.0.x follow-up.
+
 Scope:
 
 - Bring watchlist refresh payloads, compare/export recap, commercial hub, and account context into the same retrieval index boundary.
@@ -116,6 +120,8 @@ Acceptance:
 ## 0.5.1+YYYYMMDD: Retrieval Quality and Official-Source Biasing
 
 Goal: materially raise professional rigor and intelligence value by improving what evidence is retrieved, compressed, and promoted.
+
+Status: baseline delivered as `0.5.1+20260502` (CRAG retrieval correction profile + generation grounding review + report self-evaluation profile covering faithfulness / answer relevancy / context coverage / citation quality / entity recall). Cross-encoder reranker model integration, offline `ms-marco` evaluation, parent-block routing boost, and vertical-scope suffix handling remain a 0.5.1.x follow-up.
 
 Scope:
 
