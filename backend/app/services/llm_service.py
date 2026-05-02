@@ -15,6 +15,10 @@ from app.services.language import localized_text, normalize_output_language
 from app.services.prompt_loader import load_prompt, render_prompt
 
 
+class _QuotaExhaustedError(Exception):
+    pass
+
+
 class LLMService(Protocol):
     def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
         """Return JSON text result for the given prompt template and variables."""
@@ -25,6 +29,26 @@ def _truncate_text(value: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return f"{text[: limit - 1].rstrip(' ，,：:；;')}…"
+
+
+_ARTICLE_METRIC_RE = re.compile(
+    r"20[2-3]\d[./年-]\s*\d{1,2}[./月-]\s*\d{1,2}日?\s*(?:本文)?字数\s*[:：]?\s*\d{2,6}\s*[,，、]?\s*阅读时长[^。；;，,\n]{0,32}",
+    flags=re.IGNORECASE,
+)
+
+
+def _strip_summary_boilerplate(value: str) -> str:
+    text = normalize_text(value)
+    if not text:
+        return ""
+    text = _ARTICLE_METRIC_RE.sub(" ", text, count=2)
+    text = re.sub(r"(微信扫一扫|听全文|继续滑动看下一个|阅读原文)", " ", text)
+    text = re.sub(
+        r"^(?:作者|来源)\s*[|｜:：]\s*[\u4e00-\u9fffA-Za-z0-9·\s]{2,24}(?=(近日|日前|近来|据|今年|本周|上周|\d{1,2}月))",
+        "",
+        text,
+    )
+    return normalize_text(text).strip("，,、:：- ")
 
 
 class MockLLMService:
@@ -82,7 +106,7 @@ class MockLLMService:
                 ),
             )
         )
-        clean_content = normalize_text(variables.get("clean_content", ""))
+        clean_content = _strip_summary_boilerplate(variables.get("clean_content", ""))
         display_title = self._build_display_title(
             title=title,
             clean_content=clean_content,
@@ -330,6 +354,8 @@ class MockLLMService:
                 return candidate
 
         base = normalize_text(title)
+        if _ARTICLE_METRIC_RE.search(base) or any(marker in base for marker in ("本文字数", "阅读时长", "分钟作者")):
+            base = ""
         base = (
             base.replace("深度", "")
             .replace("重磅", "")
@@ -1090,6 +1116,20 @@ class MockLLMService:
         return json.dumps(payload, ensure_ascii=False)
 
 
+_QUOTA_ERROR_TOKENS = (
+    "insufficient_quota",
+    "insufficient balance",
+    "余额不足",
+    "quota exceeded",
+    "billing",
+    "exceeded your current quota",
+    "account has been deactivated",
+    "plan has been exhausted",
+)
+
+logger = logging.getLogger("anti_fomo.llm")
+
+
 class OpenAILLMService:
     def __init__(
         self,
@@ -1103,6 +1143,7 @@ class OpenAILLMService:
         project: str | None = None,
         verify_ssl: bool = True,
         ca_bundle: str | None = None,
+        fallback_api_key: str | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -1113,6 +1154,8 @@ class OpenAILLMService:
         self.project = project
         self.verify_ssl = verify_ssl
         self.ca_bundle = ca_bundle
+        self.fallback_api_key = fallback_api_key
+        self._using_fallback = False
 
     def _build_ssl_context(self) -> ssl.SSLContext | None:
         if not self.verify_ssl:
@@ -1131,10 +1174,25 @@ class OpenAILLMService:
             return ssl.create_default_context(cafile=cafile)
         return None
 
-    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
-        runtime_variables = dict(variables)
-        timeout_override = runtime_variables.pop("__timeout_seconds", None)
-        prompt = render_prompt(prompt_name, runtime_variables)
+    @staticmethod
+    def _is_quota_error(status_code: int, details: str) -> bool:
+        if status_code == 402:
+            return True
+        lowered = details.lower()
+        return any(token in lowered for token in _QUOTA_ERROR_TOKENS)
+
+    def _active_api_key(self) -> str:
+        if self._using_fallback and self.fallback_api_key:
+            return self.fallback_api_key
+        return self.api_key
+
+    def _make_request(
+        self,
+        prompt: str,
+        timeout_seconds: int,
+        ssl_context: ssl.SSLContext | None,
+        max_attempts: int,
+    ) -> str:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -1143,7 +1201,7 @@ class OpenAILLMService:
         }
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self._active_api_key()}",
         }
         if self.organization:
             headers["OpenAI-Organization"] = self.organization
@@ -1157,14 +1215,6 @@ class OpenAILLMService:
             method="POST",
         )
 
-        ssl_context = self._build_ssl_context()
-        timeout_seconds = self.timeout_seconds
-        if timeout_override is not None:
-            try:
-                timeout_seconds = max(1, int(timeout_override))
-            except Exception:
-                timeout_seconds = self.timeout_seconds
-        max_attempts = 2 if prompt_name == "research_report.txt" else 1
         body = ""
         last_error: Exception | None = None
         for attempt in range(1, max_attempts + 1):
@@ -1175,10 +1225,14 @@ class OpenAILLMService:
                 break
             except error.HTTPError as exc:
                 details = exc.read().decode("utf-8", errors="ignore")
+                if self._is_quota_error(exc.code, details):
+                    raise _QuotaExhaustedError(details) from exc
                 last_error = RuntimeError(f"OpenAI HTTP {exc.code}: {details}")
                 should_retry = exc.code >= 500 and attempt < max_attempts
                 if not should_retry:
                     raise last_error from exc
+            except _QuotaExhaustedError:
+                raise
             except Exception as exc:
                 last_error = RuntimeError(f"OpenAI request failed: {exc}")
                 message = str(exc).lower()
@@ -1191,6 +1245,33 @@ class OpenAILLMService:
             time.sleep(min(2.0, 0.8 * attempt))
         if last_error is not None and not body:
             raise last_error
+        return body
+
+    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+        runtime_variables = dict(variables)
+        timeout_override = runtime_variables.pop("__timeout_seconds", None)
+        prompt = render_prompt(prompt_name, runtime_variables)
+
+        ssl_context = self._build_ssl_context()
+        timeout_seconds = self.timeout_seconds
+        if timeout_override is not None:
+            try:
+                timeout_seconds = max(1, int(timeout_override))
+            except Exception:
+                timeout_seconds = self.timeout_seconds
+        max_attempts = 2 if prompt_name == "research_report.txt" else 1
+
+        try:
+            body = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+        except _QuotaExhaustedError:
+            if not self.fallback_api_key or self._using_fallback:
+                raise RuntimeError("API quota exhausted and no fallback key available")
+            logger.warning(
+                "Quota exhausted on primary key, switching to fallback key for model=%s",
+                self.model,
+            )
+            self._using_fallback = True
+            body = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
 
         try:
             response_json = json.loads(body)
@@ -1265,6 +1346,7 @@ def get_llm_service() -> LLMService:
             project=settings.openai_project,
             verify_ssl=settings.openai_verify_ssl,
             ca_bundle=settings.openai_ca_bundle,
+            fallback_api_key=settings.openai_fallback_api_key,
         )
         if settings.llm_fallback_to_mock:
             return FallbackLLMService(primary, mock_service)
@@ -1288,4 +1370,5 @@ def get_strategy_llm_service() -> LLMService | None:
         project=settings.openai_project,
         verify_ssl=settings.openai_verify_ssl,
         ca_bundle=settings.openai_ca_bundle,
+        fallback_api_key=settings.strategy_openai_fallback_api_key,
     )

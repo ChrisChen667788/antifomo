@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TypeVar
 
 from pydantic import BaseModel, Field, ValidationError
@@ -93,26 +94,74 @@ class ResearchStrategyScopePlanResult(BaseModel):
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
-def _extract_json_block(raw_text: str) -> str | None:
-    start = raw_text.find("{")
-    end = raw_text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        return None
-    return raw_text[start : end + 1]
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", flags=re.DOTALL | re.IGNORECASE)
+_TRAILING_COMMA_RE = re.compile(r",\s*([}\]])")
+
+
+def _strip_trailing_commas(value: str) -> str:
+    return _TRAILING_COMMA_RE.sub(r"\1", value)
+
+
+def _balanced_json_objects(raw_text: str) -> list[str]:
+    candidates: list[str] = []
+    start = -1
+    depth = 0
+    in_string = False
+    escaped = False
+    for index, char in enumerate(raw_text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+            continue
+        if char == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+            continue
+        if char == "}" and depth > 0:
+            depth -= 1
+            if depth == 0 and start >= 0:
+                candidates.append(raw_text[start : index + 1])
+                start = -1
+    return candidates
+
+
+def _extract_json_candidates(raw_text: str) -> list[str]:
+    candidates = [match.group(1) for match in _JSON_FENCE_RE.finditer(raw_text)]
+    candidates.extend(_balanced_json_objects(raw_text))
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        normalized = candidate.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
 
 
 def safe_parse_json(raw_text: str, schema: type[SchemaT], fallback: SchemaT) -> SchemaT:
     payload: object
 
+    raw_candidate = raw_text.strip()
     try:
-        payload = json.loads(raw_text)
+        payload = json.loads(_strip_trailing_commas(raw_candidate))
     except json.JSONDecodeError:
-        candidate = _extract_json_block(raw_text)
-        if not candidate:
-            return fallback
-        try:
-            payload = json.loads(candidate)
-        except json.JSONDecodeError:
+        payload = None
+        for candidate in _extract_json_candidates(raw_text):
+            try:
+                payload = json.loads(_strip_trailing_commas(candidate))
+                break
+            except json.JSONDecodeError:
+                continue
+        if payload is None:
             return fallback
 
     if not isinstance(payload, dict):
