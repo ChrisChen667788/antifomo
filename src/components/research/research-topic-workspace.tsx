@@ -26,6 +26,7 @@ import {
   buildResearchTopicRecapPdfFilename,
   buildResearchTopicRecapPlainText,
   summarizeResearchTopicRecapEvidence,
+  summarizeResearchTopicFollowupImpacts,
   summarizeResearchTopicSectionDiagnostics,
 } from "@/lib/research-topic-recap";
 import {
@@ -85,6 +86,17 @@ type ResearchSourceContributionPanel = {
   currentRows: ResearchSourceContributionRow[];
 };
 
+type ResearchFollowupImpactPanel = {
+  titleResolution: string;
+  summaryResolution: string;
+  impactedSections: Array<{
+    sectionTitle: string;
+    impactLabel: string;
+    reason: string;
+    nextAction: string;
+  }>;
+};
+
 function qualityTone(value: string) {
   if (value === "high") return "bg-emerald-100 text-emerald-700";
   if (value === "medium") return "bg-amber-100 text-amber-700";
@@ -133,7 +145,7 @@ function factorBucket(score: number) {
   if (score >= 6) return { label: "中支撑", className: "bg-amber-100 text-amber-700" };
   if (score > 0) return { label: "弱支撑", className: "bg-sky-100 text-sky-700" };
   if (score < 0) return { label: "风险提示", className: "bg-rose-100 text-rose-700" };
-  return { label: "待补证据", className: "bg-slate-100 text-slate-500" };
+  return { label: "待补依据", className: "bg-slate-100 text-slate-500" };
 }
 
 function contributionBucket(score: number) {
@@ -192,6 +204,37 @@ function buildCandidateProfileSummary(report: ApiResearchReport | null) {
     hitCount: Number(diagnostics?.candidate_profile_hit_count || 0),
     officialHitCount: Number(diagnostics?.candidate_profile_official_hit_count || 0),
     sourceLabels: (diagnostics?.candidate_profile_source_labels || []).map((item) => item.trim()).filter(Boolean).slice(0, 4),
+  };
+}
+
+function followupResolutionDisplay(value: string | null | undefined) {
+  if (value === "corrected") return "已按追问纠偏";
+  if (value === "reused") return "沿用基线";
+  if (value === "baseline") return "初始版本";
+  return String(value || "").trim() || "无";
+}
+
+function followupImpactTone(impactLabel: string | null | undefined) {
+  const normalized = String(impactLabel || "").trim().toLowerCase();
+  if (normalized === "high") return "bg-rose-100 text-rose-700";
+  if (normalized === "medium") return "bg-amber-100 text-amber-700";
+  return "bg-sky-100 text-sky-700";
+}
+
+function buildFollowupImpactPanel(report: ApiResearchReport | null): ResearchFollowupImpactPanel {
+  const diagnostics = report?.followup_diagnostics;
+  const impactedSections = Array.isArray(diagnostics?.impacted_sections)
+    ? diagnostics.impacted_sections.slice(0, 3).map((impact) => ({
+        sectionTitle: String(impact.section_title || "").trim() || "未命名章节",
+        impactLabel: String(impact.impact_label || "").trim() || "low",
+        reason: String(impact.reason || "").trim(),
+        nextAction: String(impact.next_action || "").trim(),
+      }))
+    : [];
+  return {
+    titleResolution: followupResolutionDisplay(diagnostics?.title_resolution),
+    summaryResolution: followupResolutionDisplay(diagnostics?.summary_resolution),
+    impactedSections,
   };
 }
 
@@ -724,12 +767,15 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
   const latestCandidateProfileSummary = useMemo(() => buildCandidateProfileSummary(latestReport), [latestReport]);
   const compareLeftCandidateProfileSummary = useMemo(() => buildCandidateProfileSummary(compareLeftReport), [compareLeftReport]);
   const compareRightCandidateProfileSummary = useMemo(() => buildCandidateProfileSummary(compareRightReport), [compareRightReport]);
+  const compareLeftFollowupImpactPanel = useMemo(() => buildFollowupImpactPanel(compareLeftReport), [compareLeftReport]);
+  const compareRightFollowupImpactPanel = useMemo(() => buildFollowupImpactPanel(compareRightReport), [compareRightReport]);
 
   const buildVersionRecapBundle = (generatedAt: Date) => {
     if (!topic) {
       return null;
     }
     const sectionDiagnosticsSummary = summarizeResearchTopicSectionDiagnostics(compareLeftVersion, compareRightVersion);
+    const followupImpactSummary = summarizeResearchTopicFollowupImpacts(compareLeftVersion, compareRightVersion);
     const exportOptions = {
       topic,
       baselineVersion: compareLeftVersion,
@@ -752,6 +798,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
       execBrief: buildResearchTopicRecapExecBrief(exportOptions),
       evidenceSummary: summarizeResearchTopicRecapEvidence(fieldDiffRows),
       sectionDiagnosticsSummary,
+      followupImpactSummary,
       offlineEvaluationSnapshot: offlineEvaluation,
     };
   };
@@ -842,6 +889,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
           current_version_title: compareRightVersion?.title || "",
           evidence_appendix_summary: bundle.evidenceSummary,
           section_diagnostics_summary: bundle.sectionDiagnosticsSummary,
+          followup_impact_summary: bundle.followupImpactSummary,
           offline_evaluation_snapshot: bundle.offlineEvaluationSnapshot || {},
         },
       });
@@ -997,12 +1045,12 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
               </span>
               {latestCandidateProfileSummary.companies.length ? (
                 <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                  候选补证公司 {latestCandidateProfileSummary.companies.length}
+                  建议核验公司 {latestCandidateProfileSummary.companies.length}
                 </span>
               ) : null}
               {latestCandidateProfileSummary.hitCount > 0 ? (
                 <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                  补证公开源 {latestCandidateProfileSummary.hitCount}
+                  公开来源 {latestCandidateProfileSummary.hitCount}
                 </span>
               ) : null}
               {latestCandidateProfileSummary.officialHitCount > 0 ? (
@@ -1150,7 +1198,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                     ))}
                     {!selectedEntity.evidence_links?.length ? (
                       <p className="text-sm text-slate-500">
-                        {t("research.entityEvidenceEmpty", "当前实体还没有稳定证据链接。")}
+                        {t("research.entityEvidenceEmpty", "当前实体还没有稳定依据链接。")}
                       </p>
                     ) : null}
                   </div>
@@ -1211,6 +1259,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                 version: compareLeftVersion,
                 report: compareLeftReport,
                 blocks: compareFocusBlocks.left,
+                followup: compareLeftFollowupImpactPanel,
               },
               {
                 key: "current",
@@ -1218,6 +1267,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                 version: compareRightVersion,
                 report: compareRightReport,
                 blocks: compareFocusBlocks.right,
+                followup: compareRightFollowupImpactPanel,
               },
             ].map((panel) => (
               <article key={panel.key} className="rounded-[24px] border border-white/60 bg-white/65 p-5">
@@ -1245,6 +1295,38 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                 <p className="mt-4 text-sm leading-7 text-slate-600">
                   {String(panel.report?.executive_summary || "").slice(0, 220) || "—"}
                 </p>
+                {(panel.followup.impactedSections.length || panel.followup.titleResolution !== "无" || panel.followup.summaryResolution !== "无") ? (
+                  <div className="mt-4 rounded-[18px] border border-white/60 bg-white/72 p-4">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-700">
+                        标题 · {panel.followup.titleResolution}
+                      </span>
+                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                        摘要 · {panel.followup.summaryResolution}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      {panel.followup.impactedSections.length ? (
+                        panel.followup.impactedSections.map((impact) => (
+                          <div key={`${panel.key}-${impact.sectionTitle}`} className="rounded-[14px] border border-white/70 bg-white/88 px-3 py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-slate-700">{impact.sectionTitle}</p>
+                              <span className={`rounded-full px-2 py-0.5 text-[11px] ${followupImpactTone(impact.impactLabel)}`}>
+                                {impact.impactLabel}
+                              </span>
+                            </div>
+                            {impact.reason ? <p className="mt-2 text-xs leading-5 text-slate-500">变化原因 · {impact.reason}</p> : null}
+                            {impact.nextAction ? <p className="mt-1 text-xs leading-5 text-slate-500">下一步 · {impact.nextAction}</p> : null}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-[14px] border border-dashed border-slate-200 bg-white/70 px-3 py-3 text-xs text-slate-400">
+                          当前版本没有显式追问影响章节。
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 {(() => {
                   const candidateSummary =
                     panel.key === "baseline" ? compareLeftCandidateProfileSummary : compareRightCandidateProfileSummary;
@@ -1253,12 +1335,12 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                     <div className="mt-4 flex flex-wrap gap-2 text-xs">
                       {candidateSummary.companies.length ? (
                         <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                          候选补证公司 {candidateSummary.companies.length}
+                          建议核验公司 {candidateSummary.companies.length}
                         </span>
                       ) : null}
                       {candidateSummary.hitCount > 0 ? (
                         <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                          补证公开源 {candidateSummary.hitCount}
+                          公开来源 {candidateSummary.hitCount}
                         </span>
                       ) : null}
                       {candidateSummary.officialHitCount > 0 ? (
@@ -1477,7 +1559,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
             <div>
               <p className="af-kicker">{t("research.scorePanelTitle", "Top 3 评分拆解")}</p>
               <p className="mt-2 text-sm text-slate-500">
-                {t("research.scorePanelDesc", "对照基线版本与当前版本的 Top 3 候选，拆开显示评分因素、推理和证据链。")}
+                {t("research.scorePanelDesc", "对照初始版本与当前版本的 Top 3 候选，拆开显示评分因素和依据。")}
               </p>
             </div>
           </div>
@@ -1536,7 +1618,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                             {entity.evidence_links.length ? (
                               <div className="mt-3 grid gap-2">
                                 <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                                  {t("research.evidenceLinks", "证据链接")}
+                                  {t("research.evidenceLinks", "依据链接")}
                                 </p>
                                 {entity.evidence_links.map((link) => (
                                   <div
@@ -1589,7 +1671,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
             <div>
               <p className="af-kicker">{t("research.sourceContributionTitle", "来源类型贡献占比")}</p>
               <p className="mt-2 text-sm text-slate-500">
-                {t("research.sourceContributionDesc", "按证据链里的官方源、媒体源、聚合源，估算 Top 3 得分的来源贡献结构。")}
+                {t("research.sourceContributionDesc", "按官方源、媒体源和聚合源，估算 Top 3 得分的来源贡献结构。")}
               </p>
             </div>
           </div>
@@ -1658,7 +1740,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
           <div>
             <p className="af-kicker">{t("research.topicTimeline", "专题时间线")}</p>
             <p className="mt-2 text-sm text-slate-500">
-              {t("research.topicTimelineDesc", "把专题刷新版本、已保存的 compare 快照和差异复盘归档放到同一条时间线里，方便回看当时结论与固化输出。")}
+              {t("research.topicTimelineDesc", "把专题刷新版本、已保存快照和差异复盘放到同一条时间线里，方便回看当时结论。")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -1826,6 +1908,27 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
                             </li>
                           ))}
                         </ul>
+                      ) : null}
+                      {(event.followup_title_resolution || event.followup_summary_resolution || event.followup_impacted_sections.length) ? (
+                        <div className="mt-3 rounded-[16px] border border-sky-100 bg-sky-50/55 px-3 py-3">
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            {event.followup_title_resolution ? (
+                              <span className="rounded-full bg-white/80 px-2.5 py-1 text-sky-700">
+                                标题 · {followupResolutionDisplay(event.followup_title_resolution)}
+                              </span>
+                            ) : null}
+                            {event.followup_summary_resolution ? (
+                              <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                                摘要 · {followupResolutionDisplay(event.followup_summary_resolution)}
+                              </span>
+                            ) : null}
+                            {event.followup_impacted_sections.slice(0, 3).map((section) => (
+                              <span key={`${event.id}-followup-${section}`} className="rounded-full bg-sky-100 px-2.5 py-1 text-sky-700">
+                                影响章节 · {section}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">

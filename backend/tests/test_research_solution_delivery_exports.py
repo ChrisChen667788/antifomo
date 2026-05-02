@@ -8,7 +8,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.entities import User
-from app.schemas.research import ResearchReportResponse, ResearchSourceOut
+from app.schemas.research import (
+    ResearchFollowupContextOut,
+    ResearchFollowupDiagnosticsOut,
+    ResearchFollowupSectionImpactOut,
+    ResearchReportResponse,
+    ResearchSourceOut,
+)
+from app.services.work_task_service import build_research_plaintext
 from app.services.task_runtime import create_and_execute_task
 
 
@@ -97,3 +104,37 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
         assert "政务AI解决方案" in str(solution_task.output_payload.get("content") or "")
     finally:
         db.close()
+
+
+def test_research_plaintext_export_includes_followup_resolution_and_impacted_sections() -> None:
+    report = _report().model_copy(
+        update={
+            "followup_context": ResearchFollowupContextOut(
+                followup_report_title="政务AI解决方案机会研判",
+                followup_report_summary="上一版摘要",
+                supplemental_context="补充了政务热线试点背景。",
+                supplemental_evidence="新增公开招标要求支持工单协同。",
+                supplemental_requirements="优先重写解决方案设计建议。",
+            ),
+            "followup_diagnostics": ResearchFollowupDiagnosticsOut(
+                enabled=True,
+                title_resolution="corrected",
+                summary_resolution="corrected",
+                impacted_sections=[
+                    ResearchFollowupSectionImpactOut(
+                        section_title="解决方案设计建议",
+                        impact_score=78,
+                        impact_label="high",
+                        reason="新增试点约束已直接命中方案章节。",
+                        next_action="优先补试点范围、接口约束和部署边界。",
+                    )
+                ],
+            ),
+        }
+    )
+
+    _filename, content = build_research_plaintext(report, output_language="zh-CN")
+
+    assert "标题处理：已按追问纠偏" in content
+    assert "摘要处理：已按追问纠偏" in content
+    assert "重点影响章节：解决方案设计建议" in content

@@ -251,6 +251,18 @@ export interface ApiResearchSourceDiagnostics {
   normalized_partner_count: number;
   expansion_triggered: boolean;
   corrective_triggered: boolean;
+  correction_status?: "ready" | "needs_filtering" | "needs_expansion";
+  retrieval_relevance_score?: number;
+  accepted_source_count?: number;
+  ambiguous_source_count?: number;
+  rejected_source_count?: number;
+  corrective_query_plan?: string[];
+  correction_notes?: string[];
+  generation_grounding_score?: number;
+  response_quality_score?: number;
+  supported_claims?: string[];
+  unsupported_claims?: string[];
+  generation_review_notes?: string[];
   candidate_profile_companies: string[];
   candidate_profile_hit_count: number;
   candidate_profile_official_hit_count: number;
@@ -470,6 +482,46 @@ export interface ApiResearchQualityProfile {
   next_actions: string[];
 }
 
+export interface ApiResearchReportEvaluationMetric {
+  key: string;
+  label: string;
+  score: number;
+  threshold: number;
+  status: "pass" | "watch" | "fail";
+  summary: string;
+  evidence: string[];
+  gaps: string[];
+  improvement_actions: string[];
+}
+
+export interface ApiResearchReportSelfImprovement {
+  triggered: boolean;
+  round_count: number;
+  strategies: string[];
+  before_score: number;
+  after_score: number;
+  actions: string[];
+  added_entities: string[];
+  corrective_queries: string[];
+  notes: string[];
+}
+
+export interface ApiResearchReportEvaluationProfile {
+  framework: "deepeval_style_custom";
+  framework_label: string;
+  overall_score: number;
+  status: "pass" | "watch" | "fail";
+  entity_recall_score: number;
+  procurement_entity_recall_score: number;
+  metrics: ApiResearchReportEvaluationMetric[];
+  recalled_entities: string[];
+  missing_entities: string[];
+  procurement_entities: string[];
+  missing_procurement_entities: string[];
+  corrective_queries: string[];
+  self_improvement: ApiResearchReportSelfImprovement;
+}
+
 export interface ApiResearchTenderProject {
   project_name: string;
   buyer: string;
@@ -479,6 +531,10 @@ export interface ApiResearchTenderProject {
   publish_date: string;
   amount: string;
   winning_vendor: string;
+  bidder_candidates?: string[];
+  tender_agency?: string;
+  project_code?: string;
+  buyer_contact?: string;
   source_title: string;
   source_url: string;
   source_tier: "official" | "media" | "aggregate";
@@ -501,6 +557,11 @@ export interface ApiResearchMarketIntelligencePack {
   window_start: string;
   window_end: string;
   source_scope_summary: string;
+  source_support_score?: number;
+  validated_source_count?: number;
+  ambiguous_source_count?: number;
+  rejected_source_count?: number;
+  corrective_queries?: string[];
   tender_projects: ApiResearchTenderProject[];
   tender_keywords: string[];
   product_catalog: ApiResearchProductRequirement[];
@@ -519,6 +580,9 @@ export interface ApiResearchSolutionDeliveryPack {
   scenario: string;
   target_customer: string;
   vertical_scene: string;
+  source_support_score?: number;
+  evidence_policy?: string;
+  grounding_checks?: string[];
   clarification_questions: string[];
   intelligence_summary: string[];
   feasibility_outline: ApiResearchSolutionOutlineSection[];
@@ -537,6 +601,19 @@ export interface ApiResearchFollowupContext {
   supplemental_requirements: string;
 }
 
+export interface ApiResearchFollowupSectionImpact {
+  section_title: string;
+  status: "ready" | "degraded" | "needs_evidence";
+  impact_score: number;
+  impact_label: "high" | "medium" | "low";
+  reason: string;
+  matched_inputs: string[];
+  retrieval_support_score: number;
+  retrieval_hit_count: number;
+  official_hit_count: number;
+  next_action: string;
+}
+
 export interface ApiResearchFollowupDiagnostics {
   enabled: boolean;
   input_sections: string[];
@@ -551,6 +628,9 @@ export interface ApiResearchFollowupDiagnostics {
   rebuilt_company_anchors: string[];
   rebuilt_must_include_terms: string[];
   rebuilt_exclusion_terms: string[];
+  title_resolution: "baseline" | "reused" | "corrected";
+  summary_resolution: "baseline" | "reused" | "corrected";
+  impacted_sections: ApiResearchFollowupSectionImpact[];
 }
 
 export interface ApiResearchReport {
@@ -600,6 +680,7 @@ export interface ApiResearchReport {
   technical_appendix?: ApiResearchTechnicalAppendix;
   review_queue?: ApiResearchReviewQueueItem[];
   quality_profile?: ApiResearchQualityProfile;
+  evaluation_profile?: ApiResearchReportEvaluationProfile;
   market_intelligence?: ApiResearchMarketIntelligencePack;
   solution_delivery_pack?: ApiResearchSolutionDeliveryPack;
   generated_at: string;
@@ -750,6 +831,9 @@ export interface ApiResearchTrackingTopicTimelineEvent {
   roles: Array<"甲方" | "中标方" | "竞品" | "伙伴">;
   preview_names: string[];
   linked_report_diff_summary: string[];
+  followup_title_resolution: string;
+  followup_summary_resolution: string;
+  followup_impacted_sections: string[];
 }
 
 export interface ApiResearchCompareSnapshotDiffAxis {

@@ -14,6 +14,8 @@ from app.models.research_entities import (
     ResearchMarkdownArchive,
     ResearchReportVersion,
     ResearchTrackingTopic,
+    ResearchWatchlist,
+    ResearchWatchlistChangeEvent,
 )
 from app.services.research_retrieval_index_service import (
     build_research_retrieval_index,
@@ -113,6 +115,41 @@ def _seed_research_assets(db: Session) -> tuple[User, ResearchTrackingTopic]:
             "kind": "research_report",
             "tracking_topic_id": str(topic.id),
             "report": _report_payload(),
+            "commercial_intelligence": {
+                "accounts": [
+                    {
+                        "role": "target",
+                        "name": "上海数据集团",
+                        "summary": "政务云预算复核窗口明确。",
+                        "confidence_score": 86,
+                        "budget_probability": 78,
+                        "maturity_stage": "预算复核",
+                        "signals": ["7 月预算复核", "采购中心确认政务云需求"],
+                        "why_now": ["官方公告披露采购意向"],
+                        "departments": ["采购中心"],
+                        "next_best_action": "准备政务云扩容项目建议书。",
+                        "benchmark_cases": ["同区域政务云扩容案例"],
+                        "evidence_links": [
+                            {
+                                "title": "上海数据集团公开公告",
+                                "url": "https://example.gov.cn/shanghai-data-budget",
+                                "source_tier": "official",
+                            }
+                        ],
+                    }
+                ],
+                "opportunities": [
+                    {
+                        "title": "政务云扩容售前推进",
+                        "account_name": "上海数据集团",
+                        "entry_window": "7 月预算复核后进入方案比选",
+                        "budget_probability": 78,
+                        "score": 88,
+                        "next_best_action": "补齐采购中心访谈和技术参数清单。",
+                        "why_now": ["采购意向已公开"],
+                    }
+                ],
+            },
         },
         collection_name="研报中心",
         created_at=now,
@@ -183,7 +220,55 @@ def _seed_research_assets(db: Session) -> tuple[User, ResearchTrackingTopic]:
         created_at=now,
         updated_at=now,
     )
-    db.add_all([topic, version, report_entry, snapshot, archive])
+    recap_archive = ResearchMarkdownArchive(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        tracking_topic_id=topic.id,
+        report_version_id=version.id,
+        archive_kind="topic_version_recap",
+        name="上海政务云版本复盘",
+        filename="shanghai-gov-cloud-recap.md",
+        query="上海数据集团预算复核",
+        region_filter="上海",
+        industry_filter="政务云",
+        summary="复盘追问影响章节和版本变化。",
+        content="# 上海政务云版本复盘\n\n追问影响项目与商机判断章节。",
+        metadata_payload={
+            "followup_impact_summary": {
+                "currentTitleResolution": "已按追问纠偏",
+                "currentSummaryResolution": "已按追问纠偏",
+                "currentImpactedSections": ["项目与商机判断"],
+            }
+        },
+        created_at=now,
+        updated_at=now,
+    )
+    watchlist = ResearchWatchlist(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        tracking_topic_id=topic.id,
+        name="上海政务云观察池",
+        watch_type="topic",
+        query="上海数据集团 政务云 采购意向",
+        region_filter="上海",
+        industry_filter="政务云",
+        alert_level="high",
+        schedule="daily",
+        status="active",
+        last_checked_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    watchlist_event = ResearchWatchlistChangeEvent(
+        id=uuid.uuid4(),
+        watchlist_id=watchlist.id,
+        change_type="new_signal",
+        summary="新增采购意向公告，预算复核后进入方案比选。",
+        payload={"account_name": "上海数据集团", "next_action": "补齐技术参数清单"},
+        severity="high",
+        created_at=now,
+    )
+    db.add_all([topic, version, report_entry, snapshot, archive, recap_archive, watchlist, watchlist_event])
     db.commit()
     return user, topic
 
@@ -196,11 +281,23 @@ def test_build_research_retrieval_index_covers_core_research_assets() -> None:
         index = build_research_retrieval_index(db, user_id=user.id)
         document_types = {chunk.document_type for chunk in index.chunks}
 
-        assert {"research_report", "report_version", "compare_snapshot", "markdown_archive"} <= document_types
+        assert {
+            "research_report",
+            "report_version",
+            "compare_snapshot",
+            "markdown_archive",
+            "archive_recap",
+            "watchlist",
+            "commercial_hub",
+            "account_context",
+        } <= document_types
         assert index.source_counts["research_report"] >= 1
         assert index.source_counts["report_version"] >= 1
+        assert index.source_counts["watchlist"] >= 1
+        assert index.source_counts["account_context"] >= 1
         assert any(chunk.field_key == "section_diagnostics_summary" for chunk in index.chunks)
         assert any(chunk.field_key == "offline_evaluation_snapshot" for chunk in index.chunks)
+        assert any(chunk.field_key == "followup_impact_summary" for chunk in index.chunks)
     finally:
         db.close()
 
@@ -218,6 +315,33 @@ def test_search_research_retrieval_index_prioritizes_official_budget_evidence() 
         assert "预算复核" in hits[0].chunk.text
         assert {"sparse", "dense"} & set(hits[0].match_modes)
         assert "exact_query_hit" in hits[0].to_payload()
+    finally:
+        db.close()
+
+
+def test_search_research_retrieval_index_covers_watchlist_and_account_context() -> None:
+    db = _new_session()
+    try:
+        user, _topic = _seed_research_assets(db)
+        index = build_research_retrieval_index(db, user_id=user.id)
+
+        watchlist_hits = search_research_retrieval_index(
+            index,
+            "采购意向公告 技术参数清单",
+            limit=5,
+            document_types={"watchlist"},
+        )
+        account_hits = search_research_retrieval_index(
+            index,
+            "上海数据集团 项目建议书 采购中心",
+            limit=5,
+            document_types={"account_context", "commercial_hub"},
+        )
+
+        assert watchlist_hits
+        assert any(hit.chunk.field_key == "watchlist_change" for hit in watchlist_hits)
+        assert account_hits
+        assert any(hit.chunk.document_type in {"account_context", "commercial_hub"} for hit in account_hits)
     finally:
         db.close()
 

@@ -3,7 +3,7 @@ import type { ApiResearchSourceDiagnostics } from "@/lib/api";
 const GUARDED_REWRITE_REASON_LABELS: Record<string, string> = {
   single_source_nonready: "来源过少，当前报告还没达到可推进门槛",
   no_sources: "没有保留到可用来源",
-  fallback_low_support: "仍是兜底候选，严格命中或官方源支撑不足",
+  fallback_low_support: "仍待核实，严格命中或官方源支撑不足",
   low_retrieval_low_official: "检索质量偏低，且官方源覆盖不足",
   source_noise_majority: "保留来源里噪声占比过高",
   no_target_source_support: "目标账户没有被来源正文支撑",

@@ -135,9 +135,9 @@ export function ResearchReportCard({
       };
     }
     return {
-      label: "兜底候选",
+      label: "待核实",
       className: "border-slate-200/90 bg-slate-100 text-slate-700",
-      note: "当前更像高价值候选，不应直接视为最终结论。",
+      note: "当前线索有价值，但还需要更多公开来源确认。",
     };
   };
   const readinessMeta = (value: string) => {
@@ -152,13 +152,13 @@ export function ResearchReportCard({
       return {
         label: "候选推进",
         className: "border-amber-200/90 bg-amber-50 text-amber-800",
-        note: "当前可用于初轮判断和内部讨论，但仍建议先补证再做强结论。",
+        note: "当前可用于初轮判断和内部讨论，但仍建议先复核再做强结论。",
       };
     }
     return {
-      label: "待补证",
+      label: "待核验",
       className: "border-slate-200/90 bg-slate-100 text-slate-700",
-      note: "当前更适合作为候选名单与待补证路径，不宜直接当作最终商业判断。",
+      note: "当前更适合作为候选名单与待核验清单，不宜直接当作最终商业判断。",
     };
   };
   const confidenceToneMeta = (value?: string) => {
@@ -199,7 +199,7 @@ export function ResearchReportCard({
       };
     }
     return {
-      label: "章节待补证",
+      label: "章节待核验",
       className: "bg-rose-100 text-rose-700",
     };
   };
@@ -227,16 +227,25 @@ export function ResearchReportCard({
       };
     }
     return {
-      label: "质量待补证",
+      label: "质量待核验",
       className: "border-slate-200/90 bg-slate-100 text-slate-700",
     };
+  };
+  const followupResolutionMeta = (value?: string) => {
+    if (value === "corrected") {
+      return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
+    }
+    if (value === "reused") {
+      return { label: "沿用基线", className: "border-sky-200/90 bg-sky-50 text-sky-800" };
+    }
+    return { label: "基线生成", className: "border-slate-200/90 bg-slate-100 text-slate-700" };
   };
   const factorBucket = (score: number) => {
     if (score >= 14) return { label: "强支撑", className: "bg-emerald-100 text-emerald-700" };
     if (score >= 6) return { label: "中支撑", className: "bg-amber-100 text-amber-700" };
     if (score > 0) return { label: "弱支撑", className: "bg-sky-100 text-sky-700" };
     if (score < 0) return { label: "风险提示", className: "bg-rose-100 text-rose-700" };
-    return { label: "待补证据", className: "bg-slate-100 text-slate-500" };
+    return { label: "待补依据", className: "bg-slate-100 text-slate-500" };
   };
   const hasStrategicPanels =
     report.target_accounts.length ||
@@ -310,6 +319,9 @@ export function ResearchReportCard({
     ...(followupDiagnostics?.rebuilt_industries || []),
     ...(followupDiagnostics?.rebuilt_clients || []),
   ]);
+  const followupImpactedSections = (followupDiagnostics?.impacted_sections || []).slice(0, 4);
+  const followupTitleResolution = followupResolutionMeta(followupDiagnostics?.title_resolution);
+  const followupSummaryResolution = followupResolutionMeta(followupDiagnostics?.summary_resolution);
   const candidateProfileCompanies = dedupeTextList(diagnostics?.candidate_profile_companies || []);
   const candidateProfileSourceLabels = dedupeTextList(diagnostics?.candidate_profile_source_labels || []);
   const coreEntities = dedupeByKey(report.entity_graph?.entities || [], (entity) => String(entity?.canonical_name || "").trim(), 6);
@@ -334,7 +346,7 @@ export function ResearchReportCard({
       ? "border-emerald-200/90 bg-emerald-50 text-emerald-700"
       : "border-slate-200/90 bg-slate-100 text-slate-600";
   const targetSupportValue = unsupportedTargetAccounts.length
-    ? "目标账户待补证"
+    ? "目标账户待核验"
     : supportedTargetAccounts.length
       ? `已支撑 ${supportedTargetAccounts.length} 个目标账户`
       : "未识别明确目标账户";
@@ -381,17 +393,17 @@ export function ResearchReportCard({
         ? `扩展 ${diagnostics.strategy_query_expansion_count} 条`
         : followupDiagnostics?.decomposition_queries?.length
           ? `追问拆出 ${followupDiagnostics.decomposition_queries.length} 条`
-          : "基础混合检索",
+          : "基础来源整理",
       detail:
         followupDiagnostics?.summary ||
         diagnostics?.strategy_scope_summary ||
-        "当前已启用混合检索，并用总览块优先路由到章节与证据块。",
+        "已结合多个公开来源整理报告，并突出关键章节和依据。",
       tone: "border-violet-100/90 bg-violet-50/78 text-violet-900",
     },
     {
       title: "账户支撑",
       value: unsupportedTargetAccounts.length
-        ? `待补证 ${unsupportedTargetAccounts.length} 个`
+        ? `待核验 ${unsupportedTargetAccounts.length} 个`
         : supportedTargetAccounts.length
           ? `已支撑 ${supportedTargetAccounts.length} 个`
           : "未锁定账户",
@@ -414,16 +426,16 @@ export function ResearchReportCard({
     playbookTitle: "推进要点",
     appendixTitle: "方法与边界",
     reviewQueueTitle: "待核验结论",
-    reviewQueueDesc: "把冲突结论、弱证据章节和关键缺口集中出来，优先做二次核验。",
+    reviewQueueDesc: "集中列出冲突结论、依据不足的章节和关键缺口，方便优先复核。",
     insightsTitle: "深度洞察",
-    insightsDesc: "按主题继续展开关键判断、证据锚点与补证建议。",
+    insightsDesc: "按主题继续展开关键判断、依据和复核建议。",
     sourcePathTitle: "情报路径",
-    sourceDiagTitle: "证据诊断",
+    sourceDiagTitle: "依据检查",
   };
   const pipelineStages = diagnostics?.pipeline_stages || [];
   const rankedPanels = [
     {
-      title: (report.top_target_accounts && report.top_target_accounts.length) ? "高价值甲方 Top 3" : "待补证甲方候选",
+      title: (report.top_target_accounts && report.top_target_accounts.length) ? "高价值甲方 Top 3" : "待核验甲方候选",
       items: dedupeByKey(
         (report.top_target_accounts && report.top_target_accounts.length)
           ? report.top_target_accounts
@@ -434,7 +446,7 @@ export function ResearchReportCard({
       tone: "sky",
     },
     {
-      title: (report.top_competitors && report.top_competitors.length) ? "高威胁竞品 Top 3" : "待补证竞品候选",
+      title: (report.top_competitors && report.top_competitors.length) ? "高威胁竞品 Top 3" : "待核验竞品候选",
       items: dedupeByKey(
         (report.top_competitors && report.top_competitors.length)
           ? report.top_competitors
@@ -445,7 +457,7 @@ export function ResearchReportCard({
       tone: "amber",
     },
     {
-      title: (report.top_ecosystem_partners && report.top_ecosystem_partners.length) ? "高影响力生态伙伴 Top 3" : "待补证伙伴候选",
+      title: (report.top_ecosystem_partners && report.top_ecosystem_partners.length) ? "高影响力生态伙伴 Top 3" : "待核验伙伴候选",
       items: dedupeByKey(
         (report.top_ecosystem_partners && report.top_ecosystem_partners.length)
           ? report.top_ecosystem_partners
@@ -478,7 +490,7 @@ export function ResearchReportCard({
             </span>
             {guardedBacklog ? (
               <span className="rounded-full bg-rose-100 px-2.5 py-1 text-rose-700">
-                Guarded backlog
+                待复核
               </span>
             ) : null}
           </div>
@@ -583,7 +595,7 @@ export function ResearchReportCard({
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             {diagnostics?.candidate_profile_official_hit_count
-              ? `候选实例补证命中 ${diagnostics.candidate_profile_official_hit_count} 条官方资料。`
+              ? `建议核验对象命中 ${diagnostics.candidate_profile_official_hit_count} 条官方资料。`
               : "当前以公开网页和主题交叉命中为主，仍可继续补官方资料。"}
           </p>
         </article>
@@ -613,6 +625,70 @@ export function ResearchReportCard({
           <p className="mt-3 text-sm leading-6 text-sky-900">{report.consulting_angle}</p>
         </div>
       </div>
+
+      {followupDiagnostics?.enabled ? (
+        <article className="mt-5 af-report-surface rounded-2xl border border-amber-100/90 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">补充信息影响</p>
+              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+                只更新受影响的章节
+              </h4>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {followupDiagnostics.summary || "补充信息已用于更新相关章节。"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupTitleResolution.className}`}>
+                标题 · {followupTitleResolution.label}
+              </span>
+              <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupSummaryResolution.className}`}>
+                摘要 · {followupSummaryResolution.label}
+              </span>
+            </div>
+          </div>
+          {followupImpactedSections.length ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {followupImpactedSections.map((section) => (
+                <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-white/80 bg-white/88 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{section.section_title}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] ${
+                        section.impact_label === "high"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : section.impact_label === "medium"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      影响度 {section.impact_score}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-600">{section.reason}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1">状态 · {sectionStatusMeta(section.status).label}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1">命中 {section.retrieval_hit_count}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1">官方 {section.official_hit_count}</span>
+                  </div>
+                  {section.matched_inputs?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {section.matched_inputs.slice(0, 3).map((value) => (
+                        <span key={`${section.section_title}-${value}`} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
+                          {value}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{section.next_action}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-slate-500">当前追问还没有形成明确的章节级改写焦点，建议继续补充更具体的客户、预算或场景约束。</p>
+          )}
+        </article>
+      ) : null}
 
       {qualityProfile ? (
         <article className="mt-5 af-report-surface rounded-2xl border border-emerald-100/90 p-4">
@@ -848,7 +924,7 @@ export function ResearchReportCard({
                   ) : null}
                   {readiness.next_verification_steps?.length ? (
                     <div className="rounded-2xl border border-slate-200/80 bg-white/84 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">下一步补证</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">下一步核验</p>
                       <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
                         {readiness.next_verification_steps.slice(0, 3).map((value) => (
                           <li key={`readiness-step-${value}`} className="flex gap-2">
@@ -908,7 +984,7 @@ export function ResearchReportCard({
         <div className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50/78 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">关键补证章节</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">关键待核验章节</p>
               <p className="mt-1 text-sm text-amber-900">
                 先处理最弱章节，再决定是否进入正式推进和导出。
               </p>
@@ -929,7 +1005,7 @@ export function ResearchReportCard({
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-600">
-                    {section.insufficiency_summary || section.quota_note || section.confidence_reason || "当前章节仍需继续补证。"}
+                    {section.insufficiency_summary || section.quota_note || section.confidence_reason || "当前章节仍需继续核验。"}
                   </p>
                   {section.next_verification_steps?.length ? (
                     <p className="mt-2 text-xs leading-5 text-amber-800">
@@ -1149,12 +1225,12 @@ export function ResearchReportCard({
                   </span>
                   {diagnostics.corrective_triggered ? (
                     <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                      已触发纠错检索
+                      已补充核验
                     </span>
                   ) : null}
                   {diagnostics.expansion_triggered ? (
                     <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                      已触发扩搜补证
+                      已扩展来源
                     </span>
                   ) : null}
                 </div>
@@ -1195,7 +1271,7 @@ export function ResearchReportCard({
                   启用源 {enabledSourceLabels.length}
                 </span>
                 <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  命中爬虫源 {diagnostics.adapter_hit_count}
+                  命中公开源 {diagnostics.adapter_hit_count}
                 </span>
                 <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
                   命中搜索源 {diagnostics.search_hit_count}
@@ -1219,7 +1295,7 @@ export function ResearchReportCard({
                   </span>
                 ) : null}
                 <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  检索质量 {qualityLabel(diagnostics.retrieval_quality)}
+                  来源质量 {qualityLabel(diagnostics.retrieval_quality)}
                 </span>
                 <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
                   严格命中 {Math.round(diagnostics.strict_match_ratio * 100)}%
@@ -1234,12 +1310,12 @@ export function ResearchReportCard({
                 ) : null}
                 {candidateProfileCompanies.length ? (
                   <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                    候选补证公司 {candidateProfileCompanies.length}
+                    建议核验公司 {candidateProfileCompanies.length}
                   </span>
                 ) : null}
                 {diagnostics.candidate_profile_hit_count > 0 ? (
                   <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                    补证公开源 {diagnostics.candidate_profile_hit_count}
+                    公开来源 {diagnostics.candidate_profile_hit_count}
                   </span>
                 ) : null}
                 {diagnostics.candidate_profile_official_hit_count > 0 ? (
@@ -1388,7 +1464,7 @@ export function ResearchReportCard({
               ) : null}
               {candidateProfileCompanies.length ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">候选补证公司</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">建议核验公司</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {candidateProfileCompanies.map((label) => (
                       <span key={label} className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
@@ -1400,7 +1476,7 @@ export function ResearchReportCard({
               ) : null}
               {candidateProfileSourceLabels.length ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">补证命中源</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">公开来源</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {candidateProfileSourceLabels.map((label) => (
                       <span key={label} className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700">
@@ -1565,7 +1641,7 @@ export function ResearchReportCard({
               {section.next_verification_steps?.length ? (
                 <div className="mt-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                    下一步补证
+                    下一步核验
                   </p>
                   <ul className="mt-2 space-y-1.5 text-xs leading-5 text-amber-900">
                     {section.next_verification_steps.slice(0, 3).map((step) => (

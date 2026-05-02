@@ -33,7 +33,11 @@ def _report() -> ResearchReportResponse:
                 title="某市智慧文旅AIGC导览平台公开招标公告",
                 url="https://ggzy.example.gov.cn/tender/aigc-tourism",
                 domain="ggzy.example.gov.cn",
-                snippet="2025年5月公开招标，预算金额 680万元，建设数字人导览、AIGC内容生成、支持并发不少于500路、接口API、等保二级。",
+                snippet=(
+                    "2025年5月公开招标，项目编号 WLAIGC-2025-01，采购人：某文旅集团，招标代理：某招标代理公司，"
+                    "预算金额 680万元，建设数字人导览、AIGC内容生成、支持并发不少于500路、接口API、等保二级，"
+                    "投标人需提供大模型相关软件著作权证书。"
+                ),
                 search_query="文旅 AIGC 数字人 公开招标 技术参数",
                 source_type="procurement",
                 content_status="fetched",
@@ -43,7 +47,7 @@ def _report() -> ResearchReportResponse:
                 title="景区AI营销平台中标成交公告",
                 url="https://ccgp.example.gov.cn/win/ai-marketing",
                 domain="ccgp.example.gov.cn",
-                snippet="2024年中标成交，AI营销平台包含游客画像、内容生成、活动投放和数据看板，中标供应商：某科技公司。",
+                snippet="2024年中标成交，AI营销平台包含游客画像、内容生成、活动投放和数据看板，中标供应商：某科技公司。第一中标候选人：某科技公司；第二中标候选人：某数智公司。",
                 search_query="景区 AI营销平台 中标",
                 source_type="procurement",
                 content_status="fetched",
@@ -66,10 +70,21 @@ def test_market_intelligence_pack_extracts_three_year_tenders_products_and_param
     assert pack.tender_projects
     assert pack.tender_projects[0].buyer == "某文旅集团"
     assert "680万元" in pack.tender_projects[0].amount
+    assert pack.tender_projects[0].tender_agency == "某招标代理公司"
+    assert pack.tender_projects[0].project_code == "WLAIGC-2025-01"
+    assert any(
+        "某数智公司" in value or "某科技公司" in value
+        for project in pack.tender_projects
+        for value in project.bidder_candidates
+    )
     assert any("并发" in value or "API" in value for value in pack.tender_projects[0].technical_parameters)
     assert any(item.name == "数字人" or "数字人" in item.name for item in pack.product_catalog)
     assert any("site:ccgp.gov.cn" in query for query in pack.external_source_queries)
+    assert pack.source_support_score > 0
+    assert pack.validated_source_count >= 1
     assert "招投标项目明细" in pack.export_markdown
+    assert "来源支撑" in pack.export_markdown
+    assert "招标代理" in pack.export_markdown
 
 
 def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -> None:
@@ -86,5 +101,7 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert pack.feasibility_outline
     assert pack.project_proposal_outline
     assert pack.client_ppt_outline
+    assert pack.source_support_score > 0
+    assert pack.grounding_checks
     assert any("目标客户" in item for item in pack.clarification_questions)
     assert "对客汇报 PPT 大纲" in pack.export_markdown

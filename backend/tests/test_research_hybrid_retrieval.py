@@ -305,6 +305,33 @@ def test_expanded_and_corrective_query_plans_add_scoped_official_queries() -> No
     assert any('site:ccgp.gov.cn 江苏 政务云 政务云预算窗口 采购意向 招标 中标' == query for query in corrective_queries)
 
 
+def test_tender_detail_query_plan_targets_confirmed_project_fields() -> None:
+    source = research_service.SourceDocument(
+        title="某市智慧文旅AIGC导览平台公开招标公告",
+        url="https://ggzy.example.gov.cn/tender/aigc-tourism",
+        domain="ggzy.example.gov.cn",
+        snippet="采购人：某文旅集团，预算金额 680万元，建设数字人导览、接口API、等保二级。",
+        search_query="文旅AIGC平台 招标",
+        source_type="procurement",
+        content_status="fetched",
+        excerpt="招标代理：某招标代理公司；投标人需提供大模型相关软件著作权证书。",
+        source_label="公共资源交易平台",
+        source_tier="official",
+    )
+
+    queries = research_service._build_tender_detail_query_plan(
+        [source],
+        keyword="文旅AIGC平台",
+        research_focus="景区数字人导览",
+        scope_hints={"regions": ["华东"], "industries": ["文旅"], "clients": ["某文旅集团"]},
+        limit=8,
+    )
+
+    assert queries
+    assert any("招标人" in query and "投标人" in query and "招标代理" in query for query in queries)
+    assert any("site:ggzy.gov.cn" in query for query in queries)
+
+
 def test_query_plans_include_curated_wechat_accounts_when_enabled() -> None:
     preferred_accounts = ("云技术", "智能超参数")
 

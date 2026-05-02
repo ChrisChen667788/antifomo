@@ -400,7 +400,49 @@ def _build_version_timeline_summary(version: ResearchReportVersion) -> str:
     return " · ".join(parts[:3])
 
 
+def _followup_timeline_summary_from_report(report_payload: Any) -> dict[str, Any]:
+    report = report_payload if isinstance(report_payload, dict) else {}
+    diagnostics = report.get("followup_diagnostics") if isinstance(report.get("followup_diagnostics"), dict) else {}
+    impacted_sections = diagnostics.get("impacted_sections") if isinstance(diagnostics.get("impacted_sections"), list) else []
+    section_titles: list[str] = []
+    for item in impacted_sections:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("section_title") or "").strip()
+        if title and title not in section_titles:
+            section_titles.append(title)
+        if len(section_titles) >= 4:
+            break
+    return {
+        "followup_title_resolution": str(diagnostics.get("title_resolution") or "").strip(),
+        "followup_summary_resolution": str(diagnostics.get("summary_resolution") or "").strip(),
+        "followup_impacted_sections": section_titles,
+    }
+
+
+def _followup_timeline_summary_from_archive_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    raw = metadata.get("followup_impact_summary")
+    if not isinstance(raw, dict):
+        current_raw = metadata.get("current_followup_impact_summary")
+        raw = current_raw if isinstance(current_raw, dict) else {}
+    impacted = raw.get("currentImpactedSections") or raw.get("current_impacted_sections") or []
+    impacted_sections: list[str] = []
+    if isinstance(impacted, list):
+        for item in impacted:
+            title = str(item or "").strip()
+            if title and title not in impacted_sections:
+                impacted_sections.append(title)
+            if len(impacted_sections) >= 4:
+                break
+    return {
+        "followup_title_resolution": str(raw.get("currentTitleResolution") or raw.get("current_title_resolution") or "").strip(),
+        "followup_summary_resolution": str(raw.get("currentSummaryResolution") or raw.get("current_summary_resolution") or "").strip(),
+        "followup_impacted_sections": impacted_sections,
+    }
+
+
 def _serialize_version_timeline_event(version: ResearchReportVersion) -> dict[str, Any]:
+    followup_summary = _followup_timeline_summary_from_report(version.report_payload)
     return {
         "id": str(version.id),
         "topic_id": str(version.topic_id),
@@ -431,6 +473,7 @@ def _serialize_version_timeline_event(version: ResearchReportVersion) -> dict[st
         "roles": [],
         "preview_names": [],
         "linked_report_diff_summary": [],
+        **followup_summary,
     }
 
 
@@ -851,6 +894,7 @@ def _markdown_archive_timeline_detail_lines(archive: ResearchMarkdownArchive) ->
 def _serialize_markdown_archive_timeline_event(archive: ResearchMarkdownArchive) -> dict[str, Any]:
     payload = _serialize_markdown_archive(archive)
     metadata = archive.metadata_payload if isinstance(archive.metadata_payload, dict) else {}
+    followup_summary = _followup_timeline_summary_from_archive_metadata(metadata)
     return {
         "id": payload["id"],
         "topic_id": str(archive.tracking_topic_id) if archive.tracking_topic_id else "",
@@ -881,6 +925,7 @@ def _serialize_markdown_archive_timeline_event(archive: ResearchMarkdownArchive)
         "roles": [],
         "preview_names": _markdown_archive_timeline_preview_names(archive),
         "linked_report_diff_summary": _markdown_archive_timeline_detail_lines(archive),
+        **followup_summary,
     }
 
 

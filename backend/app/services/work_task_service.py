@@ -1120,6 +1120,7 @@ def _report_followup_rows(report: ResearchReportDocument) -> list[str]:
     context = getattr(report, "followup_context", None)
     if context is None:
         return []
+    diagnostics = getattr(report, "followup_diagnostics", None)
     rows = [
         f"上一版研报标题：{_context_text(getattr(context, 'followup_report_title', ''))}",
         f"上一版执行摘要：{_context_text(getattr(context, 'followup_report_summary', ''))}",
@@ -1127,6 +1128,28 @@ def _report_followup_rows(report: ResearchReportDocument) -> list[str]:
         f"人工补充新证据/待核验线索：{_context_text(getattr(context, 'supplemental_evidence', ''))}",
         f"人工补充新需求：{_context_text(getattr(context, 'supplemental_requirements', ''))}",
     ]
+    if diagnostics is not None and getattr(diagnostics, "enabled", False):
+        title_resolution = _context_text(getattr(diagnostics, "title_resolution", ""))
+        summary_resolution = _context_text(getattr(diagnostics, "summary_resolution", ""))
+        resolution_labels = {
+            "baseline": "基线生成",
+            "reused": "沿用基线",
+            "corrected": "已按追问纠偏",
+        }
+        if title_resolution:
+            rows.append(f"标题处理：{resolution_labels.get(title_resolution, title_resolution)}")
+        if summary_resolution:
+            rows.append(f"摘要处理：{resolution_labels.get(summary_resolution, summary_resolution)}")
+        for impact in list(getattr(diagnostics, "impacted_sections", []) or [])[:4]:
+            section_title = _context_text(getattr(impact, "section_title", ""))
+            impact_label = _context_text(getattr(impact, "impact_label", ""))
+            impact_score = int(getattr(impact, "impact_score", 0) or 0)
+            next_action = _context_text(getattr(impact, "next_action", ""))
+            if section_title:
+                rows.append(
+                    f"重点影响章节：{section_title}（{impact_label or 'impact'} / {impact_score}）"
+                    + (f"；下一步：{next_action}" if next_action else "")
+                )
     return [row for row in rows if not row.endswith("：")]
 
 

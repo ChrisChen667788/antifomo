@@ -51,6 +51,15 @@ export type ArchiveSectionDiagnosticsSummary =
   | CompareArchiveSectionDiagnosticsSummary
   | TopicArchiveSectionDiagnosticsSummary;
 
+export type ArchiveFollowupImpactSummary = {
+  baselineTitleResolution: string;
+  currentTitleResolution: string;
+  baselineSummaryResolution: string;
+  currentSummaryResolution: string;
+  baselineImpactedSections: string[];
+  currentImpactedSections: string[];
+};
+
 export type ArchiveOfflineEvaluationMetric = {
   key: string;
   label: string;
@@ -265,6 +274,39 @@ export function extractArchiveSectionDiagnosticsSummary(
   return null;
 }
 
+export function extractArchiveFollowupImpactSummary(
+  metadataValue: unknown,
+  key = "followup_impact_summary",
+): ArchiveFollowupImpactSummary | null {
+  const metadata = asRecord(metadataValue);
+  const summary = asRecord(metadata[key]);
+  if (!Object.keys(summary).length) {
+    return null;
+  }
+  return {
+    baselineTitleResolution: normalizeText(
+      getRecordValue(summary, "baselineTitleResolution", "baseline_title_resolution"),
+    ),
+    currentTitleResolution: normalizeText(
+      getRecordValue(summary, "currentTitleResolution", "current_title_resolution"),
+    ),
+    baselineSummaryResolution: normalizeText(
+      getRecordValue(summary, "baselineSummaryResolution", "baseline_summary_resolution"),
+    ),
+    currentSummaryResolution: normalizeText(
+      getRecordValue(summary, "currentSummaryResolution", "current_summary_resolution"),
+    ),
+    baselineImpactedSections: asStringList(
+      getRecordValue(summary, "baselineImpactedSections", "baseline_impacted_sections"),
+      8,
+    ),
+    currentImpactedSections: asStringList(
+      getRecordValue(summary, "currentImpactedSections", "current_impacted_sections"),
+      8,
+    ),
+  };
+}
+
 export function extractArchiveOfflineEvaluationSnapshot(
   metadataValue: unknown,
   key = "offline_evaluation_snapshot",
@@ -315,7 +357,7 @@ function buildCompareEvidenceDeltaLines(
   }
   if (currentSummary.uncoveredEntities.length || compareSummary.uncoveredEntities.length) {
     lines.push(
-      `待补证实体：当前 ${currentSummary.uncoveredEntities.length} 个，对照 ${compareSummary.uncoveredEntities.length} 个。`,
+      `待核验实体：当前 ${currentSummary.uncoveredEntities.length} 个，对照 ${compareSummary.uncoveredEntities.length} 个。`,
     );
   }
   return lines;
@@ -390,7 +432,7 @@ function buildTopicEvidenceDeltaLines(
   }
   if (currentSummary.fieldsWithoutEvidence.length || compareSummary.fieldsWithoutEvidence.length) {
     lines.push(
-      `待补证字段：当前 ${currentSummary.fieldsWithoutEvidence.length} 个，对照 ${compareSummary.fieldsWithoutEvidence.length} 个。`,
+      `待核验字段：当前 ${currentSummary.fieldsWithoutEvidence.length} 个，对照 ${compareSummary.fieldsWithoutEvidence.length} 个。`,
     );
   }
   return lines;
@@ -402,7 +444,7 @@ function buildCompareSectionDiagnosticsDeltaLines(
 ): string[] {
   const lines: string[] = [];
   if (currentSummary.weakSectionCount || compareSummary.weakSectionCount) {
-    lines.push(`待补证章节：当前 ${currentSummary.weakSectionCount} 个，对照 ${compareSummary.weakSectionCount} 个。`);
+    lines.push(`待核验章节：当前 ${currentSummary.weakSectionCount} 个，对照 ${compareSummary.weakSectionCount} 个。`);
   }
   if (currentSummary.quotaRiskSectionCount || compareSummary.quotaRiskSectionCount) {
     lines.push(
@@ -424,7 +466,7 @@ function buildTopicSectionDiagnosticsDeltaLines(
   const lines: string[] = [];
   if (currentSummary.currentWeakSectionCount || compareSummary.currentWeakSectionCount) {
     lines.push(
-      `当前版本待补证章节：当前 ${currentSummary.currentWeakSectionCount} 个，对照 ${compareSummary.currentWeakSectionCount} 个。`,
+      `当前版本待核验章节：当前 ${currentSummary.currentWeakSectionCount} 个，对照 ${compareSummary.currentWeakSectionCount} 个。`,
     );
   }
   if (currentSummary.quotaRiskSectionCount || compareSummary.quotaRiskSectionCount) {
@@ -465,6 +507,29 @@ function buildOfflineEvaluationDeltaLines(
     lines.push(`schema 异常：当前 ${currentSnapshot.invalidPayloads} 份，对照 ${compareSnapshot.invalidPayloads} 份。`);
   }
   return lines.slice(0, 4);
+}
+
+function buildFollowupImpactDeltaLines(
+  currentSummary: ArchiveFollowupImpactSummary,
+  compareSummary: ArchiveFollowupImpactSummary,
+): string[] {
+  const lines: string[] = [];
+  if (
+    currentSummary.currentTitleResolution ||
+    compareSummary.currentTitleResolution ||
+    currentSummary.currentSummaryResolution ||
+    compareSummary.currentSummaryResolution
+  ) {
+    lines.push(
+      `追问路由：当前标题 ${currentSummary.currentTitleResolution || "无"} / 摘要 ${currentSummary.currentSummaryResolution || "无"}；对照标题 ${compareSummary.currentTitleResolution || "无"} / 摘要 ${compareSummary.currentSummaryResolution || "无"}。`,
+    );
+  }
+  if (currentSummary.currentImpactedSections.length || compareSummary.currentImpactedSections.length) {
+    lines.push(
+      `重点影响章节：当前 ${currentSummary.currentImpactedSections.length} 个，对照 ${compareSummary.currentImpactedSections.length} 个。`,
+    );
+  }
+  return lines;
 }
 
 export function buildArchiveEvidenceDeltaLines(
@@ -515,6 +580,18 @@ export function buildArchiveOfflineEvaluationDeltaLines(
   return buildOfflineEvaluationDeltaLines(currentSnapshot, compareSnapshot);
 }
 
+export function buildArchiveFollowupImpactDeltaLines(
+  currentArchive: Pick<ApiResearchMarkdownArchive, "metadata_payload"> | null | undefined,
+  compareArchive: Pick<ApiResearchMarkdownArchive, "metadata_payload"> | null | undefined,
+): string[] {
+  const currentSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(currentArchive));
+  const compareSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(compareArchive));
+  if (!currentSummary || !compareSummary) {
+    return [];
+  }
+  return buildFollowupImpactDeltaLines(currentSummary, compareSummary);
+}
+
 export function buildArchiveDeliveryDigest(
   archive: Pick<ApiResearchMarkdownArchive, "archive_kind" | "metadata_payload">,
   sourcePrefix?: "current" | "compare",
@@ -526,70 +603,81 @@ export function buildArchiveDeliveryDigest(
   const sectionSummary = extractArchiveSectionDiagnosticsSummary(metadata, sectionKey);
   const offlineKey = sourcePrefix ? `${sourcePrefix}_offline_evaluation_snapshot` : "offline_evaluation_snapshot";
   const offlineSnapshot = extractArchiveOfflineEvaluationSnapshot(metadata, offlineKey);
+  const followupKey = sourcePrefix ? `${sourcePrefix}_followup_impact_summary` : "followup_impact_summary";
+  const followupSummary = extractArchiveFollowupImpactSummary(metadata, followupKey);
 
   if (summary?.mode === "compare") {
     const linkedDiffStatus = normalizeText(
       metadata[sourcePrefix ? `${sourcePrefix}_linked_report_diff_status` : "linked_report_diff_status"],
     );
     return {
-      title: sourcePrefix === "compare" ? "对照归档证据" : sourcePrefix === "current" ? "当前归档证据" : "Evidence Appendix",
+      title: sourcePrefix === "compare" ? "对照归档依据" : sourcePrefix === "current" ? "当前归档依据" : "依据附录",
       metrics: [
-        { label: "直接证据", value: String(summary.directEvidenceCount), tone: "sky" },
+        { label: "直接依据", value: String(summary.directEvidenceCount), tone: "sky" },
         { label: "官方源", value: String(summary.officialEvidenceCount), tone: "emerald" },
         { label: "来源研报", value: String(summary.sourceEntryCount), tone: "neutral" },
         ...(sectionSummary?.mode === "compare"
-          ? [{ label: "待补证章节", value: String(sectionSummary.weakSectionCount), tone: "amber" as const }]
+          ? [{ label: "待核验章节", value: String(sectionSummary.weakSectionCount), tone: "amber" as const }]
           : []),
       ],
       notes: [
         linkedDiffStatus ? `关联版本差异: ${archiveLinkedDiffStatusLabel(linkedDiffStatus)}` : "",
         summary.officialCoverageLeaders.length
-          ? `官方补证命中最高: ${formatInlineList(summary.officialCoverageLeaders, "无", 3)}`
+          ? `官方来源命中最高: ${formatInlineList(summary.officialCoverageLeaders, "无", 3)}`
           : "",
         sectionSummary?.mode === "compare"
-          ? `章节诊断: 配额风险 ${sectionSummary.quotaRiskSectionCount} / 矛盾 ${sectionSummary.contradictionSectionCount}`
+          ? `章节检查: 配额风险 ${sectionSummary.quotaRiskSectionCount} / 矛盾 ${sectionSummary.contradictionSectionCount}`
+          : "",
+        followupSummary
+          ? `补充信息影响: 标题 ${followupSummary.currentTitleResolution || "无"} / 摘要 ${followupSummary.currentSummaryResolution || "无"} / 重点章节 ${formatInlineList(followupSummary.currentImpactedSections, "无", 3)}`
           : "",
         offlineSnapshot?.metrics.length
-          ? `离线回归: ${offlineSnapshot.metrics
+          ? `质量复核: ${offlineSnapshot.metrics
               .slice(0, 3)
               .map((metric) => `${metric.label} ${metric.percent}%`)
               .join(" / ")}`
           : "",
       ].filter(Boolean),
-      outstandingLabel: "待补证实体",
+      outstandingLabel: "待核验实体",
       outstandingItems: summary.uncoveredEntities,
     };
   }
 
   if (summary?.mode === "topic") {
     return {
-      title: sourcePrefix === "compare" ? "对照归档证据" : sourcePrefix === "current" ? "当前归档证据" : "Evidence Appendix",
+      title: sourcePrefix === "compare" ? "对照归档依据" : sourcePrefix === "current" ? "当前归档依据" : "依据附录",
       metrics: [
         { label: "变更字段", value: String(summary.changedFieldCount), tone: "amber" },
         {
-          label: "证据支撑",
+          label: "依据支撑",
           value: `${summary.evidenceBackedFieldCount}/${Math.max(summary.changedFieldCount, 1)}`,
           tone: "emerald",
         },
         { label: "官方源", value: String(summary.officialEvidenceCount), tone: "sky" },
+        ...(followupSummary?.currentImpactedSections.length
+          ? [{ label: "补充影响章节", value: String(followupSummary.currentImpactedSections.length), tone: "sky" as const }]
+          : []),
         ...(sectionSummary?.mode === "topic"
-          ? [{ label: "待补证章节", value: String(sectionSummary.currentWeakSectionCount), tone: "amber" as const }]
+          ? [{ label: "待核验章节", value: String(sectionSummary.currentWeakSectionCount), tone: "amber" as const }]
           : []),
       ],
       notes: [
-        `基线证据 ${summary.baselineEvidenceCount} / 对照证据 ${summary.currentEvidenceCount}`,
-        `证据结构: 媒体源 ${summary.mediaEvidenceCount} / 聚合源 ${summary.aggregateEvidenceCount}`,
+        `初始依据 ${summary.baselineEvidenceCount} / 对照依据 ${summary.currentEvidenceCount}`,
+        `依据结构: 媒体源 ${summary.mediaEvidenceCount} / 聚合源 ${summary.aggregateEvidenceCount}`,
+        followupSummary
+          ? `补充信息影响: 标题 ${followupSummary.currentTitleResolution || "无"} / 摘要 ${followupSummary.currentSummaryResolution || "无"} / 重点章节 ${formatInlineList(followupSummary.currentImpactedSections, "无", 3)}`
+          : "",
         sectionSummary?.mode === "topic"
-          ? `章节诊断: 新增待补证 ${sectionSummary.newlyWeakSections.length} / 已解决 ${sectionSummary.resolvedSections.length}`
+          ? `章节检查: 新增待核验 ${sectionSummary.newlyWeakSections.length} / 已解决 ${sectionSummary.resolvedSections.length}`
           : "",
         offlineSnapshot?.metrics.length
-          ? `离线回归: ${offlineSnapshot.metrics
+          ? `质量复核: ${offlineSnapshot.metrics
               .slice(0, 3)
               .map((metric) => `${metric.label} ${metric.percent}%`)
               .join(" / ")}`
           : "",
       ],
-      outstandingLabel: "待补证字段",
+      outstandingLabel: "待核验字段",
       outstandingItems: summary.fieldsWithoutEvidence,
     };
   }
@@ -601,6 +689,8 @@ export function buildArchiveDeliveryDigest(
     const compareSectionSummary = extractArchiveSectionDiagnosticsSummary(metadata, "compare_section_diagnostics_summary");
     const currentOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(metadata, "current_offline_evaluation_snapshot");
     const compareOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(metadata, "compare_offline_evaluation_snapshot");
+    const currentFollowupSummary = extractArchiveFollowupImpactSummary(metadata, "current_followup_impact_summary");
+    const compareFollowupSummary = extractArchiveFollowupImpactSummary(metadata, "compare_followup_impact_summary");
     const changedSectionCount = asPositiveNumber(metadata.changed_section_count);
     const addedSectionCount = asPositiveNumber(metadata.added_section_count);
     const removedSectionCount = asPositiveNumber(metadata.removed_section_count);
@@ -633,6 +723,11 @@ export function buildArchiveDeliveryDigest(
         ...(
           currentOfflineSnapshot && compareOfflineSnapshot
             ? buildOfflineEvaluationDeltaLines(currentOfflineSnapshot, compareOfflineSnapshot)
+            : []
+        ),
+        ...(
+          currentFollowupSummary && compareFollowupSummary
+            ? buildFollowupImpactDeltaLines(currentFollowupSummary, compareFollowupSummary)
             : []
         ),
       ],

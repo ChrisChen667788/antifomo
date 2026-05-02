@@ -7,6 +7,7 @@ from app.services.research_service import (
     _extract_rank_entity_candidates,
     _filter_sources_by_theme_relevance,
     _filter_theme_aligned_rows,
+    _infer_scope_hints,
     _rank_top_entities,
 )
 
@@ -270,3 +271,40 @@ def test_rank_top_entities_uses_scope_alias_canonicalization_for_company_seed() 
 
     assert "百联集团" in names
     assert "百联" not in names
+
+
+def test_ai_news_sentence_fragments_do_not_become_scope_clients_or_accounts() -> None:
+    source = _source(
+        title="微软拿 Open AI 技术卖钱：不用再给 Open AI 分成了！ | 云头条",
+        snippet=(
+            "2026 年 4 月 27 日，Microsoft 与 OpenAI 宣布修订双方合作协议。"
+            "新协议保留了两家公司长期合作的基本框架，但明显放松了绑定关系。"
+            "Microsoft 仍是 OpenAI 的主要云合作伙伴，现在可以通过任何云服务覆盖企业客户。"
+        ),
+        url="https://www.yuntoutiao.com/yuntoutiao/299.html",
+        source_type="tech_media_feed",
+        source_label="云头条",
+    )
+    bad_names = {"新协议保留了两家公司", "现在可以通过任何云服务"}
+
+    candidates = set(_extract_rank_entity_candidates(f"{source.title}。{source.snippet}"))
+    scope_hints = _infer_scope_hints(
+        "长三角 大模型 2026年政企行业、医药行业AI相关需求及潜在商机情报",
+        "需要找到尽可能多的有价值实体",
+        [source],
+    )
+    top_targets, pending_targets = _rank_top_entities(
+        [source],
+        role="target",
+        output_language="zh-CN",
+        scope_hints=scope_hints,
+        theme_terms=["大模型", "人工智能", "openai"],
+        limit=3,
+    )
+    target_names = {item.name for item in [*top_targets, *pending_targets]}
+
+    assert "Microsoft" in candidates
+    assert "OpenAI" in candidates
+    assert not (bad_names & candidates)
+    assert not (bad_names & set(scope_hints.get("clients", [])))
+    assert not (bad_names & target_names)

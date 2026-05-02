@@ -24,6 +24,7 @@ from app.schemas.research import (
     ResearchEntityEvidenceOut,
     ResearchFollowupContextOut,
     ResearchFollowupDiagnosticsOut,
+    ResearchFollowupSectionImpactOut,
     ResearchNormalizedEntityOut,
     ResearchReportDocument,
     ResearchReportRequest,
@@ -59,6 +60,22 @@ from app.services.llm_parser import (
     parse_research_strategy_refine_response,
 )
 from app.services.research_quality_service import build_research_quality_profile
+from app.services.research_rag_quality_service import (
+    build_retrieval_correction_profile,
+    render_retrieval_correction_context,
+    review_generation_grounding,
+)
+from app.services.research_report_evaluation_service import evaluate_and_improve_research_report
+from app.services.research_retrieval_index_service import (
+    ResearchRetrievalIndex,
+    ResearchRetrievalIndexChunk,
+    build_research_retrieval_index,
+    load_persistent_research_retrieval_index,
+)
+from app.services.research_section_retrieval_service import (
+    attach_section_retrieval_packs,
+    build_section_retrieval_packs,
+)
 from app.services.research_solution_intelligence_service import (
     build_market_intelligence_pack,
     build_solution_delivery_pack,
@@ -618,6 +635,7 @@ COMPACT_ENTITY_PATTERN = re.compile(
 
 SPECIAL_ENTITY_ALIASES = (
     "德勤", "普华永道", "毕马威", "安永", "埃森哲", "IBM",
+    "Microsoft", "OpenAI",
     "阿里云", "腾讯云", "华为", "中兴通讯", "神州数码", "新华三",
     "太极股份", "东软集团", "浪潮软件", "软通动力", "中电金信",
     "中国移动", "中国电信", "中国联通", "用友网络", "金蝶",
@@ -766,6 +784,8 @@ KNOWN_LIGHTWEIGHT_ENTITY_NAMES = {
 }
 
 _RESEARCH_ACCOUNT_ALIAS_MAP = {
+    "微软": "Microsoft",
+    "Open AI": "OpenAI",
     "上海市文旅局": "上海市文化和旅游局",
     "华为云服务": "华为云",
     "阿里巴巴云": "阿里云",
@@ -791,6 +811,9 @@ ENTITY_INVALID_PHRASE_TOKENS = (
     "建议追加", "如果短期", "当前关键词范围", "公开线索", "优先给具体公司",
     "官方业务联系方式", "公开渠道联络人信息", "公开业务联系方式",
     "美国证券交易委", "证券交易委", "已向美国证券交易委", "公有云服务", "基础设施即服务", "模型即服务",
+    "新协议", "保留了", "两家公司", "几家公司", "多家公司", "现在可以", "可以通过", "任何云服务",
+    "不用再", "不再给", "宣布修订", "长期合作", "绑定关系", "合作协议", "基本框架",
+    "各有关", "并经",
 )
 
 LOW_VALUE_ENTITY_NAME_TOKENS = (
@@ -802,11 +825,16 @@ LOW_VALUE_ENTITY_NAME_TOKENS = (
 ENTITY_FRAGMENT_PREFIX_TOKENS = (
     "此次", "由于", "相应", "相关", "本次", "该", "该类", "这个", "这类", "基于", "围绕", "通过",
     "针对", "聚焦", "正在", "已经", "主要", "因为", "如果", "对于", "已向", "即使",
+    "现在", "过去", "未来", "同时", "但", "而是", "新协议", "双方",
+    "各有关", "并经",
 )
 
 ENTITY_FRAGMENT_INFIX_TOKENS = (
     "主要基于", "相应调整", "调整系统", "相应系统", "由于公司", "基于公司", "围绕公司", "赋能",
     "服务于", "用于", "模式", "路径", "打法", "策略", "方法", "场景", "机会", "商机",
+    "保留了", "可以通过", "任何云服务", "不用再", "不再给", "宣布修订", "长期合作",
+    "绑定关系", "合作协议", "基本框架",
+    "各有关", "并经",
 )
 
 ENTITY_SUFFIX_TOKENS = (
@@ -1485,13 +1513,20 @@ def _extract_company_anchor_terms(keyword: str, research_focus: str | None) -> l
         if alias in seed_text:
             anchors.append(alias)
     for match in ORG_PATTERN.findall(keyword_seed):
-        anchors.append(normalize_text(match))
+        normalized = normalize_text(match)
+        if _is_plausible_entity_name(normalized) or _is_lightweight_entity_name(normalized):
+            anchors.append(normalized)
     for match in ORG_PATTERN.findall(focus_seed):
         normalized = normalize_text(match)
-        if normalized in SPECIAL_ENTITY_ALIASES or any(normalized.endswith(token) for token in ("集团", "公司", "有限公司", "股份有限公司", "研究院", "研究所")):
+        if (
+            normalized in SPECIAL_ENTITY_ALIASES
+            or any(normalized.endswith(token) for token in ("集团", "公司", "有限公司", "股份有限公司", "研究院", "研究所"))
+        ) and (_is_plausible_entity_name(normalized) or _is_lightweight_entity_name(normalized)):
             anchors.append(normalized)
     for match in COMPACT_ENTITY_PATTERN.findall(keyword_seed):
-        anchors.append(normalize_text(match))
+        normalized = normalize_text(match)
+        if _is_plausible_entity_name(normalized) or _is_lightweight_entity_name(normalized):
+            anchors.append(normalized)
     for token in _tokenize_for_match(keyword_seed):
         normalized = normalize_text(token)
         lowered = normalized.lower()
@@ -2409,6 +2444,139 @@ def _build_corrective_query_plan(
         seen.add(normalized)
         deduped.append(normalized)
     return deduped[:limit]
+
+
+_CONFIRMED_TENDER_TERMS = ("招标", "中标", "采购", "采购意向", "成交", "竞争性磋商", "招标文件", "中标候选人")
+_TENDER_DETAIL_TERMS = ("招标人", "采购人", "中标人", "中标方", "投标人", "招标代理", "项目编号", "技术参数", "招标文件")
+
+
+def _source_confirmed_tender_score(source: SourceDocument) -> int:
+    text = normalize_text(" ".join([source.title, source.snippet, source.excerpt, source.search_query, source.source_label or ""]))
+    if not text:
+        return 0
+    score = 0
+    if source.source_tier == "official":
+        score += 28
+    if source.source_type in {"procurement", "tender_feed", "official_tender_feed", "regional_public_resource"}:
+        score += 24
+    score += min(24, sum(6 for term in _CONFIRMED_TENDER_TERMS if term in text))
+    score += min(24, sum(6 for term in _TENDER_DETAIL_TERMS if term in text))
+    if re.search(r"(预算|金额|中标价|成交价|最高限价)[^。；;，,\n]{0,36}(万元|亿元|元)", text):
+        score += 10
+    return min(score, 100)
+
+
+def _confirmed_tender_sources(sources: list[SourceDocument], *, limit: int = 4) -> list[SourceDocument]:
+    scored = [
+        (score, source)
+        for source in sources
+        if (score := _source_confirmed_tender_score(source)) >= 42
+    ]
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [source for _, source in scored[:limit]]
+
+
+def _tender_project_seed(source: SourceDocument, *, keyword: str, research_focus: str | None) -> str:
+    title = normalize_text(source.title)
+    title = re.sub(r"[-_｜|].*$", "", title).strip("，,、:：- ")
+    title = re.sub(r"(公开招标公告|招标公告|中标成交公告|中标公告|成交公告|采购意向|结果公示)$", "", title)
+    if 8 <= len(title) <= 80:
+        return title
+    text = normalize_text(" ".join([source.snippet, source.excerpt]))
+    for pattern in (
+        r"([\u4e00-\u9fffA-Za-z0-9（）()《》]{4,60}(?:项目|平台|系统|服务|工程|采购))",
+        r"([\u4e00-\u9fffA-Za-z0-9（）()《》]{4,60}(?:招标|中标|成交))",
+    ):
+        match = re.search(pattern, text)
+        if match:
+            return normalize_text(match.group(1))[:80]
+    return normalize_text(" ".join([keyword, research_focus or ""]))[:80]
+
+
+def _build_tender_detail_query_plan(
+    sources: list[SourceDocument],
+    *,
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+    limit: int = 10,
+) -> list[str]:
+    queries: list[str] = []
+    regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
+    industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+    clients = [normalize_text(str(item)) for item in scope_hints.get("clients", []) or [] if normalize_text(str(item))]
+    scope_tail = normalize_text(" ".join([*(regions[:1]), *(industries[:1]), *(clients[:1])]))
+    for source in _confirmed_tender_sources(sources):
+        seed = _tender_project_seed(source, keyword=keyword, research_focus=research_focus)
+        if not seed:
+            continue
+        quoted_seed = f"\"{seed}\"" if len(seed) <= 60 else seed
+        queries.extend(
+            [
+                f"{quoted_seed} 招标人 中标人 投标人 招标代理 项目编号 技术参数",
+                f"{quoted_seed} 招标文件 中标候选人 投标报价 评标 采购需求",
+                f"site:ccgp.gov.cn {quoted_seed} 招标人 中标人 招标代理",
+                f"site:ggzy.gov.cn {quoted_seed} 中标候选人 投标人 技术参数",
+                f"site:cecbid.org.cn {quoted_seed} 招标代理 投标人 中标候选人",
+            ]
+        )
+    if scope_tail:
+        queries.append(f"{scope_tail} {keyword} 招标人 中标方 投标方 招标代理 招标参数")
+    return _dedupe_strings(queries, limit)
+
+
+def _collect_tender_detail_sources(
+    sources: list[SourceDocument],
+    *,
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+    timeout_seconds: int,
+    result_limit: int,
+    selected_limit: int,
+    excerpt_chars: int,
+) -> tuple[list[SourceDocument], list[str]]:
+    query_plan = _build_tender_detail_query_plan(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        limit=10,
+    )
+    if not query_plan:
+        return [], []
+    hits: list[SearchHit] = []
+    for query in query_plan:
+        try:
+            hits.extend(
+                _search_public_web(
+                    query,
+                    timeout_seconds=max(8, timeout_seconds),
+                    limit=max(4, result_limit),
+                )
+            )
+        except Exception:
+            continue
+    ranked_hits = _hybrid_rank_hits(
+        hits,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+    )
+    selected_hits = _select_hits_with_source_balance(ranked_hits, limit=max(3, selected_limit))
+    detail_sources = [
+        source
+        for source in (
+            _extract_source_document_best_effort(
+                hit,
+                timeout_seconds=max(8, timeout_seconds),
+                excerpt_chars=excerpt_chars,
+            )
+            for hit in selected_hits
+        )
+        if source is not None and _source_confirmed_tender_score(source) >= 36
+    ]
+    return _filter_recent_sources(detail_sources), query_plan
 
 
 def _dedupe_sources(sources: Iterable[SourceDocument]) -> list[SourceDocument]:
@@ -3662,6 +3830,29 @@ def _strip_entity_leading_noise(value: str) -> str:
 
 
 @lru_cache(maxsize=8192)
+def _looks_like_sentence_fragment_entity(value: str) -> bool:
+    normalized = normalize_text(value)
+    if not normalized:
+        return False
+    if normalized in SPECIAL_ENTITY_ALIASES or normalized in KNOWN_LIGHTWEIGHT_ENTITY_NAMES:
+        return False
+    lowered = normalized.lower()
+    if lowered in {"microsoft", "openai"}:
+        return False
+    if re.search(r"(?:一|两|二|几|多|\d+)\s*家(?:公司|企业|厂商|机构)$", normalized):
+        return True
+    if normalized.startswith(ENTITY_FRAGMENT_PREFIX_TOKENS):
+        return True
+    if any(token in normalized for token in ENTITY_FRAGMENT_INFIX_TOKENS):
+        return True
+    if any(token in normalized for token in ENTITY_INVALID_PHRASE_TOKENS):
+        return True
+    if len(normalized) >= 10 and any(token in normalized for token in ("了", "可以", "通过", "不用", "仍是", "仍将", "转向")):
+        return True
+    return False
+
+
+@lru_cache(maxsize=8192)
 def _looks_like_source_artifact_text(value: str) -> bool:
     normalized = normalize_text(value)
     lowered = normalized.lower()
@@ -3742,6 +3933,10 @@ def _looks_like_placeholder_entity_name(value: str) -> bool:
     lowered = normalized.lower()
     if not normalized:
         return False
+    if normalized in SPECIAL_ENTITY_ALIASES or normalized in KNOWN_LIGHTWEIGHT_ENTITY_NAMES:
+        return False
+    if _looks_like_sentence_fragment_entity(normalized):
+        return True
     if "（如" in normalized or "(如" in normalized:
         return True
     if normalized.startswith(("AI的", "一直", "此前", "在杭州市", "相关负责人", "对公开市场投资者而言", "上海作为")):
@@ -3768,7 +3963,7 @@ def _looks_like_placeholder_entity_name(value: str) -> bool:
         return True
     if any(token in lowered for token in ("报名通道开启", "多端联动", "opc社区", "opc创新社区", "超级个体")):
         return True
-    if normalized in {"科技数码", "主办与协办", "基础算力与云服务", "区域大型系统集成"}:
+    if normalized in {"科技数码", "主办与协办", "基础算力与云服务", "区域大型系统集成", "开发集团", "各有关大学", "并经市政府"}:
         return True
     if len(normalized) <= 6 and normalized.endswith("公司") and any(token in normalized for token in ("音乐", "内容", "行业", "平台", "企业", "厂商")):
         return True
@@ -4108,6 +4303,8 @@ def _is_lightweight_entity_name(value: str) -> bool:
 def _looks_like_fragment_entity_name(value: str) -> bool:
     normalized = normalize_text(value)
     if not normalized:
+        return True
+    if _looks_like_sentence_fragment_entity(normalized):
         return True
     if _looks_like_placeholder_entity_name(normalized):
         return True
@@ -4878,6 +5075,7 @@ def _infer_scope_hints(
             item
             for item in org_candidates
             if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
+            and _looks_like_target_scope_entity_name(item)
         )
     else:
         client_candidates.extend(
@@ -4890,14 +5088,17 @@ def _infer_scope_hints(
         )
     client_candidates = _dedupe_strings(client_candidates, 3)
     if not client_candidates:
-        keyword_orgs = ORG_PATTERN.findall(seed_text)
+        keyword_orgs = [
+            normalize_text(item)
+            for item in ORG_PATTERN.findall(seed_text)
+            if _is_plausible_entity_name(normalize_text(item)) or _is_lightweight_entity_name(normalize_text(item))
+        ]
         client_candidates = _dedupe_strings(
             [
                 item
                 for item in keyword_orgs
                 if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-            ]
-            or keyword_orgs,
+            ],
             3,
         )
 
@@ -5009,6 +5210,8 @@ def _merge_scope_hints(
         )
     else:
         company_anchors = _dedupe_strings(refined_company_anchors, 4)
+    clients = _clean_scope_entity_names(clients, limit=3, theme_labels=industries)
+    company_anchors = _clean_scope_entity_names(company_anchors, limit=4, theme_labels=industries)
     strategy_must_include_terms = _dedupe_strings(
         [*(base.get("strategy_must_include_terms", []) or []), *(refined.get("strategy_must_include_terms", []) or [])],
         8,
@@ -5419,6 +5622,44 @@ def _is_company_like_entity_name(
         if normalize_text(token) and token not in {"内容", "运营", "服务"}
     ]
     return any(token in normalized for token in [*GENERIC_COMPANY_NAME_TOKENS, *theme_company_tokens])
+
+
+def _looks_like_target_scope_entity_name(value: str) -> bool:
+    normalized = normalize_text(value)
+    if not normalized or not _is_plausible_entity_name(normalized):
+        return False
+    if normalized in SPECIAL_ENTITY_ALIASES and normalized not in {"中国移动", "中国电信", "中国联通"}:
+        return False
+    target_tokens = (
+        "政府",
+        "人民政府",
+        "局",
+        "委",
+        "厅",
+        "办",
+        "中心",
+        "医院",
+        "大学",
+        "学院",
+        "学校",
+        "银行",
+        "集团",
+        "城投",
+        "交投",
+        "水务",
+        "地铁",
+        "文旅",
+        "医药",
+        "药业",
+        "制药",
+        "生物",
+    )
+    vendor_only_tokens = ("OpenAI", "Microsoft", "Azure", "云", "软件", "信息", "算法", "模型")
+    if any(token in normalized for token in target_tokens):
+        return True
+    if any(token in normalized for token in vendor_only_tokens):
+        return False
+    return False
 
 
 def _filtered_rank_fallback_values(
@@ -6995,6 +7236,8 @@ def _is_plausible_entity_name(value: str) -> bool:
     normalized = _strip_entity_leading_noise(value)
     if not normalized or len(normalized) < 3:
         return False
+    if _looks_like_sentence_fragment_entity(normalized):
+        return False
     if _looks_like_fragment_entity_name(normalized):
         return False
     if _looks_like_placeholder_entity_name(normalized):
@@ -7239,7 +7482,11 @@ def _rank_top_entities(
     vendor_tokens = ("科技", "软件", "云", "数码", "智能", "信息", "平台", "模型", "算法", "芯片")
     scope_regions = [normalize_text(item) for item in scope_hints.get("regions", []) if normalize_text(str(item))]
     scope_industries = [normalize_text(item) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
-    scope_clients = [normalize_text(item) for item in scope_hints.get("clients", []) if normalize_text(str(item))]
+    scope_clients = _clean_scope_entity_names(
+        [normalize_text(item) for item in scope_hints.get("clients", []) if normalize_text(str(item))],
+        limit=3,
+        theme_labels=scope_industries,
+    )
     seed_companies = [
         normalize_text(str(item))
         for item in (scope_hints.get("seed_companies", []) or [])
@@ -9562,13 +9809,24 @@ def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchRepor
         }
     )
     enriched = enriched.model_copy(update={"quality_profile": build_research_quality_profile(enriched)})
+    runtime_sources = _report_sources_to_source_documents(enriched.sources)
+    if runtime_sources and enriched.sections:
+        runtime_index = _load_runtime_research_retrieval_index(
+            sources=runtime_sources,
+            scope_hints={
+                "regions": list(getattr(getattr(enriched, "source_diagnostics", None), "scope_regions", []) or []),
+                "industries": list(getattr(getattr(enriched, "source_diagnostics", None), "scope_industries", []) or []),
+            },
+        )
+        if runtime_index.chunks:
+            enriched = attach_section_retrieval_packs(enriched, runtime_index, limit_per_section=3)
     enriched = enriched.model_copy(
         update={
             "market_intelligence": build_market_intelligence_pack(enriched),
             "solution_delivery_pack": build_solution_delivery_pack(enriched),
         }
     )
-    return _apply_report_readiness_guardrails(enriched)
+    return _enrich_followup_diagnostics(_apply_report_readiness_guardrails(enriched))
 
 
 def _apply_report_readiness_guardrails(report: ResearchReportResponse) -> ResearchReportResponse:
@@ -9775,6 +10033,128 @@ def _render_source_digest(sources: list[SourceDocument]) -> str:
             )
         )
     return "\n\n".join(chunks)
+
+
+def _source_documents_to_runtime_retrieval_chunks(
+    sources: list[SourceDocument],
+    *,
+    scope_hints: dict[str, object],
+) -> list[ResearchRetrievalIndexChunk]:
+    regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
+    industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+    now = datetime.now(timezone.utc)
+    chunks: list[ResearchRetrievalIndexChunk] = []
+    for index, source in enumerate(sources, start=1):
+        text = normalize_text(
+            "；".join(
+                part
+                for part in [
+                    source.title,
+                    source.search_query,
+                    source.snippet,
+                    source.excerpt,
+                ]
+                if normalize_text(part)
+            )
+        )
+        if not text:
+            continue
+        document_id = normalize_text(source.url) or f"runtime-source-{index}"
+        label = normalize_text(source.source_label or "") or normalize_text(source.source_type or "") or "runtime_source"
+        chunks.append(
+            ResearchRetrievalIndexChunk(
+                chunk_id=f"runtime-source-{index}",
+                document_id=document_id,
+                document_type="runtime_source",
+                title=normalize_text(source.title) or document_id,
+                text=text[:840],
+                field_key="source_excerpt",
+                label=label,
+                source_tier=source.source_tier if source.source_tier in {"official", "media", "aggregate"} else "media",
+                source_url=normalize_text(source.url),
+                region=" / ".join(regions[:2]),
+                industry=" / ".join(industries[:2]),
+                created_at=now,
+                updated_at=now,
+                priority=18 if source.source_tier == "official" else 10 if source.source_tier == "media" else 7,
+                metadata={
+                    "source_type": normalize_text(source.source_type),
+                    "content_status": normalize_text(source.content_status),
+                },
+            )
+        )
+    return chunks
+
+
+def _load_runtime_research_retrieval_index(
+    *,
+    sources: list[SourceDocument],
+    scope_hints: dict[str, object],
+) -> ResearchRetrievalIndex:
+    settings = get_settings()
+    base_index = ResearchRetrievalIndex(chunks=[], built_at=datetime.now(timezone.utc), source_counts={})
+    try:
+        with SessionLocal() as db:
+            base_index = load_persistent_research_retrieval_index(
+                db,
+                user_id=settings.single_user_id,
+                limit=6000,
+            )
+            if not base_index.chunks:
+                base_index = build_research_retrieval_index(
+                    db,
+                    user_id=settings.single_user_id,
+                    limit_per_source=240,
+                )
+    except Exception:
+        base_index = ResearchRetrievalIndex(chunks=[], built_at=datetime.now(timezone.utc), source_counts={})
+
+    runtime_chunks = _source_documents_to_runtime_retrieval_chunks(sources, scope_hints=scope_hints)
+    combined_chunks = [*runtime_chunks, *base_index.chunks]
+    return ResearchRetrievalIndex(
+        chunks=combined_chunks,
+        built_at=datetime.now(timezone.utc),
+        source_counts=dict(Counter(chunk.document_type for chunk in combined_chunks)),
+    )
+
+
+def _render_section_retrieval_prompt_context(
+    report: ResearchReportDocument,
+    *,
+    index: ResearchRetrievalIndex,
+    limit_per_section: int = 3,
+) -> str:
+    packs = build_section_retrieval_packs(report, index, limit_per_section=limit_per_section)
+    if not packs:
+        return ""
+
+    blocks: list[str] = []
+    for pack in packs[:8]:
+        hit_rows: list[str] = []
+        for hit in pack.hits[:2]:
+            snippet = normalize_text(hit.snippet)
+            if len(snippet) > 180:
+                snippet = f"{snippet[:180]}..."
+            hit_rows.append(
+                f"- [{hit.source_tier}] {hit.title} | {hit.label or hit.field_key} | score={hit.score} | {snippet} | {hit.source_url or 'no-url'}"
+            )
+        if not hit_rows:
+            hit_rows.append("- 当前未命中可直接注入的章节证据，需要按 next_steps 补证。")
+        blocks.append(
+            "\n".join(
+                [
+                    f"[Section] {pack.section_title}",
+                    f"Status: {pack.status} | Support Score: {pack.support_score} | Official Hits: {pack.official_hit_count}",
+                    f"Target Axes: {' / '.join(pack.target_axes) if pack.target_axes else 'n/a'}",
+                    f"Query: {pack.query}",
+                    "Evidence Hits:",
+                    *hit_rows,
+                    f"Missing Terms: {' / '.join(pack.missing_terms) if pack.missing_terms else 'none'}",
+                    f"Next Steps: {'；'.join(pack.next_steps) if pack.next_steps else 'none'}",
+                ]
+            )
+        )
+    return "\n\n".join(blocks)
 
 
 def _build_sections(
@@ -10916,8 +11296,18 @@ def build_research_report_markdown(
                     lines.append(
                         f"- {item.project_name} | {item.notice_type or '待核验'} | {item.publish_date or '待核验'} | {item.amount or '金额待核验'} | {item.source_url}"
                     )
+                    detail_bits = [
+                        f"招标人/采购人: {item.buyer}" if item.buyer else "",
+                        f"中标方: {item.winning_vendor}" if item.winning_vendor else "",
+                        f"投标方/候选人: {'；'.join(item.bidder_candidates[:4])}" if item.bidder_candidates else "",
+                        f"招标代理: {item.tender_agency}" if item.tender_agency else "",
+                        f"项目编号: {item.project_code}" if item.project_code else "",
+                    ]
+                    detail_line = "；".join(bit for bit in detail_bits if bit)
+                    if detail_line:
+                        lines.append(f"  明细: {detail_line}")
                     if item.technical_parameters:
-                        lines.append(f"  技术参数: {'；'.join(item.technical_parameters[:4])}")
+                        lines.append(f"  招标参数/技术参数: {'；'.join(item.technical_parameters[:4])}")
             if market_pack.product_catalog:
                 lines.extend(["", "### 产品清单"])
                 for item in market_pack.product_catalog[:10]:
@@ -11461,6 +11851,12 @@ def _render_followup_diagnostics_prompt_context(followup_diagnostics: ResearchFo
     if followup_diagnostics.decomposition_queries:
         lines.append("- 优先子查询:")
         lines.extend(f"  - {query}" for query in followup_diagnostics.decomposition_queries[:6])
+    if followup_diagnostics.impacted_sections:
+        lines.append("- 重点影响章节:")
+        lines.extend(
+            f"  - {item.section_title} | {item.impact_label}/{item.impact_score} | {item.reason}"
+            for item in followup_diagnostics.impacted_sections[:5]
+        )
     return "\n".join(lines)
 
 
@@ -11474,6 +11870,217 @@ def _render_followup_prompt_context(followup_context: ResearchFollowupContextOut
     ]
     lines = [f"- {label}: {value}" for label, value in sections if normalize_text(value)]
     return "\n".join(lines) if lines else "无"
+
+
+def _followup_resolution_status(*, previous_text: str, current_text: str, enabled: bool) -> str:
+    if not enabled or not normalize_text(previous_text):
+        return "baseline"
+    return "reused" if normalize_text(previous_text) == normalize_text(current_text) else "corrected"
+
+
+def _build_followup_impact_terms(
+    followup_context: ResearchFollowupContextOut,
+    followup_diagnostics: ResearchFollowupDiagnosticsOut,
+) -> list[str]:
+    candidates: list[str] = []
+    candidates.extend(
+        [
+            *followup_diagnostics.rebuilt_clients,
+            *followup_diagnostics.rebuilt_company_anchors,
+            *followup_diagnostics.rebuilt_must_include_terms[:6],
+            followup_diagnostics.planning_focus,
+            *followup_diagnostics.rebuilt_industries,
+            *followup_diagnostics.rebuilt_regions,
+        ]
+    )
+    for value in (
+        followup_context.supplemental_requirements,
+        followup_context.supplemental_context,
+        followup_context.supplemental_evidence,
+    ):
+        normalized = normalize_text(value)
+        if not normalized:
+            continue
+        candidates.extend(_split_followup_research_segments(normalized, limit=4))
+        candidates.extend(_tokenize_for_match(normalized))
+    cleaned: list[str] = []
+    for candidate in candidates:
+        normalized = normalize_text(str(candidate))
+        if not normalized:
+            continue
+        lowered = normalized.lower()
+        if lowered in {token.lower() for token in GENERIC_FOCUS_TOKENS}:
+            continue
+        if _looks_like_source_noise_segment(normalized, raw_value=str(candidate)):
+            continue
+        if len(normalized) <= 1:
+            continue
+        cleaned.append(normalized)
+    return _dedupe_strings(cleaned, 20)
+
+
+def _build_followup_section_impacts(report: ResearchReportDocument) -> list[ResearchFollowupSectionImpactOut]:
+    diagnostics = getattr(report, "followup_diagnostics", None)
+    followup_context = getattr(report, "followup_context", None)
+    if not diagnostics or not diagnostics.enabled or not followup_context:
+        return []
+
+    impact_terms = _build_followup_impact_terms(followup_context, diagnostics)
+    if not impact_terms:
+        return []
+
+    pack_map = {
+        normalize_text(pack.section_title): pack
+        for pack in getattr(getattr(report, "quality_profile", None), "section_retrieval_packs", []) or []
+        if normalize_text(getattr(pack, "section_title", ""))
+    }
+    impacts: list[ResearchFollowupSectionImpactOut] = []
+    for section in report.sections:
+        normalized_title = normalize_text(section.title)
+        section_text = normalize_text(
+            "；".join(
+                [
+                    section.title,
+                    *section.items,
+                    section.evidence_note,
+                    section.insufficiency_summary,
+                    *section.next_verification_steps,
+                ]
+            )
+        ).lower()
+        pack = pack_map.get(normalized_title)
+        pack_text = normalize_text(
+            "；".join(
+                [
+                    pack.query if pack else "",
+                    *(
+                        normalize_text(f"{hit.title} {hit.snippet}")
+                        for hit in (pack.hits[:3] if pack else [])
+                    ),
+                ]
+            )
+        ).lower()
+        matched_inputs: list[str] = []
+        for term in impact_terms:
+            normalized_term = normalize_text(term).lower()
+            if not normalized_term:
+                continue
+            if normalized_term in section_text or normalized_term in pack_text:
+                matched_inputs.append(term)
+        matched_inputs = _dedupe_strings(matched_inputs, 6)
+        has_followup_match = bool(matched_inputs)
+        pack_needs_attention = bool(pack) and pack.status != "ready" and (has_followup_match or pack.official_hit_count > 0)
+        section_needs_attention = section.status != "ready" and has_followup_match
+        if not has_followup_match and not pack_needs_attention and not section_needs_attention:
+            continue
+
+        impact_score = min(len(matched_inputs), 4) * 14
+        if pack:
+            impact_score += min(int(pack.support_score / 5), 20)
+            impact_score += min(pack.official_hit_count, 2) * 8
+            if pack.status != "ready":
+                impact_score += 8
+        if section.status != "ready":
+            impact_score += 6
+        impact_score = min(impact_score, 100)
+        if impact_score >= 64:
+            impact_label = "high"
+        elif impact_score >= 36:
+            impact_label = "medium"
+        else:
+            impact_label = "low"
+
+        if pack and pack.status == "needs_evidence":
+            reason = "追问输入已命中该章节，但公开证据仍不足，需先补证再升级结论。"
+        elif pack and pack.official_hit_count > 0:
+            reason = "追问输入直接命中该章节，且已有官方来源支撑，适合优先重写。"
+        elif has_followup_match:
+            reason = "追问输入与该章节主题直接相关，本轮应优先更新这部分判断。"
+        else:
+            reason = "该章节与二次检索重建范围相关，建议优先复核。"
+
+        impacts.append(
+            ResearchFollowupSectionImpactOut(
+                section_title=section.title,
+                status=section.status,
+                impact_score=impact_score,
+                impact_label=impact_label,
+                reason=reason,
+                matched_inputs=matched_inputs,
+                retrieval_support_score=getattr(pack, "support_score", 0) if pack else 0,
+                retrieval_hit_count=getattr(pack, "hit_count", 0) if pack else 0,
+                official_hit_count=getattr(pack, "official_hit_count", 0) if pack else 0,
+                next_action=(
+                    (pack.next_steps[0] if pack and pack.next_steps else "")
+                    or (section.next_verification_steps[0] if section.next_verification_steps else "")
+                    or "继续补官方源、组织入口与采购时间窗。"
+                ),
+            )
+        )
+    severity_order = {"high": 0, "medium": 1, "low": 2}
+    impacts.sort(
+        key=lambda item: (
+            severity_order.get(item.impact_label, 3),
+            -item.impact_score,
+            -item.official_hit_count,
+            item.section_title,
+        )
+    )
+    return impacts[:5]
+
+
+def _render_followup_section_focus_prompt_context(report: ResearchReportDocument) -> str:
+    impacts = _build_followup_section_impacts(report)
+    if not impacts:
+        return "无"
+    lines = []
+    for impact in impacts:
+        lines.append(
+            " | ".join(
+                [
+                    impact.section_title,
+                    f"impact={impact.impact_label}/{impact.impact_score}",
+                    f"status={impact.status}",
+                    f"matched={ ' / '.join(impact.matched_inputs[:3]) if impact.matched_inputs else 'none' }",
+                    f"support={impact.retrieval_support_score}",
+                    f"next={impact.next_action}",
+                ]
+            )
+        )
+    return "\n".join(f"- {line}" for line in lines)
+
+
+def _enrich_followup_diagnostics(report: ResearchReportResponse) -> ResearchReportResponse:
+    diagnostics = getattr(report, "followup_diagnostics", None)
+    followup_context = getattr(report, "followup_context", None)
+    if not diagnostics or not diagnostics.enabled or not followup_context:
+        return report
+    impacted_sections = _build_followup_section_impacts(report)
+    updated_summary = normalize_text(diagnostics.summary)
+    if impacted_sections:
+        impact_note = f"重点影响 {len(impacted_sections)} 个章节"
+        if impact_note not in updated_summary:
+            updated_summary = "；".join(part for part in [updated_summary, impact_note] if part)
+    return report.model_copy(
+        update={
+            "followup_diagnostics": diagnostics.model_copy(
+                update={
+                    "summary": updated_summary,
+                    "title_resolution": _followup_resolution_status(
+                        previous_text=followup_context.followup_report_title,
+                        current_text=report.report_title,
+                        enabled=diagnostics.enabled,
+                    ),
+                    "summary_resolution": _followup_resolution_status(
+                        previous_text=followup_context.followup_report_summary,
+                        current_text=report.executive_summary,
+                        enabled=diagnostics.enabled,
+                    ),
+                    "impacted_sections": impacted_sections,
+                }
+            )
+        }
+    )
 
 
 def _research_archive_query_text(
@@ -13956,11 +14563,20 @@ def generate_research_report(
         unique_domain_count=provisional_unique_domain_count,
         normalized_entity_count=0,
     )
+    retrieval_correction_profile = build_retrieval_correction_profile(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        query_plan=effective_query_plan,
+        corrective_query_limit=max(4, min(int(runtime["expanded_query_limit"]) + 2, 10)),
+    )
     if (
         len(sources) == 0
         or strict_topic_source_count == 0
         or company_convergence_weak
         or provisional_retrieval_quality == "low"
+        or retrieval_correction_profile.status == "needs_expansion"
     ):
         corrective_triggered = True
         _emit_research_progress(
@@ -13977,6 +14593,10 @@ def generate_research_report(
             include_wechat=payload.include_wechat,
             preferred_wechat_accounts=preferred_wechat_accounts,
             limit=max(4, min(int(runtime["expanded_query_limit"]) + 2, 10)),
+        )
+        corrective_query_plan = _dedupe_strings(
+            [*retrieval_correction_profile.corrective_queries, *corrective_query_plan],
+            max(4, min(int(runtime["expanded_query_limit"]) + 4, 12)),
         )
         corrective_hits: list[SearchHit] = _build_company_seed_hits(seed_companies, keyword=keyword)
         for query in corrective_query_plan:
@@ -14057,6 +14677,55 @@ def generate_research_report(
                 output_language=output_language,
                 scope_hints=scope_hints,
             )
+    if _confirmed_tender_sources(sources):
+        _emit_research_progress(
+            progress_callback,
+            "tender_details",
+            78,
+            _build_progress_message("正在深挖招投标项目明细", keyword=keyword, research_focus=research_focus, mode=research_mode),
+        )
+        tender_detail_sources, tender_detail_queries = _collect_tender_detail_sources(
+            sources,
+            keyword=keyword,
+            research_focus=research_focus,
+            scope_hints=scope_hints,
+            timeout_seconds=int(runtime["search_timeout_seconds"]),
+            result_limit=max(4, int(runtime["search_result_limit"])),
+            selected_limit=4 if research_mode == "fast" else 7,
+            excerpt_chars=settings.research_source_excerpt_chars,
+        )
+        if tender_detail_sources:
+            effective_query_plan = _dedupe_strings(
+                effective_query_plan + tender_detail_queries,
+                max(int(runtime["query_limit"]), int(runtime["expanded_query_limit"])) + 14,
+            )
+            sources = _dedupe_sources([*sources, *tender_detail_sources])
+            sources = _refine_sources_for_report(
+                sources,
+                keyword=keyword,
+                research_focus=research_focus,
+                scope_hints=scope_hints,
+                company_anchor_terms=company_anchor_terms,
+                theme_terms=theme_terms,
+            )
+            scope_hints = _merge_scope_hints(input_scope_hints, _infer_scope_hints(keyword, research_focus, sources))
+            theme_terms = _build_theme_terms(keyword, research_focus, scope_hints)
+            company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
+            source_intelligence = _build_source_intelligence(
+                sources,
+                keyword=keyword,
+                research_focus=research_focus,
+                output_language=output_language,
+                scope_hints=scope_hints,
+            )
+    retrieval_correction_profile = build_retrieval_correction_profile(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        query_plan=effective_query_plan,
+        corrective_query_limit=6,
+    )
     entity_graph = _build_entity_graph(
         sources,
         scope_hints=scope_hints,
@@ -14085,6 +14754,7 @@ def generate_research_report(
         candidate_profile_official_hit_count=candidate_profile_official_hit_count,
         candidate_profile_source_labels=candidate_profile_source_labels,
     )
+    source_diagnostics = source_diagnostics.model_copy(update=retrieval_correction_profile.to_diagnostics_update())
     outline_result = _build_partial_report_result(
         keyword=keyword,
         research_focus=research_focus,
@@ -14103,20 +14773,43 @@ def generate_research_report(
         82,
         _build_progress_message("正在综合多源证据生成研报", keyword=keyword, research_focus=research_focus, mode=research_mode),
     )
-    _emit_research_snapshot(
-        snapshot_callback,
-        _build_partial_report_response(
-            keyword=keyword,
-            research_focus=research_focus,
-            output_language=output_language,
-            research_mode=research_mode,
-            parsed=outline_result,
-            query_plan=effective_query_plan + adapter_query_plan,
-            sources=sources,
-            source_diagnostics=source_diagnostics,
-            entity_graph=entity_graph,
-        ),
+    draft_report = _build_partial_report_response(
+        keyword=keyword,
+        research_focus=research_focus,
+        output_language=output_language,
+        research_mode=research_mode,
+        parsed=outline_result,
+        query_plan=effective_query_plan + adapter_query_plan,
+        sources=sources,
+        source_diagnostics=source_diagnostics,
+        entity_graph=entity_graph,
     )
+    runtime_retrieval_index = _load_runtime_research_retrieval_index(
+        sources=sources,
+        scope_hints=scope_hints,
+    )
+    draft_report_for_followup = draft_report
+    if runtime_retrieval_index.chunks and followup_diagnostics.enabled:
+        draft_report_for_followup = attach_section_retrieval_packs(
+            draft_report,
+            runtime_retrieval_index,
+            limit_per_section=3,
+        )
+    section_retrieval_context = (
+        _render_section_retrieval_prompt_context(
+            draft_report,
+            index=runtime_retrieval_index,
+            limit_per_section=3,
+        )
+        if runtime_retrieval_index.chunks
+        else ""
+    )
+    followup_section_focus_context = (
+        _render_followup_section_focus_prompt_context(draft_report_for_followup)
+        if followup_diagnostics.enabled
+        else "无"
+    )
+    _emit_research_snapshot(snapshot_callback, draft_report)
     source_digest = _render_source_digest(sources)
     source_summary = json.dumps(
         [
@@ -14149,6 +14842,7 @@ def generate_research_report(
             "source_digest": source_digest,
             "followup_context": _render_followup_prompt_context(followup_context),
             "followup_diagnostics": _render_followup_diagnostics_prompt_context(followup_diagnostics),
+            "followup_section_focus_context": followup_section_focus_context,
             "followup_report_title": followup_context.followup_report_title,
             "followup_report_summary": followup_context.followup_report_summary,
             "supplemental_context": followup_context.supplemental_context,
@@ -14164,6 +14858,8 @@ def generate_research_report(
             ),
             "scope_hints": json.dumps(scope_hints, ensure_ascii=False),
             "source_intelligence": json.dumps(source_intelligence, ensure_ascii=False),
+            "section_retrieval_context": section_retrieval_context,
+            "retrieval_correction_context": render_retrieval_correction_context(retrieval_correction_profile),
             "industry_methodology_context": _render_industry_methodology_context(scope_hints),
         },
     )
@@ -14539,5 +15235,14 @@ def generate_research_report(
         generated_at=datetime.now(timezone.utc),
     )
     final_report = _enrich_report_for_delivery(final_report)
+    generation_review = review_generation_grounding(final_report, sources)
+    final_report = final_report.model_copy(
+        update={
+            "source_diagnostics": final_report.source_diagnostics.model_copy(
+                update=generation_review.to_diagnostics_update()
+            )
+        }
+    )
+    final_report = evaluate_and_improve_research_report(final_report, source_documents=sources)
     _emit_research_snapshot(snapshot_callback, final_report)
     return final_report

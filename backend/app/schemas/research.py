@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.items import OutputLanguage
 
@@ -670,6 +670,18 @@ class ResearchSourceDiagnosticsOut(BaseModel):
     normalized_partner_count: int = 0
     expansion_triggered: bool = False
     corrective_triggered: bool = False
+    correction_status: Literal["ready", "needs_filtering", "needs_expansion"] = "ready"
+    retrieval_relevance_score: int = 0
+    accepted_source_count: int = 0
+    ambiguous_source_count: int = 0
+    rejected_source_count: int = 0
+    corrective_query_plan: list[str] = Field(default_factory=list)
+    correction_notes: list[str] = Field(default_factory=list)
+    generation_grounding_score: int = 0
+    response_quality_score: int = 0
+    supported_claims: list[str] = Field(default_factory=list)
+    unsupported_claims: list[str] = Field(default_factory=list)
+    generation_review_notes: list[str] = Field(default_factory=list)
     candidate_profile_companies: list[str] = Field(default_factory=list)
     candidate_profile_hit_count: int = 0
     candidate_profile_official_hit_count: int = 0
@@ -690,6 +702,19 @@ class ResearchFollowupContextOut(BaseModel):
     supplemental_requirements: str = ""
 
 
+class ResearchFollowupSectionImpactOut(BaseModel):
+    section_title: str
+    status: Literal["ready", "degraded", "needs_evidence"] = "needs_evidence"
+    impact_score: int = 0
+    impact_label: Literal["high", "medium", "low"] = "low"
+    reason: str = ""
+    matched_inputs: list[str] = Field(default_factory=list)
+    retrieval_support_score: int = 0
+    retrieval_hit_count: int = 0
+    official_hit_count: int = 0
+    next_action: str = ""
+
+
 class ResearchFollowupDiagnosticsOut(BaseModel):
     enabled: bool = False
     input_sections: list[str] = Field(default_factory=list)
@@ -704,6 +729,9 @@ class ResearchFollowupDiagnosticsOut(BaseModel):
     rebuilt_company_anchors: list[str] = Field(default_factory=list)
     rebuilt_must_include_terms: list[str] = Field(default_factory=list)
     rebuilt_exclusion_terms: list[str] = Field(default_factory=list)
+    title_resolution: Literal["baseline", "reused", "corrected"] = "baseline"
+    summary_resolution: Literal["baseline", "reused", "corrected"] = "baseline"
+    impacted_sections: list[ResearchFollowupSectionImpactOut] = Field(default_factory=list)
 
 
 class ResearchReportSectionOut(BaseModel):
@@ -857,6 +885,10 @@ class ResearchTenderProjectOut(BaseModel):
     publish_date: str = ""
     amount: str = ""
     winning_vendor: str = ""
+    bidder_candidates: list[str] = Field(default_factory=list)
+    tender_agency: str = ""
+    project_code: str = ""
+    buyer_contact: str = ""
     source_title: str = ""
     source_url: str = ""
     source_tier: Literal["official", "media", "aggregate"] = "media"
@@ -879,6 +911,11 @@ class ResearchMarketIntelligencePackOut(BaseModel):
     window_start: str = ""
     window_end: str = ""
     source_scope_summary: str = ""
+    source_support_score: int = 0
+    validated_source_count: int = 0
+    ambiguous_source_count: int = 0
+    rejected_source_count: int = 0
+    corrective_queries: list[str] = Field(default_factory=list)
     tender_projects: list[ResearchTenderProjectOut] = Field(default_factory=list)
     tender_keywords: list[str] = Field(default_factory=list)
     product_catalog: list[ResearchProductRequirementOut] = Field(default_factory=list)
@@ -897,6 +934,9 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     scenario: str = ""
     target_customer: str = ""
     vertical_scene: str = ""
+    source_support_score: int = 0
+    evidence_policy: str = ""
+    grounding_checks: list[str] = Field(default_factory=list)
     clarification_questions: list[str] = Field(default_factory=list)
     intelligence_summary: list[str] = Field(default_factory=list)
     feasibility_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
@@ -933,6 +973,54 @@ class ResearchQualityProfileOut(BaseModel):
     next_actions: list[str] = Field(default_factory=list)
 
 
+class ResearchReportEvaluationMetricOut(BaseModel):
+    key: str
+    label: str
+    score: int = 0
+    threshold: int = 70
+    status: Literal["pass", "watch", "fail"] = "watch"
+    summary: str = ""
+    evidence: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    improvement_actions: list[str] = Field(default_factory=list)
+
+
+class ResearchReportSelfImprovementOut(BaseModel):
+    triggered: bool = False
+    round_count: int = 0
+    strategies: list[
+        Literal[
+            "expanded_search",
+            "deeper_reasoning",
+            "cross_source_consensus",
+            "industry_analogy",
+            "structured_entity_enrichment",
+        ]
+    ] = Field(default_factory=list)
+    before_score: int = 0
+    after_score: int = 0
+    actions: list[str] = Field(default_factory=list)
+    added_entities: list[str] = Field(default_factory=list)
+    corrective_queries: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class ResearchReportEvaluationProfileOut(BaseModel):
+    framework: Literal["deepeval_style_custom"] = "deepeval_style_custom"
+    framework_label: str = "DeepEval 风格自定义 RAG 评估"
+    overall_score: int = 0
+    status: Literal["pass", "watch", "fail"] = "watch"
+    entity_recall_score: int = 0
+    procurement_entity_recall_score: int = 0
+    metrics: list[ResearchReportEvaluationMetricOut] = Field(default_factory=list)
+    recalled_entities: list[str] = Field(default_factory=list)
+    missing_entities: list[str] = Field(default_factory=list)
+    procurement_entities: list[str] = Field(default_factory=list)
+    missing_procurement_entities: list[str] = Field(default_factory=list)
+    corrective_queries: list[str] = Field(default_factory=list)
+    self_improvement: ResearchReportSelfImprovementOut = Field(default_factory=ResearchReportSelfImprovementOut)
+
+
 class ResearchTrackingTopicReportVersionOut(BaseModel):
     id: str
     entry_id: str | None = None
@@ -947,6 +1035,8 @@ class ResearchTrackingTopicReportVersionOut(BaseModel):
 
 
 class ResearchReportDocument(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
     keyword: str
     research_focus: str | None = None
     followup_context: ResearchFollowupContextOut = Field(default_factory=ResearchFollowupContextOut)
@@ -993,6 +1083,7 @@ class ResearchReportDocument(BaseModel):
     technical_appendix: ResearchTechnicalAppendixOut = Field(default_factory=ResearchTechnicalAppendixOut)
     review_queue: list[ResearchReviewQueueItemOut] = Field(default_factory=list)
     quality_profile: ResearchQualityProfileOut = Field(default_factory=ResearchQualityProfileOut)
+    evaluation_profile: ResearchReportEvaluationProfileOut = Field(default_factory=ResearchReportEvaluationProfileOut)
     market_intelligence: ResearchMarketIntelligencePackOut = Field(default_factory=ResearchMarketIntelligencePackOut)
     solution_delivery_pack: ResearchSolutionDeliveryPackOut = Field(default_factory=ResearchSolutionDeliveryPackOut)
 
@@ -1138,6 +1229,9 @@ class ResearchTrackingTopicTimelineEventOut(BaseModel):
     roles: list[ResearchCompareRole] = Field(default_factory=list)
     preview_names: list[str] = Field(default_factory=list)
     linked_report_diff_summary: list[str] = Field(default_factory=list)
+    followup_title_resolution: str = ""
+    followup_summary_resolution: str = ""
+    followup_impacted_sections: list[str] = Field(default_factory=list)
 
 
 class ResearchActionPlanRequest(BaseModel):

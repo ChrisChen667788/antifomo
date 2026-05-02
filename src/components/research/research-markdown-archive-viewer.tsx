@@ -21,8 +21,10 @@ import {
 } from "@/lib/research-markdown-archive-recap";
 import {
   archiveDeliveryMetricToneClassName,
+  extractArchiveFollowupImpactSummary,
   extractArchiveOfflineEvaluationSnapshot,
   extractArchiveSectionDiagnosticsSummary,
+  type ArchiveFollowupImpactSummary,
   type ArchiveOfflineEvaluationSnapshot,
   type ArchiveSectionDiagnosticsSummary,
   buildArchiveDeliveryDigest,
@@ -117,6 +119,10 @@ function offlineStatusLabel(status: string) {
   if (status === "good") return "达标";
   if (status === "watch") return "观察";
   return "偏弱";
+}
+
+function followupResolutionLabel(value: string | null | undefined) {
+  return String(value || "").trim() || "无";
 }
 
 function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
@@ -542,6 +548,65 @@ function ArchiveDeliveryDigestCard({
   );
 }
 
+function ArchiveFollowupImpactCard({
+  currentSummary,
+  compareSummary,
+}: {
+  currentSummary: ArchiveFollowupImpactSummary | null;
+  compareSummary: ArchiveFollowupImpactSummary | null;
+}) {
+  if (!currentSummary && !compareSummary) {
+    return null;
+  }
+  return (
+    <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Follow-up Routing</p>
+          <h4 className="mt-2 text-base font-semibold text-slate-900">追问影响章节对照</h4>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {[
+          { key: "current", label: "当前归档", tone: "sky", value: currentSummary },
+          { key: "compare", label: "对照归档", tone: "amber", value: compareSummary },
+        ].map((item) => (
+          <div
+            key={item.key}
+            className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-sky-100 bg-sky-50/70" : "border-amber-100 bg-amber-50/70"}`}
+          >
+            <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-sky-600" : "text-amber-600"}`}>
+              {item.label}
+            </p>
+            {item.value ? (
+              <>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                    标题 · {followupResolutionLabel(item.value.currentTitleResolution)}
+                  </span>
+                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                    摘要 · {followupResolutionLabel(item.value.currentSummaryResolution)}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
+                  重点影响章节 · {item.value.currentImpactedSections.length ? item.value.currentImpactedSections.slice(0, 4).join(" / ") : "无"}
+                </p>
+                {(item.value.baselineTitleResolution || item.value.baselineSummaryResolution || item.value.baselineImpactedSections.length) ? (
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    基线参考 · 标题 {followupResolutionLabel(item.value.baselineTitleResolution)} / 摘要 {followupResolutionLabel(item.value.baselineSummaryResolution)} / 章节 {item.value.baselineImpactedSections.length ? item.value.baselineImpactedSections.slice(0, 3).join(" / ") : "无"}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">没有可用追问路由摘要。</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 function ArchiveCandidateCard({
   archive,
   baseArchiveId,
@@ -599,6 +664,8 @@ function ArchiveComparisonSummary({
   comparison,
   currentSectionSummary,
   compareSectionSummary,
+  currentFollowupSummary,
+  compareFollowupSummary,
   currentOfflineSnapshot,
   compareOfflineSnapshot,
   onExportRecapMarkdown,
@@ -615,6 +682,8 @@ function ArchiveComparisonSummary({
   comparison: ArchiveComparison;
   currentSectionSummary: ArchiveSectionDiagnosticsSummary | null;
   compareSectionSummary: ArchiveSectionDiagnosticsSummary | null;
+  currentFollowupSummary: ArchiveFollowupImpactSummary | null;
+  compareFollowupSummary: ArchiveFollowupImpactSummary | null;
   currentOfflineSnapshot: ArchiveOfflineEvaluationSnapshot | null;
   compareOfflineSnapshot: ArchiveOfflineEvaluationSnapshot | null;
   onExportRecapMarkdown: () => void;
@@ -732,12 +801,12 @@ function ArchiveComparisonSummary({
         </div>
       </div>
 
-      {(currentSectionSummary || compareSectionSummary || currentOfflineSnapshot || compareOfflineSnapshot) ? (
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+      {(currentSectionSummary || compareSectionSummary || currentFollowupSummary || compareFollowupSummary || currentOfflineSnapshot || compareOfflineSnapshot) ? (
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
           <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Section Diagnostics</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">章节检查</p>
                 <h4 className="mt-2 text-base font-semibold text-slate-900">章节风险对照</h4>
               </div>
             </div>
@@ -745,7 +814,7 @@ function ArchiveComparisonSummary({
               <div className="rounded-[20px] border border-sky-100 bg-sky-50/70 p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-sky-600">当前归档</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                  待补证 {currentSectionSummary?.mode === "compare" ? currentSectionSummary.weakSectionCount : currentSectionSummary?.currentWeakSectionCount || 0}
+                  待核验 {currentSectionSummary?.mode === "compare" ? currentSectionSummary.weakSectionCount : currentSectionSummary?.currentWeakSectionCount || 0}
                   {" / "}配额风险 {currentSectionSummary?.quotaRiskSectionCount || 0}
                   {" / "}矛盾 {currentSectionSummary?.contradictionSectionCount || 0}
                 </p>
@@ -756,7 +825,7 @@ function ArchiveComparisonSummary({
               <div className="rounded-[20px] border border-amber-100 bg-amber-50/70 p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">对照归档</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                  待补证 {compareSectionSummary?.mode === "compare" ? compareSectionSummary.weakSectionCount : compareSectionSummary?.currentWeakSectionCount || 0}
+                  待核验 {compareSectionSummary?.mode === "compare" ? compareSectionSummary.weakSectionCount : compareSectionSummary?.currentWeakSectionCount || 0}
                   {" / "}配额风险 {compareSectionSummary?.quotaRiskSectionCount || 0}
                   {" / "}矛盾 {compareSectionSummary?.contradictionSectionCount || 0}
                 </p>
@@ -767,11 +836,16 @@ function ArchiveComparisonSummary({
             </div>
           </article>
 
+          <ArchiveFollowupImpactCard
+            currentSummary={currentFollowupSummary}
+            compareSummary={compareFollowupSummary}
+          />
+
           <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Offline Regression</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">离线回归快照对照</h4>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">质量复核</p>
+                <h4 className="mt-2 text-base font-semibold text-slate-900">质量复核快照对照</h4>
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -835,6 +909,18 @@ function ArchiveComparisonSummary({
               </div>
             </div>
           ) : null}
+          {currentFollowupSummary?.currentImpactedSections.length ? (
+            <div className="mt-4">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-sky-500">追问影响章节</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {currentFollowupSummary.currentImpactedSections.slice(0, 4).map((section) => (
+                  <span key={`current-followup-${section}`} className="rounded-full bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
+                    {section}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-[24px] border border-white/70 bg-white/85 p-5">
@@ -850,6 +936,18 @@ function ArchiveComparisonSummary({
                 {comparison.removedSections.slice(0, 5).map((section) => (
                   <span key={`compare-removed-${section.key}`} className="rounded-full bg-rose-50 px-2.5 py-1 text-xs text-rose-700">
                     {section.title}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {compareFollowupSummary?.currentImpactedSections.length ? (
+            <div className="mt-4">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-amber-500">追问影响章节</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {compareFollowupSummary.currentImpactedSections.slice(0, 4).map((section) => (
+                  <span key={`compare-followup-${section}`} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700">
+                    {section}
                   </span>
                 ))}
               </div>
@@ -961,6 +1059,8 @@ export function ResearchMarkdownArchiveViewer({
   const compareArchiveDigest = compareArchive ? buildArchiveDeliveryDigest(compareArchive) : null;
   const currentSectionSummary = extractArchiveSectionDiagnosticsSummary(archive.metadata_payload);
   const compareSectionSummary = compareArchive ? extractArchiveSectionDiagnosticsSummary(compareArchive.metadata_payload) : null;
+  const currentFollowupSummary = extractArchiveFollowupImpactSummary(archive.metadata_payload);
+  const compareFollowupSummary = compareArchive ? extractArchiveFollowupImpactSummary(compareArchive.metadata_payload) : null;
   const currentOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(archive.metadata_payload);
   const compareOfflineSnapshot = compareArchive ? extractArchiveOfflineEvaluationSnapshot(compareArchive.metadata_payload) : null;
 
@@ -1104,6 +1204,14 @@ export function ResearchMarkdownArchiveViewer({
             compareMetadata.offline_evaluation_snapshot && typeof compareMetadata.offline_evaluation_snapshot === "object"
               ? compareMetadata.offline_evaluation_snapshot
               : {},
+          current_followup_impact_summary:
+            archiveMetadata.followup_impact_summary && typeof archiveMetadata.followup_impact_summary === "object"
+              ? archiveMetadata.followup_impact_summary
+              : {},
+          compare_followup_impact_summary:
+            compareMetadata.followup_impact_summary && typeof compareMetadata.followup_impact_summary === "object"
+              ? compareMetadata.followup_impact_summary
+              : {},
           current_linked_report_diff_status:
             typeof archiveMetadata.linked_report_diff_status === "string" ? archiveMetadata.linked_report_diff_status : "",
           compare_linked_report_diff_status:
@@ -1216,6 +1324,8 @@ export function ResearchMarkdownArchiveViewer({
             comparison={comparison}
             currentSectionSummary={currentSectionSummary}
             compareSectionSummary={compareSectionSummary}
+            currentFollowupSummary={currentFollowupSummary}
+            compareFollowupSummary={compareFollowupSummary}
             currentOfflineSnapshot={currentOfflineSnapshot}
             compareOfflineSnapshot={compareOfflineSnapshot}
             onExportRecapMarkdown={handleExportCompareRecapMarkdown}

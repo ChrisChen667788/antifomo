@@ -47,7 +47,7 @@ function retrievalQualityLabel(level: string | null | undefined) {
 function evidenceModeMeta(mode: string | null | undefined) {
   if (mode === "strong") return { label: "强证据", className: "bg-emerald-50 text-emerald-700" };
   if (mode === "provisional") return { label: "可用初版", className: "bg-amber-50 text-amber-700" };
-  return { label: "兜底候选", className: "bg-slate-100 text-slate-600" };
+  return { label: "待核实", className: "bg-slate-100 text-slate-600" };
 }
 
 function normalizeList(values: unknown): string[] {

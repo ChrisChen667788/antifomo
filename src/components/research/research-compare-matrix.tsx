@@ -569,7 +569,7 @@ export function ResearchCompareMatrix({
                 ) : null}
                 {isLegacyBackfilledSnapshot ? (
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
-                    旧快照已补冻结
+                    旧快照已补齐复核信息
                   </span>
                 ) : hasFrozenSnapshotMetadata ? (
                   <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
@@ -579,9 +579,9 @@ export function ResearchCompareMatrix({
               </div>
               {isLegacyBackfilledSnapshot ? (
                 <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800">
-                  旧快照已补冻结：该快照原始 metadata 缺失，系统已
+                  旧快照已补齐复核信息：该快照原始信息不完整，已
                   {snapshotMetadataBackfilledAtLabel ? `于 ${snapshotMetadataBackfilledAtLabel} ` : ""}
-                  补写章节证据诊断和离线回归快照；当前页面和导出文件都会固定使用这份补冻结时点。
+                  补充章节依据检查和质量复核；当前页面和导出文件都会固定使用这份复核结果。
                 </div>
               ) : null}
             </div>
@@ -712,7 +712,7 @@ export function ResearchCompareMatrix({
         </div>
         {isLegacyBackfilledSnapshot ? (
           <div className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-800">
-            导出说明 · 旧快照已补冻结。导出 Markdown / PDF / Exec Brief 会在文件头部写入补冻结说明，并沿用补冻结时点的 evidence appendix、section diagnostics 与 offline regression snapshot。
+            导出说明：旧快照已补齐复核信息，导出文件会沿用当前展示的快照内容。
           </div>
         ) : null}
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -728,8 +728,8 @@ export function ResearchCompareMatrix({
           <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Section Diagnostics</p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-900">章节证据诊断</h3>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">章节检查</p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">章节依据检查</h3>
               </div>
               <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
                 来源研报 · {effectiveSectionDiagnosticsSummary.sourceReportCount}
@@ -737,7 +737,7 @@ export function ResearchCompareMatrix({
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">待补证章节</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">待核验章节</p>
                 <p className="mt-2 text-2xl font-semibold text-amber-700">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
               </div>
               <div className="rounded-[20px] border border-rose-100 bg-rose-50/80 p-3">
@@ -757,9 +757,9 @@ export function ResearchCompareMatrix({
           <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Offline Regression</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">质量复核</p>
                 <h3 className="mt-2 text-lg font-semibold text-slate-900">
-                  {isLegacyBackfilledSnapshot ? "补冻结离线回归" : hasFrozenSnapshotMetadata ? "快照时点离线回归" : "主库离线回归"}
+                  {isLegacyBackfilledSnapshot ? "旧快照复核" : hasFrozenSnapshotMetadata ? "快照复核" : "当前复核"}
                 </h3>
               </div>
               <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
@@ -790,16 +790,16 @@ export function ResearchCompareMatrix({
                 ) : null}
                 <p className="mt-3 text-xs text-slate-500">
                   {isLegacyBackfilledSnapshot
-                    ? `旧快照已补冻结；该面板展示补冻结时点的回归快照${
+                    ? `旧快照已补齐复核信息；该面板展示当时的复核结果${
                         snapshotMetadataBackfilledAtLabel ? `（${snapshotMetadataBackfilledAtLabel}）` : ""
                       }。`
                     : hasFrozenSnapshotMetadata
-                      ? "该面板优先展示 snapshot 保存时冻结的回归快照。"
-                      : "该面板反映的是当前主库离线回归结果；老 snapshot 若未冻结 metadata，仍会读取当前值。"}
+                      ? "该面板优先展示快照保存时的复核结果。"
+                      : "该面板展示当前复核结果；旧快照若未保存完整信息，会读取当前值。"}
                 </p>
               </>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">当前没有可展示的离线回归结果。</p>
+              <p className="mt-4 text-sm text-slate-500">当前没有可展示的复核结果。</p>
             )}
           </article>
         </div>
@@ -938,12 +938,12 @@ export function ResearchCompareMatrix({
                     <div className="mt-3 flex flex-wrap gap-2">
                       {row.candidateProfileCompanies.length ? (
                         <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
-                          候选补证公司 {row.candidateProfileCompanies.length}
+                          建议核验公司 {row.candidateProfileCompanies.length}
                         </span>
                       ) : null}
                       {row.candidateProfileHitCount > 0 ? (
                         <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
-                          补证公开源 {row.candidateProfileHitCount}
+                          公开来源 {row.candidateProfileHitCount}
                         </span>
                       ) : null}
                       {row.candidateProfileOfficialHitCount > 0 ? (
@@ -1027,7 +1027,7 @@ export function ResearchCompareMatrix({
                 </div>
                 <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                    {t("research.compareEvidence", "证据链接")}
+                    {t("research.compareEvidence", "依据链接")}
                   </p>
                   <div className="mt-3 space-y-2">
                     {row.evidenceLinks.length ? (
@@ -1068,7 +1068,7 @@ export function ResearchCompareMatrix({
                         </div>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoEvidence", "暂无可直接打开的证据链接")}</span>
+                      <span className="text-sm text-slate-500">{t("research.compareNoEvidence", "暂无可直接打开的依据链接")}</span>
                     )}
                   </div>
                 </div>

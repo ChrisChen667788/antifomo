@@ -3,8 +3,10 @@ import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import {
   buildArchiveDeliveryDigest,
   buildArchiveEvidenceDeltaLines,
+  buildArchiveFollowupImpactDeltaLines,
   buildArchiveOfflineEvaluationDeltaLines,
   buildArchiveSectionDiagnosticsDeltaLines,
+  extractArchiveFollowupImpactSummary,
   extractArchiveOfflineEvaluationSnapshot,
   extractArchiveSectionDiagnosticsSummary,
   getArchiveMetadata,
@@ -270,6 +272,9 @@ export function buildResearchMarkdownArchiveCompareSummaryLines(
   buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive).forEach((line) => {
     lines.push(line);
   });
+  buildArchiveFollowupImpactDeltaLines(archive, compareArchive).forEach((line) => {
+    lines.push(line);
+  });
   return lines.slice(0, 6);
 }
 
@@ -326,6 +331,8 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
   const compareSectionSummary = extractArchiveSectionDiagnosticsSummary(compareMetadata);
   const currentOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(currentMetadata);
   const compareOfflineSnapshot = extractArchiveOfflineEvaluationSnapshot(compareMetadata);
+  const currentFollowupSummary = extractArchiveFollowupImpactSummary(currentMetadata);
+  const compareFollowupSummary = extractArchiveFollowupImpactSummary(compareMetadata);
   const lines = [
     "# 历史归档差异复盘报告",
     "",
@@ -395,18 +402,18 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
   }
 
   if (sectionDeltaLines.length || currentSectionSummary || compareSectionSummary) {
-    lines.push("", "## Section Diagnostics Delta", "");
+    lines.push("", "## 章节依据变化", "");
     sectionDeltaLines.forEach((line) => {
       lines.push(`- ${line}`);
     });
     if (currentSectionSummary) {
       lines.push("");
-      lines.push("### 当前归档章节诊断", "");
+      lines.push("### 当前归档章节检查", "");
       if (currentSectionSummary.mode === "compare") {
-        lines.push(`- 待补证章节: ${currentSectionSummary.weakSectionCount}`);
+        lines.push(`- 待核验章节: ${currentSectionSummary.weakSectionCount}`);
       } else {
-        lines.push(`- 对照版本待补证章节: ${currentSectionSummary.currentWeakSectionCount}`);
-        lines.push(`- 新增待补证章节: ${formatInlineList(currentSectionSummary.newlyWeakSections, "无", 4)}`);
+        lines.push(`- 对照版本待核验章节: ${currentSectionSummary.currentWeakSectionCount}`);
+        lines.push(`- 新增待核验章节: ${formatInlineList(currentSectionSummary.newlyWeakSections, "无", 4)}`);
       }
       lines.push(`- 配额未达标章节: ${currentSectionSummary.quotaRiskSectionCount}`);
       lines.push(`- 矛盾章节: ${currentSectionSummary.contradictionSectionCount}`);
@@ -414,12 +421,12 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
     }
     if (compareSectionSummary) {
       lines.push("");
-      lines.push("### 对照归档章节诊断", "");
+      lines.push("### 对照归档章节检查", "");
       if (compareSectionSummary.mode === "compare") {
-        lines.push(`- 待补证章节: ${compareSectionSummary.weakSectionCount}`);
+        lines.push(`- 待核验章节: ${compareSectionSummary.weakSectionCount}`);
       } else {
-        lines.push(`- 对照版本待补证章节: ${compareSectionSummary.currentWeakSectionCount}`);
-        lines.push(`- 新增待补证章节: ${formatInlineList(compareSectionSummary.newlyWeakSections, "无", 4)}`);
+        lines.push(`- 对照版本待核验章节: ${compareSectionSummary.currentWeakSectionCount}`);
+        lines.push(`- 新增待核验章节: ${formatInlineList(compareSectionSummary.newlyWeakSections, "无", 4)}`);
       }
       lines.push(`- 配额未达标章节: ${compareSectionSummary.quotaRiskSectionCount}`);
       lines.push(`- 矛盾章节: ${compareSectionSummary.contradictionSectionCount}`);
@@ -428,13 +435,13 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
   }
 
   if (offlineDeltaLines.length || currentOfflineSnapshot || compareOfflineSnapshot) {
-    lines.push("", "## Offline Regression Delta", "");
+    lines.push("", "## 质量复核变化", "");
     offlineDeltaLines.forEach((line) => {
       lines.push(`- ${line}`);
     });
     if (currentOfflineSnapshot) {
       lines.push("");
-      lines.push("### 当前归档离线回归", "");
+      lines.push("### 当前归档质量复核", "");
       currentOfflineSnapshot.metrics.slice(0, 3).forEach((metric) => {
         lines.push(
           `- ${metric.label}: ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${Math.round(metric.benchmark * 100)}%）`,
@@ -449,7 +456,7 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
     }
     if (compareOfflineSnapshot) {
       lines.push("");
-      lines.push("### 对照归档离线回归", "");
+      lines.push("### 对照归档质量复核", "");
       compareOfflineSnapshot.metrics.slice(0, 3).forEach((metric) => {
         lines.push(
           `- ${metric.label}: ${metric.percent}%（${offlineStatusLabel(metric.status)}；当前 ${metric.numerator}/${metric.denominator}；基准 ${Math.round(metric.benchmark * 100)}%）`,
@@ -461,6 +468,23 @@ export function buildResearchMarkdownArchiveCompareMarkdown(
       if (compareOfflineSnapshot.weakestReports.length) {
         lines.push(`- 弱样本: ${formatInlineList(compareOfflineSnapshot.weakestReports, "无", 3)}`);
       }
+    }
+  }
+
+  if (currentFollowupSummary || compareFollowupSummary) {
+    lines.push("", "## Follow-up 影响章节", "");
+    if (currentFollowupSummary) {
+      lines.push("### 当前归档追问路由", "");
+      lines.push(`- 标题处理: ${currentFollowupSummary.currentTitleResolution || "无"}`);
+      lines.push(`- 摘要处理: ${currentFollowupSummary.currentSummaryResolution || "无"}`);
+      lines.push(`- 重点影响章节: ${formatInlineList(currentFollowupSummary.currentImpactedSections, "无", 4)}`);
+    }
+    if (compareFollowupSummary) {
+      lines.push("");
+      lines.push("### 对照归档追问路由", "");
+      lines.push(`- 标题处理: ${compareFollowupSummary.currentTitleResolution || "无"}`);
+      lines.push(`- 摘要处理: ${compareFollowupSummary.currentSummaryResolution || "无"}`);
+      lines.push(`- 重点影响章节: ${formatInlineList(compareFollowupSummary.currentImpactedSections, "无", 4)}`);
     }
   }
 
@@ -533,6 +557,8 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
   const evidenceDeltaLines = buildArchiveEvidenceDeltaLines(archive, compareArchive);
   const sectionDeltaLines = buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive);
   const offlineDeltaLines = buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive);
+  const currentFollowupSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(archive));
+  const compareFollowupSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(compareArchive));
   const lines = [
     "# Archive Diff Exec Brief",
     "",
@@ -555,13 +581,13 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
     if (currentDigest) {
       lines.push(`- 当前归档信号: ${currentDigest.metrics.map((metric) => `${metric.label} ${metric.value}`).join(" / ")}`);
       if (currentDigest.outstandingItems.length) {
-        lines.push(`- 当前待补证: ${formatInlineList(currentDigest.outstandingItems, "无", 4)}`);
+        lines.push(`- 当前待核验: ${formatInlineList(currentDigest.outstandingItems, "无", 4)}`);
       }
     }
     if (compareDigest) {
       lines.push(`- 对照归档信号: ${compareDigest.metrics.map((metric) => `${metric.label} ${metric.value}`).join(" / ")}`);
       if (compareDigest.outstandingItems.length) {
-        lines.push(`- 对照待补证: ${formatInlineList(compareDigest.outstandingItems, "无", 4)}`);
+        lines.push(`- 对照待核验: ${formatInlineList(compareDigest.outstandingItems, "无", 4)}`);
       }
     }
   }
@@ -578,6 +604,20 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
     offlineDeltaLines.slice(0, 3).forEach((line) => {
       lines.push(`- ${line}`);
     });
+  }
+
+  if (currentFollowupSummary || compareFollowupSummary) {
+    lines.push("", "## Follow-up 影响章节", "");
+    if (currentFollowupSummary) {
+      lines.push(
+        `- 当前归档追问路由: 标题 ${currentFollowupSummary.currentTitleResolution || "无"}；摘要 ${currentFollowupSummary.currentSummaryResolution || "无"}；影响章节 ${formatInlineList(currentFollowupSummary.currentImpactedSections, "无", 4)}`,
+      );
+    }
+    if (compareFollowupSummary) {
+      lines.push(
+        `- 对照归档追问路由: 标题 ${compareFollowupSummary.currentTitleResolution || "无"}；摘要 ${compareFollowupSummary.currentSummaryResolution || "无"}；影响章节 ${formatInlineList(compareFollowupSummary.currentImpactedSections, "无", 4)}`,
+      );
+    }
   }
 
   lines.push("", "## 结构变化焦点", "");
@@ -602,9 +642,9 @@ export function buildResearchMarkdownArchiveCompareExecBrief(
   lines.push(
     `- 优先复核 ${formatInlineList(
       currentDigest?.outstandingItems || compareDigest?.outstandingItems || [],
-      "暂无明显待补证对象",
+      "暂无明显待核验对象",
       3,
-    )} 这类仍缺少直接证据支撑的对象或字段。`,
+    )} 这类仍缺少直接依据支撑的对象或字段。`,
   );
   if (comparison.changedSections.length) {
     lines.push(`- 重点回看 ${formatInlineList(comparison.changedSections.map((section) => section.title), "无", 3)} 的结论变化，决定是否进入正式对外版本。`);
@@ -623,6 +663,8 @@ export function buildResearchMarkdownArchiveComparePlainText(
   const evidenceDeltaLines = buildArchiveEvidenceDeltaLines(archive, compareArchive);
   const sectionDeltaLines = buildArchiveSectionDiagnosticsDeltaLines(archive, compareArchive);
   const offlineDeltaLines = buildArchiveOfflineEvaluationDeltaLines(archive, compareArchive);
+  const currentFollowupSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(archive));
+  const compareFollowupSummary = extractArchiveFollowupImpactSummary(getArchiveMetadata(compareArchive));
   const lines = [
     "历史归档差异复盘报告",
     `导出时间: ${formatDateTimeStamp(generatedAt)}`,
@@ -650,7 +692,7 @@ export function buildResearchMarkdownArchiveComparePlainText(
         lines.push(note);
       });
       if (currentDigest.outstandingItems.length) {
-        lines.push(`当前待补证: ${formatInlineList(currentDigest.outstandingItems, "无", 5)}`);
+        lines.push(`当前待核验: ${formatInlineList(currentDigest.outstandingItems, "无", 5)}`);
       }
     }
     if (compareDigest) {
@@ -659,7 +701,7 @@ export function buildResearchMarkdownArchiveComparePlainText(
         lines.push(note);
       });
       if (compareDigest.outstandingItems.length) {
-        lines.push(`对照待补证: ${formatInlineList(compareDigest.outstandingItems, "无", 5)}`);
+        lines.push(`对照待核验: ${formatInlineList(compareDigest.outstandingItems, "无", 5)}`);
       }
     }
   }
@@ -676,6 +718,18 @@ export function buildResearchMarkdownArchiveComparePlainText(
     offlineDeltaLines.forEach((line) => {
       lines.push(line);
     });
+  }
+
+  if (currentFollowupSummary || compareFollowupSummary) {
+    lines.push("", "Follow-up 影响章节");
+    if (currentFollowupSummary) {
+      lines.push(`当前归档追问路由: 标题 ${currentFollowupSummary.currentTitleResolution || "无"} / 摘要 ${currentFollowupSummary.currentSummaryResolution || "无"}`);
+      lines.push(`当前影响章节: ${formatInlineList(currentFollowupSummary.currentImpactedSections, "无", 4)}`);
+    }
+    if (compareFollowupSummary) {
+      lines.push(`对照归档追问路由: 标题 ${compareFollowupSummary.currentTitleResolution || "无"} / 摘要 ${compareFollowupSummary.currentSummaryResolution || "无"}`);
+      lines.push(`对照影响章节: ${formatInlineList(compareFollowupSummary.currentImpactedSections, "无", 4)}`);
+    }
   }
 
   if (comparison.changedSections.length) {

@@ -87,6 +87,33 @@ export interface ResearchTopicSectionDiagnosticsSummary {
   highlightedSections: string[];
 }
 
+export interface ResearchTopicFollowupImpactExportSummary {
+  baselineTitleResolution: string;
+  currentTitleResolution: string;
+  baselineSummaryResolution: string;
+  currentSummaryResolution: string;
+  baselineImpactedSections: string[];
+  currentImpactedSections: string[];
+}
+
+type ResearchTopicFollowupImpactRow = {
+  sectionTitle: string;
+  impactLabel: string;
+  impactScore: number;
+  reason: string;
+  nextAction: string;
+  matchedInputs: string[];
+};
+
+type ResearchTopicFollowupImpactSummary = {
+  baselineTitleResolution: string;
+  currentTitleResolution: string;
+  baselineSummaryResolution: string;
+  currentSummaryResolution: string;
+  baselineRows: ResearchTopicFollowupImpactRow[];
+  currentRows: ResearchTopicFollowupImpactRow[];
+};
+
 type ResearchTopicWeakSection = {
   title: string;
   status: string;
@@ -237,6 +264,54 @@ function formatContributionRows(rows: ResearchTopicRecapSourceContributionRow[])
     .slice(0, 3)
     .map((row) => `${row.label} ${row.percent}%`)
     .join(" / ");
+}
+
+function formatFollowupResolution(value: string | null | undefined): string {
+  if (value === "corrected") return "已按追问纠偏";
+  if (value === "reused") return "沿用基线";
+  if (value === "baseline") return "基线生成";
+  return "无";
+}
+
+function extractFollowupImpactRows(version: ApiResearchTrackingTopicVersionDetail | null): ResearchTopicFollowupImpactRow[] {
+  const impacts = version?.report?.followup_diagnostics?.impacted_sections || [];
+  return impacts.slice(0, 4).map((impact) => ({
+    sectionTitle: normalizeText(impact.section_title) || "未命名章节",
+    impactLabel: normalizeText(impact.impact_label) || "low",
+    impactScore: Number(impact.impact_score || 0),
+    reason: trimText(impact.reason || "", 96),
+    nextAction: trimText(impact.next_action || "", 96),
+    matchedInputs: uniqueTake((impact.matched_inputs || []).map((value) => normalizeText(value)), 3),
+  }));
+}
+
+function buildFollowupImpactSummary(
+  baselineVersion: ApiResearchTrackingTopicVersionDetail | null,
+  currentVersion: ApiResearchTrackingTopicVersionDetail | null,
+): ResearchTopicFollowupImpactSummary {
+  return {
+    baselineTitleResolution: formatFollowupResolution(baselineVersion?.report?.followup_diagnostics?.title_resolution),
+    currentTitleResolution: formatFollowupResolution(currentVersion?.report?.followup_diagnostics?.title_resolution),
+    baselineSummaryResolution: formatFollowupResolution(baselineVersion?.report?.followup_diagnostics?.summary_resolution),
+    currentSummaryResolution: formatFollowupResolution(currentVersion?.report?.followup_diagnostics?.summary_resolution),
+    baselineRows: extractFollowupImpactRows(baselineVersion),
+    currentRows: extractFollowupImpactRows(currentVersion),
+  };
+}
+
+export function summarizeResearchTopicFollowupImpacts(
+  baselineVersion: ApiResearchTrackingTopicVersionDetail | null,
+  currentVersion: ApiResearchTrackingTopicVersionDetail | null,
+): ResearchTopicFollowupImpactExportSummary {
+  const summary = buildFollowupImpactSummary(baselineVersion, currentVersion);
+  return {
+    baselineTitleResolution: summary.baselineTitleResolution,
+    currentTitleResolution: summary.currentTitleResolution,
+    baselineSummaryResolution: summary.baselineSummaryResolution,
+    currentSummaryResolution: summary.currentSummaryResolution,
+    baselineImpactedSections: summary.baselineRows.map((row) => row.sectionTitle),
+    currentImpactedSections: summary.currentRows.map((row) => row.sectionTitle),
+  };
 }
 
 function buildResearchTopicFilenameBase(topicName: string, prefix: string, generatedAt: Date = new Date()): string {
@@ -431,6 +506,7 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(baselineVersion, currentVersion);
   const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(baselineVersion, currentVersion);
+  const followupImpactSummary = buildFollowupImpactSummary(baselineVersion, currentVersion);
   const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "# 专题版本复盘报告",
@@ -458,6 +534,26 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
     lines.push(`- 对照版本摘要: ${currentSummary || "无"}`);
   }
 
+  if (followupImpactSummary.currentRows.length || followupImpactSummary.baselineRows.length) {
+    lines.push("", "## Follow-up 影响章节路由", "");
+    lines.push(`- 基线标题处理: ${followupImpactSummary.baselineTitleResolution}`);
+    lines.push(`- 对照标题处理: ${followupImpactSummary.currentTitleResolution}`);
+    lines.push(`- 基线摘要处理: ${followupImpactSummary.baselineSummaryResolution}`);
+    lines.push(`- 对照摘要处理: ${followupImpactSummary.currentSummaryResolution}`);
+    lines.push(`- 基线重点影响章节: ${formatInlineList(followupImpactSummary.baselineRows.map((row) => row.sectionTitle), "无", 4)}`);
+    lines.push(`- 对照重点影响章节: ${formatInlineList(followupImpactSummary.currentRows.map((row) => row.sectionTitle), "无", 4)}`);
+    lines.push("");
+    followupImpactSummary.currentRows.slice(0, 3).forEach((row) => {
+      lines.push(`### ${row.sectionTitle}`);
+      lines.push("");
+      lines.push(`- 影响等级: ${row.impactLabel} / ${row.impactScore}`);
+      lines.push(`- 变化原因: ${row.reason || "无"}`);
+      lines.push(`- 命中输入: ${formatInlineList(row.matchedInputs, "无", 3)}`);
+      lines.push(`- 下一步动作: ${row.nextAction || "无"}`);
+      lines.push("");
+    });
+  }
+
   if (options.diffHighlights.length) {
     lines.push("", "## 关键差异高亮", "");
     options.diffHighlights.forEach((group) => {
@@ -471,22 +567,22 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
   }
 
   if (weakSectionSummary.baselineSections.length || weakSectionSummary.currentSections.length) {
-    lines.push("", "## 待补证章节变化", "");
-    lines.push(`- 基线版本待补证章节: ${formatInlineList(weakSectionSummary.baselineSections.map((section) => section.title), "无", 4)}`);
-    lines.push(`- 对照版本待补证章节: ${formatInlineList(weakSectionSummary.currentSections.map((section) => section.title), "无", 4)}`);
+    lines.push("", "## 待核验章节变化", "");
+    lines.push(`- 基线版本待核验章节: ${formatInlineList(weakSectionSummary.baselineSections.map((section) => section.title), "无", 4)}`);
+    lines.push(`- 对照版本待核验章节: ${formatInlineList(weakSectionSummary.currentSections.map((section) => section.title), "无", 4)}`);
     if (weakSectionSummary.newlyWeakSections.length) {
-      lines.push(`- 新增待补证章节: ${formatInlineList(weakSectionSummary.newlyWeakSections, "无", 3)}`);
+      lines.push(`- 新增待核验章节: ${formatInlineList(weakSectionSummary.newlyWeakSections, "无", 3)}`);
     }
     if (weakSectionSummary.resolvedSections.length) {
-      lines.push(`- 已脱离待补证章节: ${formatInlineList(weakSectionSummary.resolvedSections, "无", 3)}`);
+      lines.push(`- 已脱离待核验章节: ${formatInlineList(weakSectionSummary.resolvedSections, "无", 3)}`);
     }
     lines.push("");
     weakSectionSummary.currentSections.slice(0, 3).forEach((section) => {
       lines.push(`### ${section.title}`);
       lines.push("");
-      lines.push(`- 不足原因: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 3)}`);
+      lines.push(`- 不足原因: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 3)}`);
       if (section.nextVerificationSteps.length) {
-        lines.push(`- 建议补证: ${formatInlineList(section.nextVerificationSteps, "无", 3)}`);
+        lines.push(`- 建议核验: ${formatInlineList(section.nextVerificationSteps, "无", 3)}`);
       }
       lines.push("");
     });
@@ -494,9 +590,9 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
 
   if (sectionDiagnostics.currentWeakSectionCount || sectionDiagnostics.baselineWeakSectionCount) {
     lines.push("", "## Section Diagnostics Summary", "");
-    lines.push(`- 基线待补证章节: ${sectionDiagnostics.baselineWeakSectionCount}`);
-    lines.push(`- 对照待补证章节: ${sectionDiagnostics.currentWeakSectionCount}`);
-    lines.push(`- 新增待补证章节: ${formatInlineList(sectionDiagnostics.newlyWeakSections, "无", 4)}`);
+    lines.push(`- 基线待核验章节: ${sectionDiagnostics.baselineWeakSectionCount}`);
+    lines.push(`- 对照待核验章节: ${sectionDiagnostics.currentWeakSectionCount}`);
+    lines.push(`- 新增待核验章节: ${formatInlineList(sectionDiagnostics.newlyWeakSections, "无", 4)}`);
     lines.push(`- 已解决章节: ${formatInlineList(sectionDiagnostics.resolvedSections, "无", 4)}`);
     lines.push(`- 配额未达标章节: ${sectionDiagnostics.quotaRiskSectionCount}`);
     lines.push(`- 矛盾章节: ${sectionDiagnostics.contradictionSectionCount}`);
@@ -523,10 +619,10 @@ export function buildResearchTopicRecapMarkdown(options: ResearchTopicRecapMarkd
     lines.push("## Evidence Appendix Summary", "");
     lines.push(`- 变更字段数: ${evidenceSummary.changedFieldCount}`);
     lines.push(`- 已有证据支撑字段: ${evidenceSummary.evidenceBackedFieldCount}`);
-    lines.push(`- 基线证据链接: ${evidenceSummary.baselineEvidenceCount}`);
-    lines.push(`- 对照证据链接: ${evidenceSummary.currentEvidenceCount}`);
+    lines.push(`- 基线依据链接: ${evidenceSummary.baselineEvidenceCount}`);
+    lines.push(`- 对照依据链接: ${evidenceSummary.currentEvidenceCount}`);
     lines.push(`- 证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`);
-    lines.push(`- 待补证字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 5)}`);
+    lines.push(`- 待核验字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 5)}`);
     lines.push("");
     lines.push("## 证据附录", "");
     buildFieldEvidenceAppendixLines(options.fieldDiffRows).forEach((line) => {
@@ -607,6 +703,7 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(options.baselineVersion, options.currentVersion);
   const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(options.baselineVersion, options.currentVersion);
+  const followupImpactSummary = buildFollowupImpactSummary(options.baselineVersion, options.currentVersion);
   const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "# Topic Exec Brief",
@@ -617,8 +714,8 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
     `- 基线版本: ${formatVersionSummary(options.baselineVersion)}`,
     `- 对照版本: ${formatVersionSummary(options.currentVersion)}`,
     `- 证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`,
-    `- 待补证字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 4)}`,
-    `- Section 诊断: 待补证章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+    `- 待核验字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 4)}`,
+    `- 章节检查: 待核验章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
 
   lines.push("", "## 版本判断", "");
@@ -640,21 +737,30 @@ export function buildResearchTopicRecapExecBrief(options: ResearchTopicRecapMark
   });
 
   if (weakSectionSummary.currentSections.length) {
-    lines.push("", "## 待补证章节", "");
+    lines.push("", "## 待核验章节", "");
     weakSectionSummary.currentSections.slice(0, 3).forEach((section) => {
-      lines.push(`- ${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 3)}`);
+      lines.push(`- ${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 3)}`);
+    });
+  }
+
+  if (followupImpactSummary.currentRows.length) {
+    lines.push("", "## Follow-up 影响章节", "");
+    lines.push(`- 标题处理: ${followupImpactSummary.currentTitleResolution}`);
+    lines.push(`- 摘要处理: ${followupImpactSummary.currentSummaryResolution}`);
+    followupImpactSummary.currentRows.slice(0, 3).forEach((row) => {
+      lines.push(`- ${row.sectionTitle}: ${row.impactLabel}/${row.impactScore}；${row.reason || "无"}；下一步 ${row.nextAction || "无"}`);
     });
   }
 
   if (offlineEvaluationLines.length) {
-    lines.push("", "## 离线回归", "");
+    lines.push("", "## 质量复核", "");
     offlineEvaluationLines.slice(0, 3).forEach((line) => {
       lines.push(`- ${line}`);
     });
   }
 
   lines.push("", "## 后续动作", "");
-  lines.push(`- 优先补证 ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "暂无", 3)} 这类还没有直接证据的变化字段。`);
+  lines.push(`- 优先核验 ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "暂无", 3)} 这类还没有直接依据的变化字段。`);
   if (options.sourceContributionPanels.length) {
     lines.push(
       `- 重点关注 ${options.sourceContributionPanels
@@ -671,6 +777,7 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
   const evidenceSummary = buildTopicEvidenceSummary(options.fieldDiffRows);
   const weakSectionSummary = buildTopicWeakSectionSummary(options.baselineVersion, options.currentVersion);
   const sectionDiagnostics = buildTopicSectionDiagnosticsSummary(options.baselineVersion, options.currentVersion);
+  const followupImpactSummary = buildFollowupImpactSummary(options.baselineVersion, options.currentVersion);
   const offlineEvaluationLines = buildOfflineEvaluationLines(options.offlineEvaluation);
   const lines = [
     "专题版本复盘报告",
@@ -682,7 +789,7 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
     `行业筛选: ${normalizeText(options.topic.industry_filter) || "全部"}`,
     `基线版本: ${formatVersionSummary(options.baselineVersion)}`,
     `对照版本: ${formatVersionSummary(options.currentVersion)}`,
-    `Section 诊断: 待补证章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+    `章节检查: 待核验章节 ${sectionDiagnostics.currentWeakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
     "",
     "版本结论",
   ];
@@ -698,14 +805,30 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
     });
   }
 
+  if (followupImpactSummary.currentRows.length || followupImpactSummary.baselineRows.length) {
+    lines.push("", "Follow-up 影响章节路由");
+    lines.push(`基线标题处理: ${followupImpactSummary.baselineTitleResolution}`);
+    lines.push(`对照标题处理: ${followupImpactSummary.currentTitleResolution}`);
+    lines.push(`基线摘要处理: ${followupImpactSummary.baselineSummaryResolution}`);
+    lines.push(`对照摘要处理: ${followupImpactSummary.currentSummaryResolution}`);
+    lines.push(`基线重点影响章节: ${formatInlineList(followupImpactSummary.baselineRows.map((row) => row.sectionTitle), "无", 4)}`);
+    lines.push(`对照重点影响章节: ${formatInlineList(followupImpactSummary.currentRows.map((row) => row.sectionTitle), "无", 4)}`);
+    followupImpactSummary.currentRows.slice(0, 3).forEach((row) => {
+      lines.push(`${row.sectionTitle}: ${row.impactLabel}/${row.impactScore}`);
+      lines.push(`变化原因: ${row.reason || "无"}`);
+      lines.push(`命中输入: ${formatInlineList(row.matchedInputs, "无", 3)}`);
+      lines.push(`下一步动作: ${row.nextAction || "无"}`);
+    });
+  }
+
   if (weakSectionSummary.baselineSections.length || weakSectionSummary.currentSections.length) {
-    lines.push("", "待补证章节变化");
-    lines.push(`基线版本待补证章节: ${formatInlineList(weakSectionSummary.baselineSections.map((section) => section.title), "无", 4)}`);
-    lines.push(`对照版本待补证章节: ${formatInlineList(weakSectionSummary.currentSections.map((section) => section.title), "无", 4)}`);
+    lines.push("", "待核验章节变化");
+    lines.push(`基线版本待核验章节: ${formatInlineList(weakSectionSummary.baselineSections.map((section) => section.title), "无", 4)}`);
+    lines.push(`对照版本待核验章节: ${formatInlineList(weakSectionSummary.currentSections.map((section) => section.title), "无", 4)}`);
     weakSectionSummary.currentSections.slice(0, 3).forEach((section) => {
-      lines.push(`${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 3)}`);
+      lines.push(`${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 3)}`);
       if (section.nextVerificationSteps.length) {
-        lines.push(`建议补证: ${formatInlineList(section.nextVerificationSteps, "无", 3)}`);
+        lines.push(`建议核验: ${formatInlineList(section.nextVerificationSteps, "无", 3)}`);
       }
     });
   }
@@ -732,10 +855,10 @@ export function buildResearchTopicRecapPlainText(options: ResearchTopicRecapMark
     lines.push("Evidence Appendix Summary");
     lines.push(`变更字段数: ${evidenceSummary.changedFieldCount}`);
     lines.push(`已有证据支撑字段: ${evidenceSummary.evidenceBackedFieldCount}`);
-    lines.push(`基线证据链接: ${evidenceSummary.baselineEvidenceCount}`);
-    lines.push(`对照证据链接: ${evidenceSummary.currentEvidenceCount}`);
+    lines.push(`基线依据链接: ${evidenceSummary.baselineEvidenceCount}`);
+    lines.push(`对照依据链接: ${evidenceSummary.currentEvidenceCount}`);
     lines.push(`证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`);
-    lines.push(`待补证字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 5)}`);
+    lines.push(`待核验字段: ${formatInlineList(evidenceSummary.fieldsWithoutEvidence, "无", 5)}`);
     lines.push("");
     lines.push("证据附录");
     buildFieldEvidenceAppendixLines(options.fieldDiffRows, false).forEach((line) => {

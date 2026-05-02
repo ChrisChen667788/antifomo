@@ -56,6 +56,7 @@ import {
   archiveDeliveryMetricToneClassName,
   buildArchiveDeliveryDigest,
   buildArchiveDeliveryScore,
+  extractArchiveFollowupImpactSummary,
 } from "@/lib/research-archive-metadata";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 
@@ -365,7 +366,7 @@ function getResearchWeakSectionSummary(entry: ApiKnowledgeEntry): {
       String(target.insufficiency_summary || "").trim() ||
       String(target.quota_note || "").trim() ||
       String(target.confidence_reason || "").trim() ||
-      "当前章节仍需继续补证。",
+      "当前章节仍需继续核验。",
   };
 }
 
@@ -489,17 +490,17 @@ function getResearchRankedPreview(entry: ApiKnowledgeEntry) {
   return [
     {
       key: "target",
-      title: normalize(report.top_target_accounts).length ? "甲方" : "待补证甲方",
+      title: normalize(report.top_target_accounts).length ? "甲方" : "待核验甲方",
       items: normalize(report.top_target_accounts).length ? normalize(report.top_target_accounts) : buildFallbackRankedPreview(entry, "target"),
     },
     {
       key: "competitor",
-      title: normalize(report.top_competitors).length ? "竞品" : "待补证竞品",
+      title: normalize(report.top_competitors).length ? "竞品" : "待核验竞品",
       items: normalize(report.top_competitors).length ? normalize(report.top_competitors) : buildFallbackRankedPreview(entry, "competitor"),
     },
     {
       key: "partner",
-      title: normalize(report.top_ecosystem_partners).length ? "伙伴" : "待补证伙伴",
+      title: normalize(report.top_ecosystem_partners).length ? "伙伴" : "待核验伙伴",
       items: normalize(report.top_ecosystem_partners).length ? normalize(report.top_ecosystem_partners) : buildFallbackRankedPreview(entry, "partner"),
     },
   ].filter((group) => group.items.length);
@@ -702,7 +703,7 @@ export function ResearchCenter() {
       })
       .catch(() => {
         if (!active) return;
-        setSourceError("研究来源设置暂时无法从后端读取，当前先使用本地安全默认值。");
+        setSourceError("研究来源设置暂时无法读取，当前先使用默认来源。");
         setSourceSettings({
           enable_jianyu_tender_feed: true,
           enable_yuntoutiao_feed: true,
@@ -949,7 +950,7 @@ export function ResearchCenter() {
     try {
       await rewriteLowQualityResearchReviewItem(entryId);
       await Promise.all([refreshLowQualityQueue(), refreshResearchCards(), refreshOfflineEvaluation()]);
-      setLowQualityMessage("已生成 rewrite diff，请复核后接受或回退。");
+      setLowQualityMessage("已生成修订建议，请复核后接受或回退。");
     } catch {
       setLowQualityError("低质量研报重写失败，请稍后重试。");
     } finally {
@@ -966,12 +967,12 @@ export function ResearchCenter() {
       await Promise.all([refreshLowQualityQueue(), refreshOfflineEvaluation()]);
       if (action === "revert") {
         await refreshResearchCards();
-        setLowQualityMessage("已回退到 rewrite 前版本。");
+        setLowQualityMessage("已回退到修订前版本。");
       } else {
-        setLowQualityMessage("已接受当前 rewrite 结果。");
+        setLowQualityMessage("已接受当前修订结果。");
       }
     } catch {
-      setLowQualityError(action === "accept" ? "接受 rewrite 结果失败，请稍后重试。" : "回退失败，当前记录缺少可恢复快照。");
+      setLowQualityError(action === "accept" ? "接受修订结果失败，请稍后重试。" : "回退失败，当前记录缺少可恢复快照。");
     } finally {
       setLowQualityActionKey("");
     }
@@ -1064,14 +1065,14 @@ export function ResearchCenter() {
   const archiveFilterMeta: Array<{ key: ArchiveDeliveryFilter; label: string }> = [
     { key: "all", label: t("research.archiveFilterAll", "全部归档") },
     { key: "strong_evidence", label: t("research.archiveFilterStrongEvidence", "证据较强") },
-    { key: "needs_followup", label: t("research.archiveFilterNeedsFollowup", "待补证较多") },
+    { key: "needs_followup", label: t("research.archiveFilterNeedsFollowup", "待核验较多") },
     { key: "official_rich", label: t("research.archiveFilterOfficialRich", "官方源占比较高") },
   ];
 
   const archiveSortMeta: Array<{ key: ArchiveSortMode; label: string }> = [
     { key: "updated_desc", label: t("research.archiveSortUpdated", "按更新时间") },
     { key: "evidence_strength", label: t("research.archiveSortEvidence", "按证据强度") },
-    { key: "outstanding_count", label: t("research.archiveSortOutstanding", "按待补证数量") },
+    { key: "outstanding_count", label: t("research.archiveSortOutstanding", "按待核验数量") },
     { key: "official_ratio", label: t("research.archiveSortOfficialRatio", "按官方源占比") },
   ];
 
@@ -1128,7 +1129,7 @@ export function ResearchCenter() {
       label: t("research.centerMetricFocus", "Focus 参考"),
       value: String(allItems.filter((item) => item.is_focus_reference).length),
       tone: "text-emerald-700",
-      detail: "已回流到 Focus 的研究素材",
+      detail: "已加入 Focus 的研究素材",
     },
   ];
   const retrievalLensMeta: Array<{ key: ResearchRetrievalLens; label: string; desc: string; count: number }> = [
@@ -1147,7 +1148,7 @@ export function ResearchCenter() {
     {
       key: "official_rich",
       label: "官方源强",
-      desc: "优先看官方源占比和官方补证更强的条目",
+      desc: "优先看官方来源更充分的条目",
       count: allItems.filter((item) => matchesRetrievalLens(item, "official_rich")).length,
     },
     {
@@ -1159,7 +1160,7 @@ export function ResearchCenter() {
     {
       key: "needs_review",
       label: "待复核",
-      desc: "优先处理待补证、纠偏触发和弱证据条目",
+      desc: "优先处理待复核和依据较弱的条目",
       count: allItems.filter((item) => matchesRetrievalLens(item, "needs_review")).length,
     },
   ];
@@ -1365,7 +1366,7 @@ export function ResearchCenter() {
                 ...item,
                 last_refresh_status: "failed",
                 last_refresh_error: message,
-                last_refresh_note: "专题刷新失败，请检查当前关键词公开源与模型链路",
+                last_refresh_note: "专题刷新失败，请检查当前关键词和公开来源设置",
               }
             : item,
         ),
@@ -1567,7 +1568,7 @@ export function ResearchCenter() {
       setSourceError("");
     } catch {
       setSourceSettings(previousSettings);
-      setSourceError("研究来源设置保存失败，请检查后端研究服务是否可用后重试。");
+      setSourceError("研究来源设置保存失败，请稍后重试。");
     } finally {
       setSourceSaving(false);
     }
@@ -1797,10 +1798,10 @@ export function ResearchCenter() {
       <section className="af-glass rounded-[30px] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-3xl">
-            <p className="af-kicker">Offline Evaluation</p>
-            <h3 className="mt-2 text-xl font-semibold text-slate-900">离线回归评估</h3>
+            <p className="af-kicker">质量复核</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-900">质量复核评估</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              将检索命中率、目标账户支撑率和章节证据配额通过率前台化，方便每轮 rewrite 后快速回看质量回归。
+              将来源命中率、目标账户支撑率和章节依据完整度集中展示，方便每轮修订后快速回看质量变化。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1858,7 +1859,7 @@ export function ResearchCenter() {
                 ))}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">当前暂无离线回归样本。</p>
+              <p className="mt-4 text-sm text-slate-500">当前暂无质量复核样本。</p>
             )}
 
             <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
@@ -1931,7 +1932,7 @@ export function ResearchCenter() {
                             <div className="mt-3 space-y-2">
                               {item.unsupported_targets.length ? (
                                 <p className="text-sm leading-6 text-slate-600">
-                                  待补证账户 · {sanitizeExternalDisplayText(item.unsupported_targets.join(" / "))}
+                                  待核验账户 · {sanitizeExternalDisplayText(item.unsupported_targets.join(" / "))}
                                 </p>
                               ) : null}
                               {item.failing_sections.length ? (
@@ -2237,6 +2238,7 @@ export function ResearchCenter() {
             <div className="mt-4 space-y-3">
               {visibleMarkdownArchives.length ? (
                 visibleMarkdownArchives.map(({ archive, digest: archiveDigest }) => {
+                  const followupSummary = extractArchiveFollowupImpactSummary(archive.metadata_payload);
                   return (
                     <article key={archive.id} className="rounded-[22px] border border-white/60 bg-white/65 p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -2287,6 +2289,21 @@ export function ResearchCenter() {
                             </p>
                           ) : null}
                         </>
+                      ) : null}
+                      {followupSummary ? (
+                        <div className="mt-2 rounded-[16px] border border-sky-100 bg-sky-50/60 px-3 py-3">
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="rounded-full bg-white/80 px-2.5 py-1 text-sky-700">
+                              标题 · {followupSummary.currentTitleResolution || "无"}
+                            </span>
+                            <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                              摘要 · {followupSummary.currentSummaryResolution || "无"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            追问影响章节 · {followupSummary.currentImpactedSections.length ? followupSummary.currentImpactedSections.slice(0, 3).join(" / ") : "无"}
+                          </p>
+                        </div>
                       ) : null}
                       <div className="mt-2 flex flex-wrap gap-2 text-xs">
                         <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
@@ -2657,7 +2674,7 @@ export function ResearchCenter() {
                 <p className="af-kicker">Review Queue</p>
                 <h3 className="mt-2 text-lg font-semibold text-slate-900">低质量研报审计队列</h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  {sanitizeExternalDisplayText("将 audit / rewrite 治理沉淀为可审查队列，支持先查看 diff，再决定接受或回退。")}
+                  {sanitizeExternalDisplayText("将低质量条目沉淀为可审查队列，支持先查看修订差异，再决定接受或回退。")}
                 </p>
               </div>
               <div className="rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-xs text-slate-500">
@@ -2734,7 +2751,7 @@ export function ResearchCenter() {
                         <div className="mt-3 rounded-[18px] border border-sky-100 bg-sky-50/70 p-3">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] text-sky-700">
                             <span className="rounded-full bg-white/80 px-2 py-1">
-                              {latestRewrite.rewrite_mode === "guarded" ? "guarded rewrite" : "standard rewrite"}
+                              {latestRewrite.rewrite_mode === "guarded" ? "谨慎修订" : "标准修订"}
                             </span>
                             <span>
                               风险 {latestRewrite.before_risk_score} → {latestRewrite.after_risk_score}
@@ -2754,7 +2771,7 @@ export function ResearchCenter() {
                           className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                           disabled={Boolean(lowQualityActionKey)}
                         >
-                          {rewriteBusy ? "重写中..." : "执行 rewrite"}
+                          {rewriteBusy ? "重写中..." : "执行修订"}
                         </button>
                         {item.review_status === "rewritten" ? (
                           <button
@@ -3322,7 +3339,7 @@ export function ResearchCenter() {
                                   ? "强证据"
                                   : diagnosticsMeta.evidenceMode === "provisional"
                                     ? "可用初版"
-                                    : "兜底候选"}
+                                    : "待核实"}
                               </span>
                               <span className="rounded-full bg-white/75 px-2.5 py-1 text-[11px] text-slate-500">
                                 官方源 {Math.round(diagnosticsMeta.officialSourceRatio * 100)}%
@@ -3333,10 +3350,10 @@ export function ResearchCenter() {
                             </div>
                             <p className="mt-2 text-xs leading-5 text-slate-500">
                               {diagnosticsMeta.correctiveTriggered
-                                ? "当前已触发纠错检索，优先看新增官方源和严格命中结果。"
+                                ? "已补充核验，优先看新增官方来源和严格命中结果。"
                                 : diagnosticsMeta.expansionTriggered
-                                  ? "当前已扩搜补证，建议继续核对关键实体和范围。"
-                                  : "当前展示的是本次检索链路的可信度摘要。"}
+                                  ? "已扩展来源，建议继续核对关键实体和范围。"
+                                  : "当前展示的是本次来源可信度摘要。"}
                             </p>
                           </div>
                           <div className="rounded-[18px] border border-white/60 bg-white/55 p-3">
@@ -3370,18 +3387,18 @@ export function ResearchCenter() {
                                   ? "可直接推进"
                                   : readinessStatus === "degraded"
                                     ? "候选推进"
-                                    : "待补证"}
+                                    : "待核验"}
                               </span>
                               {diagnosticsMeta.guardedBacklog ? (
                                 <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700">
-                                  Guarded backlog
+                                  待复核
                                 </span>
                               ) : null}
                             </div>
                             <p className="mt-2 text-xs leading-5 text-slate-500">
                               {diagnosticsMeta.unsupportedTargetAccounts.slice(0, 2).join(" / ") ||
                                 diagnosticsMeta.supportedTargetAccounts.slice(0, 2).join(" / ") ||
-                                "当前还没有稳定的目标账户支撑，适合继续补证。"}
+                                "当前还没有稳定的目标账户支撑，适合继续核验。"}
                             </p>
                           </div>
                         </div>
@@ -3396,7 +3413,7 @@ export function ResearchCenter() {
                                     : "bg-amber-100 text-amber-700"
                                 }`}
                               >
-                                {weakSectionSummary.status === "needs_evidence" ? "待补证" : "待收紧"}
+                                {weakSectionSummary.status === "needs_evidence" ? "待核验" : "待收紧"}
                               </span>
                             </div>
                             <p className="mt-2 text-sm font-semibold text-slate-900">{weakSectionSummary.title}</p>
@@ -3533,7 +3550,7 @@ export function ResearchCenter() {
                     {isReport && diagnosticsMeta && (diagnosticsMeta.scopeRegions.length || diagnosticsMeta.scopeIndustries.length || diagnosticsMeta.scopeClients.length || diagnosticsMeta.topicAnchors.length || diagnosticsMeta.matchedThemes.length || diagnosticsMeta.guardedBacklog || diagnosticsMeta.guardedReasonLabels.length || diagnosticsMeta.supportedTargetAccounts.length || diagnosticsMeta.unsupportedTargetAccounts.length || diagnosticsMeta.filteredOldSourceCount || diagnosticsMeta.filteredRegionConflictCount || diagnosticsMeta.normalizedEntityCount || diagnosticsMeta.uniqueDomainCount || diagnosticsMeta.candidateProfileCompanies.length || diagnosticsMeta.candidateProfileHitCount) ? (
                       <div className="mt-4 rounded-[18px] border border-white/60 bg-white/55 p-3">
                         <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                          {t("research.sourceDiagnosticsTitle", "采集诊断")}
+                          {t("research.sourceDiagnosticsTitle", "来源检查")}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <span
@@ -3549,15 +3566,15 @@ export function ResearchCenter() {
                               ? "强证据"
                               : diagnosticsMeta.evidenceMode === "provisional"
                                 ? "可用初版"
-                                : "兜底候选"}
+                                : "待核实"}
                           </span>
                           {diagnosticsMeta.guardedBacklog ? (
                             <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700">
-                              Guarded backlog
+                              待复核
                             </span>
                           ) : null}
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
-                            检索质量 {diagnosticsMeta.retrievalQuality === "high" ? "高" : diagnosticsMeta.retrievalQuality === "medium" ? "中" : "低"}
+                            来源质量 {diagnosticsMeta.retrievalQuality === "high" ? "高" : diagnosticsMeta.retrievalQuality === "medium" ? "中" : "低"}
                           </span>
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
                             严格命中 {Math.round(diagnosticsMeta.strictMatchRatio * 100)}%
@@ -3622,17 +3639,17 @@ export function ResearchCenter() {
                           ) : null}
                           {diagnosticsMeta.correctiveTriggered ? (
                             <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] text-orange-700">
-                              已触发纠错检索
+                              已补充核验
                             </span>
                           ) : null}
                           {diagnosticsMeta.candidateProfileCompanies.length ? (
                             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
-                              候选补证公司 {diagnosticsMeta.candidateProfileCompanies.length}
+                              建议核验公司 {diagnosticsMeta.candidateProfileCompanies.length}
                             </span>
                           ) : null}
                           {diagnosticsMeta.candidateProfileHitCount > 0 ? (
                             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
-                              补证公开源 {diagnosticsMeta.candidateProfileHitCount}
+                              公开来源 {diagnosticsMeta.candidateProfileHitCount}
                             </span>
                           ) : null}
                           {diagnosticsMeta.candidateProfileOfficialHitCount > 0 ? (

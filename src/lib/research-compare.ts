@@ -556,7 +556,7 @@ function buildPriorityEntityLines(rows: ResearchCompareRow[]): string[] {
       .filter((value) => value && value !== "—")
       .slice(0, 2)
       .join(" / ");
-    return `${row.name}｜${row.role}｜${signals || "待补充关键信号"}｜${row.evidenceLinks.length ? `${row.evidenceLinks.length} 条直接证据` : "暂无直接证据"}`;
+    return `${row.name}｜${row.role}｜${signals || "待补充关键信号"}｜${row.evidenceLinks.length ? `${row.evidenceLinks.length} 条直接依据` : "暂无直接依据"}`;
   });
 }
 
@@ -588,8 +588,8 @@ function buildSnapshotFreezeDisclosureLines(options: ResearchCompareMarkdownOpti
       ? formatDateTime(options.snapshotMetadataBackfilledAt)
       : "未知时间";
     return [
-      `快照冻结状态: 旧快照已补冻结（补冻结时间 ${backfilledAt}）`,
-      "说明: 该快照原始 metadata 缺失，系统后补了章节证据诊断和离线回归快照；以下指标以补冻结时点为准。",
+      `快照冻结状态: 旧快照已复核（复核时间 ${backfilledAt}）`,
+      "说明: 该快照原始 metadata 缺失，系统后补了章节依据检查和质量复核快照；以下指标以复核时点为准。",
     ];
   }
   if (options.hasFrozenSnapshotMetadata) {
@@ -661,17 +661,17 @@ export function buildResearchCompareMarkdown(
 
   lines.push("", "## 交付摘要", "");
   lines.push(`- 来源研报数: ${evidenceSummary.sourceEntryCount}`);
-  lines.push(`- 直接证据链接: ${evidenceSummary.directEvidenceCount}`);
+  lines.push(`- 直接依据链接: ${evidenceSummary.directEvidenceCount}`);
   lines.push(
     `- 证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`,
   );
-  lines.push(`- 无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`);
+  lines.push(`- 无直接依据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`);
   if (evidenceSummary.officialCoverageLeaders.length) {
-    lines.push(`- 官方补证命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
+    lines.push(`- 官方来源命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
   }
   if (sectionDiagnostics.weakSectionCount) {
     lines.push(
-      `- Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+      `- 章节检查: 待核验章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
     );
     lines.push(`- 重点章节: ${formatInlineList(sectionDiagnostics.highlightedSections, "无", 5)}`);
   }
@@ -711,9 +711,9 @@ export function buildResearchCompareMarkdown(
       lines.push("");
       lines.push(`- 最近更新时间: ${formatDateTime(group.updatedAt)}`);
       group.sections.forEach((section) => {
-        lines.push(`- ${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 3)}`);
+        lines.push(`- ${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 3)}`);
         if (section.nextVerificationSteps.length) {
-          lines.push(`  - 建议补证: ${formatInlineList(section.nextVerificationSteps, "无", 2)}`);
+          lines.push(`  - 建议核验: ${formatInlineList(section.nextVerificationSteps, "无", 2)}`);
         }
       });
       lines.push("");
@@ -742,10 +742,10 @@ export function buildResearchCompareMarkdown(
     lines.push(`- 竞品公司: ${formatInlineList(row.competitorHighlights)}`);
     lines.push(`- 生态伙伴: ${formatInlineList(row.partnerHighlights)}`);
     lines.push(`- 标杆案例: ${formatInlineList(row.benchmarkCases)}`);
-    lines.push(`- 候选补证公司: ${formatInlineList(row.candidateProfileCompanies)}`);
-    lines.push(`- 补证公开源命中: ${row.candidateProfileHitCount}`);
-    lines.push(`- 补证官方源命中: ${row.candidateProfileOfficialHitCount}`);
-    lines.push(`- 补证来源标签: ${formatInlineList(row.candidateProfileSourceLabels)}`);
+    lines.push(`- 建议核验公司: ${formatInlineList(row.candidateProfileCompanies)}`);
+    lines.push(`- 公开来源命中: ${row.candidateProfileHitCount}`);
+    lines.push(`- 官方来源命中: ${row.candidateProfileOfficialHitCount}`);
+    lines.push(`- 来源标签: ${formatInlineList(row.candidateProfileSourceLabels)}`);
     lines.push(`- 来源研报: ${row.sourceEntryTitle}`);
     lines.push(`- 来源数: ${row.sourceCount}`);
     lines.push(`- 最近更新时间: ${formatDateStamp(new Date(row.updatedAt))}`);
@@ -753,18 +753,18 @@ export function buildResearchCompareMarkdown(
   });
 
   lines.push("## Evidence Appendix Summary", "");
-  lines.push(`- 附录直接证据总数: ${evidenceSummary.directEvidenceCount}`);
+  lines.push(`- 附录直接依据总数: ${evidenceSummary.directEvidenceCount}`);
   lines.push(`- 官方源证据: ${evidenceSummary.officialEvidenceCount}`);
   lines.push(`- 媒体源证据: ${evidenceSummary.mediaEvidenceCount}`);
   lines.push(`- 聚合源证据: ${evidenceSummary.aggregateEvidenceCount}`);
-  lines.push(`- 需继续补证实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`);
+  lines.push(`- 需继续核验实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`);
   lines.push("");
   lines.push("## 证据附录", "");
   rows.forEach((row, index) => {
     lines.push(`### ${index + 1}. ${row.name}｜${row.role}`);
     lines.push("");
     if (!row.evidenceLinks.length) {
-      lines.push("- 暂无可直接打开的证据链接。");
+      lines.push("- 暂无可直接打开的依据链接。");
       lines.push("");
       return;
     }
@@ -798,9 +798,9 @@ export function buildResearchCompareExecBrief(
     `- 快照名称: ${normalizeText(options.snapshotName || "") || "实时视图"}`,
     `- 关键词 / 区域 / 行业: ${formatInlineList([options.query || "全部", options.region || "全部", options.industry || "全部"], "全部", 3)}`,
     `- 实体概览: ${rows.length} 个实体；${roleCounts.map((role) => `${role} ${rows.filter((row) => row.role === role).length}`).join(" | ")}`,
-    `- 直接证据: ${evidenceSummary.directEvidenceCount} 条，其中官方源 ${evidenceSummary.officialEvidenceCount} 条`,
-    `- 无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 4)}`,
-    `- Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+    `- 直接依据: ${evidenceSummary.directEvidenceCount} 条，其中官方源 ${evidenceSummary.officialEvidenceCount} 条`,
+    `- 无直接依据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 4)}`,
+    `- 章节检查: 待核验章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
 
   snapshotFreezeDisclosureLines.forEach((line) => {
@@ -817,18 +817,18 @@ export function buildResearchCompareExecBrief(
 
   const weakSectionGroups = buildCompareWeakSectionGroups(rows);
   if (weakSectionGroups.length) {
-    lines.push("", "## 待补证章节", "");
+    lines.push("", "## 待核验章节", "");
     weakSectionGroups.slice(0, 3).forEach((group) => {
       const sectionLines = group.sections
         .slice(0, 2)
-        .map((section) => `${section.title}：${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 2)}`)
+        .map((section) => `${section.title}：${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 2)}`)
         .join("；");
-      lines.push(`- ${group.sourceEntryTitle}: ${sectionLines || "仍需补证章节"}`);
+      lines.push(`- ${group.sourceEntryTitle}: ${sectionLines || "仍需核验章节"}`);
     });
   }
 
   if (offlineEvaluationLines.length) {
-    lines.push("", "## 离线回归", "");
+    lines.push("", "## 质量复核", "");
     offlineEvaluationLines.slice(0, 3).forEach((line) => {
       lines.push(`- ${line}`);
     });
@@ -851,11 +851,11 @@ export function buildResearchCompareExecBrief(
   });
 
   lines.push("", "## 后续动作", "");
-  lines.push(`- 优先复核 ${formatInlineList(evidenceSummary.uncoveredEntities, "暂无", 3)} 这类缺少直接证据的实体。`);
+  lines.push(`- 优先复核 ${formatInlineList(evidenceSummary.uncoveredEntities, "暂无", 3)} 这类缺少直接依据的实体。`);
   if (evidenceSummary.officialCoverageLeaders.length) {
     lines.push(`- 可围绕 ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 3)} 继续扩展官网/IR/招采公开源。`);
   } else {
-    lines.push("- 当前没有明显的官方补证强命中实体，建议继续追加官方源 corrective retrieval。");
+    lines.push("- 当前没有明显的官方来源强命中实体，建议继续追加官方源 补充核验。");
   }
   return sanitizeExternalDisplayText(lines.join("\n"));
 }
@@ -884,10 +884,10 @@ export function buildResearchComparePlainText(
     "",
     "交付摘要",
     `来源研报数: ${evidenceSummary.sourceEntryCount}`,
-    `直接证据链接: ${evidenceSummary.directEvidenceCount}`,
+    `直接依据链接: ${evidenceSummary.directEvidenceCount}`,
     `证据结构: 官方源 ${evidenceSummary.officialEvidenceCount} / 媒体源 ${evidenceSummary.mediaEvidenceCount} / 聚合源 ${evidenceSummary.aggregateEvidenceCount}`,
-    `无直接证据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`,
-    `Section 诊断: 待补证章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
+    `无直接依据实体: ${formatInlineList(evidenceSummary.uncoveredEntities, "无", 6)}`,
+    `章节检查: 待核验章节 ${sectionDiagnostics.weakSectionCount} / 配额风险 ${sectionDiagnostics.quotaRiskSectionCount} / 矛盾 ${sectionDiagnostics.contradictionSectionCount}`,
   ];
 
   snapshotFreezeDisclosureLines.forEach((line) => {
@@ -895,7 +895,7 @@ export function buildResearchComparePlainText(
   });
 
   if (evidenceSummary.officialCoverageLeaders.length) {
-    lines.push(`官方补证命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
+    lines.push(`官方来源命中最高: ${formatInlineList(evidenceSummary.officialCoverageLeaders, "无", 4)}`);
   }
   if (options.linkedVersionTitle || options.linkedVersionRefreshedAt) {
     lines.push(
@@ -923,9 +923,9 @@ export function buildResearchComparePlainText(
     weakSectionGroups.forEach((group) => {
       lines.push(group.sourceEntryTitle);
       group.sections.forEach((section) => {
-        lines.push(`${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需补证", 3)}`);
+        lines.push(`${section.title}: ${section.insufficiencySummary || formatInlineList(section.insufficiencyReasons, "仍需核验", 3)}`);
         if (section.nextVerificationSteps.length) {
-          lines.push(`建议补证: ${formatInlineList(section.nextVerificationSteps, "无", 2)}`);
+          lines.push(`建议核验: ${formatInlineList(section.nextVerificationSteps, "无", 2)}`);
         }
       });
       lines.push("");
@@ -947,15 +947,15 @@ export function buildResearchComparePlainText(
     lines.push(`竞合压力: ${row.competitionSignal}`);
     lines.push(`高概率决策部门: ${formatInlineList(row.targetDepartments)}`);
     lines.push(`公开业务联系方式: ${formatInlineList(row.publicContacts)}`);
-    lines.push(`候选补证公司: ${formatInlineList(row.candidateProfileCompanies)}`);
-    lines.push(`补证公开源命中: ${row.candidateProfileHitCount}`);
-    lines.push(`补证官方源命中: ${row.candidateProfileOfficialHitCount}`);
+    lines.push(`建议核验公司: ${formatInlineList(row.candidateProfileCompanies)}`);
+    lines.push(`公开来源命中: ${row.candidateProfileHitCount}`);
+    lines.push(`官方来源命中: ${row.candidateProfileOfficialHitCount}`);
     lines.push(`来源研报: ${row.sourceEntryTitle}`);
     lines.push(`最近更新时间: ${formatDateStamp(new Date(row.updatedAt))}`);
   });
 
   lines.push("", "Evidence Appendix Summary");
-  lines.push(`附录直接证据总数: ${evidenceSummary.directEvidenceCount}`);
+  lines.push(`附录直接依据总数: ${evidenceSummary.directEvidenceCount}`);
   lines.push(`官方源证据: ${evidenceSummary.officialEvidenceCount}`);
   lines.push(`媒体源证据: ${evidenceSummary.mediaEvidenceCount}`);
   lines.push(`聚合源证据: ${evidenceSummary.aggregateEvidenceCount}`);
@@ -965,7 +965,7 @@ export function buildResearchComparePlainText(
     lines.push("");
     lines.push(`${index + 1}. ${row.name} | ${row.role}`);
     if (!row.evidenceLinks.length) {
-      lines.push("暂无可直接打开的证据链接。");
+      lines.push("暂无可直接打开的依据链接。");
       return;
     }
     row.evidenceLinks.forEach((item, evidenceIndex) => {

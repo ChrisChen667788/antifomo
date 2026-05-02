@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.schemas.research import ResearchReportResponse, ResearchReportSectionOut, ResearchSourceOut
+from app.schemas.research import (
+    ResearchFollowupContextOut,
+    ResearchFollowupDiagnosticsOut,
+    ResearchReportResponse,
+    ResearchReportSectionOut,
+    ResearchSourceOut,
+)
+from app.services import research_service
 from app.services.research_retrieval_index_service import ResearchRetrievalIndex, ResearchRetrievalIndexChunk
 from app.services.research_section_retrieval_service import (
     attach_section_retrieval_packs,
@@ -56,6 +63,34 @@ def _report() -> ResearchReportResponse:
             )
         ],
         generated_at=datetime.now(timezone.utc),
+    )
+
+
+def _followup_report() -> ResearchReportResponse:
+    return _report().model_copy(
+        update={
+            "followup_context": ResearchFollowupContextOut(
+                followup_report_title="上海数据集团政务云预算窗口研判",
+                followup_report_summary="上一版判断预算窗口存在，但未明确采购中心和方案节奏。",
+                supplemental_context="新增采购中心和数字化办公室的组织入口线索。",
+                supplemental_evidence="公开公告提到 7 月预算复核、8 月方案比选。",
+                supplemental_requirements="优先重写项目与商机判断、解决方案设计建议。",
+            ),
+            "followup_diagnostics": ResearchFollowupDiagnosticsOut(
+                enabled=True,
+                input_sections=["人工补充新信息", "人工补充新证据/待核验线索", "人工补充新需求"],
+                planning_focus="补采购中心、预算复核和方案比选节奏",
+                summary="已根据补证输入重建二次检索范围",
+                scope_rebuilt=True,
+                query_decomposition_applied=True,
+                decomposition_queries=["上海数据集团 采购中心 政务云 预算复核", "上海数据集团 方案比选 政务云"],
+                rebuilt_regions=["上海"],
+                rebuilt_industries=["政务云"],
+                rebuilt_clients=["上海数据集团"],
+                rebuilt_company_anchors=["上海数据集团"],
+                rebuilt_must_include_terms=["采购中心", "预算复核", "方案比选"],
+            ),
+        }
     )
 
 
@@ -123,3 +158,48 @@ def test_attach_section_retrieval_packs_updates_quality_profile_without_mutating
     assert report.quality_profile.section_retrieval_packs == []
     assert enriched.quality_profile.section_retrieval_packs
     assert enriched.quality_profile.methodology.industry_key == "government_cloud"
+
+
+def test_render_section_retrieval_prompt_context_includes_ranked_evidence() -> None:
+    context = research_service._render_section_retrieval_prompt_context(
+        _report(),
+        index=_index(),
+        limit_per_section=2,
+    )
+
+    assert "[Section] 项目与商机判断" in context
+    assert "上海数据集团预算复核公告" in context
+    assert "Next Steps:" in context
+    assert "Support Score" in context
+
+
+def test_enrich_report_for_delivery_attaches_runtime_section_retrieval_packs() -> None:
+    enriched = research_service._enrich_report_for_delivery(_report())
+
+    assert enriched.quality_profile.section_retrieval_packs
+    assert any(pack.hit_count >= 1 for pack in enriched.quality_profile.section_retrieval_packs)
+    assert any(
+        hit.title == "上海数据集团公开公告" or hit.source_url == "https://example.gov.cn/shanghai-data-budget"
+        for pack in enriched.quality_profile.section_retrieval_packs
+        for hit in pack.hits
+    )
+
+
+def test_followup_diagnostics_enrichment_builds_impacted_sections_and_resolution_flags() -> None:
+    enriched = research_service._enrich_report_for_delivery(_followup_report())
+
+    assert enriched.followup_diagnostics.enabled is True
+    assert enriched.followup_diagnostics.title_resolution == "reused"
+    assert enriched.followup_diagnostics.summary_resolution == "corrected"
+    assert enriched.followup_diagnostics.impacted_sections
+    assert any(item.section_title == "项目与商机判断" for item in enriched.followup_diagnostics.impacted_sections)
+    assert any("采购中心" in item.reason or "采购中心" in " / ".join(item.matched_inputs) for item in enriched.followup_diagnostics.impacted_sections)
+
+
+def test_render_followup_section_focus_prompt_context_lists_impacted_sections() -> None:
+    enriched = research_service.attach_section_retrieval_packs(_followup_report(), _index(), limit_per_section=2)
+    context = research_service._render_followup_section_focus_prompt_context(enriched)
+
+    assert "项目与商机判断" in context
+    assert "impact=" in context
+    assert "采购中心" in context or "预算复核" in context

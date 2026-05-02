@@ -19,8 +19,11 @@ from app.models.research_entities import (
     ResearchRetrievalIndexBuildCheckpoint,
     ResearchRetrievalIndexChunkRecord,
     ResearchTrackingTopic,
+    ResearchWatchlist,
+    ResearchWatchlistChangeEvent,
 )
 from app.services.content_extractor import normalize_text
+from app.services.knowledge_intelligence_service import build_knowledge_commercial_dashboard, list_knowledge_accounts
 from app.services.knowledge_retrieval_service import TextRetrievalCandidate, retrieve_text_matches
 from app.services.research_retrieval_service import build_report_retrieval_chunks
 
@@ -227,10 +230,41 @@ def _summary_payload_text(payload: Any, *, limit: int = 8) -> str:
                     payload.get("contradictionSectionCount"),
                     payload.get("highlightedSections"),
                     payload.get("summary_lines"),
+                    payload.get("baselineTitleResolution"),
+                    payload.get("currentTitleResolution"),
+                    payload.get("baselineSummaryResolution"),
+                    payload.get("currentSummaryResolution"),
+                    payload.get("baselineImpactedSections"),
+                    payload.get("currentImpactedSections"),
+                    payload.get("top_accounts"),
+                    payload.get("top_opportunities"),
+                    payload.get("top_alerts"),
                 ],
                 limit=limit,
             )
         )
+    return _join_values(payload, limit=limit)
+
+
+def _row_payload_text(payload: Any, *, limit: int = 12) -> str:
+    if isinstance(payload, dict):
+        values: list[Any] = []
+        for value in payload.values():
+            if isinstance(value, (str, int, float)):
+                values.append(value)
+            elif isinstance(value, list):
+                values.extend(value[:4])
+            elif isinstance(value, dict):
+                values.extend(value.values())
+        return "；".join(_dedupe_strings(values, limit=limit))
+    if isinstance(payload, list):
+        values: list[Any] = []
+        for item in payload[:limit]:
+            if isinstance(item, dict):
+                values.extend(item.values())
+            else:
+                values.append(item)
+        return "；".join(_dedupe_strings(values, limit=limit))
     return _join_values(payload, limit=limit)
 
 
@@ -571,12 +605,50 @@ def _append_markdown_archive_chunks(
             "changed_section_count": int(metadata.get("changed_section_count") or 0),
         },
     )
+    diagnostic_fields = [
+        ("evidence_appendix_summary", "证据附录诊断", "official", 9),
+        ("section_diagnostics_summary", "章节证据诊断", "aggregate", 9),
+        ("offline_evaluation_snapshot", "离线回归指标", "aggregate", 8),
+        ("followup_impact_summary", "追问影响章节", "aggregate", 9),
+        ("current_evidence_appendix_summary", "当前归档证据附录", "official", 8),
+        ("compare_evidence_appendix_summary", "对照归档证据附录", "official", 7),
+        ("current_section_diagnostics_summary", "当前归档章节诊断", "aggregate", 8),
+        ("compare_section_diagnostics_summary", "对照归档章节诊断", "aggregate", 7),
+        ("current_followup_impact_summary", "当前归档追问路由", "aggregate", 8),
+        ("compare_followup_impact_summary", "对照归档追问路由", "aggregate", 7),
+    ]
+    for field_key, label, source_tier, priority in diagnostic_fields:
+        diagnostic_text = _summary_payload_text(metadata.get(field_key), limit=12)
+        _append_chunk(
+            chunks,
+            seen,
+            document_id=document_id,
+            document_type="archive_recap" if archive.archive_kind in {"topic_version_recap", "archive_diff_recap"} else "markdown_archive",
+            title=title,
+            text=diagnostic_text,
+            field_key=field_key,
+            label=label,
+            source_tier=source_tier,
+            topic_id=topic_id,
+            topic_name=topic_name,
+            region=archive.region_filter or "",
+            industry=archive.industry_filter or "",
+            created_at=_document_time(archive.created_at),
+            updated_at=_document_time(archive.updated_at),
+            priority=priority,
+            metadata={
+                "archive_kind": archive.archive_kind or "compare_markdown",
+                "filename": archive.filename,
+                "compare_snapshot_id": str(archive.compare_snapshot_id) if archive.compare_snapshot_id else "",
+                "report_version_id": str(archive.report_version_id) if archive.report_version_id else "",
+            },
+        )
     for window in _split_text_windows(archive.content or "", max_chars=420)[:80]:
         _append_chunk(
             chunks,
             seen,
             document_id=document_id,
-            document_type="markdown_archive",
+            document_type="archive_recap" if archive.archive_kind in {"topic_version_recap", "archive_diff_recap"} else "markdown_archive",
             title=title,
             text=window,
             field_key="archive_content",
@@ -589,6 +661,246 @@ def _append_markdown_archive_chunks(
             updated_at=_document_time(archive.updated_at),
             priority=5,
             metadata={"archive_kind": archive.archive_kind or "compare_markdown", "filename": archive.filename},
+        )
+
+
+def _append_watchlist_chunks(
+    chunks: list[ResearchRetrievalIndexChunk],
+    seen: set[str],
+    watchlist: ResearchWatchlist,
+) -> None:
+    topic = watchlist.tracking_topic
+    document_id = str(watchlist.id)
+    title = watchlist.name or watchlist.query or "Watchlist"
+    topic_id = str(watchlist.tracking_topic_id) if watchlist.tracking_topic_id else ""
+    topic_name = topic.name if topic is not None else ""
+    latest_events = sorted(
+        list(watchlist.change_events or []),
+        key=lambda item: item.created_at or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )[:8]
+    _append_chunk(
+        chunks,
+        seen,
+        document_id=document_id,
+        document_type="watchlist",
+        title=title,
+        text="；".join(
+            part
+            for part in [
+                title,
+                watchlist.watch_type,
+                watchlist.query,
+                watchlist.region_filter,
+                watchlist.industry_filter,
+                watchlist.alert_level,
+                watchlist.schedule,
+                watchlist.status,
+                topic.research_focus if topic is not None else "",
+            ]
+            if _safe_text(part)
+        ),
+        field_key="watchlist_summary",
+        label="观察池总览",
+        topic_id=topic_id,
+        topic_name=topic_name,
+        region=watchlist.region_filter or "",
+        industry=watchlist.industry_filter or "",
+        created_at=_document_time(watchlist.created_at),
+        updated_at=_document_time(watchlist.updated_at),
+        priority=11 if watchlist.status == "active" else 7,
+        metadata={
+            "watch_type": watchlist.watch_type,
+            "alert_level": watchlist.alert_level,
+            "schedule": watchlist.schedule,
+            "status": watchlist.status,
+            "last_checked_at": watchlist.last_checked_at.isoformat() if isinstance(watchlist.last_checked_at, datetime) else None,
+        },
+    )
+    for event in latest_events:
+        event_text = "；".join(
+            part
+            for part in [
+                event.change_type,
+                event.severity,
+                event.summary,
+                _row_payload_text(event.payload, limit=8),
+            ]
+            if _safe_text(part)
+        )
+        _append_chunk(
+            chunks,
+            seen,
+            document_id=document_id,
+            document_type="watchlist",
+            title=title,
+            text=event_text,
+            field_key="watchlist_change",
+            label="观察池变化",
+            source_tier="aggregate",
+            topic_id=topic_id,
+            topic_name=topic_name,
+            region=watchlist.region_filter or "",
+            industry=watchlist.industry_filter or "",
+            created_at=_document_time(event.created_at),
+            updated_at=_document_time(event.created_at),
+            priority=12 if event.severity == "high" else 9 if event.severity == "medium" else 6,
+            metadata={
+                "watchlist_change_event_id": str(event.id),
+                "change_type": event.change_type,
+                "severity": event.severity,
+            },
+        )
+
+
+def _append_commercial_hub_chunks(
+    chunks: list[ResearchRetrievalIndexChunk],
+    seen: set[str],
+    db: Session,
+    *,
+    created_at: datetime | None = None,
+    updated_at: datetime | None = None,
+) -> None:
+    dashboard = build_knowledge_commercial_dashboard(db)
+    document_id = "commercial-hub"
+    _append_chunk(
+        chunks,
+        seen,
+        document_id=document_id,
+        document_type="commercial_hub",
+        title="Commercial Hub",
+        text="；".join(
+            _dedupe_strings(
+                [
+                    f"账户 {dashboard.get('account_count')}",
+                    f"机会 {dashboard.get('opportunity_count')}",
+                    f"高置信研报 {dashboard.get('high_confidence_report_count')}",
+                    f"标杆案例 {dashboard.get('benchmark_case_count')}",
+                ],
+                limit=8,
+            )
+        ),
+        field_key="commercial_hub_summary",
+        label="经营看板总览",
+        source_tier="aggregate",
+        created_at=created_at,
+        updated_at=updated_at,
+        priority=10,
+        metadata={
+            "account_count": int(dashboard.get("account_count") or 0),
+            "opportunity_count": int(dashboard.get("opportunity_count") or 0),
+        },
+    )
+    for field_key, label, rows, priority in [
+        ("top_accounts", "重点账户", dashboard.get("top_accounts") or [], 12),
+        ("top_opportunities", "重点机会", dashboard.get("top_opportunities") or [], 12),
+        ("top_alerts", "经营提醒", dashboard.get("top_alerts") or [], 11),
+        ("role_views", "角色视图", dashboard.get("role_views") or [], 9),
+        ("review_queue", "审查队列", dashboard.get("review_queue") or [], 10),
+    ]:
+        for index, row in enumerate(list(rows)[:12]):
+            if not isinstance(row, dict):
+                continue
+            _append_chunk(
+                chunks,
+                seen,
+                document_id=document_id,
+                document_type="commercial_hub",
+                title="Commercial Hub",
+                text=_row_payload_text(row, limit=12),
+                field_key=field_key,
+                label=label,
+                source_tier="aggregate",
+                created_at=created_at,
+                updated_at=updated_at,
+                priority=priority,
+                metadata={"row_index": index, "row_id": _safe_text(row.get("id") or row.get("slug") or row.get("title"))},
+            )
+
+
+def _append_account_context_chunks(
+    chunks: list[ResearchRetrievalIndexChunk],
+    seen: set[str],
+    db: Session,
+    *,
+    limit: int,
+) -> None:
+    accounts = list_knowledge_accounts(db, limit=min(max(1, limit), 50))
+    for account in accounts:
+        slug = _safe_text(account.get("slug"))
+        name = _safe_text(account.get("name")) or slug
+        if not slug and not name:
+            continue
+        document_id = f"account:{slug or name}"
+        base_metadata = {
+            "account_slug": slug,
+            "account_name": name,
+            "priority": _safe_text(account.get("priority")),
+            "confidence_score": int(account.get("confidence_score") or 0),
+            "budget_probability": int(account.get("budget_probability") or 0),
+        }
+        _append_chunk(
+            chunks,
+            seen,
+            document_id=document_id,
+            document_type="account_context",
+            title=name or "Account Context",
+            text="；".join(
+                part
+                for part in [
+                    name,
+                    account.get("summary"),
+                    account.get("latest_signal"),
+                    account.get("next_best_action"),
+                    account.get("maturity_stage"),
+                    _join_values(account.get("why_now"), limit=4),
+                    _join_values(account.get("departments"), limit=4),
+                    _join_values(account.get("signals"), limit=6),
+                    _join_values(account.get("benchmark_cases"), limit=3),
+                ]
+                if _safe_text(part)
+            ),
+            field_key="account_summary",
+            label="账户上下文",
+            source_tier="official" if account.get("evidence_links") else "aggregate",
+            priority=12,
+            metadata=base_metadata,
+        )
+        for field_key, label, rows, priority in [
+            ("account_opportunities", "账户机会", account.get("opportunities") or [], 11),
+            ("account_timeline", "账户时间线", account.get("timeline") or [], 10),
+            ("stakeholder_map", "干系人地图", account.get("stakeholder_map") or [], 9),
+            ("close_plan", "Close Plan", account.get("close_plan") or [], 9),
+            ("pipeline_risks", "推进风险", account.get("pipeline_risks") or [], 10),
+        ]:
+            for index, row in enumerate(list(rows)[:8]):
+                row_text = _row_payload_text(row, limit=12)
+                _append_chunk(
+                    chunks,
+                    seen,
+                    document_id=document_id,
+                    document_type="account_context",
+                    title=name or "Account Context",
+                    text=row_text,
+                    field_key=field_key,
+                    label=label,
+                    source_tier="aggregate",
+                    priority=priority,
+                    metadata={**base_metadata, "row_index": index},
+                )
+        plan = account.get("account_plan") if isinstance(account.get("account_plan"), dict) else {}
+        _append_chunk(
+            chunks,
+            seen,
+            document_id=document_id,
+            document_type="account_context",
+            title=name or "Account Context",
+            text=_row_payload_text(plan, limit=12),
+            field_key="account_plan",
+            label="账户推进计划",
+            source_tier="aggregate",
+            priority=11,
+            metadata=base_metadata,
         )
 
 
@@ -648,6 +960,28 @@ def build_research_retrieval_index(
     )
     for archive in archives:
         _append_markdown_archive_chunks(chunks, seen, archive)
+
+    watchlists = list(
+        db.scalars(
+            select(ResearchWatchlist)
+            .where(ResearchWatchlist.user_id == resolved_user_id)
+            .order_by(desc(ResearchWatchlist.updated_at), desc(ResearchWatchlist.created_at))
+            .limit(capped_limit)
+        )
+    )
+    for watchlist in watchlists:
+        _append_watchlist_chunks(chunks, seen, watchlist)
+
+    if entries:
+        latest_entry_time = max((_document_time(entry.updated_at) or _document_time(entry.created_at) for entry in entries), default=None)
+        _append_commercial_hub_chunks(
+            chunks,
+            seen,
+            db,
+            created_at=latest_entry_time,
+            updated_at=latest_entry_time,
+        )
+        _append_account_context_chunks(chunks, seen, db, limit=capped_limit)
 
     source_counts = dict(Counter(chunk.document_type for chunk in chunks))
     return ResearchRetrievalIndex(

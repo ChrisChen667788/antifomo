@@ -219,17 +219,17 @@ export function ResearchConsolePanel({
     <section className="af-glass rounded-[30px] p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
-          <p className="af-kicker">{title || t("research.consoleKicker", "Research Console")}</p>
+          <p className="af-kicker">{title || t("research.consoleKicker", "研究对话")}</p>
           <h3 className="mt-2 text-xl font-semibold text-slate-900">
             {topicName
               ? `${topicName}${t("research.consoleTopicTitleSuffix", " 研究追问")}`
-              : t("research.consoleTitle", "边追问边查看研究过程")}
+              : t("research.consoleTitle", "继续追问研究问题")}
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             {description ||
               t(
                 "research.consoleDesc",
-                "围绕专题或历史研究任务继续追问，保留关键证据和阶段进度，不再把研报当成一次性生成结果。",
+                "围绕专题或历史研究继续追问，保留关键依据和结论变化。",
               )}
           </p>
         </div>
@@ -309,7 +309,7 @@ export function ResearchConsolePanel({
                     </div>
                     {conversation.job_id ? (
                       <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white">
-                        Job
+                        任务
                       </span>
                     ) : null}
                   </div>
@@ -355,8 +355,8 @@ export function ResearchConsolePanel({
                       <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-slate-400">
                         <span>
                           {message.role === "assistant"
-                            ? t("research.consoleAssistant", "assistant")
-                            : t("research.consoleUser", "user")}
+                            ? t("research.consoleAssistant", "助手")
+                            : t("research.consoleUser", "我")}
                         </span>
                         <span>{formatTimestamp(message.created_at)}</span>
                       </div>
@@ -413,11 +413,11 @@ export function ResearchConsolePanel({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">
-                  {t("research.consoleTimelineTitle", "研究进度 / Timeline")}
+                  {t("research.consoleTimelineTitle", "研究进度")}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {selectedConversation?.job_id
-                    ? t("research.consoleTimelineDesc", "展示该研究任务的阶段推进和关键状态。")
+                    ? t("research.consoleTimelineDesc", "展示这次研究的关键进展。")
                     : t("research.consoleTimelineNoJob", "当前对话未绑定研究任务，先基于专题版本继续追问。")}
                 </p>
               </div>
@@ -442,7 +442,7 @@ export function ResearchConsolePanel({
             ) : (
               <div className="mt-4 rounded-[18px] border border-dashed border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-500">
                 {selectedConversation?.job_id
-                  ? t("research.consoleTimelineEmpty", "当前任务还没有额外的阶段事件。")
+                  ? t("research.consoleTimelineEmpty", "当前任务还没有额外的进展记录。")
                   : t("research.consoleTimelineTopicHint", "继续追问时会直接使用当前专题的最新版本内容。")}
               </div>
             )}
