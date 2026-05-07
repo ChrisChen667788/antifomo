@@ -11,13 +11,16 @@ from app.models import ResearchTrackingTopic, User
 from app.services.entity_catalog_service import get_entity_detail, sync_tracking_topic_entities
 from app.services.research_watchlist_service import (
     append_watchlist_change_events,
+    build_watchlist_digest_export,
     build_watchlist_ops_summary,
     compute_watchlist_next_due_at,
     get_watchlist_model,
     list_watchlist_change_events,
     list_due_watchlists,
+    list_watchlist_runs,
     list_watchlists,
     normalize_watchlist_schedule,
+    record_watchlist_run,
     save_watchlist,
 )
 
@@ -217,6 +220,70 @@ def test_watchlist_ops_summary_flags_due_stale_and_failed_topics() -> None:
         assert any(item["issue_type"] == "refresh_failed" for item in summary["issues"])
         assert any(item["watchlist_id"] == due_watchlist["id"] for item in summary["issues"])
         assert any("执行到期刷新" in item for item in summary["recommendations"])
+    finally:
+        db.close()
+
+
+def test_watchlist_run_history_and_digest_export_summarize_retries_and_notifications() -> None:
+    db = _new_session()
+    settings = get_settings()
+    started_at = datetime(2026, 5, 8, 10, 0, tzinfo=timezone.utc)
+    try:
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.flush()
+        watchlist = save_watchlist(
+            db,
+            {
+                "name": "算力 Watchlist",
+                "watch_type": "topic",
+                "query": "算力 招采",
+                "schedule": "daily",
+            },
+        )
+
+        record_watchlist_run(
+            db,
+            run_id="run-001",
+            watchlist_id=watchlist["id"],
+            watchlist_name=watchlist["name"],
+            status="refreshed",
+            change_count=2,
+            attempt_count=2,
+            retry_count=1,
+            summary="新增两条算力招采变化",
+            notification_level="medium",
+            notification_payload={"message": "新增两条算力招采变化"},
+            started_at=started_at,
+            completed_at=started_at + timedelta(minutes=3),
+        )
+        record_watchlist_run(
+            db,
+            run_id="run-001",
+            watchlist_id=watchlist["id"],
+            watchlist_name=watchlist["name"],
+            status="failed",
+            attempt_count=2,
+            retry_count=1,
+            summary="刷新失败",
+            error="source timeout",
+            notification_level="high",
+            started_at=started_at,
+            completed_at=started_at + timedelta(minutes=4),
+        )
+
+        runs = list_watchlist_runs(db, limit=10)
+        digest = build_watchlist_digest_export(db, since_hours=168)
+
+        assert len(runs) == 2
+        assert runs[0]["run_id"] == "run-001"
+        assert runs[0]["retry_count"] == 1
+        assert digest["run_count"] == 2
+        assert digest["refreshed_count"] == 1
+        assert digest["failed_count"] == 1
+        assert digest["retry_count"] == 2
+        assert digest["alert_level"] == "high"
+        assert "Watchlist 运行摘要" in digest["export_markdown"]
+        assert any("失败" in line for line in digest["summary_lines"])
     finally:
         db.close()
 

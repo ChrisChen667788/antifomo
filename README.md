@@ -92,15 +92,18 @@ Anti-FOMO is built for the whole operating loop:
 ### 3. Retrieval-backed quality layer
 
 - local research retrieval index with persistent rebuild, resume, and search
+- retrieval-index status panel with resumable rebuild progress and parent-block routing diagnostics
+- optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
-- market-intelligence packs with three-year tender history, product lists, technical parameters, and delivery outlines
+- market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
 
 ### 4. Execution outputs
 
 - focus sessions and session-summary exports
 - action cards, exec brief, sales brief, outreach draft, and watchlist digest
-- feasibility study, project proposal, and client PPT outline export chain
+- watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
+- feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
 - formal document review loop with scenario, target customer, and vertical-scene overrides
 
 ## Best for
@@ -183,7 +186,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.5.2+20260507`
+- current version: `0.6.0+20260508`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

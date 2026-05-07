@@ -91,15 +91,18 @@ Anti-FOMO 关注的是整条工作链路：
 ### 3. 检索增强与质量层
 
 - 本地 research retrieval index，支持持久化 rebuild、resume 和 search
+- retrieval index 状态面板，展示增量重建进度、父块路由和孤儿子块风险
+- 可选 SentenceTransformers CrossEncoder reranker adapter，并接入离线官方源召回评估
 - 章节级 retrieval pack 和 section 级证据诊断
 - canonical org linking、guarded backlog、低质量研报 rewrite / backfill
-- 近 3 年招投标/产品/技术参数情报包和方案交付包
+- 近 3 年招投标/产品/技术参数情报包和 advisory-grade 方案交付包
 
 ### 4. 执行与交付
 
 - 专注会话和会话总结导出
 - 行动卡、老板简报、销售简报、外联草稿、watchlist digest
-- 可行性研究报告、项目建议书、对客 PPT 大纲导出
+- Watchlist run history、失败重试说明、通知摘要和 Markdown digest 导出
+- 可行性研究报告、项目建议书、对客 PPT、客户 brief、投标准备 memo 和执行材料导出
 - 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档
 
 ## 适合谁
@@ -182,7 +185,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.5.2+20260507`
+- 当前版本：`0.6.0+20260508`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 仓库已做开源脱敏

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Iterable, Literal
+from functools import lru_cache
+from typing import Any, Iterable, Literal
 
 from app.services.content_extractor import normalize_text
 
@@ -138,6 +139,7 @@ class CrossEncoderRerankProfile:
             "reranker_used": self.enabled and self.reranked_count > 0,
             "reranker_model": self.model_name,
             "reranker_top_k": self.top_k,
+            "reranker_backend": self.backend,
             "reranker_notes": self.notes,
         }
 
@@ -198,6 +200,33 @@ def _cross_encoder_pair_score(source: object, *, query_terms: list[str], query_t
     return score
 
 
+@lru_cache(maxsize=2)
+def _load_sentence_transformers_cross_encoder(model_name: str) -> Any:
+    from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
+
+    return CrossEncoder(model_name)
+
+
+def _predict_sentence_transformers_scores(
+    sources: list[object],
+    *,
+    query: str,
+    model_name: str,
+) -> tuple[list[float], str]:
+    model = _load_sentence_transformers_cross_encoder(model_name)
+    pairs = [
+        [
+            normalize_text(query),
+            normalize_text("；".join([_source_title(source), _source_text(source)]))[:1800],
+        ]
+        for source in sources
+    ]
+    raw_scores = model.predict(pairs)
+    if hasattr(raw_scores, "tolist"):
+        raw_scores = raw_scores.tolist()
+    return [float(item) for item in list(raw_scores)], "sentence-transformers"
+
+
 def rerank_sources_cross_encoder_style(
     sources: Iterable[object],
     *,
@@ -237,6 +266,68 @@ def rerank_sources_cross_encoder_style(
     profile.reranked_count = len(reranked_top)
     profile.notes.append(f"已对 top {len(reranked_top)} 来源执行本地 cross-encoder-style 相关性复排。")
     return [*reranked_top, *candidates[capped_top_k:]], profile
+
+
+def rerank_sources_cross_encoder(
+    sources: Iterable[object],
+    *,
+    query: str,
+    model_name: str,
+    top_k: int = 20,
+    backend: str = "auto",
+) -> tuple[list[object], CrossEncoderRerankProfile]:
+    candidates = list(sources)
+    capped_top_k = max(1, min(int(top_k or 20), 80))
+    normalized_backend = normalize_text(backend).lower() or "auto"
+    resolved_model = normalize_text(model_name) or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    if normalized_backend not in {"auto", "sentence_transformers", "sentence-transformers", "local"}:
+        normalized_backend = "auto"
+
+    if normalized_backend != "local" and len(candidates) > 1:
+        profile = CrossEncoderRerankProfile(
+            enabled=True,
+            model_name=resolved_model,
+            top_k=capped_top_k,
+            backend="sentence-transformers",
+        )
+        try:
+            scored_sources = candidates[:capped_top_k]
+            scores, backend_name = _predict_sentence_transformers_scores(
+                scored_sources,
+                query=query,
+                model_name=resolved_model,
+            )
+            ranked = [
+                source
+                for source, _score, _index in sorted(
+                    zip(scored_sources, scores, range(len(scored_sources)), strict=False),
+                    key=lambda item: (item[1], 1 if _source_tier(item[0]) == "official" else 0, -item[2]),
+                    reverse=True,
+                )
+            ]
+            profile.backend = backend_name
+            profile.reranked_count = len(ranked)
+            profile.notes.append(f"已使用 {backend_name} CrossEncoder 对 top {len(ranked)} 来源复排。")
+            return [*ranked, *candidates[capped_top_k:]], profile
+        except Exception as exc:
+            if normalized_backend in {"sentence_transformers", "sentence-transformers"}:
+                profile.notes.append(f"sentence-transformers CrossEncoder 加载或预测失败：{exc}")
+                return candidates, profile
+            fallback, fallback_profile = rerank_sources_cross_encoder_style(
+                candidates,
+                query=query,
+                model_name=resolved_model,
+                top_k=capped_top_k,
+            )
+            fallback_profile.notes.insert(0, f"sentence-transformers 不可用，已回退本地复排：{exc}")
+            return fallback, fallback_profile
+
+    return rerank_sources_cross_encoder_style(
+        candidates,
+        query=query,
+        model_name=resolved_model,
+        top_k=capped_top_k,
+    )
 
 
 def _source_text(source: object) -> str:

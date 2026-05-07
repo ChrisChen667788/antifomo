@@ -169,6 +169,36 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
                 "CREATE INDEX IF NOT EXISTS idx_research_retrieval_checkpoint_user_updated ON research_retrieval_index_checkpoints (user_id, updated_at)",
             ]
         )
+    if not _table_exists(engine, "research_watchlist_runs"):
+        statements.extend(
+            [
+                """
+                CREATE TABLE research_watchlist_runs (
+                    id CHAR(32) NOT NULL PRIMARY KEY,
+                    user_id CHAR(32) NOT NULL,
+                    watchlist_id CHAR(32) NULL,
+                    run_id VARCHAR(80) NOT NULL,
+                    watchlist_name VARCHAR(120) NOT NULL DEFAULT '',
+                    status VARCHAR(20) NOT NULL DEFAULT 'refreshed',
+                    change_count INTEGER NOT NULL DEFAULT 0,
+                    attempt_count INTEGER NOT NULL DEFAULT 1,
+                    retry_count INTEGER NOT NULL DEFAULT 0,
+                    summary TEXT NOT NULL DEFAULT '',
+                    error TEXT NULL,
+                    notification_level VARCHAR(20) NOT NULL DEFAULT 'low',
+                    notification_payload JSON NOT NULL DEFAULT '{}',
+                    started_at DATETIME NULL,
+                    completed_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+                    FOREIGN KEY(watchlist_id) REFERENCES research_watchlists (id) ON DELETE SET NULL
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_research_watchlist_runs_user_created ON research_watchlist_runs (user_id, created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_research_watchlist_runs_watchlist_created ON research_watchlist_runs (watchlist_id, created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_research_watchlist_runs_run_id ON research_watchlist_runs (run_id)",
+            ]
+        )
 
     if not statements:
         return

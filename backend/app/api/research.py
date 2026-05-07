@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -47,6 +48,7 @@ from app.schemas.research import (
     ResearchRetrievalIndexRebuildRequest,
     ResearchRetrievalIndexSearchHitOut,
     ResearchRetrievalIndexSearchOut,
+    ResearchRetrievalIndexStatusOut,
     ResearchSectionRetrievalPackOut,
     ResearchSectionRetrievalPackRequest,
     ResearchSolutionDeliveryPackOut,
@@ -64,7 +66,9 @@ from app.schemas.research import (
     ResearchWatchlistChangeEventOut,
     ResearchWatchlistAutomationStatusOut,
     ResearchWatchlistCreateRequest,
+    ResearchWatchlistDigestExportOut,
     ResearchWatchlistOpsSummaryOut,
+    ResearchWatchlistRunOut,
     ResearchWatchlistRunDueItemOut,
     ResearchWatchlistRunDueResponse,
     ResearchWatchlistOut,
@@ -76,6 +80,7 @@ from app.services.research_solution_intelligence_service import build_market_int
 from app.services.research_evaluation_service import build_golden_research_evaluation, build_offline_research_evaluation
 from app.services.research_retrieval_index_service import (
     build_research_retrieval_index,
+    get_persistent_research_retrieval_index_status,
     rebuild_persistent_research_retrieval_index,
     search_persistent_research_retrieval_index,
 )
@@ -104,12 +109,15 @@ from app.services.research_source_adapters import (
 )
 from app.services.research_watchlist_service import (
     append_watchlist_change_events,
+    build_watchlist_digest_export,
     build_watchlist_ops_summary,
     get_watchlist_payload,
     get_watchlist_model,
     list_due_watchlists,
     list_watchlist_change_events,
+    list_watchlist_runs,
     list_watchlists,
+    record_watchlist_run,
     save_watchlist,
 )
 from app.services.watchlist_automation_service import get_watchlist_automation_status
@@ -681,6 +689,15 @@ def rebuild_research_retrieval_index(
     return ResearchRetrievalIndexRebuildOut(**result.to_payload())
 
 
+@router.get("/retrieval-index/status", response_model=ResearchRetrievalIndexStatusOut)
+def get_research_retrieval_index_status(
+    db: Session = Depends(get_db),
+) -> ResearchRetrievalIndexStatusOut:
+    ensure_demo_user(db)
+    status = get_persistent_research_retrieval_index_status(db, user_id=settings.single_user_id)
+    return ResearchRetrievalIndexStatusOut(**status.to_payload())
+
+
 def _retrieval_hit_out(hit: object) -> ResearchRetrievalIndexSearchHitOut:
     chunk = hit.chunk  # type: ignore[attr-defined]
     snippet = str(chunk.text or "").strip()
@@ -1068,6 +1085,40 @@ def get_research_watchlist_changes(
     return [ResearchWatchlistChangeEventOut(**item) for item in list_watchlist_change_events(db, watchlist_id)]
 
 
+@router.get("/watchlists/run-history", response_model=list[ResearchWatchlistRunOut])
+def get_research_watchlist_run_history(
+    limit: int = 30,
+    status: str | None = None,
+    watchlist_id: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[ResearchWatchlistRunOut]:
+    ensure_demo_user(db)
+    return [
+        ResearchWatchlistRunOut(**item)
+        for item in list_watchlist_runs(
+            db,
+            limit=max(1, min(limit, 100)),
+            status=status,
+            watchlist_id=watchlist_id,
+        )
+    ]
+
+
+@router.get("/watchlists/digest-export", response_model=ResearchWatchlistDigestExportOut)
+def get_research_watchlist_digest_export(
+    since_hours: int = 24,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+) -> ResearchWatchlistDigestExportOut:
+    ensure_demo_user(db)
+    digest = build_watchlist_digest_export(
+        db,
+        since_hours=max(1, min(since_hours, 168)),
+        limit=max(1, min(limit, 100)),
+    )
+    return ResearchWatchlistDigestExportOut(**digest)
+
+
 @router.post("/watchlists/{watchlist_id}/refresh", response_model=ResearchWatchlistRefreshResponse)
 def refresh_research_watchlist(
     watchlist_id: str,
@@ -1082,57 +1133,122 @@ def refresh_research_watchlist(
 def run_due_research_watchlists(
     payload: ResearchTrackingTopicRefreshRequest,
     limit: int = 6,
+    retry_failed: bool = True,
+    max_retry_attempts: int = 1,
     db: Session = Depends(get_db),
 ) -> ResearchWatchlistRunDueResponse:
     ensure_demo_user(db)
     checked_at = datetime.now(timezone.utc)
+    run_id = f"watchlist-run-{checked_at.strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
     due_watchlists = list_due_watchlists(db, now=checked_at, limit=max(1, min(limit, 12)))
     items: list[ResearchWatchlistRunDueItemOut] = []
+    notifications: list[str] = []
     refreshed_count = 0
     failed_count = 0
+    total_retry_count = 0
+    allowed_retries = max(0, min(max_retry_attempts, 3)) if retry_failed else 0
     for watchlist in due_watchlists:
-        try:
-            result = _refresh_watchlist_core(db, watchlist_id=str(watchlist.id), payload=payload)
+        started_at = datetime.now(timezone.utc)
+        result: ResearchWatchlistRefreshResponse | None = None
+        last_error = ""
+        attempt_count = 0
+        for attempt_index in range(allowed_retries + 1):
+            attempt_count = attempt_index + 1
+            try:
+                result = _refresh_watchlist_core(db, watchlist_id=str(watchlist.id), payload=payload)
+                last_error = ""
+                break
+            except HTTPException as exc:
+                last_error = str(exc.detail)
+            except Exception as exc:  # pragma: no cover - defensive guard for batch runs
+                last_error = str(exc)
+        retry_count = max(0, attempt_count - 1)
+        total_retry_count += retry_count
+        completed_at = datetime.now(timezone.utc)
+        if result is not None:
             refreshed_count += 1
-            current_watchlist = get_watchlist_model(db, str(watchlist.id))
-            items.append(
-                ResearchWatchlistRunDueItemOut(
-                    watchlist_id=str(watchlist.id),
-                    name=watchlist.name,
-                    status="refreshed",
-                    change_count=len(result.changes),
-                    summary=result.changes[0].summary if result.changes else (result.topic.last_refresh_note or "专题已刷新"),
-                    next_due_at=current_watchlist and current_watchlist.last_checked_at
-                    and (get_watchlist_payload(db, str(watchlist.id)) or {}).get("next_due_at"),
-                )
+            current_payload = get_watchlist_payload(db, str(watchlist.id)) or {}
+            change_count = len(result.changes)
+            summary = result.changes[0].summary if result.changes else (result.topic.last_refresh_note or "专题已刷新")
+            notification_level = "medium" if change_count else "low"
+            notification = (
+                f"{watchlist.name} 识别到 {change_count} 条变化。"
+                if change_count
+                else f"{watchlist.name} 已完成检查，暂无新增变化。"
             )
-        except HTTPException as exc:
-            failed_count += 1
-            items.append(
-                ResearchWatchlistRunDueItemOut(
-                    watchlist_id=str(watchlist.id),
-                    name=watchlist.name,
-                    status="failed",
-                    error=str(exc.detail),
-                    summary="刷新失败",
-                )
+            if retry_count:
+                notification = f"{notification} 已重试 {retry_count} 次后成功。"
+            notifications.append(notification)
+            item = ResearchWatchlistRunDueItemOut(
+                watchlist_id=str(watchlist.id),
+                name=watchlist.name,
+                status="refreshed",
+                change_count=change_count,
+                attempt_count=attempt_count,
+                retry_count=retry_count,
+                summary=summary,
+                next_due_at=current_payload.get("next_due_at"),
+                notification_level=notification_level,
             )
-        except Exception as exc:  # pragma: no cover - defensive guard for batch runs
-            failed_count += 1
-            items.append(
-                ResearchWatchlistRunDueItemOut(
-                    watchlist_id=str(watchlist.id),
-                    name=watchlist.name,
-                    status="failed",
-                    error=str(exc),
-                    summary="刷新失败",
-                )
+            record_watchlist_run(
+                db,
+                run_id=run_id,
+                watchlist_id=watchlist.id,
+                watchlist_name=watchlist.name,
+                status="refreshed",
+                change_count=change_count,
+                attempt_count=attempt_count,
+                retry_count=retry_count,
+                summary=summary,
+                notification_level=notification_level,
+                notification_payload={"message": notification, "next_due_at": current_payload.get("next_due_at")},
+                started_at=started_at,
+                completed_at=completed_at,
             )
+            items.append(item)
+            continue
+
+        failed_count += 1
+        notification = f"{watchlist.name} 刷新失败：{last_error or '未知错误'}"
+        if retry_count:
+            notification = f"{notification}；已重试 {retry_count} 次。"
+        notifications.append(notification)
+        item = ResearchWatchlistRunDueItemOut(
+            watchlist_id=str(watchlist.id),
+            name=watchlist.name,
+            status="failed",
+            change_count=0,
+            attempt_count=attempt_count,
+            retry_count=retry_count,
+            error=last_error,
+            summary="刷新失败",
+            notification_level="high",
+        )
+        record_watchlist_run(
+            db,
+            run_id=run_id,
+            watchlist_id=watchlist.id,
+            watchlist_name=watchlist.name,
+            status="failed",
+            change_count=0,
+            attempt_count=attempt_count,
+            retry_count=retry_count,
+            summary="刷新失败",
+            error=last_error,
+            notification_level="high",
+            notification_payload={"message": notification},
+            started_at=started_at,
+            completed_at=completed_at,
+        )
+        items.append(item)
     return ResearchWatchlistRunDueResponse(
         checked_at=checked_at,
+        run_id=run_id,
         due_count=len(due_watchlists),
         refreshed_count=refreshed_count,
         failed_count=failed_count,
+        retry_count=total_retry_count,
+        notifications=notifications,
         items=items,
     )
 

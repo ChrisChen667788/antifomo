@@ -62,7 +62,7 @@ from app.services.llm_parser import (
 from app.services.research_quality_service import build_research_quality_profile
 from app.services.research_rag_quality_service import (
     build_retrieval_correction_profile,
-    rerank_sources_cross_encoder_style,
+    rerank_sources_cross_encoder,
     render_retrieval_correction_context,
     review_generation_grounding,
 )
@@ -821,6 +821,7 @@ LOW_VALUE_ENTITY_NAME_TOKENS = (
     "会员中心", "入局", "掘金赛道", "保姆级", "最新版", "工作流", "完全指南", "怎么个事",
     "所有人都", "关于加强", "促进政府", "已成为", "改变系统", "支撑软件", "应用系统", "弹性服务",
     "模型服务", "公有云服务", "基础设施即服务", "模型即服务", "主力与协办", "标签服务", "用户画像服务",
+    "英寸", "毫米硅片", "逻辑制程", "CIS集成",
 )
 
 ENTITY_FRAGMENT_PREFIX_TOKENS = (
@@ -835,13 +836,14 @@ ENTITY_FRAGMENT_INFIX_TOKENS = (
     "服务于", "用于", "模式", "路径", "打法", "策略", "方法", "场景", "机会", "商机",
     "保留了", "可以通过", "任何云服务", "不用再", "不再给", "宣布修订", "长期合作",
     "绑定关系", "合作协议", "基本框架",
+    "先进逻辑制程", "全自动智能",
     "各有关", "并经",
 )
 
 ENTITY_SUFFIX_TOKENS = (
     "集团", "公司", "有限公司", "股份有限公司", "研究院", "研究所", "大学", "医院", "银行", "政府",
     "厅", "局", "委", "办", "中心", "学院", "学校", "科技", "信息", "控股", "实验室",
-    "协会", "联盟", "咨询", "顾问", "集成", "服务", "运营", "系统", "通信",
+    "协会", "联盟", "咨询", "顾问", "集成", "服务", "运营", "系统", "通信", "半导体",
 )
 
 PERSON_ROLE_PATTERN = re.compile(
@@ -2241,11 +2243,12 @@ def _rerank_sources_hybrid(
     )
     if not reranker_enabled:
         return ranked
-    reranked, profile = rerank_sources_cross_encoder_style(
+    reranked, profile = rerank_sources_cross_encoder(
         ranked,
         query=retrieval_query,
         model_name=settings.research_cross_encoder_model,
         top_k=settings.research_cross_encoder_top_k,
+        backend=settings.research_cross_encoder_backend,
     )
     mutable_scope_hints.update(profile.to_diagnostics_update())
     return list(reranked)
@@ -4298,6 +4301,24 @@ NON_CONTACT_SOURCE_LABEL_TOKENS = ("云头条", "剑鱼标讯", "微信公众号
 def _contains_low_value_entity_token(value: str) -> bool:
     normalized = normalize_text(value)
     return any(token in normalized for token in LOW_VALUE_ENTITY_NAME_TOKENS)
+
+
+@lru_cache(maxsize=8192)
+def _trim_product_spec_from_entity_name(value: str) -> str:
+    normalized = _strip_entity_leading_noise(value)
+    if not normalized:
+        return ""
+    product_tail_patterns = (
+        r"^([A-Za-z0-9\u4e00-\u9fa5·]{2,18}半导体)(?:\d|[一二三四五六七八九十]|先进|用|CIS|芯片|硅片|制程|工艺|项目|产线|封装|传感器).+$",
+        r"^([A-Za-z0-9\u4e00-\u9fa5·]{2,18}集成电路)(?:\d|[一二三四五六七八九十]|先进|用|芯片|硅片|制程|工艺|项目|产线).+$",
+    )
+    for pattern in product_tail_patterns:
+        match = re.match(pattern, normalized, flags=re.IGNORECASE)
+        if match:
+            candidate = _strip_entity_leading_noise(match.group(1))
+            if candidate and not any(token in candidate for token in LOW_VALUE_ENTITY_NAME_TOKENS):
+                return candidate
+    return normalized
 
 
 @lru_cache(maxsize=8192)
@@ -7329,6 +7350,7 @@ def _extract_rank_entity_candidates_cached(
     filtered: list[str] = []
     for candidate in candidates:
         normalized = _resolve_known_org_name_cached(candidate, scope_org_names)
+        normalized = _trim_product_spec_from_entity_name(normalized)
         normalized = _strip_entity_leading_noise(normalized)
         if not _is_plausible_entity_name(normalized) and not _is_lightweight_entity_name(normalized):
             continue
@@ -9995,6 +10017,7 @@ def _build_source_diagnostics(
         reranker_used=bool(scope_hints.get("reranker_used")),
         reranker_model=normalize_text(str(scope_hints.get("reranker_model") or "")),
         reranker_top_k=int(scope_hints.get("reranker_top_k") or 0),
+        reranker_backend=normalize_text(str(scope_hints.get("reranker_backend") or "")),
         reranker_notes=_dedupe_strings(scope_hints.get("reranker_notes", []) or [], 4),
         pipeline_summary=pipeline_summary,
         pipeline_stages=pipeline_stages,

@@ -8,7 +8,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
-from app.models.research_entities import ResearchWatchlist, ResearchWatchlistChangeEvent
+from app.models.research_entities import ResearchWatchlist, ResearchWatchlistChangeEvent, ResearchWatchlistRun
 
 
 settings = get_settings()
@@ -110,6 +110,26 @@ def _serialize_change_event(event: ResearchWatchlistChangeEvent) -> dict[str, An
         "payload": event.payload or {},
         "severity": event.severity,
         "created_at": event.created_at,
+    }
+
+
+def _serialize_watchlist_run(run: ResearchWatchlistRun) -> dict[str, Any]:
+    return {
+        "id": str(run.id),
+        "run_id": run.run_id,
+        "watchlist_id": str(run.watchlist_id) if run.watchlist_id else None,
+        "watchlist_name": run.watchlist_name,
+        "status": run.status,
+        "change_count": run.change_count,
+        "attempt_count": run.attempt_count,
+        "retry_count": run.retry_count,
+        "summary": run.summary,
+        "error": run.error,
+        "notification_level": run.notification_level,
+        "notification_payload": run.notification_payload or {},
+        "started_at": run.started_at,
+        "completed_at": run.completed_at,
+        "created_at": run.created_at,
     }
 
 
@@ -421,6 +441,152 @@ def list_watchlist_change_events(db: Session, watchlist_id: str) -> list[dict[st
         .limit(30)
     ).all()
     return [_serialize_change_event(item) for item in events]
+
+
+def record_watchlist_run(
+    db: Session,
+    *,
+    run_id: str,
+    watchlist_id: str | uuid.UUID | None,
+    watchlist_name: str,
+    status: str,
+    change_count: int = 0,
+    attempt_count: int = 1,
+    retry_count: int = 0,
+    summary: str = "",
+    error: str | None = None,
+    notification_level: str = "low",
+    notification_payload: dict[str, Any] | None = None,
+    started_at: datetime | None = None,
+    completed_at: datetime | None = None,
+) -> dict[str, Any]:
+    parsed_watchlist_id: uuid.UUID | None = None
+    if watchlist_id:
+        try:
+            parsed_watchlist_id = watchlist_id if isinstance(watchlist_id, uuid.UUID) else uuid.UUID(str(watchlist_id))
+        except ValueError:
+            parsed_watchlist_id = None
+    normalized_status = status if status in {"refreshed", "failed"} else "failed"
+    level = notification_level if notification_level in {"low", "medium", "high"} else "low"
+    run = ResearchWatchlistRun(
+        user_id=settings.single_user_id,
+        watchlist_id=parsed_watchlist_id,
+        run_id=str(run_id),
+        watchlist_name=str(watchlist_name or "未命名 Watchlist")[:120],
+        status=normalized_status,
+        change_count=max(0, int(change_count or 0)),
+        attempt_count=max(1, int(attempt_count or 1)),
+        retry_count=max(0, int(retry_count or 0)),
+        summary=str(summary or ""),
+        error=str(error) if error else None,
+        notification_level=level,
+        notification_payload=notification_payload if isinstance(notification_payload, dict) else {},
+        started_at=started_at,
+        completed_at=completed_at or _utc_now(),
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return _serialize_watchlist_run(run)
+
+
+def list_watchlist_runs(
+    db: Session,
+    *,
+    limit: int = 30,
+    status: str | None = None,
+    watchlist_id: str | None = None,
+) -> list[dict[str, Any]]:
+    query = select(ResearchWatchlistRun).where(ResearchWatchlistRun.user_id == settings.single_user_id)
+    if status in {"refreshed", "failed"}:
+        query = query.where(ResearchWatchlistRun.status == status)
+    if watchlist_id:
+        try:
+            query = query.where(ResearchWatchlistRun.watchlist_id == uuid.UUID(str(watchlist_id)))
+        except ValueError:
+            return []
+    runs = db.scalars(query.order_by(desc(ResearchWatchlistRun.created_at)).limit(max(1, min(limit, 100)))).all()
+    return [_serialize_watchlist_run(item) for item in runs]
+
+
+def build_watchlist_digest_export(
+    db: Session,
+    *,
+    since_hours: int = 24,
+    limit: int = 50,
+) -> dict[str, Any]:
+    generated_at = _utc_now()
+    window_start = generated_at - timedelta(hours=max(1, min(int(since_hours or 24), 168)))
+    runs = list(
+        db.scalars(
+            select(ResearchWatchlistRun)
+            .where(ResearchWatchlistRun.user_id == settings.single_user_id)
+            .where(ResearchWatchlistRun.created_at >= window_start)
+            .order_by(desc(ResearchWatchlistRun.created_at))
+            .limit(max(1, min(limit, 100)))
+        )
+    )
+    refreshed_count = sum(1 for run in runs if run.status == "refreshed")
+    failed_count = sum(1 for run in runs if run.status == "failed")
+    retry_count = sum(int(run.retry_count or 0) for run in runs)
+    change_count = sum(int(run.change_count or 0) for run in runs)
+    alert_level = "high" if failed_count else "medium" if change_count or retry_count else "low"
+    summary_lines = [
+        f"窗口内运行 {len(runs)} 条 Watchlist 任务，成功 {refreshed_count} 条，失败 {failed_count} 条。",
+        f"累计识别变化 {change_count} 条，失败重试 {retry_count} 次。",
+    ]
+    if failed_count:
+        summary_lines.append("存在失败项，建议优先查看 run history 中的错误详情并手动重跑。")
+    elif change_count:
+        summary_lines.append("存在新增变化，建议把高价值变化转入专题刷新或客户跟进动作。")
+    else:
+        summary_lines.append("当前窗口未发现新增变化或失败项。")
+
+    run_rows = [_serialize_watchlist_run(run) for run in runs]
+    markdown_lines = [
+        "# Watchlist 运行摘要",
+        "",
+        f"- 生成时间：{generated_at.isoformat()}",
+        f"- 统计窗口：{window_start.isoformat()} 至 {generated_at.isoformat()}",
+        f"- 任务数：{len(runs)}",
+        f"- 成功 / 失败：{refreshed_count} / {failed_count}",
+        f"- 变化数 / 重试数：{change_count} / {retry_count}",
+        "",
+        "## 处理建议",
+        *[f"- {line}" for line in summary_lines],
+        "",
+        "## 最近运行",
+    ]
+    if run_rows:
+        for run in run_rows[:20]:
+            status_label = "成功" if run["status"] == "refreshed" else "失败"
+            markdown_lines.extend(
+                [
+                    "",
+                    f"### {run['watchlist_name']}",
+                    f"- 状态：{status_label}",
+                    f"- 变化数：{run['change_count']}",
+                    f"- 尝试 / 重试：{run['attempt_count']} / {run['retry_count']}",
+                    f"- 摘要：{run['error'] or run['summary'] or '无摘要'}",
+                ]
+            )
+    else:
+        markdown_lines.append("- 当前窗口暂无运行记录。")
+
+    return {
+        "generated_at": generated_at,
+        "window_start": window_start,
+        "window_end": generated_at,
+        "run_count": len(runs),
+        "refreshed_count": refreshed_count,
+        "failed_count": failed_count,
+        "change_count": change_count,
+        "retry_count": retry_count,
+        "alert_level": alert_level,
+        "summary_lines": summary_lines,
+        "runs": run_rows,
+        "export_markdown": "\n".join(markdown_lines),
+    }
 
 
 def append_watchlist_change_events(

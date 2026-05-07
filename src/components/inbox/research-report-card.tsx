@@ -856,9 +856,20 @@ export function ResearchReportCard({
                 <p>可研章节：{solutionDeliveryPack?.feasibility_outline?.length || 0} 个</p>
                 <p>建议书章节：{solutionDeliveryPack?.project_proposal_outline?.length || 0} 个</p>
                 <p>PPT 页纲：{solutionDeliveryPack?.client_ppt_outline?.length || 0} 页</p>
+                <p>Advisory 产物：{solutionDeliveryPack?.advisory_artifacts?.length || 0} 份</p>
               </div>
               {solutionDeliveryPack?.review_checklist?.length ? (
                 <p className="mt-2 text-xs leading-5 text-blue-700">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
+              ) : null}
+              {solutionDeliveryPack?.advisory_artifacts?.length ? (
+                <div className="mt-3 space-y-2">
+                  {solutionDeliveryPack.advisory_artifacts.slice(0, 3).map((artifact) => (
+                    <div key={artifact.artifact_type} className="rounded-xl bg-blue-50/70 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-900">{artifact.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{artifact.purpose}</p>
+                    </div>
+                  ))}
+                </div>
               ) : null}
             </div>
           </div>

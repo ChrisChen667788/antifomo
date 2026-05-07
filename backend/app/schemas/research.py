@@ -272,6 +272,7 @@ class ResearchOfflineEvaluationMetricOut(BaseModel):
         "section_quota_pass_rate",
         "official_source_recall_at_5",
         "unsupported_target_rate",
+        "reranker_official_recall_at_5",
     ]
     label: str
     numerator: int = 0
@@ -356,6 +357,25 @@ class ResearchRetrievalIndexRebuildOut(BaseModel):
     backend: str = "sqlite"
     checkpoint_status: Literal["idle", "running", "completed", "failed"] = "idle"
     message: str = ""
+
+
+class ResearchRetrievalIndexStatusOut(BaseModel):
+    user_id: str
+    schema_version: int = 2
+    backend: str = "sqlite"
+    checkpoint_status: Literal["idle", "running", "completed", "failed"] = "idle"
+    total_chunks: int = 0
+    indexed_chunks: int = 0
+    next_offset: int = 0
+    progress_percent: int = 0
+    persisted_chunk_count: int = 0
+    parent_link_count: int = 0
+    orphan_child_count: int = 0
+    source_counts: dict[str, int] = Field(default_factory=dict)
+    document_type_counts: dict[str, int] = Field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class ResearchRetrievalIndexSearchHitOut(BaseModel):
@@ -514,17 +534,56 @@ class ResearchWatchlistRunDueItemOut(BaseModel):
     name: str
     status: Literal["refreshed", "failed"]
     change_count: int = 0
+    attempt_count: int = 1
+    retry_count: int = 0
     summary: str = ""
     next_due_at: datetime | None = None
     error: str | None = None
+    notification_level: Literal["low", "medium", "high"] = "low"
 
 
 class ResearchWatchlistRunDueResponse(BaseModel):
     checked_at: datetime
+    run_id: str = ""
     due_count: int = 0
     refreshed_count: int = 0
     failed_count: int = 0
+    retry_count: int = 0
+    notifications: list[str] = Field(default_factory=list)
     items: list[ResearchWatchlistRunDueItemOut] = Field(default_factory=list)
+
+
+class ResearchWatchlistRunOut(BaseModel):
+    id: str
+    run_id: str
+    watchlist_id: str | None = None
+    watchlist_name: str
+    status: Literal["refreshed", "failed"]
+    change_count: int = 0
+    attempt_count: int = 1
+    retry_count: int = 0
+    summary: str = ""
+    error: str | None = None
+    notification_level: Literal["low", "medium", "high"] = "low"
+    notification_payload: dict = Field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
+
+
+class ResearchWatchlistDigestExportOut(BaseModel):
+    generated_at: datetime
+    window_start: datetime
+    window_end: datetime
+    run_count: int = 0
+    refreshed_count: int = 0
+    failed_count: int = 0
+    change_count: int = 0
+    retry_count: int = 0
+    alert_level: Literal["low", "medium", "high"] = "low"
+    summary_lines: list[str] = Field(default_factory=list)
+    runs: list[ResearchWatchlistRunOut] = Field(default_factory=list)
+    export_markdown: str = ""
 
 
 class ResearchWatchlistOpsIssueOut(BaseModel):
@@ -728,6 +787,7 @@ class ResearchSourceDiagnosticsOut(BaseModel):
     reranker_used: bool = False
     reranker_model: str = ""
     reranker_top_k: int = 0
+    reranker_backend: str = ""
     reranker_notes: list[str] = Field(default_factory=list)
     candidate_profile_companies: list[str] = Field(default_factory=list)
     candidate_profile_hit_count: int = 0
@@ -977,6 +1037,16 @@ class ResearchSolutionOutlineSectionOut(BaseModel):
     bullets: list[str] = Field(default_factory=list)
 
 
+class ResearchAdvisoryArtifactOut(BaseModel):
+    artifact_type: Literal["client_brief", "bidding_prep_memo", "execution_materials"]
+    title: str
+    audience: str = ""
+    purpose: str = ""
+    source_policy: str = ""
+    markdown: str = ""
+    review_checklist: list[str] = Field(default_factory=list)
+
+
 class ResearchSolutionDeliveryPackOut(BaseModel):
     scenario: str = ""
     target_customer: str = ""
@@ -989,6 +1059,7 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     feasibility_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     project_proposal_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     client_ppt_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
+    advisory_artifacts: list[ResearchAdvisoryArtifactOut] = Field(default_factory=list)
     review_checklist: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
     export_markdown: str = ""

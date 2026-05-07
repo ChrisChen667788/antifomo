@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.services.research_rag_quality_service import (
     build_retrieval_correction_profile,
+    rerank_sources_cross_encoder,
     review_generation_grounding,
 )
 
@@ -77,6 +78,48 @@ def test_retrieval_correction_profile_scores_and_rewrites_low_signal_sources() -
     assert profile.rejected_source_count == 1
     assert profile.status in {"ready", "needs_filtering"}
     assert any("site:ccgp.gov.cn" in query for query in profile.corrective_queries)
+
+
+def test_sentence_transformers_cross_encoder_adapter_reranks_with_model_scores(monkeypatch) -> None:
+    sources = [
+        _Source(
+            title="泛行业观察",
+            url="https://media.example.cn/opinion",
+            domain="media.example.cn",
+            snippet="泛行业观察，缺少采购公告。",
+            source_tier="media",
+        ),
+        _Source(
+            title="南京市数据局电子政务云采购意向公告",
+            url="https://www.nanjing.gov.cn/procurement",
+            domain="www.nanjing.gov.cn",
+            snippet="官方公告披露采购意向、预算安排和项目建设路径。",
+            source_tier="official",
+        ),
+    ]
+
+    class _FakeCrossEncoder:
+        def predict(self, pairs):
+            assert "南京市数据局" in pairs[0][0]
+            return [0.1, 0.9]
+
+    monkeypatch.setattr(
+        "app.services.research_rag_quality_service._load_sentence_transformers_cross_encoder",
+        lambda _model: _FakeCrossEncoder(),
+    )
+
+    reranked, profile = rerank_sources_cross_encoder(
+        sources,
+        query="南京市数据局 政务云 采购意向",
+        model_name="fake-cross-encoder",
+        top_k=2,
+        backend="sentence_transformers",
+    )
+
+    assert reranked[0].url == "https://www.nanjing.gov.cn/procurement"
+    assert profile.backend == "sentence-transformers"
+    assert profile.reranked_count == 2
+    assert profile.to_diagnostics_update()["reranker_backend"] == "sentence-transformers"
 
 
 def test_generation_grounding_review_flags_unsupported_claims() -> None:

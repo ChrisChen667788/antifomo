@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0+20260508 - 2026-05-08
+
+- Upgraded research reranking from the local heuristic path to a lazy SentenceTransformers CrossEncoder adapter with backend diagnostics and local fallback, and added offline reranker official-source Recall@5.
+- Added retrieval-index status reporting and research-center visualization for resumable rebuild progress, persisted chunk counts, parent-block links, and orphan child chunks while preserving official-source priority under parent-block routing boost.
+- Added Watchlist run history, default failed-run retry, notification summaries, SQLite/Alembic persistence, API client types, and Markdown digest export in the research center.
+- Added advisory-grade delivery artifacts in the solution delivery pack: client brief, bidding prep memo, and execution materials, all carrying source policy and review checklist metadata.
+- Tightened semiconductor entity cleanup so product/project strings like "12英寸CIS集成" and "300毫米硅片全自动智能" trim back to real organization candidates instead of leaking as ranked entities.
+
 ## 0.5.2+20260507 - 2026-05-07
 
 - Closed the 0.5.0.x retrieval substrate follow-up with schema v2 chunks, sentence-window splitting, stable chunk IDs, report/section parent links, richer region / industry / perspective metadata, and broader retrieval-index search filters.

@@ -62,6 +62,17 @@ def _build_report(
         source_quality="high" if retrieval_quality == "high" else "low",
         sources=[
             {
+                "title": "行业观察",
+                "url": f"https://media.example.com/{uuid.uuid4()}",
+                "domain": "media.example.com",
+                "snippet": "泛行业趋势观察",
+                "search_query": keyword,
+                "source_type": "web",
+                "content_status": "snippet",
+                "source_label": "行业媒体",
+                "source_tier": "media",
+            },
+            {
                 "title": "公开公告",
                 "url": f"https://example.com/{uuid.uuid4()}",
                 "domain": "example.com",
@@ -172,6 +183,8 @@ def test_build_offline_research_evaluation_summarizes_core_metrics_and_weak_repo
         assert metric_map["official_source_recall_at_5"].denominator == 2
         assert metric_map["unsupported_target_rate"].numerator == 1
         assert metric_map["unsupported_target_rate"].denominator == 2
+        assert metric_map["reranker_official_recall_at_5"].denominator == 2
+        assert metric_map["reranker_official_recall_at_5"].numerator == 2
         assert evaluation.weakest_reports
         assert evaluation.weakest_reports[0].report_title == "南京政务云候选推进"
         assert evaluation.weakest_reports[0].unsupported_targets == ["南京市数据局"]

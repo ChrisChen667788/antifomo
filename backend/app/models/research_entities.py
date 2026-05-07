@@ -359,6 +359,10 @@ class ResearchWatchlist(Base):
         back_populates="watchlist",
         cascade="all, delete-orphan",
     )
+    runs: Mapped[list["ResearchWatchlistRun"]] = relationship(
+        back_populates="watchlist",
+        cascade="all, delete-orphan",
+    )
 
 
 class ResearchWatchlistChangeEvent(Base):
@@ -382,6 +386,42 @@ class ResearchWatchlistChangeEvent(Base):
     )
 
     watchlist: Mapped["ResearchWatchlist"] = relationship(back_populates="change_events")
+
+
+class ResearchWatchlistRun(Base):
+    __tablename__ = "research_watchlist_runs"
+    __table_args__ = (
+        Index("idx_research_watchlist_runs_user_created", "user_id", "created_at"),
+        Index("idx_research_watchlist_runs_watchlist_created", "watchlist_id", "created_at"),
+        Index("idx_research_watchlist_runs_run_id", "run_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    watchlist_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("research_watchlists.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    run_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    watchlist_name: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="refreshed", server_default="refreshed")
+    change_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notification_level: Mapped[str] = mapped_column(String(20), nullable=False, default="low", server_default="low")
+    notification_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    watchlist: Mapped[Optional["ResearchWatchlist"]] = relationship(back_populates="runs")
 
 
 class ResearchCanonicalEntity(Base):

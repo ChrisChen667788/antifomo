@@ -25,6 +25,7 @@ from app.schemas.research import (
 )
 from app.services.content_extractor import normalize_text
 from app.services.research_quality_service import build_research_quality_profile
+from app.services.research_rag_quality_service import rerank_sources_cross_encoder
 
 _METRIC_BENCHMARKS: dict[str, float] = {
     "retrieval_hit_rate": 0.72,
@@ -32,6 +33,7 @@ _METRIC_BENCHMARKS: dict[str, float] = {
     "section_quota_pass_rate": 0.74,
     "official_source_recall_at_5": 0.62,
     "unsupported_target_rate": 0.18,
+    "reranker_official_recall_at_5": 0.68,
 }
 
 
@@ -486,8 +488,11 @@ def build_offline_research_evaluation(
     total_quota_sections = 0
     official_recall_hits = 0
     official_recall_total = 0
+    reranker_official_recall_hits = 0
+    reranker_official_recall_total = 0
     unsupported_target_total = 0
     weak_reports: list[ResearchOfflineEvaluationWeakReportOut] = []
+    settings = get_settings()
 
     for entry, report in reports:
         retrieval_hit = _report_retrieval_hit(report)
@@ -503,6 +508,21 @@ def build_offline_research_evaluation(
             official_recall_total += 1
             if _has_official_source_at_k(report.sources, k=5):
                 official_recall_hits += 1
+            if len(report.sources) > 1:
+                reranked_sources, _profile = rerank_sources_cross_encoder(
+                    report.sources,
+                    query=" ".join(
+                        item
+                        for item in [report.keyword, report.research_focus or "", *report.target_accounts[:3]]
+                        if normalize_text(item)
+                    ),
+                    model_name=settings.research_cross_encoder_model,
+                    top_k=min(settings.research_cross_encoder_top_k, 20),
+                    backend="local",
+                )
+                reranker_official_recall_total += 1
+                if _has_official_source_at_k(reranked_sources, k=5):  # type: ignore[arg-type]
+                    reranker_official_recall_hits += 1
 
         quota_sections = _quota_sections(report)
         total_quota_sections += len(quota_sections)
@@ -541,6 +561,7 @@ def build_offline_research_evaluation(
     target_support_rate = _safe_rate(supported_target_total, total_target_total)
     section_quota_pass_rate = _safe_rate(passed_quota_sections, total_quota_sections)
     official_source_recall_at_5 = _safe_rate(official_recall_hits, official_recall_total)
+    reranker_official_recall_at_5 = _safe_rate(reranker_official_recall_hits, reranker_official_recall_total)
     unsupported_target_rate = _safe_rate(unsupported_target_total, total_target_total)
 
     metrics = [
@@ -605,6 +626,20 @@ def build_offline_research_evaluation(
             ),
             summary="按账户口径统计：目标账户中仍缺少来源直接支撑的占比，数值越低越好。",
         ),
+        ResearchOfflineEvaluationMetricOut(
+            key="reranker_official_recall_at_5",
+            label="Reranker 官方源 Recall@5",
+            numerator=reranker_official_recall_hits,
+            denominator=reranker_official_recall_total,
+            rate=reranker_official_recall_at_5,
+            percent=_percent(reranker_official_recall_at_5),
+            benchmark=_METRIC_BENCHMARKS["reranker_official_recall_at_5"],
+            status=_metric_status(
+                reranker_official_recall_at_5,
+                benchmark=_METRIC_BENCHMARKS["reranker_official_recall_at_5"],
+            ),
+            summary="按研报口径统计：离线样本经 reranker 复排后，前 5 个来源召回至少一个官方源的比例。",
+        ),
     ]
 
     weak_reports.sort(
@@ -621,7 +656,8 @@ def build_offline_research_evaluation(
         f"已扫描 {len(entries)} 份存量研报，其中可评估 {len(reports)} 份。",
         (
             f"当前检索命中率 {_percent(retrieval_hit_rate)}%，目标账户支撑率 {_percent(target_support_rate)}%，"
-            f"章节证据配额通过率 {_percent(section_quota_pass_rate)}%，官方源 Recall@5 {_percent(official_source_recall_at_5)}%。"
+            f"章节证据配额通过率 {_percent(section_quota_pass_rate)}%，官方源 Recall@5 {_percent(official_source_recall_at_5)}%，"
+            f"Reranker 官方源 Recall@5 {_percent(reranker_official_recall_at_5)}%。"
         ),
     ]
     if weak_reports:

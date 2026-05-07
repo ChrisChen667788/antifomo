@@ -216,6 +216,18 @@ def test_extract_rank_entity_candidates_links_scope_seed_alias_to_canonical_name
     assert "百联" not in candidates
 
 
+def test_extract_rank_entity_candidates_trims_semiconductor_product_specs() -> None:
+    candidates = _extract_rank_entity_candidates(
+        "格科半导体12英寸CIS集成项目、超硅半导体先进逻辑制程用300毫米硅片全自动智能产线。",
+        scope_hints={"industries": ["半导体"]},
+    )
+
+    assert "格科半导体" in candidates
+    assert "超硅半导体" in candidates
+    assert "格科半导体12英寸CIS集成" not in candidates
+    assert "超硅半导体先进逻辑制程用300毫米硅片全自动智能" not in candidates
+
+
 def test_build_entity_graph_merges_scope_alias_mentions_under_canonical_company() -> None:
     sources = [
         _source(

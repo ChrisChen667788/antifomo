@@ -101,7 +101,15 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert pack.feasibility_outline
     assert pack.project_proposal_outline
     assert pack.client_ppt_outline
+    assert {item.artifact_type for item in pack.advisory_artifacts} == {
+        "client_brief",
+        "bidding_prep_memo",
+        "execution_materials",
+    }
+    assert any("客户 brief" in item.title for item in pack.advisory_artifacts)
+    assert any("投标准备" in item.markdown for item in pack.advisory_artifacts)
     assert pack.source_support_score > 0
     assert pack.grounding_checks
     assert any("目标客户" in item for item in pack.clarification_questions)
+    assert "Advisory-grade 交付产物" in pack.export_markdown
     assert "对客汇报 PPT 大纲" in pack.export_markdown

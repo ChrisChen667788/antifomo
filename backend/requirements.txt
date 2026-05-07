@@ -8,3 +8,4 @@ certifi>=2024.2.2
 pytest>=8.0.0
 ocrmac>=1.0.1
 pillow>=10.0.0
+sentence-transformers>=3.0.0

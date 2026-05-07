@@ -181,6 +181,46 @@ class ResearchRetrievalIndexRebuildResult:
         }
 
 
+@dataclass(slots=True)
+class ResearchRetrievalIndexStatus:
+    user_id: str
+    schema_version: int
+    backend: str = "sqlite"
+    checkpoint_status: str = "idle"
+    total_chunks: int = 0
+    indexed_chunks: int = 0
+    next_offset: int = 0
+    progress_percent: int = 0
+    persisted_chunk_count: int = 0
+    parent_link_count: int = 0
+    orphan_child_count: int = 0
+    source_counts: dict[str, int] = field(default_factory=dict)
+    document_type_counts: dict[str, int] = field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "schema_version": self.schema_version,
+            "backend": self.backend,
+            "checkpoint_status": self.checkpoint_status,
+            "total_chunks": self.total_chunks,
+            "indexed_chunks": self.indexed_chunks,
+            "next_offset": self.next_offset,
+            "progress_percent": self.progress_percent,
+            "persisted_chunk_count": self.persisted_chunk_count,
+            "parent_link_count": self.parent_link_count,
+            "orphan_child_count": self.orphan_child_count,
+            "source_counts": self.source_counts,
+            "document_type_counts": self.document_type_counts,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "updated_at": self.updated_at,
+        }
+
+
 def _safe_text(value: Any) -> str:
     return normalize_text(str(value or ""))
 
@@ -1244,6 +1284,7 @@ def search_research_retrieval_index(
         return []
 
     by_key = {chunk.chunk_id: chunk for chunk in filtered_chunks}
+    all_chunks_by_id = {chunk.chunk_id: chunk for chunk in index.chunks}
     matches = retrieve_text_matches(
         [
             TextRetrievalCandidate(
@@ -1258,25 +1299,47 @@ def search_research_retrieval_index(
         limit=max(1, min(limit * 4, 80)),
     )
 
-    hits: list[ResearchRetrievalIndexHit] = []
+    hits_by_chunk_id: dict[str, ResearchRetrievalIndexHit] = {}
     for match in matches:
         chunk = by_key.get(match.key)
         if chunk is None:
             continue
-        hits.append(
-            ResearchRetrievalIndexHit(
-                chunk=chunk,
-                score=match.score,
-                match_modes=match.match_modes,
+        child_hit = ResearchRetrievalIndexHit(
+            chunk=chunk,
+            score=match.score,
+            match_modes=match.match_modes,
+            matched_terms=match.matched_terms,
+            lexical_overlap=match.lexical_overlap,
+            dense_similarity=match.dense_similarity,
+            exact_query_hit=match.exact_query_hit,
+        )
+        hits_by_chunk_id[chunk.chunk_id] = child_hit
+        parent = all_chunks_by_id.get(chunk.parent_chunk_id) if chunk.parent_chunk_id else None
+        if parent is not None and parent.chunk_id in by_key:
+            current_parent_hit = hits_by_chunk_id.get(parent.chunk_id)
+            parent_score = max(match.score * 0.92, match.score - 0.08) + min(max(parent.priority, 0), 8) * 0.01
+            parent_hit = ResearchRetrievalIndexHit(
+                chunk=parent,
+                score=parent_score,
+                match_modes=_dedupe_strings([*match.match_modes, "parent_block"], limit=6),
                 matched_terms=match.matched_terms,
                 lexical_overlap=match.lexical_overlap,
                 dense_similarity=match.dense_similarity,
                 exact_query_hit=match.exact_query_hit,
             )
-        )
-        if len(hits) >= max(1, min(limit, 40)):
-            break
-    return hits
+            if current_parent_hit is None or parent_hit.score > current_parent_hit.score:
+                hits_by_chunk_id[parent.chunk_id] = parent_hit
+    hits = sorted(
+        hits_by_chunk_id.values(),
+        key=lambda hit: (
+            float(hit.score) + (0.12 if hit.chunk.source_tier == "official" else 0.0),
+            1 if hit.chunk.source_tier == "official" else 0,
+            1 if hit.chunk.field_key in {"report_summary", "section_summary"} else 0,
+            hit.chunk.priority,
+        ),
+        reverse=True,
+    )
+    return hits[: max(1, min(limit, 40))]
 
 
 def _chunk_key(chunk: ResearchRetrievalIndexChunk) -> str:
@@ -1528,6 +1591,73 @@ def load_persistent_research_retrieval_index(
         chunks=chunks,
         built_at=datetime.now(timezone.utc),
         source_counts=dict(Counter(chunk.document_type for chunk in chunks)),
+    )
+
+
+def get_persistent_research_retrieval_index_status(
+    db: Session,
+    *,
+    user_id: UUID | None = None,
+) -> ResearchRetrievalIndexStatus:
+    settings = get_settings()
+    resolved_user_id = user_id or settings.single_user_id
+    checkpoint = db.scalar(
+        select(ResearchRetrievalIndexBuildCheckpoint)
+        .where(ResearchRetrievalIndexBuildCheckpoint.user_id == resolved_user_id)
+        .where(ResearchRetrievalIndexBuildCheckpoint.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
+        .where(ResearchRetrievalIndexBuildCheckpoint.backend == "sqlite")
+    )
+    rows = db.execute(
+        select(
+            ResearchRetrievalIndexChunkRecord.chunk_key,
+            ResearchRetrievalIndexChunkRecord.parent_chunk_id,
+            ResearchRetrievalIndexChunkRecord.document_type,
+        )
+        .where(ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id)
+        .where(ResearchRetrievalIndexChunkRecord.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
+    ).all()
+    chunk_keys = {str(row.chunk_key or "") for row in rows}
+    parent_link_count = sum(1 for row in rows if _safe_text(row.parent_chunk_id))
+    orphan_child_count = sum(
+        1 for row in rows if _safe_text(row.parent_chunk_id) and str(row.parent_chunk_id) not in chunk_keys
+    )
+    document_type_counts = dict(Counter(_safe_text(row.document_type) or "unknown" for row in rows))
+    persisted_chunk_count = len(rows)
+
+    checkpoint_payload = checkpoint.checkpoint_payload if checkpoint and isinstance(checkpoint.checkpoint_payload, dict) else {}
+    checkpoint_source_counts = checkpoint_payload.get("source_counts") if isinstance(checkpoint_payload, dict) else {}
+    source_counts = (
+        {str(key): int(value or 0) for key, value in checkpoint_source_counts.items()}
+        if isinstance(checkpoint_source_counts, dict)
+        else document_type_counts
+    )
+    total_chunks = int(checkpoint.total_chunks or 0) if checkpoint else persisted_chunk_count
+    indexed_chunks = int(checkpoint.indexed_chunks or 0) if checkpoint else persisted_chunk_count
+    next_offset = int(checkpoint.next_offset or 0) if checkpoint else persisted_chunk_count
+    if total_chunks > 0:
+        progress_percent = max(0, min(100, round(indexed_chunks / total_chunks * 100)))
+    elif persisted_chunk_count > 0:
+        progress_percent = 100
+    else:
+        progress_percent = 0
+
+    return ResearchRetrievalIndexStatus(
+        user_id=str(resolved_user_id),
+        schema_version=RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
+        backend=checkpoint.backend if checkpoint else "sqlite",
+        checkpoint_status=checkpoint.status if checkpoint else "idle",
+        total_chunks=total_chunks,
+        indexed_chunks=indexed_chunks,
+        next_offset=next_offset,
+        progress_percent=progress_percent,
+        persisted_chunk_count=persisted_chunk_count,
+        parent_link_count=parent_link_count,
+        orphan_child_count=orphan_child_count,
+        source_counts=source_counts,
+        document_type_counts=document_type_counts,
+        started_at=checkpoint.started_at if checkpoint else None,
+        completed_at=checkpoint.completed_at if checkpoint else None,
+        updated_at=checkpoint.updated_at if checkpoint else None,
     )
 
 

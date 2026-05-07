@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from app.schemas.research import (
+    ResearchAdvisoryArtifactOut,
     ResearchMarketIntelligencePackOut,
     ResearchProductRequirementOut,
     ResearchReportDocument,
@@ -414,6 +415,117 @@ def _outline(title: str, bullets: Iterable[object]) -> ResearchSolutionOutlineSe
     return ResearchSolutionOutlineSectionOut(title=title, bullets=_dedupe_strings(bullets, limit=8))
 
 
+def _artifact_markdown(
+    *,
+    title: str,
+    audience: str,
+    purpose: str,
+    source_policy: str,
+    sections: list[ResearchSolutionOutlineSectionOut],
+) -> str:
+    lines = [
+        f"# {title}",
+        "",
+        f"- 受众: {audience}",
+        f"- 用途: {purpose}",
+        f"- 证据口径: {source_policy}",
+        "",
+    ]
+    for section in sections:
+        lines.append(f"## {section.title}")
+        lines.extend([f"- {bullet}" for bullet in section.bullets])
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _build_advisory_artifacts(
+    report: ResearchReportDocument,
+    *,
+    market_pack: ResearchMarketIntelligencePackOut,
+    scenario: str,
+    target_customer: str,
+    vertical_scene: str,
+    evidence_policy: str,
+) -> list[ResearchAdvisoryArtifactOut]:
+    customer = target_customer or (report.target_accounts[0] if report.target_accounts else "待确认客户")
+    scene = vertical_scene or report.research_focus or scenario
+    top_projects = [item.project_name for item in market_pack.tender_projects[:3]]
+    top_requirements = [
+        param
+        for item in market_pack.technical_parameter_catalog[:4]
+        for param in item.technical_parameters[:2]
+    ]
+    client_sections = [
+        _outline("客户场景与触发信号", [f"目标客户：{customer}", f"场景：{scene}", report.executive_summary, *report.budget_signals[:2]]),
+        _outline("可交流方案主张", [*report.strategic_directions[:3], *[item.name for item in market_pack.product_catalog[:4]], report.commercial_summary.next_action]),
+        _outline("公开证据与边界", [market_pack.source_scope_summary, *top_projects, *market_pack.intelligence_gaps[:2]]),
+        _outline("建议会议目标", ["确认牵头部门、试点范围、数据边界和预算口径。", "争取客户提供现有流程、系统接口和历史项目材料。"]),
+    ]
+    bidding_sections = [
+        _outline("机会判断", [f"客户/业主：{customer}", f"场景：{scenario}", report.consulting_angle, *report.tender_timeline[:3]]),
+        _outline("招采与竞标准备", [*[item.project_name for item in market_pack.tender_projects[:4]], *report.competition_analysis[:3], *market_pack.tender_keywords[:5]]),
+        _outline("技术与资质关注", [*top_requirements, *report.technical_appendix.limitations[:2], "补齐投标资质、业绩案例、产品参数和安全合规说明。"]),
+        _outline("投标准备动作", ["建立招标文件预审清单。", "准备技术偏离表、商务条款风险表和评分点响应矩阵。", report.commercial_summary.next_action]),
+    ]
+    execution_sections = [
+        _outline("交付拆解", [f"一期建议聚焦：{scene}", *report.project_distribution[:3], *report.target_departments[:4]]),
+        _outline("近期行动", ["7 日内完成客户访谈提纲、需求确认表和演示脚本。", "30 日内完成原型范围、预算测算和项目建议书初稿。", report.commercial_summary.next_action]),
+        _outline("材料清单", ["客户 brief", "投标准备 memo", "需求访谈表", "方案架构页", "技术参数表", "风险与待核验清单"]),
+        _outline("风险控制", [*market_pack.intelligence_gaps[:3], *report.technical_appendix.limitations[:3], "所有客户版结论保留来源或标注为假设。"]),
+    ]
+    specs = [
+        (
+            "client_brief",
+            f"{customer} {scenario} 客户 brief",
+            "客户业务负责人 / 信息化牵头部门",
+            "用于客户初次交流、场景确认和下一步共创邀约。",
+            client_sections,
+        ),
+        (
+            "bidding_prep_memo",
+            f"{customer} {scenario} 投标准备 memo",
+            "售前、投标、解决方案和商务团队",
+            "用于招采前研判、评分点预判、材料责任分工。",
+            bidding_sections,
+        ),
+        (
+            "execution_materials",
+            f"{customer} {scenario} 执行材料清单",
+            "项目负责人 / 交付 PM / 售前负责人",
+            "用于把研究结论转成可下发的任务、清单和交付物。",
+            execution_sections,
+        ),
+    ]
+    artifacts: list[ResearchAdvisoryArtifactOut] = []
+    for artifact_type, title, audience, purpose, sections in specs:
+        review_checklist = _dedupe_strings(
+            [
+                "确认客户名称、牵头部门和场景是否可对外表达。",
+                "确认所有确定性判断是否有官方源、客户材料或招采证据支撑。",
+                "确认预算、时间、产品参数和竞品表述是否需要降级为假设。",
+            ],
+            limit=6,
+        )
+        artifacts.append(
+            ResearchAdvisoryArtifactOut(
+                artifact_type=artifact_type,
+                title=title,
+                audience=audience,
+                purpose=purpose,
+                source_policy=evidence_policy,
+                markdown=_artifact_markdown(
+                    title=title,
+                    audience=audience,
+                    purpose=purpose,
+                    source_policy=evidence_policy,
+                    sections=sections,
+                ),
+                review_checklist=review_checklist,
+            )
+        )
+    return artifacts
+
+
 def _scenario_from_report(report: ResearchReportDocument) -> str:
     text = normalize_text(" ".join([report.keyword, report.research_focus or "", report.report_title]))
     for value in ("电商数字人", "文旅AIGC平台", "AI营销平台", "政务AI解决方案", "政务AI", "数字人", "AIGC", "AI营销"):
@@ -485,16 +597,25 @@ def build_solution_delivery_pack(
         _outline("6. 实施路线与预算口径", [*report.tender_timeline[:3], *report.budget_signals[:3]]),
         _outline("7. 下一步共创计划", [report.commercial_summary.next_action, "客户确认范围后输出正式可研、建议书和对客汇报稿。"]),
     ]
+    evidence_policy = (
+        "仅把已命中主题、客户或招采/技术参数的来源写成确定判断；其余内容保留为待核验假设。"
+        if market_pack.source_support_score < 70
+        else "当前来源可支撑初版方案大纲，正式对客前仍需确认预算、客户和交付边界。"
+    )
+    advisory_artifacts = _build_advisory_artifacts(
+        report,
+        market_pack=market_pack,
+        scenario=resolved_scenario,
+        target_customer=resolved_customer,
+        vertical_scene=resolved_scene,
+        evidence_policy=evidence_policy,
+    )
     pack = ResearchSolutionDeliveryPackOut(
         scenario=resolved_scenario,
         target_customer=resolved_customer,
         vertical_scene=resolved_scene,
         source_support_score=market_pack.source_support_score,
-        evidence_policy=(
-            "仅把已命中主题、客户或招采/技术参数的来源写成确定判断；其余内容保留为待核验假设。"
-            if market_pack.source_support_score < 70
-            else "当前来源可支撑初版方案大纲，正式对客前仍需确认预算、客户和交付边界。"
-        ),
+        evidence_policy=evidence_policy,
         grounding_checks=_dedupe_strings(
             [
                 f"已通过来源校正筛出 {market_pack.validated_source_count} 条高相关来源。",
@@ -508,6 +629,7 @@ def build_solution_delivery_pack(
         feasibility_outline=feasibility_outline,
         project_proposal_outline=project_proposal_outline,
         client_ppt_outline=client_ppt_outline,
+        advisory_artifacts=advisory_artifacts,
         review_checklist=_dedupe_strings(
             [
                 "确认目标客户和业务牵头部门是否准确。",
@@ -609,6 +731,18 @@ def build_solution_delivery_markdown(
     lines.extend(_outline_markdown("项目建议书大纲", pack.project_proposal_outline))
     lines.append("")
     lines.extend(_outline_markdown("对客汇报 PPT 大纲", pack.client_ppt_outline))
+    if pack.advisory_artifacts:
+        lines.extend(["", "## Advisory-grade 交付产物"])
+        for artifact in pack.advisory_artifacts:
+            lines.extend(
+                [
+                    f"### {artifact.title}",
+                    f"- 类型: {artifact.artifact_type}",
+                    f"- 受众: {artifact.audience}",
+                    f"- 用途: {artifact.purpose}",
+                    f"- 证据口径: {artifact.source_policy}",
+                ]
+            )
     lines.extend(["", "## 审阅清单"])
     lines.extend([f"- {item}" for item in pack.review_checklist])
     if market_pack is not None:

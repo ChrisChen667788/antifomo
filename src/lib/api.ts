@@ -266,6 +266,7 @@ export interface ApiResearchSourceDiagnostics {
   reranker_used?: boolean;
   reranker_model?: string;
   reranker_top_k?: number;
+  reranker_backend?: string;
   reranker_notes?: string[];
   candidate_profile_companies: string[];
   candidate_profile_hit_count: number;
@@ -580,6 +581,16 @@ export interface ApiResearchSolutionOutlineSection {
   bullets: string[];
 }
 
+export interface ApiResearchAdvisoryArtifact {
+  artifact_type: "client_brief" | "bidding_prep_memo" | "execution_materials";
+  title: string;
+  audience: string;
+  purpose: string;
+  source_policy: string;
+  markdown: string;
+  review_checklist: string[];
+}
+
 export interface ApiResearchSolutionDeliveryPack {
   scenario: string;
   target_customer: string;
@@ -592,6 +603,7 @@ export interface ApiResearchSolutionDeliveryPack {
   feasibility_outline: ApiResearchSolutionOutlineSection[];
   project_proposal_outline: ApiResearchSolutionOutlineSection[];
   client_ppt_outline: ApiResearchSolutionOutlineSection[];
+  advisory_artifacts: ApiResearchAdvisoryArtifact[];
   review_checklist: string[];
   next_steps: string[];
   export_markdown: string;
@@ -969,17 +981,56 @@ export interface ApiResearchWatchlistRunDueItem {
   name: string;
   status: "refreshed" | "failed";
   change_count: number;
+  attempt_count: number;
+  retry_count: number;
   summary: string;
   next_due_at?: string | null;
   error?: string | null;
+  notification_level: "low" | "medium" | "high";
 }
 
 export interface ApiResearchWatchlistRunDueResponse {
   checked_at: string;
+  run_id: string;
   due_count: number;
   refreshed_count: number;
   failed_count: number;
+  retry_count: number;
+  notifications: string[];
   items: ApiResearchWatchlistRunDueItem[];
+}
+
+export interface ApiResearchWatchlistRun {
+  id: string;
+  run_id: string;
+  watchlist_id?: string | null;
+  watchlist_name: string;
+  status: "refreshed" | "failed";
+  change_count: number;
+  attempt_count: number;
+  retry_count: number;
+  summary: string;
+  error?: string | null;
+  notification_level: "low" | "medium" | "high";
+  notification_payload: Record<string, unknown>;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+export interface ApiResearchWatchlistDigestExport {
+  generated_at: string;
+  window_start: string;
+  window_end: string;
+  run_count: number;
+  refreshed_count: number;
+  failed_count: number;
+  change_count: number;
+  retry_count: number;
+  alert_level: "low" | "medium" | "high";
+  summary_lines: string[];
+  runs: ApiResearchWatchlistRun[];
+  export_markdown: string;
 }
 
 export interface ApiResearchWatchlistOpsIssue {
@@ -1294,6 +1345,25 @@ export interface ApiResearchRetrievalIndexRebuildResult {
   backend: string;
   checkpoint_status: "idle" | "running" | "completed" | "failed" | string;
   message: string;
+}
+
+export interface ApiResearchRetrievalIndexStatus {
+  user_id: string;
+  schema_version: number;
+  backend: string;
+  checkpoint_status: "idle" | "running" | "completed" | "failed" | string;
+  total_chunks: number;
+  indexed_chunks: number;
+  next_offset: number;
+  progress_percent: number;
+  persisted_chunk_count: number;
+  parent_link_count: number;
+  orphan_child_count: number;
+  source_counts: Record<string, number>;
+  document_type_counts: Record<string, number>;
+  started_at?: string | null;
+  completed_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface ApiResearchRetrievalIndexSearchHit {
@@ -2552,6 +2622,12 @@ export function rebuildResearchRetrievalIndex(payload: {
   });
 }
 
+export function getResearchRetrievalIndexStatus(): Promise<ApiResearchRetrievalIndexStatus> {
+  return request<ApiResearchRetrievalIndexStatus>("/api/research/retrieval-index/status", {
+    method: "GET",
+  });
+}
+
 export function searchResearchRetrievalIndex(
   query: string,
   options: {
@@ -2794,17 +2870,75 @@ export function runDueResearchWatchlists(
     collection_name?: string | null;
     is_focus_reference?: boolean;
     limit?: number;
+    retry_failed?: boolean;
+    max_retry_attempts?: number;
   },
 ): Promise<ApiResearchWatchlistRunDueResponse> {
   const limit = payload?.limit;
+  const retryFailed = payload?.retry_failed;
+  const maxRetryAttempts = payload?.max_retry_attempts;
   const bodyPayload = payload ? { ...payload } : {};
   if ("limit" in bodyPayload) {
     delete bodyPayload.limit;
   }
-  const params = typeof limit === "number" ? `?limit=${encodeURIComponent(String(limit))}` : "";
-  return request<ApiResearchWatchlistRunDueResponse>(`/api/research/watchlists/run-due${params}`, {
+  if ("retry_failed" in bodyPayload) {
+    delete bodyPayload.retry_failed;
+  }
+  if ("max_retry_attempts" in bodyPayload) {
+    delete bodyPayload.max_retry_attempts;
+  }
+  const params = new URLSearchParams();
+  if (typeof limit === "number") {
+    params.set("limit", String(limit));
+  }
+  if (typeof retryFailed === "boolean") {
+    params.set("retry_failed", retryFailed ? "true" : "false");
+  }
+  if (typeof maxRetryAttempts === "number") {
+    params.set("max_retry_attempts", String(maxRetryAttempts));
+  }
+  const query = params.toString();
+  return request<ApiResearchWatchlistRunDueResponse>(`/api/research/watchlists/run-due${query ? `?${query}` : ""}`, {
     method: "POST",
     body: JSON.stringify(bodyPayload),
+  });
+}
+
+export function getResearchWatchlistRunHistory(options: {
+  limit?: number;
+  status?: "refreshed" | "failed" | null;
+  watchlist_id?: string | null;
+} = {}): Promise<ApiResearchWatchlistRun[]> {
+  const params = new URLSearchParams();
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.status) {
+    params.set("status", options.status);
+  }
+  if (options.watchlist_id) {
+    params.set("watchlist_id", options.watchlist_id);
+  }
+  const query = params.toString();
+  return request<ApiResearchWatchlistRun[]>(`/api/research/watchlists/run-history${query ? `?${query}` : ""}`, {
+    method: "GET",
+  }).catch(() => []);
+}
+
+export function getResearchWatchlistDigestExport(options: {
+  since_hours?: number;
+  limit?: number;
+} = {}): Promise<ApiResearchWatchlistDigestExport> {
+  const params = new URLSearchParams();
+  if (options.since_hours) {
+    params.set("since_hours", String(options.since_hours));
+  }
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  const query = params.toString();
+  return request<ApiResearchWatchlistDigestExport>(`/api/research/watchlists/digest-export${query ? `?${query}` : ""}`, {
+    method: "GET",
   });
 }
 

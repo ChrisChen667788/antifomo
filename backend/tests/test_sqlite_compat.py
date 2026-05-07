@@ -129,3 +129,14 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
     assert {"user_id", "schema_version", "backend", "status", "next_offset"}.issubset(
         retrieval_checkpoint_columns
     )
+
+    watchlist_run_columns = _columns_for(engine, "research_watchlist_runs")
+    assert {
+        "user_id",
+        "watchlist_id",
+        "run_id",
+        "status",
+        "attempt_count",
+        "retry_count",
+        "notification_payload",
+    }.issubset(watchlist_run_columns)

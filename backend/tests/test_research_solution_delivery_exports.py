@@ -101,6 +101,8 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
         assert solution_task.status == "done"
         assert solution_task.output_payload["document_kind"] == "solution_delivery"
         assert "对客汇报 PPT 大纲" in str(solution_task.output_payload.get("content") or "")
+        assert "Advisory-grade 交付产物" in str(solution_task.output_payload.get("content") or "")
+        assert "客户 brief" in str(solution_task.output_payload.get("content") or "")
         assert "政务AI解决方案" in str(solution_task.output_payload.get("content") or "")
     finally:
         db.close()

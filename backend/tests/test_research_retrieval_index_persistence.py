@@ -11,6 +11,7 @@ from app.db.base import Base
 from app.models.entities import KnowledgeEntry, User
 from app.models.research_entities import ResearchRetrievalIndexBuildCheckpoint, ResearchRetrievalIndexChunkRecord
 from app.services.research_retrieval_index_service import (
+    get_persistent_research_retrieval_index_status,
     load_persistent_research_retrieval_index,
     rebuild_persistent_research_retrieval_index,
     search_persistent_research_retrieval_index,
@@ -138,5 +139,39 @@ def test_persistent_retrieval_index_loads_and_searches_without_duplicate_increme
         assert hits
         assert hits[0].chunk.source_tier == "official"
         assert "预算复核" in hits[0].chunk.text
+    finally:
+        db.close()
+
+
+def test_persistent_retrieval_index_status_reports_incremental_progress_and_parent_links() -> None:
+    db = _new_session()
+    try:
+        user = _seed_user_and_report(db)
+
+        partial = rebuild_persistent_research_retrieval_index(
+            db,
+            user_id=user.id,
+            batch_size=1,
+            max_chunks=1,
+            reset=True,
+        )
+        partial_status = get_persistent_research_retrieval_index_status(db, user_id=user.id)
+
+        assert partial_status.checkpoint_status == "running"
+        assert partial_status.total_chunks == partial.total_chunks
+        assert partial_status.indexed_chunks == 1
+        assert partial_status.progress_percent < 100
+        assert partial_status.persisted_chunk_count == 1
+
+        completed = rebuild_persistent_research_retrieval_index(db, user_id=user.id, batch_size=50, resume=True)
+        completed_status = get_persistent_research_retrieval_index_status(db, user_id=user.id)
+
+        assert completed.completed is True
+        assert completed_status.checkpoint_status == "completed"
+        assert completed_status.progress_percent == 100
+        assert completed_status.persisted_chunk_count == completed_status.total_chunks
+        assert completed_status.parent_link_count > 0
+        assert completed_status.orphan_child_count == 0
+        assert completed_status.document_type_counts["research_report"] >= 1
     finally:
         db.close()

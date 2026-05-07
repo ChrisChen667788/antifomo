@@ -10,12 +10,15 @@ import {
   ApiResearchLowQualityReviewQueueItem,
   ApiResearchMarkdownArchive,
   ApiResearchOfflineEvaluation,
+  ApiResearchRetrievalIndexStatus,
   ApiResearchSavedView,
   ApiResearchSourceSettings,
   ApiResearchTrackingTopic,
   ApiResearchWatchlist,
   ApiResearchWatchlistAutomationStatus,
+  ApiResearchWatchlistDigestExport,
   ApiResearchWatchlistOpsSummary,
+  ApiResearchWatchlistRun,
   ApiResearchWatchlistRunDueResponse,
   createResearchWatchlist,
   deleteResearchCompareSnapshot,
@@ -26,14 +29,18 @@ import {
   getResearchDailyBrief,
   getResearchMarkdownArchive,
   getResearchOfflineEvaluation,
+  getResearchRetrievalIndexStatus,
+  getResearchWatchlistDigestExport,
   getResearchWatchlistOpsSummary,
   getResearchWatchlistAutomationStatus,
+  getResearchWatchlistRunHistory,
   listResearchWatchlists,
   getResearchSourceSettings,
   getResearchWorkspace,
   listKnowledgeEntries,
   refreshResearchWatchlist,
   refreshResearchTrackingTopic,
+  rebuildResearchRetrievalIndex,
   resolveLowQualityResearchReviewItem,
   rewriteLowQualityResearchReviewItem,
   runDueResearchWatchlists,
@@ -681,6 +688,11 @@ export function ResearchCenter() {
   const [offlineEvaluation, setOfflineEvaluation] = useState<ApiResearchOfflineEvaluation | null>(null);
   const [offlineEvaluationLoading, setOfflineEvaluationLoading] = useState(true);
   const [offlineEvaluationRefreshing, setOfflineEvaluationRefreshing] = useState(false);
+  const [retrievalIndexStatus, setRetrievalIndexStatus] = useState<ApiResearchRetrievalIndexStatus | null>(null);
+  const [retrievalIndexLoading, setRetrievalIndexLoading] = useState(true);
+  const [retrievalIndexRebuilding, setRetrievalIndexRebuilding] = useState(false);
+  const [retrievalIndexMessage, setRetrievalIndexMessage] = useState("");
+  const [retrievalIndexError, setRetrievalIndexError] = useState("");
   const [lowQualityActionKey, setLowQualityActionKey] = useState("");
   const [lowQualityMessage, setLowQualityMessage] = useState("");
   const [lowQualityError, setLowQualityError] = useState("");
@@ -692,6 +704,8 @@ export function ResearchCenter() {
   const [watchlistMessage, setWatchlistMessage] = useState("");
   const [watchlistError, setWatchlistError] = useState("");
   const [lastRunDueResult, setLastRunDueResult] = useState<ApiResearchWatchlistRunDueResponse | null>(null);
+  const [watchlistRunHistory, setWatchlistRunHistory] = useState<ApiResearchWatchlistRun[]>([]);
+  const [watchlistDigestExport, setWatchlistDigestExport] = useState<ApiResearchWatchlistDigestExport | null>(null);
   const [archiveLinkMessage, setArchiveLinkMessage] = useState("");
   const [archiveDeliveryFilter, setArchiveDeliveryFilter] = useState<ArchiveDeliveryFilter>("all");
   const [archiveSortMode, setArchiveSortMode] = useState<ArchiveSortMode>("updated_desc");
@@ -781,16 +795,18 @@ export function ResearchCenter() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getResearchWatchlistAutomationStatus(), getResearchWatchlistOpsSummary()])
-      .then(([automation, opsSummary]) => {
+    Promise.all([
+      getResearchWatchlistAutomationStatus().catch(() => null),
+      getResearchWatchlistOpsSummary().catch(() => null),
+      getResearchWatchlistRunHistory({ limit: 8 }).catch(() => []),
+      getResearchWatchlistDigestExport({ since_hours: 24, limit: 20 }).catch(() => null),
+    ])
+      .then(([automation, opsSummary, runHistory, digestExport]) => {
         if (!active) return;
         setWatchlistAutomation(automation);
         setWatchlistOpsSummary(opsSummary);
-      })
-      .catch(() => {
-        if (!active) return;
-        setWatchlistAutomation(null);
-        setWatchlistOpsSummary(null);
+        setWatchlistRunHistory(runHistory || []);
+        setWatchlistDigestExport(digestExport);
       });
     return () => {
       active = false;
@@ -856,6 +872,29 @@ export function ResearchCenter() {
       .finally(() => {
         if (!active) return;
         setOfflineEvaluationLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setRetrievalIndexLoading(true);
+    getResearchRetrievalIndexStatus()
+      .then((res) => {
+        if (!active) return;
+        setRetrievalIndexStatus(res);
+        setRetrievalIndexError("");
+      })
+      .catch(() => {
+        if (!active) return;
+        setRetrievalIndexStatus(null);
+        setRetrievalIndexError("Retrieval index 状态暂时无法读取。");
+      })
+      .finally(() => {
+        if (!active) return;
+        setRetrievalIndexLoading(false);
       });
     return () => {
       active = false;
@@ -931,6 +970,33 @@ export function ResearchCenter() {
     } finally {
       setOfflineEvaluationLoading(false);
       setOfflineEvaluationRefreshing(false);
+    }
+  };
+
+  const refreshRetrievalIndexStatus = async () => {
+    const status = await getResearchRetrievalIndexStatus();
+    setRetrievalIndexStatus(status);
+    setRetrievalIndexLoading(false);
+    return status;
+  };
+
+  const handleRebuildRetrievalIndex = async (reset = false) => {
+    setRetrievalIndexRebuilding(true);
+    setRetrievalIndexMessage("");
+    setRetrievalIndexError("");
+    try {
+      const result = await rebuildResearchRetrievalIndex({
+        batch_size: 200,
+        max_chunks: reset ? null : 400,
+        resume: !reset,
+        reset,
+      });
+      await refreshRetrievalIndexStatus();
+      setRetrievalIndexMessage(result.message || (result.completed ? "Retrieval index 已重建完成。" : "Retrieval index 已写入增量断点。"));
+    } catch {
+      setRetrievalIndexError("Retrieval index 重建失败，请稍后重试。");
+    } finally {
+      setRetrievalIndexRebuilding(false);
     }
   };
 
@@ -1287,6 +1353,18 @@ export function ResearchCenter() {
     triggerMarkdownDownload(detail.filename, detail.content);
   };
 
+  const handleDownloadWatchlistDigest = async () => {
+    try {
+      const digest = await getResearchWatchlistDigestExport({ since_hours: 24, limit: 50 });
+      setWatchlistDigestExport(digest);
+      triggerMarkdownDownload(`watchlist-digest-${new Date().toISOString().slice(0, 10)}.md`, digest.export_markdown);
+      setWatchlistMessage("Watchlist 摘要已导出");
+      setWatchlistError("");
+    } catch {
+      setWatchlistError("导出 Watchlist 摘要失败，请稍后重试。");
+    }
+  };
+
   const handleDeleteMarkdownArchive = async (archiveId: string) => {
     setWorkspaceSaving(true);
     try {
@@ -1475,18 +1553,22 @@ export function ResearchCenter() {
         max_sources: 12,
         save_to_knowledge: true,
         limit: 6,
+        retry_failed: true,
+        max_retry_attempts: 1,
       });
       setLastRunDueResult(result);
       setWatchlistMessage(
         result.due_count
-          ? `本轮检查 ${result.due_count} 个到期 Watchlist，已刷新 ${result.refreshed_count} 个，失败 ${result.failed_count} 个。`
+          ? `本轮检查 ${result.due_count} 个到期 Watchlist，已刷新 ${result.refreshed_count} 个，失败 ${result.failed_count} 个，重试 ${result.retry_count} 次。`
           : "当前没有到期 Watchlist。",
       );
-      const [workspace, nextWatchlists, automation, opsSummary] = await Promise.all([
+      const [workspace, nextWatchlists, automation, opsSummary, runHistory, digestExport] = await Promise.all([
         getResearchWorkspace(),
         listResearchWatchlists(),
         getResearchWatchlistAutomationStatus().catch(() => null),
         getResearchWatchlistOpsSummary().catch(() => null),
+        getResearchWatchlistRunHistory({ limit: 8 }).catch(() => []),
+        getResearchWatchlistDigestExport({ since_hours: 24, limit: 20 }).catch(() => null),
       ]);
       setTrackingTopics(workspace.tracking_topics || []);
       setCompareSnapshots(workspace.compare_snapshots || []);
@@ -1497,6 +1579,10 @@ export function ResearchCenter() {
       }
       if (opsSummary) {
         setWatchlistOpsSummary(opsSummary);
+      }
+      setWatchlistRunHistory(runHistory || []);
+      if (digestExport) {
+        setWatchlistDigestExport(digestExport);
       }
     } catch {
       setWatchlistError("执行到期 Watchlist 失败，请检查自动巡检状态和日志。");
@@ -1847,6 +1933,72 @@ export function ResearchCenter() {
             {offlineEvaluation?.generated_at ? (
               <p className="mt-3 text-xs text-slate-500">更新于 · {formatWatchlistTime(offlineEvaluation.generated_at)}</p>
             ) : null}
+
+            <div className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Retrieval index 增量重建</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    可视化持久化索引断点、父块路由覆盖和孤儿子块风险。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void refreshRetrievalIndexStatus()}
+                    className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                    disabled={retrievalIndexLoading || retrievalIndexRebuilding}
+                  >
+                    刷新状态
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRebuildRetrievalIndex(false)}
+                    className="af-btn af-btn-primary px-3 py-1.5 text-xs"
+                    disabled={retrievalIndexRebuilding}
+                  >
+                    {retrievalIndexRebuilding ? "重建中..." : "继续增量重建"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRebuildRetrievalIndex(true)}
+                    className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                    disabled={retrievalIndexRebuilding}
+                  >
+                    重置重建
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                {[
+                  { label: "断点状态", value: retrievalIndexStatus?.checkpoint_status || "idle" },
+                  { label: "已持久化", value: String(retrievalIndexStatus?.persisted_chunk_count ?? 0) },
+                  { label: "父块路由", value: String(retrievalIndexStatus?.parent_link_count ?? 0) },
+                  { label: "孤儿子块", value: String(retrievalIndexStatus?.orphan_child_count ?? 0) },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                  <span>
+                    {retrievalIndexStatus?.indexed_chunks ?? 0}/{retrievalIndexStatus?.total_chunks ?? 0} chunks
+                  </span>
+                  <span>{retrievalIndexStatus?.progress_percent ?? 0}%</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{ width: `${Math.max(0, Math.min(retrievalIndexStatus?.progress_percent ?? 0, 100))}%` }}
+                  />
+                </div>
+              </div>
+              {retrievalIndexMessage ? <p className="mt-3 text-sm text-emerald-700">{retrievalIndexMessage}</p> : null}
+              {retrievalIndexError ? <p className="mt-3 text-sm text-rose-600">{retrievalIndexError}</p> : null}
+            </div>
 
             {offlineEvaluation?.metrics?.length ? (
               <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -2830,16 +2982,25 @@ export function ResearchCenter() {
                   {sanitizeExternalDisplayText(t("research.watchlistDesc", "将专题刷新结果沉淀为变化摘要，集中查看当日新增内容。"))}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => void handleRunDueWatchlists()}
-                className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
-                disabled={runningDueWatchlists}
-              >
-                {runningDueWatchlists
-                  ? t("research.watchlistRunDueRunning", "执行中...")
-                  : t("research.watchlistRunDue", "执行到期 Watchlist")}
-              </button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadWatchlistDigest()}
+                  className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                >
+                  导出摘要
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRunDueWatchlists()}
+                  className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                  disabled={runningDueWatchlists}
+                >
+                  {runningDueWatchlists
+                    ? t("research.watchlistRunDueRunning", "执行中...")
+                    : t("research.watchlistRunDue", "执行到期 Watchlist")}
+                </button>
+              </div>
             </div>
             {watchlistMessage ? <p className="mt-3 text-sm text-emerald-700">{watchlistMessage}</p> : null}
             {watchlistError ? <p className="mt-2 text-sm text-rose-600">{watchlistError}</p> : null}
@@ -2895,6 +3056,44 @@ export function ResearchCenter() {
                       </div>
                     ))}
                   </div>
+                ) : null}
+              </div>
+            ) : null}
+            {watchlistDigestExport ? (
+              <div className="mt-4 rounded-[22px] border border-white/60 bg-white/65 p-4 text-xs text-slate-600">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">摘要导出</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      最近 24 小时 · {watchlistDigestExport.run_count} 次运行
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 font-medium ${watchlistAutomationAlertTone(watchlistDigestExport.alert_level)}`}>
+                    {watchlistAutomationAlertLabel(watchlistDigestExport.alert_level)}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">成功</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistDigestExport.refreshed_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">失败</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistDigestExport.failed_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">变化</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistDigestExport.change_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">重试</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistDigestExport.retry_count}</p>
+                  </div>
+                </div>
+                {watchlistDigestExport.summary_lines?.length ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {sanitizeExternalDisplayText(watchlistDigestExport.summary_lines[0])}
+                  </p>
                 ) : null}
               </div>
             ) : null}
@@ -3069,6 +3268,37 @@ export function ResearchCenter() {
                       ))}
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+              {watchlistRunHistory.length ? (
+                <div className="mt-3 rounded-2xl border border-slate-200/80 bg-white/80 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Run history</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">最近 {watchlistRunHistory.length} 条运行记录</p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                      重试 {watchlistRunHistory.reduce((sum, item) => sum + (item.retry_count || 0), 0)}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {watchlistRunHistory.slice(0, 5).map((run) => (
+                      <div key={run.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(run.watchlist_name)}</p>
+                          <span className={`rounded-full px-2 py-1 text-[11px] ${watchlistRunItemStatusTone(run.status)}`}>
+                            {watchlistRunItemStatusLabel(run.status)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                          {formatWatchlistTime(run.created_at)} · 尝试 {run.attempt_count} · 重试 {run.retry_count} · 变化 {run.change_count}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          {sanitizeExternalDisplayText(run.error || run.summary || "无摘要")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
               <div className="mt-3 grid gap-2 lg:grid-cols-2">

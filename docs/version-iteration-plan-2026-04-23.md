@@ -1,6 +1,6 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-04-23
+Updated: 2026-05-08
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
 
@@ -102,7 +102,7 @@ Acceptance:
 
 Goal: turn the retrieval index into a shared substrate across reports, watchlists, compare snapshots, archive recap, and knowledge-account context.
 
-Status: first wave delivered as `0.5.0+20260502` (cross-surface indexing + knowledge cleaning + entity quality). Follow-up closed in `0.5.2+20260507` with schema v2 chunks, sentence-window chunks, stable chunk IDs, parent-child report links, and broader API filters.
+Status: first wave delivered as `0.5.0+20260502` (cross-surface indexing + knowledge cleaning + entity quality). Follow-up closed in `0.5.2+20260507` with schema v2 chunks, sentence-window chunks, stable chunk IDs, parent-child report links, and broader API filters. Incremental rebuild visualization and parent-block routing boost shipped in `0.6.0+20260508`.
 
 Scope:
 
@@ -121,7 +121,7 @@ Acceptance:
 
 Goal: materially raise professional rigor and intelligence value by improving what evidence is retrieved, compressed, and promoted.
 
-Status: baseline delivered as `0.5.1+20260502` (CRAG retrieval correction profile + generation grounding review + report self-evaluation profile covering faithfulness / answer relevancy / context coverage / citation quality / entity recall). Follow-up advanced in `0.5.2+20260507` with a feature-flagged local cross-encoder-style reranker and offline official-source / unsupported-target metrics.
+Status: baseline delivered as `0.5.1+20260502` (CRAG retrieval correction profile + generation grounding review + report self-evaluation profile covering faithfulness / answer relevancy / context coverage / citation quality / entity recall). Follow-up advanced in `0.5.2+20260507` with a feature-flagged local cross-encoder-style reranker and offline official-source / unsupported-target metrics, then upgraded in `0.6.0+20260508` with a lazy SentenceTransformers CrossEncoder adapter and offline reranker official-source Recall@5.
 
 Scope:
 
@@ -143,7 +143,7 @@ Acceptance:
 
 Goal: make the research center operate like a durable workspace with refresh, compare, and operations loops instead of a one-shot generator.
 
-Status: first wave delivered as `0.5.2+20260507` with Watchlist operations health summary, due / overdue / stale / failed-topic diagnostics, API client types, and research-center surfacing.
+Status: first wave delivered as `0.5.2+20260507` with Watchlist operations health summary, due / overdue / stale / failed-topic diagnostics, API client types, and research-center surfacing. Follow-up shipped in `0.6.0+20260508` with run history, failed-run retry, notification summaries, and Markdown digest export.
 
 Scope:
 
@@ -161,6 +161,8 @@ Acceptance:
 ## 0.6.0+YYYYMMDD: Advisory-Grade Delivery Chain
 
 Goal: upgrade output from useful research notes to advisory-grade delivery materials for solution design, selling, and bidding.
+
+Status: first wave delivered as `0.6.0+20260508` with client brief, bidding prep memo, and execution materials generated from the solution delivery pack while preserving source policy and review checklist metadata.
 
 Scope:
 

@@ -422,6 +422,27 @@ def test_research_retrieval_index_uses_stable_chunk_ids_and_section_parent_links
         db.close()
 
 
+def test_search_research_retrieval_index_boosts_parent_block_for_child_matches() -> None:
+    db = _new_session()
+    try:
+        user, _topic = _seed_research_assets(db)
+        index = build_research_retrieval_index(db, user_id=user.id)
+
+        hits = search_research_retrieval_index(
+            index,
+            "7 月预算复核 采购中心 确认政务云扩容需求",
+            limit=8,
+            document_types={"report_version"},
+        )
+
+        parent_hits = [hit for hit in hits if "parent_block" in hit.match_modes]
+        assert parent_hits
+        assert any(hit.chunk.field_key in {"report_summary", "section_summary"} for hit in parent_hits)
+        assert any(hit.chunk.chunk_id == child.chunk.parent_chunk_id for hit in parent_hits for child in hits)
+    finally:
+        db.close()
+
+
 def test_search_research_retrieval_index_supports_source_region_industry_field_and_perspective_filters() -> None:
     db = _new_session()
     try:
