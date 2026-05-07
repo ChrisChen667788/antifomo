@@ -3317,7 +3317,10 @@ def try_extract_article_url_from_wechat_ui(
         if int(candidate.get("center_x") or 0) > 0 and int(candidate.get("center_y") or 0) > 0
     }
     template_point_set = set([*template_points, *template_action_targets])
-    share_points = _dedupe_points([*accessibility_points, *template_action_targets, *template_points, *share_points])
+    if template_points:
+        share_points = _dedupe_points([*template_action_targets, *template_points, *accessibility_points, *share_points])
+    else:
+        share_points = _dedupe_points([*accessibility_points, *share_points])
     no_action_signal = not accessibility_points and not template_points
     if no_action_signal:
         surface_state = _classify_url_probe_surface(
@@ -3360,7 +3363,7 @@ def try_extract_article_url_from_wechat_ui(
         if not no_action_signal
         else min(DEFAULT_NO_SIGNAL_URL_EXTRACT_MENU_POINTS, len(menu_points) or 0)
     )
-    if template_points and not accessibility_points and not no_action_signal:
+    if template_points and not no_action_signal:
         template_share_limit = DEFAULT_TEMPLATE_SIGNAL_URL_EXTRACT_SHARE_POINTS
         template_menu_limit = DEFAULT_TEMPLATE_SIGNAL_URL_EXTRACT_MENU_POINTS
         if browser_first:
