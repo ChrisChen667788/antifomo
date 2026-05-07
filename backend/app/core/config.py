@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     research_max_search_results: int = 12
     research_max_sources: int = 14
     research_source_excerpt_chars: int = 900
+    research_cross_encoder_rerank_enabled: bool = False
+    research_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    research_cross_encoder_top_k: int = 20
     wechat_agent_auto_start: bool = False
     pending_item_recovery_enabled: bool = True
     pending_item_recovery_interval_seconds: int = 8

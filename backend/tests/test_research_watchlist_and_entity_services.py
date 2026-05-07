@@ -11,6 +11,7 @@ from app.models import ResearchTrackingTopic, User
 from app.services.entity_catalog_service import get_entity_detail, sync_tracking_topic_entities
 from app.services.research_watchlist_service import (
     append_watchlist_change_events,
+    build_watchlist_ops_summary,
     compute_watchlist_next_due_at,
     get_watchlist_model,
     list_watchlist_change_events,
@@ -132,6 +133,90 @@ def test_watchlist_schedule_marks_due_items_and_next_due() -> None:
         assert next_due_at is not None
         assert next_due_at > datetime.now(timezone.utc) - timedelta(minutes=1)
         assert normalize_watchlist_schedule("weekday") == "weekdays"
+    finally:
+        db.close()
+
+
+def test_watchlist_ops_summary_flags_due_stale_and_failed_topics() -> None:
+    db = _new_session()
+    settings = get_settings()
+    now = datetime(2026, 5, 7, 9, 30, tzinfo=timezone.utc)
+    try:
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.flush()
+        failed_topic = ResearchTrackingTopic(
+            user_id=settings.single_user_id,
+            name="失败专题",
+            keyword="AIGC",
+            research_focus="招采和预算",
+            perspective="bidding",
+            region_filter="长三角",
+            industry_filter="营销",
+            notes="",
+            last_refresh_status="failed",
+            last_refresh_error="source timeout",
+        )
+        future_topic = ResearchTrackingTopic(
+            user_id=settings.single_user_id,
+            name="正常专题",
+            keyword="算力",
+            research_focus="客户需求",
+            perspective="all",
+            region_filter="",
+            industry_filter="算力",
+            notes="",
+        )
+        db.add_all([failed_topic, future_topic])
+        db.commit()
+
+        due_watchlist = save_watchlist(
+            db,
+            {
+                "name": "Due Watchlist",
+                "watch_type": "topic",
+                "query": "AIGC",
+                "tracking_topic_id": str(failed_topic.id),
+                "schedule": "daily",
+                "last_checked_at": now - timedelta(days=4),
+            },
+        )
+        save_watchlist(
+            db,
+            {
+                "name": "Future Watchlist",
+                "watch_type": "topic",
+                "query": "算力",
+                "tracking_topic_id": str(future_topic.id),
+                "schedule": "every_6h",
+                "last_checked_at": now - timedelta(hours=1),
+            },
+        )
+        save_watchlist(
+            db,
+            {
+                "name": "Paused Watchlist",
+                "watch_type": "topic",
+                "query": "政策",
+                "schedule": "daily",
+                "status": "paused",
+            },
+        )
+
+        summary = build_watchlist_ops_summary(db, now=now)
+
+        assert summary["active_count"] == 2
+        assert summary["paused_count"] == 1
+        assert summary["scheduled_count"] == 3
+        assert summary["due_count"] == 1
+        assert summary["overdue_count"] == 1
+        assert summary["stale_count"] == 1
+        assert summary["failed_topic_count"] == 1
+        assert summary["alert_level"] == "high"
+        assert summary["action_required"] is True
+        assert summary["next_due_at"] == now + timedelta(hours=5)
+        assert any(item["issue_type"] == "refresh_failed" for item in summary["issues"])
+        assert any(item["watchlist_id"] == due_watchlist["id"] for item in summary["issues"])
+        assert any("执行到期刷新" in item for item in summary["recommendations"])
     finally:
         db.close()
 

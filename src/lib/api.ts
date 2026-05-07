@@ -263,6 +263,10 @@ export interface ApiResearchSourceDiagnostics {
   supported_claims?: string[];
   unsupported_claims?: string[];
   generation_review_notes?: string[];
+  reranker_used?: boolean;
+  reranker_model?: string;
+  reranker_top_k?: number;
+  reranker_notes?: string[];
   candidate_profile_companies: string[];
   candidate_profile_hit_count: number;
   candidate_profile_official_hit_count: number;
@@ -978,6 +982,39 @@ export interface ApiResearchWatchlistRunDueResponse {
   items: ApiResearchWatchlistRunDueItem[];
 }
 
+export interface ApiResearchWatchlistOpsIssue {
+  watchlist_id?: string | null;
+  topic_id?: string | null;
+  name: string;
+  issue_type: "due" | "overdue" | "refresh_failed" | "stale" | "unlinked";
+  severity: "low" | "medium" | "high";
+  summary: string;
+  last_checked_at?: string | null;
+  next_due_at?: string | null;
+  last_refreshed_at?: string | null;
+  error?: string | null;
+}
+
+export interface ApiResearchWatchlistOpsSummary {
+  checked_at: string;
+  active_count: number;
+  paused_count: number;
+  scheduled_count: number;
+  manual_count: number;
+  due_count: number;
+  overdue_count: number;
+  stale_count: number;
+  failed_topic_count: number;
+  unlinked_count: number;
+  next_due_at?: string | null;
+  oldest_checked_at?: string | null;
+  last_checked_at?: string | null;
+  alert_level: "low" | "medium" | "high";
+  action_required: boolean;
+  recommendations: string[];
+  issues: ApiResearchWatchlistOpsIssue[];
+}
+
 export interface ApiResearchWatchlistAutomationStatus {
   installed: boolean;
   loaded: boolean;
@@ -1269,11 +1306,15 @@ export interface ApiResearchRetrievalIndexSearchHit {
   label: string;
   source_tier: "official" | "media" | "aggregate";
   source_url: string;
+  parent_chunk_id: string;
   topic_id: string;
   topic_name: string;
+  region: string;
+  industry: string;
   score: number;
   matched_terms: string[];
   match_modes: string[];
+  metadata: Record<string, unknown>;
 }
 
 export interface ApiResearchRetrievalIndexSearchResult {
@@ -2513,7 +2554,16 @@ export function rebuildResearchRetrievalIndex(payload: {
 
 export function searchResearchRetrievalIndex(
   query: string,
-  options: { limit?: number; topic_id?: string | null } = {},
+  options: {
+    limit?: number;
+    topic_id?: string | null;
+    document_type?: string | null;
+    source_tier?: string | null;
+    region?: string | null;
+    industry?: string | null;
+    field_key?: string | null;
+    perspective?: string | null;
+  } = {},
 ): Promise<ApiResearchRetrievalIndexSearchResult> {
   const params = new URLSearchParams();
   params.set("query", query);
@@ -2522,6 +2572,11 @@ export function searchResearchRetrievalIndex(
   }
   if (options.topic_id) {
     params.set("topic_id", options.topic_id);
+  }
+  for (const key of ["document_type", "source_tier", "region", "industry", "field_key", "perspective"] as const) {
+    if (options[key]) {
+      params.set(key, options[key]);
+    }
   }
   return request<ApiResearchRetrievalIndexSearchResult>(`/api/research/retrieval-index/search?${params.toString()}`, {
     method: "GET",
@@ -2642,6 +2697,30 @@ export function getResearchWatchlistAutomationStatus(): Promise<ApiResearchWatch
     recommended_status_command: "npm run research:watchlists:automation:status",
     recommended_install_command: "npm run research:watchlists:automation:install",
     recommended_uninstall_command: "npm run research:watchlists:automation:uninstall",
+  }));
+}
+
+export function getResearchWatchlistOpsSummary(): Promise<ApiResearchWatchlistOpsSummary> {
+  return request<ApiResearchWatchlistOpsSummary>("/api/research/watchlists/ops-summary", {
+    method: "GET",
+  }).catch(() => ({
+    checked_at: new Date().toISOString(),
+    active_count: 0,
+    paused_count: 0,
+    scheduled_count: 0,
+    manual_count: 0,
+    due_count: 0,
+    overdue_count: 0,
+    stale_count: 0,
+    failed_topic_count: 0,
+    unlinked_count: 0,
+    next_due_at: null,
+    oldest_checked_at: null,
+    last_checked_at: null,
+    alert_level: "low",
+    action_required: false,
+    recommendations: [],
+    issues: [],
   }));
 }
 

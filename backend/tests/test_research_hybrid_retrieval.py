@@ -185,6 +185,58 @@ def test_source_rerank_does_not_promote_query_only_overlap_noise() -> None:
     assert "论坛" not in ranked[0].title
 
 
+def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagnostics() -> None:
+    keyword = "南京市数据局 政务云 预算"
+    research_focus = "核验采购意向、预算窗口和官方来源"
+    scope_hints = {
+        "regions": ["江苏"],
+        "industries": ["政务云"],
+        "clients": ["南京市数据局"],
+        "enable_cross_encoder_rerank": True,
+    }
+    sources = [
+        research_service.SourceDocument(
+            title="政务云预算行业观察",
+            url="https://media.example.cn/gov-cloud-opinion",
+            domain="media.example.cn",
+            snippet="泛行业观点，提到政务云预算。",
+            search_query=keyword,
+            source_type="web",
+            content_status="snippet_only",
+            excerpt="泛行业观点，缺少南京市数据局采购意向原文。",
+            source_label="行业媒体",
+            source_tier="media",
+            source_origin="search",
+        ),
+        research_service.SourceDocument(
+            title="南京市数据局电子政务云采购意向公告",
+            url="https://www.nanjing.gov.cn/data/procurement-intent",
+            domain="www.nanjing.gov.cn",
+            snippet="官方公告披露采购意向、预算安排和后续项目建设路径。",
+            search_query=keyword,
+            source_type="policy",
+            content_status="browser_extracted",
+            excerpt="南京市数据局电子政务云采购意向公告披露预算安排、采购意向、项目建设路径和后续方案比选窗口。",
+            source_label="官网",
+            source_tier="official",
+            source_origin="search",
+        ),
+    ]
+
+    ranked = research_service._rerank_sources_hybrid(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+    )
+
+    assert ranked[0].url == "https://www.nanjing.gov.cn/data/procurement-intent"
+    assert scope_hints["reranker_used"] is True
+    assert scope_hints["reranker_model"]
+    assert scope_hints["reranker_top_k"] >= 1
+    assert scope_hints["reranker_notes"]
+
+
 def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
     sources = [
         research_service.SourceDocument(

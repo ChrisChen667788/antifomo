@@ -388,3 +388,66 @@ def test_search_research_retrieval_index_supports_topic_and_document_type_filter
         assert all("上海" in hit.chunk.title or "上海" in hit.chunk.text for hit in hits)
     finally:
         db.close()
+
+
+def test_research_retrieval_index_uses_stable_chunk_ids_and_section_parent_links() -> None:
+    db = _new_session()
+    try:
+        user, _topic = _seed_research_assets(db)
+
+        first_index = build_research_retrieval_index(db, user_id=user.id)
+        second_index = build_research_retrieval_index(db, user_id=user.id)
+
+        first_by_identity = {
+            (chunk.document_type, chunk.document_id, chunk.field_key, chunk.label, chunk.source_url, chunk.text): chunk.chunk_id
+            for chunk in first_index.chunks
+        }
+        second_by_identity = {
+            (chunk.document_type, chunk.document_id, chunk.field_key, chunk.label, chunk.source_url, chunk.text): chunk.chunk_id
+            for chunk in second_index.chunks
+        }
+        assert first_by_identity == second_by_identity
+        assert all(not chunk_id.startswith("chunk-") for chunk_id in first_by_identity.values())
+
+        report_chunks = [chunk for chunk in first_index.chunks if chunk.document_type == "report_version"]
+        report_parent = next(chunk for chunk in report_chunks if chunk.field_key == "report_summary")
+        section_parent = next(chunk for chunk in report_chunks if chunk.field_key == "section_summary")
+        section_evidence = next(chunk for chunk in report_chunks if chunk.field_key == "section_evidence")
+        section_item = next(chunk for chunk in report_chunks if chunk.field_key == "section_item")
+
+        assert section_parent.parent_chunk_id == report_parent.chunk_id
+        assert section_evidence.parent_chunk_id == section_parent.chunk_id
+        assert section_item.parent_chunk_id == section_parent.chunk_id
+    finally:
+        db.close()
+
+
+def test_search_research_retrieval_index_supports_source_region_industry_field_and_perspective_filters() -> None:
+    db = _new_session()
+    try:
+        user, topic = _seed_research_assets(db)
+        topic.perspective = "bidding"
+        db.commit()
+        index = build_research_retrieval_index(db, user_id=user.id)
+
+        hits = search_research_retrieval_index(
+            index,
+            "预算复核 官方公告",
+            limit=10,
+            document_types={"report_version"},
+            source_tiers={"official"},
+            region="上海",
+            industry="政务云",
+            field_keys={"section_evidence"},
+            perspectives={"bidding"},
+        )
+
+        assert hits
+        assert all(hit.chunk.document_type == "report_version" for hit in hits)
+        assert all(hit.chunk.source_tier == "official" for hit in hits)
+        assert all(hit.chunk.field_key == "section_evidence" for hit in hits)
+        assert all(hit.chunk.region == "上海" for hit in hits)
+        assert all(hit.chunk.industry == "政务云" for hit in hits)
+        assert all(hit.chunk.metadata.get("perspective") == "bidding" for hit in hits)
+    finally:
+        db.close()

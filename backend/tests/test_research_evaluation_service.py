@@ -168,6 +168,10 @@ def test_build_offline_research_evaluation_summarizes_core_metrics_and_weak_repo
         assert metric_map["target_support_rate"].denominator == 2
         assert metric_map["section_quota_pass_rate"].numerator == 1
         assert metric_map["section_quota_pass_rate"].denominator == 2
+        assert metric_map["official_source_recall_at_5"].numerator == 2
+        assert metric_map["official_source_recall_at_5"].denominator == 2
+        assert metric_map["unsupported_target_rate"].numerator == 1
+        assert metric_map["unsupported_target_rate"].denominator == 2
         assert evaluation.weakest_reports
         assert evaluation.weakest_reports[0].report_title == "南京政务云候选推进"
         assert evaluation.weakest_reports[0].unsupported_targets == ["南京市数据局"]

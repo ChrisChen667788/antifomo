@@ -102,7 +102,7 @@ Acceptance:
 
 Goal: turn the retrieval index into a shared substrate across reports, watchlists, compare snapshots, archive recap, and knowledge-account context.
 
-Status: first wave delivered as `0.5.0+20260502` (cross-surface indexing + knowledge cleaning + entity quality). Parent-child chunking, sentence-window chunks, stable chunk IDs across re-index, and broader API filters remain a 0.5.0.x follow-up.
+Status: first wave delivered as `0.5.0+20260502` (cross-surface indexing + knowledge cleaning + entity quality). Follow-up closed in `0.5.2+20260507` with schema v2 chunks, sentence-window chunks, stable chunk IDs, parent-child report links, and broader API filters.
 
 Scope:
 
@@ -121,7 +121,7 @@ Acceptance:
 
 Goal: materially raise professional rigor and intelligence value by improving what evidence is retrieved, compressed, and promoted.
 
-Status: baseline delivered as `0.5.1+20260502` (CRAG retrieval correction profile + generation grounding review + report self-evaluation profile covering faithfulness / answer relevancy / context coverage / citation quality / entity recall). Cross-encoder reranker model integration, offline `ms-marco` evaluation, parent-block routing boost, and vertical-scope suffix handling remain a 0.5.1.x follow-up.
+Status: baseline delivered as `0.5.1+20260502` (CRAG retrieval correction profile + generation grounding review + report self-evaluation profile covering faithfulness / answer relevancy / context coverage / citation quality / entity recall). Follow-up advanced in `0.5.2+20260507` with a feature-flagged local cross-encoder-style reranker and offline official-source / unsupported-target metrics.
 
 Scope:
 
@@ -142,6 +142,8 @@ Acceptance:
 ## 0.5.2+YYYYMMDD: Continuous Research Workspace
 
 Goal: make the research center operate like a durable workspace with refresh, compare, and operations loops instead of a one-shot generator.
+
+Status: first wave delivered as `0.5.2+20260507` with Watchlist operations health summary, due / overdue / stale / failed-topic diagnostics, API client types, and research-center surfacing.
 
 Scope:
 

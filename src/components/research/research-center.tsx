@@ -15,6 +15,7 @@ import {
   ApiResearchTrackingTopic,
   ApiResearchWatchlist,
   ApiResearchWatchlistAutomationStatus,
+  ApiResearchWatchlistOpsSummary,
   ApiResearchWatchlistRunDueResponse,
   createResearchWatchlist,
   deleteResearchCompareSnapshot,
@@ -25,6 +26,7 @@ import {
   getResearchDailyBrief,
   getResearchMarkdownArchive,
   getResearchOfflineEvaluation,
+  getResearchWatchlistOpsSummary,
   getResearchWatchlistAutomationStatus,
   listResearchWatchlists,
   getResearchSourceSettings,
@@ -669,6 +671,7 @@ export function ResearchCenter() {
   const [markdownArchives, setMarkdownArchives] = useState<ApiResearchMarkdownArchive[]>([]);
   const [watchlists, setWatchlists] = useState<ApiResearchWatchlist[]>([]);
   const [watchlistAutomation, setWatchlistAutomation] = useState<ApiResearchWatchlistAutomationStatus | null>(null);
+  const [watchlistOpsSummary, setWatchlistOpsSummary] = useState<ApiResearchWatchlistOpsSummary | null>(null);
   const [dailyBrief, setDailyBrief] = useState<ApiMobileDailyBrief | null>(null);
   const [dailyBriefLoading, setDailyBriefLoading] = useState(true);
   const [dailyBriefRefreshing, setDailyBriefRefreshing] = useState(false);
@@ -778,14 +781,16 @@ export function ResearchCenter() {
 
   useEffect(() => {
     let active = true;
-    getResearchWatchlistAutomationStatus()
-      .then((res) => {
+    Promise.all([getResearchWatchlistAutomationStatus(), getResearchWatchlistOpsSummary()])
+      .then(([automation, opsSummary]) => {
         if (!active) return;
-        setWatchlistAutomation(res);
+        setWatchlistAutomation(automation);
+        setWatchlistOpsSummary(opsSummary);
       })
       .catch(() => {
         if (!active) return;
         setWatchlistAutomation(null);
+        setWatchlistOpsSummary(null);
       });
     return () => {
       active = false;
@@ -1392,6 +1397,7 @@ export function ResearchCenter() {
         schedule: "daily",
       });
       setWatchlists((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
+      void getResearchWatchlistOpsSummary().then(setWatchlistOpsSummary).catch(() => undefined);
     } finally {
       setWorkspaceSaving(false);
     }
@@ -1405,6 +1411,7 @@ export function ResearchCenter() {
     try {
       const saved = await updateResearchWatchlist(watchlistId, { schedule });
       setWatchlists((current) => current.map((item) => (item.id === watchlistId ? saved : item)));
+      void getResearchWatchlistOpsSummary().then(setWatchlistOpsSummary).catch(() => undefined);
       setWatchlistMessage(`已更新 ${saved.name} 的刷新频率`);
     } catch {
       setWatchlistError("更新 Watchlist 频率失败，请稍后重试。");
@@ -1420,6 +1427,7 @@ export function ResearchCenter() {
     try {
       const saved = await updateResearchWatchlist(watchlist.id, { status: nextStatus });
       setWatchlists((current) => current.map((item) => (item.id === watchlist.id ? saved : item)));
+      void getResearchWatchlistOpsSummary().then(setWatchlistOpsSummary).catch(() => undefined);
       setWatchlistMessage(nextStatus === "paused" ? `已暂停 ${saved.name}` : `已恢复 ${saved.name}`);
     } catch {
       setWatchlistError("更新 Watchlist 状态失败，请稍后重试。");
@@ -1444,6 +1452,7 @@ export function ResearchCenter() {
       setTrackingTopics((current) =>
         current.map((item) => (item.id === result.topic.id ? result.topic : item)),
       );
+      void getResearchWatchlistOpsSummary().then(setWatchlistOpsSummary).catch(() => undefined);
       setWatchlistMessage(
         result.changes?.length
           ? `${result.watchlist.name} 已刷新，识别到 ${result.changes.length} 条变化`
@@ -1473,10 +1482,11 @@ export function ResearchCenter() {
           ? `本轮检查 ${result.due_count} 个到期 Watchlist，已刷新 ${result.refreshed_count} 个，失败 ${result.failed_count} 个。`
           : "当前没有到期 Watchlist。",
       );
-      const [workspace, nextWatchlists, automation] = await Promise.all([
+      const [workspace, nextWatchlists, automation, opsSummary] = await Promise.all([
         getResearchWorkspace(),
         listResearchWatchlists(),
         getResearchWatchlistAutomationStatus().catch(() => null),
+        getResearchWatchlistOpsSummary().catch(() => null),
       ]);
       setTrackingTopics(workspace.tracking_topics || []);
       setCompareSnapshots(workspace.compare_snapshots || []);
@@ -1484,6 +1494,9 @@ export function ResearchCenter() {
       setWatchlists(nextWatchlists || []);
       if (automation) {
         setWatchlistAutomation(automation);
+      }
+      if (opsSummary) {
+        setWatchlistOpsSummary(opsSummary);
       }
     } catch {
       setWatchlistError("执行到期 Watchlist 失败，请检查自动巡检状态和日志。");
@@ -2830,6 +2843,61 @@ export function ResearchCenter() {
             </div>
             {watchlistMessage ? <p className="mt-3 text-sm text-emerald-700">{watchlistMessage}</p> : null}
             {watchlistError ? <p className="mt-2 text-sm text-rose-600">{watchlistError}</p> : null}
+            {watchlistOpsSummary ? (
+              <div className="mt-4 rounded-[22px] border border-white/60 bg-white/65 p-4 text-xs text-slate-600">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">调度健康</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {watchlistOpsSummary.action_required ? "需要处理" : "运行正常"}
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 font-medium ${watchlistAutomationAlertTone(watchlistOpsSummary.alert_level)}`}>
+                    {watchlistAutomationAlertLabel(watchlistOpsSummary.alert_level)}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">活跃监控</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistOpsSummary.active_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">当前到期</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistOpsSummary.due_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">失败专题</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{watchlistOpsSummary.failed_topic_count}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">下次到期</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {watchlistOpsSummary.next_due_at ? formatWatchlistTime(watchlistOpsSummary.next_due_at) : "暂无"}
+                    </p>
+                  </div>
+                </div>
+                {watchlistOpsSummary.recommendations?.length ? (
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {sanitizeExternalDisplayText(watchlistOpsSummary.recommendations[0])}
+                  </p>
+                ) : null}
+                {watchlistOpsSummary.issues?.length ? (
+                  <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                    {watchlistOpsSummary.issues.slice(0, 4).map((issue) => (
+                      <div key={`${issue.watchlist_id || issue.name}-${issue.issue_type}`} className="rounded-2xl border border-amber-100 bg-amber-50/60 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(issue.name)}</p>
+                          <span className={`rounded-full px-2 py-1 text-[11px] ${watchlistAutomationAlertTone(issue.severity)}`}>
+                            {watchlistAutomationAlertLabel(issue.severity)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">{sanitizeExternalDisplayText(issue.summary)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-4 rounded-[22px] border border-white/60 bg-white/65 p-4 text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
                 <span

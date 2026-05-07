@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -28,9 +29,27 @@ from app.services.knowledge_retrieval_service import TextRetrievalCandidate, ret
 from app.services.research_retrieval_service import build_report_retrieval_chunks
 
 
-RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION = 1
+RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION = 2
 
 _VALID_SOURCE_TIERS = {"official", "media", "aggregate"}
+_SENTENCE_SPLIT_RE = re.compile(r"[。！？!?；;\n\r]+")
+_STABLE_METADATA_KEYS = (
+    "chunk_identity",
+    "section_title",
+    "row_id",
+    "row_index",
+    "watchlist_change_event_id",
+    "report_version_id",
+    "knowledge_entry_id",
+    "compare_snapshot_id",
+    "archive_kind",
+    "filename",
+    "entity_name",
+    "role",
+    "source_entry_id",
+    "account_slug",
+    "account_name",
+)
 
 
 @dataclass(slots=True)
@@ -185,20 +204,116 @@ def _dedupe_strings(values: list[Any], limit: int = 12) -> list[str]:
     return items
 
 
-def _split_text_windows(text: str, *, max_chars: int = 320) -> list[str]:
+def _split_long_sentence(text: str, *, max_chars: int) -> list[str]:
     normalized = normalize_text(text)
     if not normalized:
         return []
     if len(normalized) <= max_chars:
         return [normalized]
     windows: list[str] = []
+    step = max(80, max_chars - 60)
     cursor = 0
     while cursor < len(normalized):
         window = normalize_text(normalized[cursor : cursor + max_chars])
         if window:
             windows.append(window)
-        cursor += max_chars - 60
+        cursor += step
     return _dedupe_strings(windows, limit=40)
+
+
+def _split_text_windows(text: str, *, max_chars: int = 320) -> list[str]:
+    normalized = normalize_text(text)
+    if not normalized:
+        return []
+    sentences = _dedupe_strings(_SENTENCE_SPLIT_RE.split(normalized), limit=120)
+    if len(normalized) <= max_chars or not sentences:
+        return _split_long_sentence(normalized, max_chars=max_chars)
+    windows: list[str] = []
+    current: list[str] = []
+    current_length = 0
+    for sentence in sentences:
+        if len(sentence) > max_chars:
+            if current:
+                windows.append("；".join(current))
+                current = []
+                current_length = 0
+            windows.extend(_split_long_sentence(sentence, max_chars=max_chars))
+            continue
+        next_length = current_length + len(sentence)
+        if current and next_length > max_chars:
+            windows.append("；".join(current))
+            overlap = current[-1:] if len(current[-1]) <= 120 else []
+            current = [*overlap, sentence]
+            current_length = sum(len(item) for item in current)
+            continue
+        current.append(sentence)
+        current_length = next_length
+    if current:
+        windows.append("；".join(current))
+    return _dedupe_strings(windows, limit=40)
+
+
+def _stable_identity_values(metadata: dict[str, Any] | None) -> list[str]:
+    payload = metadata if isinstance(metadata, dict) else {}
+    return [
+        f"{key}={_safe_text(payload.get(key))}"
+        for key in _STABLE_METADATA_KEYS
+        if _safe_text(payload.get(key))
+    ]
+
+
+def _chunk_identity_ordinal(
+    chunks: list[ResearchRetrievalIndexChunk],
+    *,
+    document_id: str,
+    document_type: str,
+    field_key: str,
+    label: str,
+    source_url: str,
+    parent_chunk_id: str,
+    metadata: dict[str, Any] | None,
+) -> int:
+    identity_values = _stable_identity_values(metadata)
+    section_title = _safe_text((metadata or {}).get("section_title") if isinstance(metadata, dict) else "")
+    return sum(
+        1
+        for chunk in chunks
+        if chunk.document_id == document_id
+        and chunk.document_type == document_type
+        and chunk.field_key == field_key
+        and chunk.label == label
+        and chunk.source_url == source_url
+        and chunk.parent_chunk_id == parent_chunk_id
+        and _safe_text(chunk.metadata.get("section_title")) == section_title
+        and _stable_identity_values(chunk.metadata) == identity_values
+    )
+
+
+def _stable_chunk_id(
+    *,
+    document_id: str,
+    document_type: str,
+    field_key: str,
+    label: str,
+    source_url: str,
+    parent_chunk_id: str,
+    metadata: dict[str, Any] | None,
+    ordinal: int,
+) -> str:
+    raw = "|".join(
+        [
+            f"v{RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION}",
+            document_type,
+            document_id,
+            field_key,
+            label,
+            source_url,
+            parent_chunk_id,
+            *_stable_identity_values(metadata),
+            f"ordinal={ordinal}",
+        ]
+    )
+    return f"ridx-{hashlib.sha1(raw.encode('utf-8')).hexdigest()[:28]}"
 
 
 def _document_time(value: Any) -> datetime | None:
@@ -289,27 +404,59 @@ def _append_chunk(
     updated_at: datetime | None = None,
     priority: int = 0,
     metadata: dict[str, Any] | None = None,
-) -> None:
+) -> list[ResearchRetrievalIndexChunk]:
     normalized_text = _safe_text(text)
     if not document_id or not normalized_text:
-        return
-    dedupe_key = normalize_text("|".join([document_type, document_id, field_key, label, source_url, normalized_text]))
-    if not dedupe_key or dedupe_key in seen:
-        return
-    seen.add(dedupe_key)
-    chunk_id = f"chunk-{len(chunks) + 1}"
-    chunks.append(
-        ResearchRetrievalIndexChunk(
+        return []
+    windows = _split_text_windows(normalized_text)
+    appended: list[ResearchRetrievalIndexChunk] = []
+    window_count = len(windows)
+    for window_index, window in enumerate(windows):
+        dedupe_key = normalize_text("|".join([document_type, document_id, field_key, label, source_url, window]))
+        if not dedupe_key or dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        chunk_metadata = {
+            **dict(metadata or {}),
+            "chunk_window_index": window_index,
+            "chunk_window_count": window_count,
+        }
+        normalized_field_key = _safe_text(field_key) or "content"
+        normalized_label = _safe_text(label) or normalized_field_key or "内容"
+        normalized_source_url = _safe_text(source_url)
+        normalized_parent_chunk_id = _safe_text(parent_chunk_id)
+        ordinal = _chunk_identity_ordinal(
+            chunks,
+            document_id=document_id,
+            document_type=document_type,
+            field_key=normalized_field_key,
+            label=normalized_label,
+            source_url=normalized_source_url,
+            parent_chunk_id=normalized_parent_chunk_id,
+            metadata=chunk_metadata,
+        )
+        chunk_id = _stable_chunk_id(
+            document_id=document_id,
+            document_type=document_type,
+            field_key=normalized_field_key,
+            label=normalized_label,
+            source_url=normalized_source_url,
+            parent_chunk_id=normalized_parent_chunk_id,
+            metadata=chunk_metadata,
+            ordinal=ordinal,
+        )
+        chunk_metadata["stable_ordinal"] = ordinal
+        chunk = ResearchRetrievalIndexChunk(
             chunk_id=chunk_id,
             document_id=document_id,
             document_type=document_type,
             title=_safe_text(title) or "未命名研究资产",
-            text=normalized_text,
-            field_key=_safe_text(field_key) or "content",
-            label=_safe_text(label) or _safe_text(field_key) or "内容",
+            text=window,
+            field_key=normalized_field_key,
+            label=normalized_label,
             source_tier=_safe_source_tier(source_tier),
-            source_url=_safe_text(source_url),
-            parent_chunk_id=_safe_text(parent_chunk_id),
+            source_url=normalized_source_url,
+            parent_chunk_id=normalized_parent_chunk_id,
             topic_id=_safe_text(topic_id),
             topic_name=_safe_text(topic_name),
             region=_safe_text(region),
@@ -317,9 +464,11 @@ def _append_chunk(
             created_at=created_at,
             updated_at=updated_at,
             priority=max(0, int(priority or 0)),
-            metadata=dict(metadata or {}),
+            metadata=chunk_metadata,
         )
-    )
+        chunks.append(chunk)
+        appended.append(chunk)
+    return appended
 
 
 def _append_report_chunks(
@@ -332,15 +481,24 @@ def _append_report_chunks(
     title: str,
     topic_id: str = "",
     topic_name: str = "",
+    region: str = "",
+    industry: str = "",
     created_at: datetime | None = None,
     updated_at: datetime | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    parent_chunk_id = ""
+    report_parent_chunk_id = ""
+    section_parent_chunk_ids: dict[str, str] = {}
     for report_chunk in build_report_retrieval_chunks(report_payload):
         if report_chunk.field_key == "report_summary":
-            parent_chunk_id = f"chunk-{len(chunks) + 1}"
-        _append_chunk(
+            parent_chunk_id = ""
+        elif report_chunk.field_key == "section_summary":
+            parent_chunk_id = report_parent_chunk_id
+        elif report_chunk.section_title and report_chunk.section_title in section_parent_chunk_ids:
+            parent_chunk_id = section_parent_chunk_ids[report_chunk.section_title]
+        else:
+            parent_chunk_id = report_parent_chunk_id
+        appended = _append_chunk(
             chunks,
             seen,
             document_id=document_id,
@@ -351,9 +509,11 @@ def _append_report_chunks(
             label=report_chunk.label,
             source_tier=report_chunk.source_tier,
             source_url=report_chunk.source_url,
-            parent_chunk_id="" if report_chunk.field_key == "report_summary" else parent_chunk_id,
+            parent_chunk_id=parent_chunk_id,
             topic_id=topic_id,
             topic_name=topic_name,
+            region=region,
+            industry=industry,
             created_at=created_at,
             updated_at=updated_at,
             priority=report_chunk.priority + (4 if document_type in {"research_report", "report_version"} else 0),
@@ -363,6 +523,10 @@ def _append_report_chunks(
                 "evidence_links": list(report_chunk.evidence_links),
             },
         )
+        if report_chunk.field_key == "report_summary" and appended:
+            report_parent_chunk_id = appended[0].chunk_id
+        if report_chunk.field_key == "section_summary" and report_chunk.section_title and appended:
+            section_parent_chunk_ids[report_chunk.section_title] = appended[0].chunk_id
 
 
 def _append_knowledge_entry_chunks(
@@ -381,6 +545,7 @@ def _append_knowledge_entry_chunks(
         "is_pinned": bool(entry.is_pinned),
         "is_focus_reference": bool(entry.is_focus_reference),
         "knowledge_entry_id": document_id,
+        "perspective": _safe_text(payload.get("perspective")),
     }
     _append_chunk(
         chunks,
@@ -406,6 +571,8 @@ def _append_knowledge_entry_chunks(
             document_type="research_report",
             title=title,
             topic_id=_safe_text(payload.get("tracking_topic_id")),
+            region=_safe_text(payload.get("region_filter") or payload.get("region")),
+            industry=_safe_text(payload.get("industry_filter") or payload.get("industry")),
             created_at=_document_time(entry.created_at),
             updated_at=_document_time(entry.updated_at),
             metadata=metadata,
@@ -444,6 +611,9 @@ def _append_report_version_chunks(
         "source_quality": version.source_quality or "low",
         "new_targets": list(version.new_targets or []),
         "new_competitors": list(version.new_competitors or []),
+        "perspective": topic.perspective if topic is not None else "",
+        "region_filter": topic.region_filter if topic is not None else "",
+        "industry_filter": topic.industry_filter if topic is not None else "",
     }
     _append_report_chunks(
         chunks,
@@ -454,6 +624,8 @@ def _append_report_version_chunks(
         title=version.report_title,
         topic_id=topic_id,
         topic_name=topic_name,
+        region=topic.region_filter if topic is not None else "",
+        industry=topic.industry_filter if topic is not None else "",
         created_at=_document_time(version.created_at),
         updated_at=_document_time(version.created_at),
         metadata=metadata,
@@ -491,6 +663,7 @@ def _append_compare_snapshot_chunks(
             "role_filter": snapshot.role_filter or "all",
             "report_version_id": str(snapshot.report_version_id) if snapshot.report_version_id else "",
             "snapshot_metadata_origin": _safe_text(metadata.get("snapshot_metadata_origin")),
+            "perspective": topic.perspective if topic is not None else "",
         },
     )
     for field_key, label in [
@@ -519,6 +692,7 @@ def _append_compare_snapshot_chunks(
             metadata={
                 "snapshot_metadata_origin": _safe_text(metadata.get("snapshot_metadata_origin")),
                 "report_version_id": str(snapshot.report_version_id) if snapshot.report_version_id else "",
+                "perspective": topic.perspective if topic is not None else "",
             },
         )
     for row in list(snapshot.rows_payload or [])[:120]:
@@ -566,6 +740,7 @@ def _append_compare_snapshot_chunks(
                 "entity_name": _safe_text(row.get("name")),
                 "role": _safe_text(row.get("role")),
                 "source_entry_id": _safe_text(row.get("sourceEntryId")),
+                "perspective": topic.perspective if topic is not None else "",
             },
         )
 
@@ -603,6 +778,7 @@ def _append_markdown_archive_chunks(
             "compare_snapshot_id": str(archive.compare_snapshot_id) if archive.compare_snapshot_id else "",
             "report_version_id": str(archive.report_version_id) if archive.report_version_id else "",
             "changed_section_count": int(metadata.get("changed_section_count") or 0),
+            "perspective": topic.perspective if topic is not None else "",
         },
     )
     diagnostic_fields = [
@@ -641,6 +817,7 @@ def _append_markdown_archive_chunks(
                 "filename": archive.filename,
                 "compare_snapshot_id": str(archive.compare_snapshot_id) if archive.compare_snapshot_id else "",
                 "report_version_id": str(archive.report_version_id) if archive.report_version_id else "",
+                "perspective": topic.perspective if topic is not None else "",
             },
         )
     for window in _split_text_windows(archive.content or "", max_chars=420)[:80]:
@@ -660,7 +837,11 @@ def _append_markdown_archive_chunks(
             created_at=_document_time(archive.created_at),
             updated_at=_document_time(archive.updated_at),
             priority=5,
-            metadata={"archive_kind": archive.archive_kind or "compare_markdown", "filename": archive.filename},
+            metadata={
+                "archive_kind": archive.archive_kind or "compare_markdown",
+                "filename": archive.filename,
+                "perspective": topic.perspective if topic is not None else "",
+            },
         )
 
 
@@ -714,6 +895,7 @@ def _append_watchlist_chunks(
             "alert_level": watchlist.alert_level,
             "schedule": watchlist.schedule,
             "status": watchlist.status,
+            "perspective": topic.perspective if topic is not None else "",
             "last_checked_at": watchlist.last_checked_at.isoformat() if isinstance(watchlist.last_checked_at, datetime) else None,
         },
     )
@@ -749,6 +931,7 @@ def _append_watchlist_chunks(
                 "watchlist_change_event_id": str(event.id),
                 "change_type": event.change_type,
                 "severity": event.severity,
+                "perspective": topic.perspective if topic is not None else "",
             },
         )
 
@@ -999,6 +1182,10 @@ def search_research_retrieval_index(
     document_types: set[str] | None = None,
     topic_id: str | None = None,
     source_tiers: set[str] | None = None,
+    region: str | None = None,
+    industry: str | None = None,
+    field_keys: set[str] | None = None,
+    perspectives: set[str] | None = None,
 ) -> list[ResearchRetrievalIndexHit]:
     normalized_query = normalize_text(query)
     if not normalized_query or not index.chunks:
@@ -1007,12 +1194,51 @@ def search_research_retrieval_index(
     normalized_topic_id = _safe_text(topic_id)
     normalized_document_types = {_safe_text(item) for item in (document_types or set()) if _safe_text(item)}
     normalized_source_tiers = {_safe_source_tier(item) for item in (source_tiers or set()) if _safe_text(item)}
+    normalized_region = _safe_text(region).lower()
+    normalized_industry = _safe_text(industry).lower()
+    normalized_field_keys = {_safe_text(item) for item in (field_keys or set()) if _safe_text(item)}
+    normalized_perspectives = {_safe_text(item).lower() for item in (perspectives or set()) if _safe_text(item)}
+
+    def matches_region(chunk: ResearchRetrievalIndexChunk) -> bool:
+        if not normalized_region:
+            return True
+        haystack = " ".join(
+            [
+                chunk.region,
+                _safe_text(chunk.metadata.get("region_filter")),
+                _safe_text(chunk.metadata.get("region")),
+            ]
+        ).lower()
+        return normalized_region in haystack
+
+    def matches_industry(chunk: ResearchRetrievalIndexChunk) -> bool:
+        if not normalized_industry:
+            return True
+        haystack = " ".join(
+            [
+                chunk.industry,
+                _safe_text(chunk.metadata.get("industry_filter")),
+                _safe_text(chunk.metadata.get("industry")),
+            ]
+        ).lower()
+        return normalized_industry in haystack
+
+    def matches_perspective(chunk: ResearchRetrievalIndexChunk) -> bool:
+        if not normalized_perspectives:
+            return True
+        perspective = _safe_text(chunk.metadata.get("perspective")).lower()
+        return bool(perspective and perspective in normalized_perspectives)
+
     filtered_chunks = [
         chunk
         for chunk in index.chunks
         if (not normalized_document_types or chunk.document_type in normalized_document_types)
         and (not normalized_topic_id or chunk.topic_id == normalized_topic_id)
         and (not normalized_source_tiers or chunk.source_tier in normalized_source_tiers)
+        and (not normalized_field_keys or chunk.field_key in normalized_field_keys)
+        and matches_region(chunk)
+        and matches_industry(chunk)
+        and matches_perspective(chunk)
     ]
     if not filtered_chunks:
         return []
@@ -1054,17 +1280,7 @@ def search_research_retrieval_index(
 
 
 def _chunk_key(chunk: ResearchRetrievalIndexChunk) -> str:
-    raw = "|".join(
-        [
-            chunk.document_type,
-            chunk.document_id,
-            chunk.field_key,
-            chunk.label,
-            chunk.source_url,
-            normalize_text(chunk.text)[:500],
-        ]
-    )
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return chunk.chunk_id
 
 
 def _record_to_chunk(record: ResearchRetrievalIndexChunkRecord) -> ResearchRetrievalIndexChunk:
@@ -1324,6 +1540,10 @@ def search_persistent_research_retrieval_index(
     document_types: set[str] | None = None,
     topic_id: str | None = None,
     source_tiers: set[str] | None = None,
+    region: str | None = None,
+    industry: str | None = None,
+    field_keys: set[str] | None = None,
+    perspectives: set[str] | None = None,
 ) -> list[ResearchRetrievalIndexHit]:
     index = load_persistent_research_retrieval_index(db, user_id=user_id)
     return search_research_retrieval_index(
@@ -1333,4 +1553,8 @@ def search_persistent_research_retrieval_index(
         document_types=document_types,
         topic_id=topic_id,
         source_tiers=source_tiers,
+        region=region,
+        industry=industry,
+        field_keys=field_keys,
+        perspectives=perspectives,
     )

@@ -30,6 +30,8 @@ _METRIC_BENCHMARKS: dict[str, float] = {
     "retrieval_hit_rate": 0.72,
     "target_support_rate": 0.68,
     "section_quota_pass_rate": 0.74,
+    "official_source_recall_at_5": 0.62,
+    "unsupported_target_rate": 0.18,
 }
 
 
@@ -37,6 +39,14 @@ def _metric_status(rate: float, *, benchmark: float) -> str:
     if rate >= benchmark:
         return "good"
     if rate >= max(0.0, benchmark - 0.12):
+        return "watch"
+    return "bad"
+
+
+def _inverse_metric_status(rate: float, *, benchmark: float) -> str:
+    if rate <= benchmark:
+        return "good"
+    if rate <= min(1.0, benchmark + 0.12):
         return "watch"
     return "bad"
 
@@ -111,6 +121,27 @@ def _unsupported_target_accounts(report: ResearchReportResponse) -> list[str]:
 
 def _quota_sections(report: ResearchReportResponse) -> list[Any]:
     return [section for section in report.sections if int(getattr(section, "evidence_quota", 0) or 0) > 0]
+
+
+def _source_is_official(source: ResearchSourceOut) -> bool:
+    tier = normalize_text(str(getattr(source, "source_tier", "") or "")).lower()
+    if tier == "official":
+        return True
+    text = normalize_text(
+        " ".join(
+            [
+                str(getattr(source, "title", "") or ""),
+                str(getattr(source, "url", "") or ""),
+                str(getattr(source, "snippet", "") or ""),
+                str(getattr(source, "source_label", "") or ""),
+            ]
+        )
+    ).lower()
+    return any(token in text for token in ("gov.cn", ".gov", "ccgp", "ggzy", "cecbid", "官网", "官方"))
+
+
+def _has_official_source_at_k(sources: list[ResearchSourceOut], *, k: int) -> bool:
+    return any(_source_is_official(source) for source in sources[: max(1, k)])
 
 
 def _report_retrieval_hit(report: ResearchReportResponse) -> bool:
@@ -453,6 +484,9 @@ def build_offline_research_evaluation(
     total_target_total = 0
     passed_quota_sections = 0
     total_quota_sections = 0
+    official_recall_hits = 0
+    official_recall_total = 0
+    unsupported_target_total = 0
     weak_reports: list[ResearchOfflineEvaluationWeakReportOut] = []
 
     for entry, report in reports:
@@ -464,6 +498,11 @@ def build_offline_research_evaluation(
         unsupported_targets = _unsupported_target_accounts(report)
         supported_target_total += len(supported_targets)
         total_target_total += len(supported_targets) + len(unsupported_targets)
+        unsupported_target_total += len(unsupported_targets)
+        if any(_source_is_official(source) for source in report.sources):
+            official_recall_total += 1
+            if _has_official_source_at_k(report.sources, k=5):
+                official_recall_hits += 1
 
         quota_sections = _quota_sections(report)
         total_quota_sections += len(quota_sections)
@@ -501,6 +540,8 @@ def build_offline_research_evaluation(
     retrieval_hit_rate = _safe_rate(retrieval_hits, len(reports))
     target_support_rate = _safe_rate(supported_target_total, total_target_total)
     section_quota_pass_rate = _safe_rate(passed_quota_sections, total_quota_sections)
+    official_source_recall_at_5 = _safe_rate(official_recall_hits, official_recall_total)
+    unsupported_target_rate = _safe_rate(unsupported_target_total, total_target_total)
 
     metrics = [
         ResearchOfflineEvaluationMetricOut(
@@ -536,6 +577,34 @@ def build_offline_research_evaluation(
             status=_metric_status(section_quota_pass_rate, benchmark=_METRIC_BENCHMARKS["section_quota_pass_rate"]),
             summary="按章节口径统计：带 evidence_quota 的章节中，已满足配额的比例。",
         ),
+        ResearchOfflineEvaluationMetricOut(
+            key="official_source_recall_at_5",
+            label="官方源 Recall@5",
+            numerator=official_recall_hits,
+            denominator=official_recall_total,
+            rate=official_source_recall_at_5,
+            percent=_percent(official_source_recall_at_5),
+            benchmark=_METRIC_BENCHMARKS["official_source_recall_at_5"],
+            status=_metric_status(
+                official_source_recall_at_5,
+                benchmark=_METRIC_BENCHMARKS["official_source_recall_at_5"],
+            ),
+            summary="按研报口径统计：存在官方源的样本里，前 5 个来源能召回至少一个官方源的比例。",
+        ),
+        ResearchOfflineEvaluationMetricOut(
+            key="unsupported_target_rate",
+            label="未支撑目标账户率",
+            numerator=unsupported_target_total,
+            denominator=total_target_total,
+            rate=unsupported_target_rate,
+            percent=_percent(unsupported_target_rate),
+            benchmark=_METRIC_BENCHMARKS["unsupported_target_rate"],
+            status=_inverse_metric_status(
+                unsupported_target_rate,
+                benchmark=_METRIC_BENCHMARKS["unsupported_target_rate"],
+            ),
+            summary="按账户口径统计：目标账户中仍缺少来源直接支撑的占比，数值越低越好。",
+        ),
     ]
 
     weak_reports.sort(
@@ -552,7 +621,7 @@ def build_offline_research_evaluation(
         f"已扫描 {len(entries)} 份存量研报，其中可评估 {len(reports)} 份。",
         (
             f"当前检索命中率 {_percent(retrieval_hit_rate)}%，目标账户支撑率 {_percent(target_support_rate)}%，"
-            f"章节证据配额通过率 {_percent(section_quota_pass_rate)}%。"
+            f"章节证据配额通过率 {_percent(section_quota_pass_rate)}%，官方源 Recall@5 {_percent(official_source_recall_at_5)}%。"
         ),
     ]
     if weak_reports:

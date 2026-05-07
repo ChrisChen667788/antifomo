@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2+20260507 - 2026-05-07
+
+- Closed the 0.5.0.x retrieval substrate follow-up with schema v2 chunks, sentence-window splitting, stable chunk IDs, report/section parent links, richer region / industry / perspective metadata, and broader retrieval-index search filters.
+- Added the first 0.5.1.x reranker and evaluation follow-up: feature-flagged local cross-encoder-style top-k reranking diagnostics plus offline official-source Recall@5 and unsupported-target-rate metrics.
+- Added Watchlist operations health summary for the continuous research workspace, including due / overdue / stale / failed-topic counts, recommendations, API client types, and research-center UI surfacing.
+- Verified with full backend tests, frontend lint, and production build before release tagging.
+
 ## 0.5.1+20260502 - 2026-05-02
 
 - Added CRAG-style retrieval correction profile that grades each source as accepted / ambiguous / rejected, generates corrective query plans, and renders compressed retrieval context for prompt injection (`research_rag_quality_service`).

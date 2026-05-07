@@ -64,6 +64,7 @@ from app.schemas.research import (
     ResearchWatchlistChangeEventOut,
     ResearchWatchlistAutomationStatusOut,
     ResearchWatchlistCreateRequest,
+    ResearchWatchlistOpsSummaryOut,
     ResearchWatchlistRunDueItemOut,
     ResearchWatchlistRunDueResponse,
     ResearchWatchlistOut,
@@ -103,6 +104,7 @@ from app.services.research_source_adapters import (
 )
 from app.services.research_watchlist_service import (
     append_watchlist_change_events,
+    build_watchlist_ops_summary,
     get_watchlist_payload,
     get_watchlist_model,
     list_due_watchlists,
@@ -694,12 +696,22 @@ def _retrieval_hit_out(hit: object) -> ResearchRetrievalIndexSearchHitOut:
         label=chunk.label,
         source_tier=chunk.source_tier,
         source_url=chunk.source_url,
+        parent_chunk_id=chunk.parent_chunk_id,
         topic_id=chunk.topic_id,
         topic_name=chunk.topic_name,
+        region=chunk.region,
+        industry=chunk.industry,
         score=round(float(getattr(hit, "score", 0.0) or 0.0), 4),
         matched_terms=list(getattr(hit, "matched_terms", ()) or ()),
         match_modes=list(getattr(hit, "match_modes", ()) or ()),
+        metadata=dict(chunk.metadata or {}),
     )
+
+
+def _split_query_filter_values(value: str | None) -> set[str]:
+    if not value:
+        return set()
+    return {part.strip() for part in str(value).replace("，", ",").split(",") if part.strip()}
 
 
 @router.get("/retrieval-index/search", response_model=ResearchRetrievalIndexSearchOut)
@@ -707,6 +719,12 @@ def search_research_retrieval_index_endpoint(
     query: str,
     limit: int = 10,
     topic_id: str | None = None,
+    document_type: str | None = None,
+    source_tier: str | None = None,
+    region: str | None = None,
+    industry: str | None = None,
+    field_key: str | None = None,
+    perspective: str | None = None,
     db: Session = Depends(get_db),
 ) -> ResearchRetrievalIndexSearchOut:
     ensure_demo_user(db)
@@ -716,6 +734,12 @@ def search_research_retrieval_index_endpoint(
         user_id=settings.single_user_id,
         limit=max(1, min(limit, 40)),
         topic_id=topic_id,
+        document_types=_split_query_filter_values(document_type),
+        source_tiers=_split_query_filter_values(source_tier),
+        region=region,
+        industry=industry,
+        field_keys=_split_query_filter_values(field_key),
+        perspectives=_split_query_filter_values(perspective),
     )
     return ResearchRetrievalIndexSearchOut(
         query=query,
@@ -942,6 +966,12 @@ def get_research_watchlists(db: Session = Depends(get_db)) -> list[ResearchWatch
 def get_research_watchlist_automation_status(db: Session = Depends(get_db)) -> ResearchWatchlistAutomationStatusOut:
     ensure_demo_user(db)
     return ResearchWatchlistAutomationStatusOut(**get_watchlist_automation_status())
+
+
+@router.get("/watchlists/ops-summary", response_model=ResearchWatchlistOpsSummaryOut)
+def get_research_watchlist_ops_summary(db: Session = Depends(get_db)) -> ResearchWatchlistOpsSummaryOut:
+    ensure_demo_user(db)
+    return ResearchWatchlistOpsSummaryOut(**build_watchlist_ops_summary(db))
 
 
 @router.post("/watchlists", response_model=ResearchWatchlistOut)

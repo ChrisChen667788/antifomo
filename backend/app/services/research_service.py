@@ -62,6 +62,7 @@ from app.services.llm_parser import (
 from app.services.research_quality_service import build_research_quality_profile
 from app.services.research_rag_quality_service import (
     build_retrieval_correction_profile,
+    rerank_sources_cross_encoder_style,
     render_retrieval_correction_context,
     review_generation_grounding,
 )
@@ -2229,7 +2230,25 @@ def _rerank_sources_hybrid(
         if hybrid_scores.get(url, 0.0) <= 0 and quality_scores.get(url, 0) <= 0:
             continue
         ranked.append(source)
-    return ranked or [sources_by_url[url] for url in ranked_urls]
+    ranked = ranked or [sources_by_url[url] for url in ranked_urls]
+
+    settings = get_settings()
+    mutable_scope_hints = scope_hints if isinstance(scope_hints, dict) else {}
+    reranker_enabled = bool(
+        settings.research_cross_encoder_rerank_enabled
+        or mutable_scope_hints.get("enable_cross_encoder_rerank")
+        or mutable_scope_hints.get("cross_encoder_rerank")
+    )
+    if not reranker_enabled:
+        return ranked
+    reranked, profile = rerank_sources_cross_encoder_style(
+        ranked,
+        query=retrieval_query,
+        model_name=settings.research_cross_encoder_model,
+        top_k=settings.research_cross_encoder_top_k,
+    )
+    mutable_scope_hints.update(profile.to_diagnostics_update())
+    return list(reranked)
 
 
 def _refine_sources_for_report(
@@ -9973,6 +9992,10 @@ def _build_source_diagnostics(
         strategy_scope_summary=normalize_text(str(scope_hints.get("strategy_scope_summary", ""))),
         strategy_query_expansion_count=len(scope_hints.get("strategy_query_expansions", []) or []),
         strategy_exclusion_terms=_dedupe_strings(scope_hints.get("strategy_exclusion_terms", []) or [], 8),
+        reranker_used=bool(scope_hints.get("reranker_used")),
+        reranker_model=normalize_text(str(scope_hints.get("reranker_model") or "")),
+        reranker_top_k=int(scope_hints.get("reranker_top_k") or 0),
+        reranker_notes=_dedupe_strings(scope_hints.get("reranker_notes", []) or [], 4),
         pipeline_summary=pipeline_summary,
         pipeline_stages=pipeline_stages,
     )

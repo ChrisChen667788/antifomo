@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import desc, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.models.research_entities import ResearchWatchlist, ResearchWatchlistChangeEvent
@@ -162,6 +162,178 @@ def list_watchlists(db: Session) -> list[dict[str, Any]]:
             )
         )
     return result
+
+
+def _watchlist_schedule_interval(schedule: str) -> timedelta:
+    normalized = normalize_watchlist_schedule(schedule)
+    if normalized == "every_6h":
+        return timedelta(hours=6)
+    if normalized == "twice_daily":
+        return timedelta(hours=12)
+    return timedelta(days=1)
+
+
+def build_watchlist_ops_summary(
+    db: Session,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    reference_now = _normalize_datetime(now) or _utc_now()
+    rows = list(
+        db.scalars(
+            select(ResearchWatchlist)
+            .where(ResearchWatchlist.user_id == settings.single_user_id)
+            .options(selectinload(ResearchWatchlist.tracking_topic))
+            .order_by(desc(ResearchWatchlist.updated_at))
+        )
+    )
+    issues: list[dict[str, Any]] = []
+    next_due_values: list[datetime] = []
+    checked_values: list[datetime] = []
+    active_count = 0
+    paused_count = 0
+    scheduled_count = 0
+    manual_count = 0
+    due_count = 0
+    overdue_count = 0
+    stale_count = 0
+    failed_topic_count = 0
+    unlinked_count = 0
+
+    for row in rows:
+        schedule = normalize_watchlist_schedule(row.schedule)
+        is_active = row.status == "active"
+        if is_active:
+            active_count += 1
+        else:
+            paused_count += 1
+        if schedule == "manual":
+            manual_count += 1
+        else:
+            scheduled_count += 1
+
+        checked_at = _normalize_datetime(row.last_checked_at)
+        if checked_at is not None:
+            checked_values.append(checked_at)
+        next_due_at = compute_watchlist_next_due_at(row, now=reference_now)
+        if is_active and next_due_at is not None:
+            if next_due_at > reference_now:
+                next_due_values.append(next_due_at)
+            else:
+                due_count += 1
+                issues.append(
+                    {
+                        "watchlist_id": str(row.id),
+                        "topic_id": str(row.tracking_topic_id) if row.tracking_topic_id else None,
+                        "name": row.name,
+                        "issue_type": "due",
+                        "severity": "medium",
+                        "summary": "Watchlist 已到刷新窗口。",
+                        "last_checked_at": checked_at,
+                        "next_due_at": next_due_at,
+                    }
+                )
+                overdue_after = _watchlist_schedule_interval(schedule)
+                if next_due_at <= reference_now - overdue_after:
+                    overdue_count += 1
+                    issues.append(
+                        {
+                            "watchlist_id": str(row.id),
+                            "topic_id": str(row.tracking_topic_id) if row.tracking_topic_id else None,
+                            "name": row.name,
+                            "issue_type": "overdue",
+                            "severity": "high",
+                            "summary": "Watchlist 超过一个调度周期未完成刷新。",
+                            "last_checked_at": checked_at,
+                            "next_due_at": next_due_at,
+                        }
+                    )
+        if is_active and schedule != "manual" and checked_at is not None:
+            stale_after = max(_watchlist_schedule_interval(schedule) * 3, timedelta(days=2))
+            if checked_at <= reference_now - stale_after:
+                stale_count += 1
+                issues.append(
+                    {
+                        "watchlist_id": str(row.id),
+                        "topic_id": str(row.tracking_topic_id) if row.tracking_topic_id else None,
+                        "name": row.name,
+                        "issue_type": "stale",
+                        "severity": "high",
+                        "summary": "Watchlist 最近检查时间已明显滞后。",
+                        "last_checked_at": checked_at,
+                        "next_due_at": next_due_at,
+                    }
+                )
+
+        topic = row.tracking_topic
+        if row.tracking_topic_id and topic is None:
+            unlinked_count += 1
+            issues.append(
+                {
+                    "watchlist_id": str(row.id),
+                    "topic_id": str(row.tracking_topic_id),
+                    "name": row.name,
+                    "issue_type": "unlinked",
+                    "severity": "high",
+                    "summary": "Watchlist 关联的跟踪专题不存在。",
+                    "last_checked_at": checked_at,
+                    "next_due_at": next_due_at,
+                }
+            )
+        elif topic is not None and topic.last_refresh_status == "failed":
+            failed_topic_count += 1
+            issues.append(
+                {
+                    "watchlist_id": str(row.id),
+                    "topic_id": str(topic.id),
+                    "name": row.name,
+                    "issue_type": "refresh_failed",
+                    "severity": "high",
+                    "summary": "关联专题最近一次刷新失败。",
+                    "last_checked_at": checked_at,
+                    "next_due_at": next_due_at,
+                    "last_refreshed_at": _normalize_datetime(topic.last_refreshed_at),
+                    "error": topic.last_refresh_error,
+                }
+            )
+
+    recommendations: list[str] = []
+    if due_count:
+        recommendations.append(f"执行到期刷新：当前有 {due_count} 个 Watchlist 到期。")
+    if failed_topic_count:
+        recommendations.append(f"优先排查失败专题：{failed_topic_count} 个关联专题刷新失败。")
+    if overdue_count or stale_count:
+        recommendations.append("检查本地自动巡检是否正常加载，并查看最近运行日志。")
+    if unlinked_count:
+        recommendations.append(f"修复失效关联：{unlinked_count} 个 Watchlist 关联专题缺失。")
+    if not recommendations:
+        recommendations.append("当前 Watchlist 调度健康，无需立即处理。")
+
+    alert_level = "low"
+    if failed_topic_count or overdue_count or stale_count or unlinked_count:
+        alert_level = "high"
+    elif due_count:
+        alert_level = "medium"
+
+    return {
+        "checked_at": reference_now,
+        "active_count": active_count,
+        "paused_count": paused_count,
+        "scheduled_count": scheduled_count,
+        "manual_count": manual_count,
+        "due_count": due_count,
+        "overdue_count": overdue_count,
+        "stale_count": stale_count,
+        "failed_topic_count": failed_topic_count,
+        "unlinked_count": unlinked_count,
+        "next_due_at": min(next_due_values) if next_due_values else None,
+        "oldest_checked_at": min(checked_values) if checked_values else None,
+        "last_checked_at": max(checked_values) if checked_values else None,
+        "alert_level": alert_level,
+        "action_required": alert_level != "low",
+        "recommendations": recommendations,
+        "issues": issues[:12],
+    }
 
 
 def get_watchlist_model(db: Session, watchlist_id: str) -> ResearchWatchlist | None:

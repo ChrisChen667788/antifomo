@@ -266,7 +266,13 @@ class ResearchLowQualityReviewActionResponse(BaseModel):
 
 
 class ResearchOfflineEvaluationMetricOut(BaseModel):
-    key: Literal["retrieval_hit_rate", "target_support_rate", "section_quota_pass_rate"]
+    key: Literal[
+        "retrieval_hit_rate",
+        "target_support_rate",
+        "section_quota_pass_rate",
+        "official_source_recall_at_5",
+        "unsupported_target_rate",
+    ]
     label: str
     numerator: int = 0
     denominator: int = 0
@@ -339,7 +345,7 @@ class ResearchRetrievalIndexRebuildRequest(BaseModel):
 
 class ResearchRetrievalIndexRebuildOut(BaseModel):
     user_id: str
-    schema_version: int = 1
+    schema_version: int = 2
     total_chunks: int = 0
     indexed_chunks: int = 0
     start_offset: int = 0
@@ -362,11 +368,15 @@ class ResearchRetrievalIndexSearchHitOut(BaseModel):
     label: str = ""
     source_tier: Literal["official", "media", "aggregate"] = "media"
     source_url: str = ""
+    parent_chunk_id: str = ""
     topic_id: str = ""
     topic_name: str = ""
+    region: str = ""
+    industry: str = ""
     score: float = 0.0
     matched_terms: list[str] = Field(default_factory=list)
     match_modes: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
 
 
 class ResearchRetrievalIndexSearchOut(BaseModel):
@@ -515,6 +525,39 @@ class ResearchWatchlistRunDueResponse(BaseModel):
     refreshed_count: int = 0
     failed_count: int = 0
     items: list[ResearchWatchlistRunDueItemOut] = Field(default_factory=list)
+
+
+class ResearchWatchlistOpsIssueOut(BaseModel):
+    watchlist_id: str | None = None
+    topic_id: str | None = None
+    name: str
+    issue_type: Literal["due", "overdue", "refresh_failed", "stale", "unlinked"]
+    severity: Literal["low", "medium", "high"] = "medium"
+    summary: str
+    last_checked_at: datetime | None = None
+    next_due_at: datetime | None = None
+    last_refreshed_at: datetime | None = None
+    error: str | None = None
+
+
+class ResearchWatchlistOpsSummaryOut(BaseModel):
+    checked_at: datetime
+    active_count: int = 0
+    paused_count: int = 0
+    scheduled_count: int = 0
+    manual_count: int = 0
+    due_count: int = 0
+    overdue_count: int = 0
+    stale_count: int = 0
+    failed_topic_count: int = 0
+    unlinked_count: int = 0
+    next_due_at: datetime | None = None
+    oldest_checked_at: datetime | None = None
+    last_checked_at: datetime | None = None
+    alert_level: Literal["low", "medium", "high"] = "low"
+    action_required: bool = False
+    recommendations: list[str] = Field(default_factory=list)
+    issues: list[ResearchWatchlistOpsIssueOut] = Field(default_factory=list)
 
 
 class ResearchWatchlistAutomationStatusOut(BaseModel):
@@ -682,6 +725,10 @@ class ResearchSourceDiagnosticsOut(BaseModel):
     supported_claims: list[str] = Field(default_factory=list)
     unsupported_claims: list[str] = Field(default_factory=list)
     generation_review_notes: list[str] = Field(default_factory=list)
+    reranker_used: bool = False
+    reranker_model: str = ""
+    reranker_top_k: int = 0
+    reranker_notes: list[str] = Field(default_factory=list)
     candidate_profile_companies: list[str] = Field(default_factory=list)
     candidate_profile_hit_count: int = 0
     candidate_profile_official_hit_count: int = 0

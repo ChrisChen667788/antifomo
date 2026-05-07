@@ -124,6 +124,24 @@ class GenerationGroundingReview:
         }
 
 
+@dataclass(slots=True)
+class CrossEncoderRerankProfile:
+    enabled: bool
+    model_name: str
+    top_k: int
+    reranked_count: int = 0
+    backend: str = "local-cross-encoder-style"
+    notes: list[str] = field(default_factory=list)
+
+    def to_diagnostics_update(self) -> dict[str, object]:
+        return {
+            "reranker_used": self.enabled and self.reranked_count > 0,
+            "reranker_model": self.model_name,
+            "reranker_top_k": self.top_k,
+            "reranker_notes": self.notes,
+        }
+
+
 def _dedupe_strings(values: Iterable[object], limit: int = 20) -> list[str]:
     rows: list[str] = []
     seen: set[str] = set()
@@ -151,6 +169,74 @@ def _terms(text: str, *, limit: int = 64) -> list[str]:
         if len(rows) >= limit * 2:
             break
     return _dedupe_strings(rows, limit=limit)
+
+
+def _cross_encoder_pair_score(source: object, *, query_terms: list[str], query_text: str) -> float:
+    text = _source_text(source).lower()
+    title = _source_title(source).lower()
+    if not text:
+        return 0.0
+    matched_terms = [term for term in query_terms if term and term in text]
+    title_terms = [term for term in query_terms if term and term in title]
+    score = float(len(matched_terms) * 9 + len(title_terms) * 5)
+    normalized_query = normalize_text(query_text).lower()
+    if normalized_query and normalized_query in text:
+        score += 18.0
+    if _source_tier(source) == "official":
+        score += 10.0
+    if any(term in text for term in _PROCUREMENT_TERMS):
+        score += 7.0
+    if any(term.lower() in text for term in _SOLUTION_TERMS):
+        score += 5.0
+    excerpt_length = len(normalize_text(str(getattr(source, "excerpt", "") or getattr(source, "snippet", "") or "")))
+    if excerpt_length >= 220:
+        score += 4.0
+    if excerpt_length < 80:
+        score -= 5.0
+    if any(token in text for token in ("无关", "不相关", "未涉及", "不涉及")) and _source_tier(source) != "official":
+        score -= 18.0
+    return score
+
+
+def rerank_sources_cross_encoder_style(
+    sources: Iterable[object],
+    *,
+    query: str,
+    model_name: str,
+    top_k: int = 20,
+) -> tuple[list[object], CrossEncoderRerankProfile]:
+    candidates = list(sources)
+    capped_top_k = max(1, min(int(top_k or 20), 80))
+    profile = CrossEncoderRerankProfile(
+        enabled=True,
+        model_name=normalize_text(model_name) or "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        top_k=capped_top_k,
+    )
+    if len(candidates) <= 1:
+        profile.reranked_count = len(candidates)
+        profile.notes.append("候选不足，保持原排序。")
+        return candidates, profile
+
+    query_terms = _terms(query, limit=40)
+    scored = [
+        (source, _cross_encoder_pair_score(source, query_terms=query_terms, query_text=query), index)
+        for index, source in enumerate(candidates[:capped_top_k])
+    ]
+    reranked_top = [
+        source
+        for source, _score, _index in sorted(
+            scored,
+            key=lambda item: (
+                item[1],
+                1 if _source_tier(item[0]) == "official" else 0,
+                -item[2],
+            ),
+            reverse=True,
+        )
+    ]
+    profile.reranked_count = len(reranked_top)
+    profile.notes.append(f"已对 top {len(reranked_top)} 来源执行本地 cross-encoder-style 相关性复排。")
+    return [*reranked_top, *candidates[capped_top_k:]], profile
 
 
 def _source_text(source: object) -> str:
