@@ -39,6 +39,7 @@ from app.services.feedback_service import apply_feedback
 from app.services.content_extractor import extract_domain, normalize_text
 from app.services.item_processing_runtime import process_item_by_id
 from app.services.item_processing_runtime import process_item_in_session
+from app.services.item_processor import looks_like_bad_item_title, resolve_item_display_title
 from app.services.interpreter import Interpreter
 from app.services.knowledge_service import (
     create_or_get_knowledge_entry,
@@ -284,12 +285,26 @@ def _to_item_out(
     score, bucket, reasons, why_recommended, matched_preferences, topic_score, source_score = _compute_recommendation(
         db, item, mode=mode, goal_text=goal_text
     )
+    source_domain = item.source_domain or extract_domain(item.source_url) or ""
     resolved_title = normalize_text(item.title or "")
-    if not resolved_title or resolved_title.lower().startswith(("wechat auto", "wechat ocr")):
+    if (
+        not resolved_title
+        or resolved_title.lower().startswith(("wechat auto", "wechat ocr"))
+        or looks_like_bad_item_title(resolved_title, source_domain=source_domain)
+    ):
+        summary = normalize_text(item.short_summary or item.long_summary or "")
+        resolved_title = resolve_item_display_title(
+            source_title=item.title or "",
+            short_summary=summary,
+            clean_content=normalize_text(" ".join([item.clean_content or "", item.raw_content or "", item.long_summary or ""])),
+            output_language=item.output_language or "zh-CN",
+            source_domain=source_domain,
+        )
+    if not resolved_title or looks_like_bad_item_title(resolved_title, source_domain=source_domain):
         summary = normalize_text(item.short_summary or item.long_summary or "")
         for sentence in summary.replace("。", ".").replace("！", ".").replace("？", ".").split("."):
             candidate = normalize_text(sentence).strip("，,：:；; ")
-            if len(candidate) >= 8:
+            if len(candidate) >= 8 and not looks_like_bad_item_title(candidate, source_domain=source_domain):
                 resolved_title = candidate[:36]
                 break
     if not resolved_title:

@@ -199,3 +199,54 @@ def test_wechat_metric_boilerplate_does_not_become_title_or_summary(monkeypatch)
     assert "阅读时长" not in captured["clean_content"]
     assert "本文字数" not in (processed.title or "")
     assert "剪映" in (processed.title or "")
+
+
+def test_wechat_local_home_header_does_not_become_title(monkeypatch) -> None:
+    db = _new_session()
+    user = User(id=uuid.uuid4(), name="demo")
+    db.add(user)
+    db.flush()
+
+    bad_header = "长安君 中央政法委长安剑 2026年5月9日 06:00"
+
+    def _summarize(**kwargs):
+        return SummarizeResult(
+            display_title=bad_header,
+            short_summary=(
+                "长安君 中央政法委长安剑 2026年5月9日 06:00 北京649人 点击蓝字 可以关注我们喔！"
+                "每天3分钟，速览天下事 5月9日星期六，封面新闻关注政法动态。"
+            ),
+            long_summary="每天3分钟，速览天下事，梳理政法、社会治理和公共事件动态。",
+            key_points=["政法动态", "新闻速览"],
+        )
+
+    monkeypatch.setattr(item_processor.summarizer, "summarize", _summarize)
+    monkeypatch.setattr(item_processor.tagger, "extract_tags", lambda **kwargs: TagsResult(tags=["政法"]))
+    monkeypatch.setattr(
+        item_processor.scorer,
+        "score",
+        lambda **kwargs: ScoreResult(score_value=3.2, action_suggestion="later"),
+    )
+
+    item = Item(
+        user_id=user.id,
+        source_type="plugin",
+        source_url="https://wechat.local/article/942c1099361456c91a4fec6f25de8395e3d8e753",
+        source_domain="wechat.local",
+        title=bad_header,
+        raw_content=(
+            f"标题：{bad_header}\n"
+            f"正文：{bad_header} 北京649人 点击蓝字 可以关注我们喔！"
+            "每天3分钟，速览天下事 5月9日星期六，农历三月廿三，封面新闻关注政法动态。"
+            "中央政法委长安剑发布多条公共治理观察，包含社会治理、公共安全和基层动态。"
+        ),
+        status="pending",
+    )
+
+    processed = item_processor.process_item(db, item, output_language="zh-CN")
+
+    assert processed.status == "ready"
+    assert processed.title
+    assert "长安君 中央政法委长安剑" not in processed.title
+    assert "06:00" not in processed.title
+    assert "每天3分钟" in processed.title

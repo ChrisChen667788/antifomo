@@ -74,3 +74,43 @@ def test_item_out_contains_visible_preference_explanations() -> None:
         assert out.preference_version == str(snapshot.id)
     finally:
         db.close()
+
+
+def test_item_out_rewrites_existing_wechat_local_home_header_title() -> None:
+    db = _new_session()
+    settings = get_settings()
+    try:
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.commit()
+
+        item = Item(
+            user_id=settings.single_user_id,
+            source_type="plugin",
+            source_url="https://wechat.local/article/942c1099361456c91a4fec6f25de8395e3d8e753",
+            source_domain="wechat.local",
+            title="长安君 中央政法委长安剑 2026年5月9日 06:00",
+            clean_content=(
+                "长安君 中央政法委长安剑 2026年5月9日 06:00 北京649人 点击蓝字 可以关注我们喔！"
+                "每天3分钟，速览天下事 5月9日星期六，农历三月廿三，封面新闻关注政法动态。"
+            ),
+            short_summary=(
+                "长安君 中央政法委长安剑 2026年5月9日 06:00 北京649人 点击蓝字 可以关注我们喔！"
+                "每天3分钟，速览天下事 5月9日星期六，封面新闻关注政法动态。"
+            ),
+            long_summary="每天3分钟，速览天下事，梳理政法、社会治理和公共事件动态。",
+            score_value=3.2,
+            action_suggestion="later",
+            status="ready",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(item)
+        db.commit()
+
+        out = _to_item_out(db, item)
+
+        assert out.title
+        assert "长安君 中央政法委长安剑" not in out.title
+        assert "06:00" not in out.title
+        assert "每天3分钟" in out.title
+    finally:
+        db.close()

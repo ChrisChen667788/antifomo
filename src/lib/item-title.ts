@@ -1,5 +1,12 @@
 import type { ApiItem } from "@/lib/api";
 
+const WECHAT_HOME_HEADER_TITLE_RE =
+  /^[\u4e00-\u9fffA-Za-z0-9·_-]{2,20}\s+[\u4e00-\u9fffA-Za-z0-9·_-]{2,30}\s+20[2-3]\d年\d{1,2}月\d{1,2}日(?:\s+\d{1,2}:\d{2})?$/;
+const WECHAT_HOME_HEADER_RE =
+  /^[\u4e00-\u9fffA-Za-z0-9·_-]{2,20}\s+[\u4e00-\u9fffA-Za-z0-9·_-]{2,30}\s+20[2-3]\d年\d{1,2}月\d{1,2}日(?:\s+\d{1,2}:\d{2})?\s*/;
+const WECHAT_FOLLOW_PROMPT_RE =
+  /(?:[\u4e00-\u9fff]{0,8}\d+\s*人\s*)?点击蓝字\s*可以关注我们[喔哦]?[!！]?/g;
+
 function cleanCandidate(text: string | null | undefined): string {
   return (text || "")
     .replace(/\s+/g, " ")
@@ -9,16 +16,33 @@ function cleanCandidate(text: string | null | undefined): string {
     .trim();
 }
 
+function isWechatSource(
+  item: Pick<ApiItem, "source_domain" | "source_url">,
+): boolean {
+  const source = `${item.source_domain || ""} ${item.source_url || ""}`.toLowerCase();
+  return source.includes("wechat.local") || source.includes("mp.weixin.qq.com");
+}
+
+function cleanWechatSummaryText(text: string): string {
+  return text
+    .replace(WECHAT_HOME_HEADER_RE, "")
+    .replace(WECHAT_FOLLOW_PROMPT_RE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function resolveItemTitle(
-  item: Pick<ApiItem, "title" | "short_summary" | "long_summary">,
+  item: Pick<ApiItem, "title" | "short_summary" | "long_summary" | "source_domain" | "source_url">,
   fallback: string,
 ): string {
+  const wechatSource = isWechatSource(item);
   const rawTitle = cleanCandidate(item.title);
   const isPlaceholder =
     !rawTitle ||
     /^wechat\s+(auto|ocr)/i.test(rawTitle) ||
     /^untitled/i.test(rawTitle) ||
-    /^未命名/.test(rawTitle);
+    /^未命名/.test(rawTitle) ||
+    (wechatSource && WECHAT_HOME_HEADER_TITLE_RE.test(rawTitle));
 
   if (!isPlaceholder) {
     return rawTitle;
@@ -26,7 +50,7 @@ export function resolveItemTitle(
 
   const seeds = [item.short_summary, item.long_summary];
   for (const seed of seeds) {
-    const text = cleanCandidate(seed)
+    const text = (wechatSource ? cleanWechatSummaryText(cleanCandidate(seed)) : cleanCandidate(seed))
       .replace(/^短摘要[:：]\s*/i, "")
       .replace(/^长摘要[:：]\s*/i, "");
     if (!text) continue;

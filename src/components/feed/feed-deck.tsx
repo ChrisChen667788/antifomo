@@ -164,7 +164,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
           </div>
         </div>
 
-        <h2 className="mt-4 text-[2rem] font-semibold leading-[1.2] tracking-[-0.03em] text-slate-900 md:text-[2.4rem]">
+        <h2 className="mt-4 break-words text-2xl font-semibold leading-tight tracking-normal text-slate-900 md:text-3xl">
           {current.title}
         </h2>
 
