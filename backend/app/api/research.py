@@ -1026,6 +1026,40 @@ def create_research_watchlist(
     return ResearchWatchlistOut(**saved)
 
 
+@router.get("/watchlists/run-history", response_model=list[ResearchWatchlistRunOut])
+def get_research_watchlist_run_history(
+    limit: int = 30,
+    status: str | None = None,
+    watchlist_id: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[ResearchWatchlistRunOut]:
+    ensure_demo_user(db)
+    return [
+        ResearchWatchlistRunOut(**item)
+        for item in list_watchlist_runs(
+            db,
+            limit=max(1, min(limit, 100)),
+            status=status,
+            watchlist_id=watchlist_id,
+        )
+    ]
+
+
+@router.get("/watchlists/digest-export", response_model=ResearchWatchlistDigestExportOut)
+def get_research_watchlist_digest_export(
+    since_hours: int = 24,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+) -> ResearchWatchlistDigestExportOut:
+    ensure_demo_user(db)
+    digest = build_watchlist_digest_export(
+        db,
+        since_hours=max(1, min(since_hours, 168)),
+        limit=max(1, min(limit, 100)),
+    )
+    return ResearchWatchlistDigestExportOut(**digest)
+
+
 @router.patch("/watchlists/{watchlist_id}", response_model=ResearchWatchlistOut)
 def update_research_watchlist(
     watchlist_id: str,
@@ -1083,40 +1117,6 @@ def get_research_watchlist_changes(
     if watchlist is None:
         raise HTTPException(status_code=404, detail="Watchlist not found")
     return [ResearchWatchlistChangeEventOut(**item) for item in list_watchlist_change_events(db, watchlist_id)]
-
-
-@router.get("/watchlists/run-history", response_model=list[ResearchWatchlistRunOut])
-def get_research_watchlist_run_history(
-    limit: int = 30,
-    status: str | None = None,
-    watchlist_id: str | None = None,
-    db: Session = Depends(get_db),
-) -> list[ResearchWatchlistRunOut]:
-    ensure_demo_user(db)
-    return [
-        ResearchWatchlistRunOut(**item)
-        for item in list_watchlist_runs(
-            db,
-            limit=max(1, min(limit, 100)),
-            status=status,
-            watchlist_id=watchlist_id,
-        )
-    ]
-
-
-@router.get("/watchlists/digest-export", response_model=ResearchWatchlistDigestExportOut)
-def get_research_watchlist_digest_export(
-    since_hours: int = 24,
-    limit: int = 50,
-    db: Session = Depends(get_db),
-) -> ResearchWatchlistDigestExportOut:
-    ensure_demo_user(db)
-    digest = build_watchlist_digest_export(
-        db,
-        since_hours=max(1, min(since_hours, 168)),
-        limit=max(1, min(limit, 100)),
-    )
-    return ResearchWatchlistDigestExportOut(**digest)
 
 
 @router.post("/watchlists/{watchlist_id}/refresh", response_model=ResearchWatchlistRefreshResponse)

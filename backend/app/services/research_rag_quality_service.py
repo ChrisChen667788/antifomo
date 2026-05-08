@@ -297,6 +297,10 @@ def rerank_sources_cross_encoder(
                 query=query,
                 model_name=resolved_model,
             )
+            if len(scores) != len(scored_sources):
+                raise RuntimeError(
+                    f"sentence-transformers returned {len(scores)} scores for {len(scored_sources)} source pairs"
+                )
             ranked = [
                 source
                 for source, _score, _index in sorted(

@@ -3,6 +3,7 @@
 ## 0.6.0+20260508 - 2026-05-08
 
 - Upgraded research reranking from the local heuristic path to a lazy SentenceTransformers CrossEncoder adapter with backend diagnostics and local fallback, and added offline reranker official-source Recall@5.
+- Hardened the CrossEncoder adapter fallback path so missing SentenceTransformers dependencies or malformed model score counts keep all candidate sources via local reranking instead of silently truncating results.
 - Added retrieval-index status reporting and research-center visualization for resumable rebuild progress, persisted chunk counts, parent-block links, and orphan child chunks while preserving official-source priority under parent-block routing boost.
 - Added Watchlist run history, default failed-run retry, notification summaries, SQLite/Alembic persistence, API client types, and Markdown digest export in the research center.
 - Added advisory-grade delivery artifacts in the solution delivery pack: client brief, bidding prep memo, and execution materials, all carrying source policy and review checklist metadata.
