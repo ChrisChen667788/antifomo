@@ -6,6 +6,17 @@ const WECHAT_HOME_HEADER_RE =
   /^[\u4e00-\u9fffA-Za-z0-9·_-]{2,20}\s+[\u4e00-\u9fffA-Za-z0-9·_-]{2,30}\s+20[2-3]\d年\d{1,2}月\d{1,2}日(?:\s+\d{1,2}:\d{2})?\s*/;
 const WECHAT_FOLLOW_PROMPT_RE =
   /(?:[\u4e00-\u9fff]{0,8}\d+\s*人\s*)?点击蓝字\s*可以关注我们[喔哦]?[!！]?/g;
+const BROWSER_NAV_NOISE_TOKENS = [
+  "个人收藏",
+  "京东",
+  "天猫",
+  "淘宝",
+  "苏宁易购",
+  "维基百科",
+  "iCloud",
+  "百度",
+  "新浪微博",
+];
 
 function cleanCandidate(text: string | null | undefined): string {
   return (text || "")
@@ -24,11 +35,24 @@ function isWechatSource(
 }
 
 function cleanWechatSummaryText(text: string): string {
-  return text
+  let cleaned = text;
+  if (looksLikeBrowserNavNoise(cleaned)) {
+    const marker = cleaned.search(/本地服务|第一次跑|已积累|source_url:|正文[:：]/);
+    if (marker >= 0) {
+      cleaned = cleaned.slice(marker);
+    }
+  }
+  return cleaned
     .replace(WECHAT_HOME_HEADER_RE, "")
     .replace(WECHAT_FOLLOW_PROMPT_RE, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function looksLikeBrowserNavNoise(text: string): boolean {
+  const normalized = cleanCandidate(text);
+  if (!normalized.startsWith("个人收藏")) return false;
+  return BROWSER_NAV_NOISE_TOKENS.filter((token) => normalized.includes(token)).length >= 4;
 }
 
 export function resolveItemTitle(
@@ -42,7 +66,8 @@ export function resolveItemTitle(
     /^wechat\s+(auto|ocr)/i.test(rawTitle) ||
     /^untitled/i.test(rawTitle) ||
     /^未命名/.test(rawTitle) ||
-    (wechatSource && WECHAT_HOME_HEADER_TITLE_RE.test(rawTitle));
+    (wechatSource && WECHAT_HOME_HEADER_TITLE_RE.test(rawTitle)) ||
+    (wechatSource && looksLikeBrowserNavNoise(rawTitle));
 
   if (!isPlaceholder) {
     return rawTitle;
@@ -54,6 +79,9 @@ export function resolveItemTitle(
       .replace(/^短摘要[:：]\s*/i, "")
       .replace(/^长摘要[:：]\s*/i, "");
     if (!text) continue;
+    if (wechatSource && (/pixcull_demo/i.test(text) || (text.includes("模型加载") && text.includes("本地缓存")))) {
+      return "本地照片分拣工具运行状态";
+    }
 
     const candidates = text
       .split(/[。！？!?；;\n]/)

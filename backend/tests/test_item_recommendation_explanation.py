@@ -114,3 +114,43 @@ def test_item_out_rewrites_existing_wechat_local_home_header_title() -> None:
         assert "每天3分钟" in out.title
     finally:
         db.close()
+
+
+def test_item_out_rewrites_existing_wechat_local_browser_nav_title() -> None:
+    db = _new_session()
+    settings = get_settings()
+    try:
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.commit()
+
+        nav_noise = "个人收藏 方案制作工具 京 京东 天 天猫 淘 淘宝 苏 苏宁易购 W 维基百科"
+        item = Item(
+            user_id=settings.single_user_id,
+            source_type="plugin",
+            source_url="https://wechat.local/article/6ff3ce7f5946837fc042af4fdad80f5009962d7c",
+            source_domain="wechat.local",
+            title=nav_noise,
+            clean_content=(
+                f"{nav_noise} 精彩演讲视频集锦 iCloud 百度 新浪微博 "
+                "本地服务，所有数据存在 /tmp/pixcull_demo/<run_id>/。"
+                "第一次跑某种照片时模型加载需10秒，后续每张约2-10秒。"
+                "已积累 43 MB，3次记录，本地缓存可查看或清理。"
+            ),
+            short_summary=(
+                f"{nav_noise} 精彩演讲视频集锦 iCloud 百度 新浪微博 "
+                "本地服务，所有数据存在 /tmp/pixcull_demo/<run_id>/。"
+            ),
+            long_summary="本地照片分拣工具记录模型加载、本地缓存和运行状态。",
+            score_value=3.2,
+            action_suggestion="later",
+            status="ready",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(item)
+        db.commit()
+
+        out = _to_item_out(db, item)
+
+        assert out.title == "本地照片分拣工具运行状态"
+    finally:
+        db.close()

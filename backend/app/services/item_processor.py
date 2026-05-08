@@ -54,6 +54,14 @@ _WECHAT_FOLLOW_PROMPT_RE = re.compile(
     flags=re.IGNORECASE,
 )
 _BAD_TITLE_MARKERS = ("本文字数", "阅读时长", "字数：", "字数:", "分钟作者", "微信公众平台")
+_BROWSER_NAV_NOISE_TOKENS = ("个人收藏", "京东", "天猫", "淘宝", "苏宁易购", "维基百科", "iCloud", "百度", "新浪微博")
+
+
+def _looks_like_browser_nav_noise(value: str) -> bool:
+    normalized = normalize_text(value)
+    if not normalized:
+        return False
+    return normalized.startswith("个人收藏") and sum(token in normalized for token in _BROWSER_NAV_NOISE_TOKENS) >= 4
 
 
 def _is_wechat_source_domain(source_domain: str) -> bool:
@@ -72,6 +80,8 @@ def _looks_like_bad_article_title(value: str, *, source_domain: str = "") -> boo
         return True
     if _is_wechat_source_domain(source_domain) and _WECHAT_HOME_HEADER_TITLE_RE.match(normalized):
         return True
+    if _is_wechat_source_domain(source_domain) and _looks_like_browser_nav_noise(normalized):
+        return True
     return bool(_ARTICLE_METRIC_RE.search(normalized))
 
 
@@ -85,6 +95,10 @@ def _strip_article_boilerplate(content: str, *, source_domain: str = "") -> str:
         return ""
     is_wechat = _is_wechat_source_domain(source_domain)
     if is_wechat:
+        if _looks_like_browser_nav_noise(text):
+            marker = re.search(r"(本地服务|第一次跑|已积累|source_url:|正文[:：])", text)
+            if marker:
+                text = text[marker.start() :]
         text = _WECHAT_HOME_HEADER_RE.sub(" ", text, count=1)
         text = _WECHAT_FOLLOW_PROMPT_RE.sub(" ", text, count=2)
         text = _WECHAT_BOILERPLATE_RE.sub(" ", text)
@@ -106,6 +120,8 @@ def _derive_topic_title_from_text(text: str) -> str:
     normalized = _strip_article_boilerplate(text, source_domain="mp.weixin.qq.com")
     if not normalized:
         return ""
+    if "pixcull_demo" in normalized or ("模型加载" in normalized and "本地缓存" in normalized):
+        return "本地照片分拣工具运行状态"
     briefing_match = re.search(r"(每天\s*3\s*分钟[，,、]\s*速览天下事)\s*([^。！？!?]{0,16})", normalized)
     if briefing_match:
         return normalize_text(f"{briefing_match.group(1)} {briefing_match.group(2)}")[:36].rstrip("，,、:：- ")
