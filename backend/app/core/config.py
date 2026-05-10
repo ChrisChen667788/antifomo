@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     research_cross_encoder_backend: str = "auto"  # auto / sentence_transformers / local
     research_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     research_cross_encoder_top_k: int = 20
+    research_quality_expansion_enabled: bool = True
+    research_quality_expansion_min_score: int = 82
+    research_quality_expansion_max_rounds: int = 2
+    research_quality_expansion_query_limit: int = 8
     wechat_agent_auto_start: bool = False
     pending_item_recovery_enabled: bool = True
     pending_item_recovery_interval_seconds: int = 8

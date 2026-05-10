@@ -793,6 +793,13 @@ class ResearchSourceDiagnosticsOut(BaseModel):
     candidate_profile_hit_count: int = 0
     candidate_profile_official_hit_count: int = 0
     candidate_profile_source_labels: list[str] = Field(default_factory=list)
+    quality_expansion_triggered: bool = False
+    quality_expansion_rounds: int = 0
+    quality_expansion_before_score: int = 0
+    quality_expansion_after_score: int = 0
+    quality_expansion_added_source_count: int = 0
+    quality_expansion_query_plan: list[str] = Field(default_factory=list)
+    quality_expansion_notes: list[str] = Field(default_factory=list)
     strategy_model_used: bool = False
     strategy_scope_summary: str = ""
     strategy_query_expansion_count: int = 0

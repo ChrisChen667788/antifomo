@@ -324,6 +324,8 @@ export function ResearchReportCard({
   const followupSummaryResolution = followupResolutionMeta(followupDiagnostics?.summary_resolution);
   const candidateProfileCompanies = dedupeTextList(diagnostics?.candidate_profile_companies || []);
   const candidateProfileSourceLabels = dedupeTextList(diagnostics?.candidate_profile_source_labels || []);
+  const qualityExpansionQueries = dedupeTextList(diagnostics?.quality_expansion_query_plan || []);
+  const qualityExpansionNotes = dedupeTextList(diagnostics?.quality_expansion_notes || []);
   const coreEntities = dedupeByKey(report.entity_graph?.entities || [], (entity) => String(entity?.canonical_name || "").trim(), 6);
   const readiness = report.report_readiness;
   const readinessState = readinessMeta(readiness?.status || "needs_evidence");
@@ -389,12 +391,18 @@ export function ResearchReportCard({
     },
     {
       title: "查询策略",
-      value: diagnostics?.strategy_query_expansion_count
+      value: diagnostics?.quality_expansion_triggered
+        ? `质量扩源 ${diagnostics.quality_expansion_rounds || 1} 轮`
+        : diagnostics?.strategy_query_expansion_count
         ? `扩展 ${diagnostics.strategy_query_expansion_count} 条`
         : followupDiagnostics?.decomposition_queries?.length
           ? `追问拆出 ${followupDiagnostics.decomposition_queries.length} 条`
           : "基础来源整理",
       detail:
+        qualityExpansionNotes[0] ||
+        (diagnostics?.quality_expansion_triggered
+          ? `新增 ${diagnostics.quality_expansion_added_source_count || 0} 条公开来源，综合所有来源后再生成材料。`
+          : "") ||
         followupDiagnostics?.summary ||
         diagnostics?.strategy_scope_summary ||
         "已结合多个公开来源整理报告，并突出关键章节和依据。",
@@ -1244,6 +1252,11 @@ export function ResearchReportCard({
                       已扩展来源
                     </span>
                   ) : null}
+                  {diagnostics.quality_expansion_triggered ? (
+                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
+                      质量扩源 {diagnostics.quality_expansion_rounds || 1} 轮
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-xs leading-5">
                   {evidenceMode.note}
@@ -1334,6 +1347,16 @@ export function ResearchReportCard({
                     其中官方源 {diagnostics.candidate_profile_official_hit_count}
                   </span>
                 ) : null}
+                {diagnostics.quality_expansion_triggered ? (
+                  <>
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">
+                      质量扩源新增 {diagnostics.quality_expansion_added_source_count || 0}
+                    </span>
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">
+                      自评分 {diagnostics.quality_expansion_before_score || 0}→{diagnostics.quality_expansion_after_score || 0}
+                    </span>
+                  </>
+                ) : null}
                 {guardedBacklog ? (
                   <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
                     已降级为 guarded backlog
@@ -1365,6 +1388,21 @@ export function ResearchReportCard({
                       <span key={`unsupported-${label}`} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs text-rose-700">
                         未支撑 · {label}
                       </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {qualityExpansionQueries.length ? (
+                <div className="mt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">质量扩源查询</p>
+                  <div className="mt-2 space-y-2">
+                    {qualityExpansionQueries.slice(0, 3).map((query) => (
+                      <p
+                        key={`quality-expansion-${query}`}
+                        className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs leading-5 text-indigo-900"
+                      >
+                        {query}
+                      </p>
                     ))}
                   </div>
                 </div>

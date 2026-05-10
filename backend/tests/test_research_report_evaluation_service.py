@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import warnings
 
+from datetime import datetime, timezone
+
 from app.schemas.research import (
     ResearchReportDocument,
+    ResearchReportResponse,
     ResearchSourceDiagnosticsOut,
     ResearchSourceOut,
 )
+from app.services import research_service
 from app.services.research_report_evaluation_service import (
     evaluate_and_improve_research_report,
     evaluate_research_report,
@@ -107,3 +111,112 @@ def test_research_report_assignment_coerces_ranked_entities_without_serializer_w
 
     assert payload["top_target_accounts"][0]["name"] == "某市文化和旅游局"
     assert not [item for item in caught if "Pydantic serializer warnings" in str(item.message)]
+
+
+def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypatch) -> None:
+    base = ResearchReportResponse(
+        keyword="南京政务云",
+        research_focus="准备政务云客户 brief、投标准备 memo 和执行材料",
+        output_language="zh-CN",
+        research_mode="deep",
+        report_title="南京政务云机会初判",
+        executive_summary="当前只有泛化媒体线索，仍需补官方采购和公共资源交易来源。",
+        consulting_angle="先补证再形成对客材料。",
+        target_accounts=["南京市数据局"],
+        budget_signals=["疑似存在政务云预算窗口"],
+        strategic_directions=["围绕政务云迁移和数据治理形成方案"],
+        source_count=1,
+        evidence_density="low",
+        source_quality="low",
+        sources=[
+            ResearchSourceOut(
+                title="行业观察：政务云建设持续升温",
+                url="https://media.example.cn/nanjing-cloud",
+                domain="media.example.cn",
+                snippet="泛行业评论提到政务云，但缺少采购人、预算和项目编号。",
+                search_query="南京 政务云 行业观察",
+                source_type="media",
+                content_status="snippet_only",
+                source_tier="media",
+            )
+        ],
+        source_diagnostics=ResearchSourceDiagnosticsOut(
+            retained_source_count=1,
+            strict_topic_source_count=0,
+            retrieval_quality="low",
+            evidence_mode="fallback",
+            response_quality_score=58,
+        ),
+        generated_at=datetime.now(timezone.utc),
+    )
+    evaluated = evaluate_and_improve_research_report(base, min_overall_score=95, min_entity_recall_score=95)
+
+    calls: list[str] = []
+
+    def _fake_search(query: str, *, timeout_seconds: int, limit: int) -> list[research_service.SearchHit]:
+        calls.append(query)
+        if "采购" not in query and "招标" not in query and "公共资源" not in query:
+            return []
+        return [
+            research_service.SearchHit(
+                title="南京市数据局政务云采购意向公告",
+                url="https://ccgp.gov.cn/cggg/nanjing-data-cloud",
+                snippet=(
+                    "采购人：南京市数据局。项目名称：南京政务云升级项目。预算金额 1200万元，"
+                    "建设内容包括政务云迁移、数据治理、等保和运维服务。"
+                ),
+                search_query=query,
+                source_hint="procurement",
+                source_label="政府采购公告",
+            )
+        ]
+
+    def _fake_extract(
+        hit: research_service.SearchHit,
+        *,
+        timeout_seconds: int,
+        excerpt_chars: int,
+    ) -> research_service.SourceDocument:
+        return research_service.SourceDocument(
+            title=hit.title,
+            url=hit.url,
+            domain="ccgp.gov.cn",
+            snippet=hit.snippet,
+            search_query=hit.search_query,
+            source_type="procurement",
+            content_status="fetched",
+            excerpt=hit.snippet,
+            source_label="政府采购公告",
+            source_tier="official",
+            source_origin="search",
+        )
+
+    monkeypatch.setattr(research_service, "_search_public_web", _fake_search)
+    monkeypatch.setattr(research_service, "_extract_source_document_best_effort", _fake_extract)
+    local_settings = research_service.get_settings()
+    monkeypatch.setattr(local_settings, "research_quality_expansion_enabled", True)
+    monkeypatch.setattr(local_settings, "research_quality_expansion_min_score", 82)
+    monkeypatch.setattr(local_settings, "research_quality_expansion_query_limit", 16)
+    monkeypatch.setattr(research_service, "get_settings", lambda: local_settings)
+
+    expanded = research_service._expand_report_public_sources_until_quality_improves(
+        evaluated,
+        source_documents=research_service._report_sources_to_source_documents(evaluated.sources),
+        runtime={
+            "search_timeout_seconds": 1,
+            "search_result_limit": 3,
+            "url_timeout_seconds": 1,
+            "expanded_selected_limit": 6,
+        },
+    )
+
+    diagnostics = expanded.source_diagnostics
+    assert calls
+    assert diagnostics.quality_expansion_triggered is True
+    assert diagnostics.quality_expansion_added_source_count >= 1
+    assert diagnostics.quality_expansion_after_score >= diagnostics.quality_expansion_before_score
+    assert any("site:ccgp.gov.cn" in query for query in diagnostics.quality_expansion_query_plan)
+    assert any("site:mp.weixin.qq.com" in query for query in diagnostics.quality_expansion_query_plan)
+    assert expanded.source_count > evaluated.source_count
+    assert expanded.solution_delivery_pack.advisory_artifacts
+    assert "政府采购公告" in expanded.source_diagnostics.matched_source_labels

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1+20260510 - 2026-05-10
+
+- Added quality-triggered public-source expansion for research reports and advisory delivery materials: when self-evaluation stays at watch/fail quality, the pipeline expands beyond configured source settings into public procurement, public resource, official, disclosure, open web, and public WeChat channels, merges new evidence, rebuilds material packs, and re-evaluates the result.
+- Surfaced quality-expansion diagnostics in the research report card, including rounds, added public source count, self-evaluation score movement, expansion notes, and representative public search queries.
+
 ## 0.6.0+20260508 - 2026-05-08
 
 - Upgraded research reranking from the local heuristic path to a lazy SentenceTransformers CrossEncoder adapter with backend diagnostics and local fallback, and added offline reranker official-source Recall@5.

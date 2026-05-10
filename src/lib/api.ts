@@ -272,6 +272,13 @@ export interface ApiResearchSourceDiagnostics {
   candidate_profile_hit_count: number;
   candidate_profile_official_hit_count: number;
   candidate_profile_source_labels: string[];
+  quality_expansion_triggered?: boolean;
+  quality_expansion_rounds?: number;
+  quality_expansion_before_score?: number;
+  quality_expansion_after_score?: number;
+  quality_expansion_added_source_count?: number;
+  quality_expansion_query_plan?: string[];
+  quality_expansion_notes?: string[];
   strategy_model_used: boolean;
   strategy_scope_summary: string;
   strategy_query_expansion_count: number;
