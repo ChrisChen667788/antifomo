@@ -1054,6 +1054,40 @@ class ResearchAdvisoryArtifactOut(BaseModel):
     review_checklist: list[str] = Field(default_factory=list)
 
 
+class ResearchDeliveryQualityMetricOut(BaseModel):
+    key: str
+    label: str
+    score: int = 0
+    threshold: int = 75
+    status: Literal["pass", "watch", "fail"] = "watch"
+    summary: str = ""
+    gaps: list[str] = Field(default_factory=list)
+    improvement_actions: list[str] = Field(default_factory=list)
+
+
+class ResearchDeliverySelfReviewOut(BaseModel):
+    triggered: bool = False
+    before_score: int = 0
+    after_score: int = 0
+    actions: list[str] = Field(default_factory=list)
+    added_sections: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class ResearchDeliveryQualityProfileOut(BaseModel):
+    framework: Literal["china_tech_delivery_review_v1"] = "china_tech_delivery_review_v1"
+    framework_label: str = "中国科技项目交付质量自审"
+    review_target: Literal["solution_delivery", "project_proposal", "feasibility_study"] = "solution_delivery"
+    overall_score: int = 0
+    status: Literal["pass", "watch", "fail"] = "watch"
+    metrics: list[ResearchDeliveryQualityMetricOut] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    required_axes: list[str] = Field(default_factory=list)
+    missing_axes: list[str] = Field(default_factory=list)
+    self_review: ResearchDeliverySelfReviewOut = Field(default_factory=ResearchDeliverySelfReviewOut)
+
+
 class ResearchSolutionDeliveryPackOut(BaseModel):
     scenario: str = ""
     target_customer: str = ""
@@ -1067,6 +1101,10 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     project_proposal_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     client_ppt_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     advisory_artifacts: list[ResearchAdvisoryArtifactOut] = Field(default_factory=list)
+    solution_quality_profile: ResearchDeliveryQualityProfileOut = Field(default_factory=ResearchDeliveryQualityProfileOut)
+    project_proposal_quality_profile: ResearchDeliveryQualityProfileOut = Field(
+        default_factory=lambda: ResearchDeliveryQualityProfileOut(review_target="project_proposal")
+    )
     review_checklist: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
     export_markdown: str = ""

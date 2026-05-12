@@ -1,6 +1,6 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-05-08
+Updated: 2026-05-13
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
 
@@ -162,7 +162,7 @@ Acceptance:
 
 Goal: upgrade output from useful research notes to advisory-grade delivery materials for solution design, selling, and bidding.
 
-Status: first wave delivered as `0.6.0+20260508` with client brief, bidding prep memo, and execution materials generated from the solution delivery pack while preserving source policy and review checklist metadata.
+Status: first wave delivered as `0.6.0+20260508` with client brief, bidding prep memo, and execution materials generated from the solution delivery pack while preserving source policy and review checklist metadata. The delivery chain was strengthened in `0.6.2+20260513` with China-tech delivery quality review, proposal/feasibility self-audit, and structural self-repair before export.
 
 Scope:
 
@@ -177,9 +177,29 @@ Acceptance:
 - Formal documents no longer hide evidence gaps behind polished wording.
 - Compare/export, follow-up delivery, and advisory templates share the same frozen evidence basis.
 
-## 0.6.1+YYYYMMDD: Evaluation, A/B, and Performance Control Plane
+## 0.6.1+20260510: Quality-Triggered Public Evidence Expansion
+
+Goal: when research quality is only average, expand public evidence beyond configured source settings before generating higher-stakes advisory materials.
+
+Status: delivered as `0.6.1+20260510`.
+
+Scope:
+
+- Trigger public-source expansion when report evaluation remains watch/fail or source support is too weak for delivery materials.
+- Search procurement, public-resource, official, disclosure, open-web, and public WeChat channels outside the active source-setting boundary.
+- Merge new evidence, rebuild diagnostics and advisory materials, then re-evaluate quality before exposing the result.
+
+Acceptance:
+
+- Watch/fail reports can add public evidence without manual source reconfiguration.
+- Delivery materials are regenerated from the merged evidence basis rather than from the weaker first-pass pack.
+- The report card exposes expansion rounds, added sources, query plan, and score movement.
+
+## 0.6.2+YYYYMMDD: Evaluation, A/B, and Performance Control Plane
 
 Goal: make quality improvement and retrieval/runtime optimization measurable, repeatable, and safe to iterate.
+
+Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. Broader offline A/B and runtime controls remain next.
 
 Scope:
 

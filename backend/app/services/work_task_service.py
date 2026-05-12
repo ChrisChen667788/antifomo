@@ -11,7 +11,12 @@ from app.models.entities import FocusSession, Item, KnowledgeEntry, WorkTask
 from app.models.research_entities import ResearchWatchlistChangeEvent
 from app.services.session_service import SessionMetrics
 from app.services.language import localized_text, normalize_output_language
-from app.schemas.research import ResearchReportDocument
+from app.schemas.research import (
+    ResearchMarketIntelligencePackOut,
+    ResearchReportDocument,
+    ResearchSolutionDeliveryPackOut,
+)
+from app.services.research_delivery_quality_service import review_and_improve_formal_document_sections
 from app.services.research_service import build_research_report_markdown
 from app.services.research_solution_intelligence_service import (
     build_market_intelligence_pack,
@@ -1310,7 +1315,11 @@ def _build_formal_document_sections(
     document_kind: str,
     context: dict[str, str],
     supplement: dict[str, str],
-) -> list[tuple[str, list[str]]]:
+) -> tuple[
+    list[tuple[str, list[str]]],
+    ResearchMarketIntelligencePackOut,
+    ResearchSolutionDeliveryPackOut,
+]:
     resolved_language = normalize_output_language(output_language or report.output_language)
     official_ratio = round(float(getattr(getattr(report, "source_diagnostics", None), "official_source_ratio", 0.0) or 0.0) * 100)
     evidence_rows = _dedupe_export_rows(
@@ -1555,7 +1564,8 @@ def _build_formal_document_sections(
             ),
         ),
     ]
-    return feasibility_sections if document_kind == "feasibility_study" else proposal_sections
+    sections = feasibility_sections if document_kind == "feasibility_study" else proposal_sections
+    return sections, market_pack, solution_pack
 
 
 def _build_formal_document_html(
@@ -1645,12 +1655,24 @@ def _build_formal_document_bundle(
         limit=8,
         preserve_labels=True,
     )
-    sections = _build_formal_document_sections(
+    sections, market_pack, solution_pack = _build_formal_document_sections(
         report=report,
         output_language=resolved_language,
         document_kind=document_kind,
         context=context,
         supplement=supplement,
+    )
+    sections, _delivery_quality = review_and_improve_formal_document_sections(
+        sections,
+        review_target=document_kind,
+        source_support_score=max(
+            int(getattr(market_pack, "source_support_score", 0) or 0),
+            int(getattr(solution_pack, "source_support_score", 0) or 0),
+        ),
+        grounded_count=len(list(getattr(solution_pack, "grounding_checks", []) or [])),
+        checklist_count=len(list(getattr(solution_pack, "review_checklist", []) or [])),
+        evidence_note_count=len(list(getattr(solution_pack, "intelligence_summary", []) or []))
+        + len(list(getattr(market_pack, "intelligence_gaps", []) or [])),
     )
     html_content = _build_formal_document_html(
         title=title,

@@ -598,6 +598,40 @@ export interface ApiResearchAdvisoryArtifact {
   review_checklist: string[];
 }
 
+export interface ApiResearchDeliveryQualityMetric {
+  key: string;
+  label: string;
+  score: number;
+  threshold: number;
+  status: "pass" | "watch" | "fail";
+  summary: string;
+  gaps: string[];
+  improvement_actions: string[];
+}
+
+export interface ApiResearchDeliverySelfReview {
+  triggered: boolean;
+  before_score: number;
+  after_score: number;
+  actions: string[];
+  added_sections: string[];
+  notes: string[];
+}
+
+export interface ApiResearchDeliveryQualityProfile {
+  framework: "china_tech_delivery_review_v1";
+  framework_label: string;
+  review_target: "solution_delivery" | "project_proposal" | "feasibility_study";
+  overall_score: number;
+  status: "pass" | "watch" | "fail";
+  metrics: ApiResearchDeliveryQualityMetric[];
+  strengths: string[];
+  gaps: string[];
+  required_axes: string[];
+  missing_axes: string[];
+  self_review: ApiResearchDeliverySelfReview;
+}
+
 export interface ApiResearchSolutionDeliveryPack {
   scenario: string;
   target_customer: string;
@@ -611,6 +645,8 @@ export interface ApiResearchSolutionDeliveryPack {
   project_proposal_outline: ApiResearchSolutionOutlineSection[];
   client_ppt_outline: ApiResearchSolutionOutlineSection[];
   advisory_artifacts: ApiResearchAdvisoryArtifact[];
+  solution_quality_profile?: ApiResearchDeliveryQualityProfile;
+  project_proposal_quality_profile?: ApiResearchDeliveryQualityProfile;
   review_checklist: string[];
   next_steps: string[];
   export_markdown: string;

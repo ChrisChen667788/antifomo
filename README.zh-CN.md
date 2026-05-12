@@ -96,6 +96,7 @@ Anti-FOMO 关注的是整条工作链路：
 - 章节级 retrieval pack 和 section 级证据诊断
 - canonical org linking、guarded backlog、低质量研报 rewrite / backfill
 - 近 3 年招投标/产品/技术参数情报包和 advisory-grade 方案交付包
+- 面向中国科技项目交付的解决方案/项目建议书质量自审、自修订和显式缺口提示
 
 ### 4. 执行与交付
 
@@ -103,7 +104,7 @@ Anti-FOMO 关注的是整条工作链路：
 - 行动卡、老板简报、销售简报、外联草稿、watchlist digest
 - Watchlist run history、失败重试说明、通知摘要和 Markdown digest 导出
 - 可行性研究报告、项目建议书、对客 PPT、客户 brief、投标准备 memo 和执行材料导出
-- 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档
+- 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档，并保留交付质量审查记录
 
 ## 适合谁
 
@@ -185,7 +186,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.6.1+20260510`
+- 当前版本：`0.6.2+20260513`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 仓库已做开源脱敏

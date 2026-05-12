@@ -323,12 +323,14 @@ def test_extended_export_tasks_generate_expected_outputs() -> None:
         assert "目标客户：浏览器客户A集团总部" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "项目/方案场景：AI营销平台" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "垂直场景：会员运营 AI 助手" in str(feasibility_word_task.output_payload.get("content") or "")
+        assert "交付前质量审查与自修订记录" in str(feasibility_word_task.output_payload.get("content") or "")
         assert proposal_pdf_task.status == "done"
         assert proposal_pdf_task.output_payload["document_kind"] == "project_proposal"
         assert proposal_pdf_task.output_payload["format"] == "pdf"
         assert proposal_pdf_task.output_payload.get("content_base64")
         assert "项目建议书" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "交叉验证附注" in str(proposal_pdf_task.output_payload.get("content") or "")
+        assert "交付前质量审查与自修订记录" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "目标客户：浏览器客户A集团总部" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "项目/方案场景：AI营销平台" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "垂直场景：会员运营 AI 助手" in str(proposal_pdf_task.output_payload.get("content") or "")

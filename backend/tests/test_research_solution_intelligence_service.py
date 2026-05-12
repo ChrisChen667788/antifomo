@@ -113,3 +113,12 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert any("目标客户" in item for item in pack.clarification_questions)
     assert "Advisory-grade 交付产物" in pack.export_markdown
     assert "对客汇报 PPT 大纲" in pack.export_markdown
+    assert pack.solution_quality_profile.overall_score > 0
+    assert pack.project_proposal_quality_profile.overall_score > 0
+    assert pack.project_proposal_quality_profile.self_review.triggered is True
+    assert (
+        pack.project_proposal_quality_profile.self_review.after_score
+        >= pack.project_proposal_quality_profile.self_review.before_score
+    )
+    assert any("安全合规" in section.title for section in pack.project_proposal_outline)
+    assert "交付质量自审" in pack.export_markdown

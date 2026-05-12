@@ -14,6 +14,7 @@ from app.schemas.research import (
     ResearchTenderProjectOut,
 )
 from app.services.content_extractor import normalize_text
+from app.services.research_delivery_quality_service import review_and_improve_solution_delivery_pack
 from app.services.research_rag_quality_service import build_retrieval_correction_profile
 
 
@@ -649,6 +650,7 @@ def build_solution_delivery_pack(
             limit=6,
         ),
     )
+    pack = review_and_improve_solution_delivery_pack(pack)
     pack.export_markdown = build_solution_delivery_markdown(pack, market_pack=market_pack)
     return pack
 
@@ -745,6 +747,21 @@ def build_solution_delivery_markdown(
             )
     lines.extend(["", "## 审阅清单"])
     lines.extend([f"- {item}" for item in pack.review_checklist])
+    lines.extend(["", "## 交付质量自审"])
+    for profile in (pack.solution_quality_profile, pack.project_proposal_quality_profile):
+        lines.extend(
+            [
+                f"### {profile.framework_label} / {profile.review_target}",
+                f"- 综合评分: {profile.overall_score}/100",
+                f"- 审查状态: {profile.status}",
+                f"- 重点缺口: {'；'.join(profile.gaps[:3]) if profile.gaps else '当前未发现阻塞性交付缺口。'}",
+            ]
+        )
+        if profile.self_review.triggered:
+            lines.append(
+                f"- 自修订: {profile.self_review.before_score} -> {profile.self_review.after_score}；"
+                f"{'；'.join(profile.self_review.actions[:3])}"
+            )
     if market_pack is not None:
         lines.extend(["", "## 近三年公开情报附录", market_pack.export_markdown])
     return "\n".join(lines).strip()

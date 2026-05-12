@@ -97,6 +97,7 @@ Anti-FOMO is built for the whole operating loop:
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
+- China-tech delivery quality review for solution packs and proposal-grade formal materials, including automatic structural self-repair
 
 ### 4. Execution outputs
 
@@ -104,7 +105,7 @@ Anti-FOMO is built for the whole operating loop:
 - action cards, exec brief, sales brief, outreach draft, and watchlist digest
 - watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
 - feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
-- formal document review loop with scenario, target customer, and vertical-scene overrides
+- formal document review loop with scenario, target customer, vertical-scene overrides, and delivery-quality audit notes
 
 ## Best for
 
@@ -186,7 +187,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.1+20260510`
+- current version: `0.6.2+20260513`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

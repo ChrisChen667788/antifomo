@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2+20260513 - 2026-05-13
+
+- Added a China-tech delivery quality control plane for solution packs, feasibility-study exports, and project-proposal exports: outputs are scored against structure completeness, evidence grounding, execution readiness, and review governance.
+- Added deterministic self-review and self-repair for weak delivery materials, automatically filling missing demand, architecture, safety/compliance, procurement/implementation, budget/performance, and risk/acceptance sections without upgrading weak evidence into strong claims.
+- Surfaced solution-pack and project-proposal quality scores, self-review deltas, and delivery gaps in the research report card, while formal exported documents now append a delivery-quality audit trail before release.
+
 ## 0.6.1+20260510 - 2026-05-10
 
 - Added quality-triggered public-source expansion for research reports and advisory delivery materials: when self-evaluation stays at watch/fail quality, the pipeline expands beyond configured source settings into public procurement, public resource, official, disclosure, open web, and public WeChat channels, merges new evidence, rebuilds material packs, and re-evaluates the result.

@@ -231,6 +231,24 @@ export function ResearchReportCard({
       className: "border-slate-200/90 bg-slate-100 text-slate-700",
     };
   };
+  const deliveryQualityMeta = (value?: string) => {
+    if (value === "pass") {
+      return {
+        label: "交付自审通过",
+        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
+      };
+    }
+    if (value === "watch") {
+      return {
+        label: "交付待补强",
+        className: "border-amber-200/90 bg-amber-50 text-amber-800",
+      };
+    }
+    return {
+      label: "交付待重审",
+      className: "border-rose-200/90 bg-rose-50 text-rose-800",
+    };
+  };
   const followupResolutionMeta = (value?: string) => {
     if (value === "corrected") {
       return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
@@ -336,6 +354,10 @@ export function ResearchReportCard({
   const qualityProfileState = qualityProfileMeta(qualityProfile?.status);
   const marketIntelligence = report.market_intelligence;
   const solutionDeliveryPack = report.solution_delivery_pack;
+  const solutionDeliveryQuality = solutionDeliveryPack?.solution_quality_profile;
+  const projectProposalQuality = solutionDeliveryPack?.project_proposal_quality_profile;
+  const solutionDeliveryQualityMeta = deliveryQualityMeta(solutionDeliveryQuality?.status);
+  const projectProposalQualityMeta = deliveryQualityMeta(projectProposalQuality?.status);
   const weakSections = (report.sections || [])
     .filter((section) => {
       const status = String(section.status || "").trim();
@@ -868,6 +890,38 @@ export function ResearchReportCard({
               </div>
               {solutionDeliveryPack?.review_checklist?.length ? (
                 <p className="mt-2 text-xs leading-5 text-blue-700">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
+              ) : null}
+              {(solutionDeliveryQuality || projectProposalQuality) ? (
+                <div className="mt-3 grid gap-2">
+                  {solutionDeliveryQuality ? (
+                    <div className={`rounded-xl border px-3 py-2 ${solutionDeliveryQualityMeta.className}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold">解决方案质量</p>
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
+                          {solutionDeliveryQuality.overall_score}/100 · {solutionDeliveryQualityMeta.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5">
+                        {solutionDeliveryQuality.gaps?.[0] || solutionDeliveryQuality.strengths?.[0] || "已按交付质量口径完成结构化自审。"}
+                      </p>
+                    </div>
+                  ) : null}
+                  {projectProposalQuality ? (
+                    <div className={`rounded-xl border px-3 py-2 ${projectProposalQualityMeta.className}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold">项目建议书质量</p>
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
+                          {projectProposalQuality.overall_score}/100 · {projectProposalQualityMeta.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5">
+                        {projectProposalQuality.self_review?.triggered
+                          ? `已自修订：${projectProposalQuality.self_review.before_score}→${projectProposalQuality.self_review.after_score}`
+                          : projectProposalQuality.gaps?.[0] || projectProposalQuality.strengths?.[0] || "已完成项目建议书质量自审。"}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
               {solutionDeliveryPack?.advisory_artifacts?.length ? (
                 <div className="mt-3 space-y-2">
