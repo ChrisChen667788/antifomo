@@ -67,9 +67,16 @@ Anti-FOMO is built for the whole operating loop:
       <p><strong>Compare workspace</strong><br />Review multi-version differences, section evidence, and account-oriented comparison signals.</p>
     </td>
     <td width="50%">
+      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="Research experiment control plane screenshot" />
+      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and confirm active strategy policies.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
       <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="Knowledge commercial hub screenshot" />
       <p><strong>Knowledge commercial hub</strong><br />Turn reports into account objects, opportunities, review queues, and follow-up actions.</p>
     </td>
+    <td width="50%"></td>
   </tr>
 </table>
 
@@ -96,7 +103,7 @@ Anti-FOMO is built for the whole operating loop:
 - runtime optimization panel for incremental rebuild, persisted-cache reuse, and recovery guidance
 - optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
 - query / routing / reranker A/B control-plane views plus follow-up delta offline evaluation
-- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, gate history, and auditable rollout manifests
+- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, gate history, active strategy registry, and auditable rollout manifests
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
@@ -192,7 +199,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.6+20260513`
+- current version: `0.6.7+20260513`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

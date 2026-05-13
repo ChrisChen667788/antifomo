@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.models.entities import KnowledgeEntry
 from app.models.research_entities import ResearchExperimentPlan
 from app.schemas.research import (
+    ResearchExperimentActivePolicyOut,
     ResearchExperimentGateConfigOut,
     ResearchExperimentOrchestrationOut,
     ResearchExperimentRolloutActionRequest,
@@ -180,6 +181,53 @@ def list_research_experiment_plans(db: Session) -> list[dict[str, Any]]:
     return [_serialize_plan(row) for row in rows]
 
 
+def _active_policies_from_plans(
+    plans: list[ResearchExperimentPlanOut],
+) -> list[ResearchExperimentActivePolicyOut]:
+    active_by_lane: dict[str, list[ResearchExperimentPlanOut]] = {}
+    for plan in plans:
+        manifest = plan.rollout_manifest
+        if manifest is None or manifest.decision != "promoted" or manifest.revoked_at is not None:
+            continue
+        active_by_lane.setdefault(plan.lane_key, []).append(plan)
+
+    active_policies: list[ResearchExperimentActivePolicyOut] = []
+    for lane_key, lane_plans in active_by_lane.items():
+        sorted_plans = sorted(
+            lane_plans,
+            key=lambda item: item.promoted_at or item.created_at,
+            reverse=True,
+        )
+        active_plan = sorted_plans[0]
+        manifest = active_plan.rollout_manifest
+        if manifest is None:
+            continue
+        active_policies.append(
+            ResearchExperimentActivePolicyOut(
+                lane_key=lane_key,  # type: ignore[arg-type]
+                plan_id=active_plan.id,
+                plan_name=active_plan.name,
+                strategy_family=active_plan.strategy_family,
+                candidate_label=active_plan.candidate_label,
+                promoted_version_label=manifest.promoted_version_label,
+                baseline_version_label=manifest.baseline_version_label,
+                candidate_percent=manifest.candidate_percent,
+                observed_uplift_points=manifest.observed_uplift_points,
+                sample_size=manifest.sample_size,
+                promoted_at=manifest.promoted_at,
+                gate_evaluated_at=manifest.gate_evaluated_at,
+                activation_payload=manifest.activation_payload,
+                conflict_plan_ids=[plan.id for plan in sorted_plans[1:]],
+            )
+        )
+    return sorted(active_policies, key=lambda item: item.lane_key)
+
+
+def list_research_experiment_active_policies(db: Session) -> list[ResearchExperimentActivePolicyOut]:
+    plans = [ResearchExperimentPlanOut(**item) for item in list_research_experiment_plans(db)]
+    return _active_policies_from_plans(plans)
+
+
 def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOrchestrationOut:
     plans = [ResearchExperimentPlanOut(**item) for item in list_research_experiment_plans(db)]
     frozen_count = sum(1 for plan in plans if plan.cohort_frozen_at is not None)
@@ -189,11 +237,15 @@ def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOr
     hold_count = sum(1 for plan in plans if plan.latest_gate and plan.latest_gate.decision == "hold")
     promoted_count = sum(1 for plan in plans if plan.rollout_manifest and plan.rollout_manifest.decision == "promoted")
     revoked_count = sum(1 for plan in plans if plan.rollout_manifest and plan.rollout_manifest.decision == "revoked")
+    active_policies = _active_policies_from_plans(plans)
+    active_conflict_count = sum(len(policy.conflict_plan_ids) for policy in active_policies)
     summary_lines = [
         f"实验计划 {len(plans)} 个，已冻结 cohort {frozen_count} 个，已锁定 baseline {locked_count} 个。",
         f"最近 gate 判定：允许 {allowed_count} 个，阻塞 {blocked_count} 个，待观察 {hold_count} 个。",
-        f"Rollout manifest：已确认 {promoted_count} 个，已撤回 {revoked_count} 个。",
+        f"Rollout manifest：已确认 {promoted_count} 个，已撤回 {revoked_count} 个，当前生效策略 {len(active_policies)} 个。",
     ]
+    if active_conflict_count:
+        summary_lines.append(f"当前仍存在 {active_conflict_count} 个同 lane 生效冲突，需要撤回旧 manifest。")
     return ResearchExperimentOrchestrationOut(
         generated_at=_utc_now(),
         total_plans=len(plans),
@@ -204,6 +256,9 @@ def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOr
         hold_plan_count=hold_count,
         promoted_plan_count=promoted_count,
         revoked_plan_count=revoked_count,
+        active_policy_count=len(active_policies),
+        active_policy_conflict_count=active_conflict_count,
+        active_policies=active_policies,
         plans=plans,
         summary_lines=summary_lines,
     )
@@ -414,6 +469,31 @@ def promote_research_experiment_rollout(
     baseline_payload = _dict(plan.baseline_payload)
     gate_config = _gate_config_from_payload(plan.gate_config_payload)
     promoted_at = _utc_now()
+    superseded_plan_ids: list[str] = []
+    active_peer_rows = db.scalars(
+        select(ResearchExperimentPlan)
+        .where(ResearchExperimentPlan.user_id == settings.single_user_id)
+        .where(ResearchExperimentPlan.lane_key == plan.lane_key)
+        .where(ResearchExperimentPlan.id != plan.id)
+        .where(ResearchExperimentPlan.promoted_at.is_not(None))
+        .where(ResearchExperimentPlan.rollout_revoked_at.is_(None))
+    ).all()
+    for peer in active_peer_rows:
+        peer_manifest = _rollout_manifest_from_payload(peer.rollout_payload)
+        if peer_manifest is None or peer_manifest.decision != "promoted":
+            continue
+        superseded_plan_ids.append(str(peer.id))
+        revoked_manifest = peer_manifest.model_copy(
+            update={
+                "decision": "revoked",
+                "note": f"Superseded by {plan.name} ({plan.id}).",
+                "revoked_at": promoted_at,
+            }
+        )
+        peer.rollout_payload = revoked_manifest.model_dump(mode="json")
+        peer.rollout_revoked_at = promoted_at
+        peer.status = "rollout_revoked"
+        db.add(peer)
     manifest = ResearchExperimentRolloutManifestOut(
         decision="promoted",
         plan_id=str(plan.id),
@@ -433,6 +513,7 @@ def promote_research_experiment_rollout(
             "lane_key": plan.lane_key,
             "strategy_family": plan.strategy_family,
             "candidate_label": plan.candidate_label,
+            "superseded_plan_ids": superseded_plan_ids,
             "strategy_payload": _dict(plan.strategy_payload),
             "gate_config": gate_config.model_dump(mode="json"),
             "baseline": {

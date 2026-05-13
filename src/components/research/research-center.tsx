@@ -2355,7 +2355,10 @@ export function ResearchCenter() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4">
+            <div
+              className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4"
+              data-screenshot-anchor="research-experiment-control-plane"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">实验编排层</p>
@@ -2365,7 +2368,7 @@ export function ResearchCenter() {
                 </div>
                 <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Orchestration</span>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+              <div className="mt-4 grid gap-3 md:grid-cols-5 xl:grid-cols-10">
                 {[
                   { label: "实验计划", value: String(experimentOrchestration?.total_plans ?? 0) },
                   { label: "已冻结", value: String(experimentOrchestration?.frozen_plan_count ?? 0) },
@@ -2375,6 +2378,8 @@ export function ResearchCenter() {
                   { label: "待观察", value: String(experimentOrchestration?.hold_plan_count ?? 0) },
                   { label: "已确认", value: String(experimentOrchestration?.promoted_plan_count ?? 0) },
                   { label: "已撤回", value: String(experimentOrchestration?.revoked_plan_count ?? 0) },
+                  { label: "生效策略", value: String(experimentOrchestration?.active_policy_count ?? 0) },
+                  { label: "冲突策略", value: String(experimentOrchestration?.active_policy_conflict_count ?? 0) },
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
@@ -2489,6 +2494,26 @@ export function ResearchCenter() {
                   ) : (
                     <p className="mt-3 text-sm text-slate-500">创建计划后会在这里显示冻结、锁定和 gate 结果。</p>
                   )}
+                  {experimentOrchestration?.active_policies?.length ? (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Active policy registry</p>
+                      {experimentOrchestration.active_policies.map((policy) => (
+                        <div key={`${policy.lane_key}-${policy.plan_id}`} className="rounded-2xl border border-white bg-white px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(policy.candidate_label)}</p>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${policy.conflict_plan_ids.length ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                              {policy.conflict_plan_ids.length ? "同 lane 冲突" : "当前生效"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {policy.lane_key} · {policy.promoted_version_label || "local-dev"} · {policy.candidate_percent}% · uplift{" "}
+                            {policy.observed_uplift_points >= 0 ? "+" : ""}
+                            {policy.observed_uplift_points} pt
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

@@ -66,9 +66,16 @@ Anti-FOMO 关注的是整条工作链路：
       <p><strong>对比矩阵</strong><br />横向查看多版本差异、章节证据和面向账户推进的对比信号。</p>
     </td>
     <td width="50%">
+      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="实验控制面截图" />
+      <p><strong>实验控制面</strong><br />固化 cohort、锁定 baseline、审计 rollout gate，并确认当前生效策略。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
       <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="账户情报截图" />
       <p><strong>账户情报</strong><br />把研报沉淀成甲方对象、商机、待核验队列和下一步动作。</p>
     </td>
+    <td width="50%"></td>
   </tr>
 </table>
 
@@ -95,7 +102,7 @@ Anti-FOMO 关注的是整条工作链路：
 - 增量 rebuild / 持久化 cache / recovery 的运行时优化面板
 - 可选 SentenceTransformers CrossEncoder reranker adapter，并接入离线官方源召回评估
 - query / routing / reranker A/B 控制面，以及 follow-up delta 离线评估
-- 可持久化实验编排层，支持策略计划配置、cohort 固化、版本 baseline 锁定、gate 历史和可审计 rollout manifest
+- 可持久化实验编排层，支持策略计划配置、cohort 固化、版本 baseline 锁定、gate 历史、生效策略注册表和可审计 rollout manifest
 - 章节级 retrieval pack 和 section 级证据诊断
 - canonical org linking、guarded backlog、低质量研报 rewrite / backfill
 - 近 3 年招投标/产品/技术参数情报包和 advisory-grade 方案交付包
@@ -191,7 +198,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.6.6+20260513`
+- 当前版本：`0.6.7+20260513`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 仓库已做开源脱敏

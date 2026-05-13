@@ -201,9 +201,46 @@ def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
         assert promoted["rollout_manifest"]["activation_payload"]["rollout_gate"]["decision"] == "allow"
         assert promoted["promoted_at"] is not None
 
+        active_orchestration = build_research_experiment_orchestration(db)
+        assert active_orchestration.promoted_plan_count == 1
+        assert active_orchestration.active_policy_count == 1
+        assert active_orchestration.active_policy_conflict_count == 0
+        assert active_orchestration.active_policies[0].plan_id == allowed_created["id"]
+
+        superseding_created = create_research_experiment_plan(
+            db,
+            ResearchExperimentPlanCreateRequest(
+                name="CrossEncoder rollout superseding",
+                lane_key="reranker_official_recall",
+                strategy_family="reranker",
+                candidate_label="cross-encoder-v2",
+                gate_config={"minimum_sample_size": 1, "minimum_uplift_points": 0},
+            ),
+        )
+        freeze_research_experiment_cohort(db, superseding_created["id"])
+        lock_research_experiment_baseline(db, superseding_created["id"])
+        evaluate_research_experiment_rollout_gate(db, superseding_created["id"])
+        superseding_promoted = promote_research_experiment_rollout(
+            db,
+            superseding_created["id"],
+            ResearchExperimentRolloutActionRequest(note="supersede earlier reranker rollout"),
+        )
+        assert superseding_promoted["status"] == "rollout_promoted"
+        assert superseding_promoted["rollout_manifest"]["activation_payload"]["superseded_plan_ids"] == [
+            allowed_created["id"]
+        ]
+
+        superseded_orchestration = build_research_experiment_orchestration(db)
+        plan_map = {plan.id: plan for plan in superseded_orchestration.plans}
+        assert plan_map[allowed_created["id"]].status == "rollout_revoked"
+        assert superseded_orchestration.promoted_plan_count == 1
+        assert superseded_orchestration.revoked_plan_count == 1
+        assert superseded_orchestration.active_policy_count == 1
+        assert superseded_orchestration.active_policies[0].plan_id == superseding_created["id"]
+
         revoked = revoke_research_experiment_rollout(
             db,
-            allowed_created["id"],
+            superseding_created["id"],
             ResearchExperimentRolloutActionRequest(note="revoke after validation"),
         )
         assert revoked["status"] == "rollout_revoked"
@@ -211,12 +248,13 @@ def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
         assert revoked["rollout_revoked_at"] is not None
 
         orchestration = build_research_experiment_orchestration(db)
-        assert orchestration.total_plans == 2
-        assert orchestration.frozen_plan_count == 2
-        assert orchestration.locked_plan_count == 2
-        assert orchestration.allowed_plan_count == 1
+        assert orchestration.total_plans == 3
+        assert orchestration.frozen_plan_count == 3
+        assert orchestration.locked_plan_count == 3
+        assert orchestration.allowed_plan_count == 2
         assert orchestration.blocked_plan_count == 1
         assert orchestration.promoted_plan_count == 0
-        assert orchestration.revoked_plan_count == 1
+        assert orchestration.revoked_plan_count == 2
+        assert orchestration.active_policy_count == 0
     finally:
         db.close()

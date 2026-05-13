@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.7+20260513 - 2026-05-13
+
+- Added an active experiment policy registry that resolves promoted rollout manifests into one current strategy per lane and reports any remaining same-lane conflicts.
+- Promotion now automatically supersedes older active rollout manifests in the same lane, revoking the previous policy and recording the superseded plan IDs in the activation payload.
+- Extended the research-center experiment panel and repository screenshot set with the active policy registry so the GitHub README shows the new control-plane surface.
+
 ## 0.6.6+20260513 - 2026-05-13
 
 - Added experiment rollout audit history: each gate evaluation is now appended to a bounded history instead of replacing the only decision record.

@@ -1426,6 +1426,23 @@ export interface ApiResearchExperimentRolloutManifest {
   revoked_at?: string | null;
 }
 
+export interface ApiResearchExperimentActivePolicy {
+  lane_key: ApiResearchExperimentLane["key"];
+  plan_id: string;
+  plan_name: string;
+  strategy_family: "query_plan" | "routing_policy" | "reranker";
+  candidate_label: string;
+  promoted_version_label: string;
+  baseline_version_label: string;
+  candidate_percent: number;
+  observed_uplift_points: number;
+  sample_size: number;
+  promoted_at?: string | null;
+  gate_evaluated_at?: string | null;
+  activation_payload: Record<string, unknown>;
+  conflict_plan_ids: string[];
+}
+
 export interface ApiResearchExperimentPlan {
   id: string;
   name: string;
@@ -1472,6 +1489,9 @@ export interface ApiResearchExperimentOrchestration {
   hold_plan_count: number;
   promoted_plan_count: number;
   revoked_plan_count: number;
+  active_policy_count: number;
+  active_policy_conflict_count: number;
+  active_policies: ApiResearchExperimentActivePolicy[];
   plans: ApiResearchExperimentPlan[];
   summary_lines: string[];
 }
@@ -2846,9 +2866,18 @@ export function getResearchExperimentOrchestration(): Promise<ApiResearchExperim
     hold_plan_count: 0,
     promoted_plan_count: 0,
     revoked_plan_count: 0,
+    active_policy_count: 0,
+    active_policy_conflict_count: 0,
+    active_policies: [],
     plans: [],
     summary_lines: [],
   }));
+}
+
+export function getResearchExperimentActivePolicies(): Promise<ApiResearchExperimentActivePolicy[]> {
+  return request<ApiResearchExperimentActivePolicy[]>("/api/research/experiments/active-policies", {
+    method: "GET",
+  }).catch(() => []);
 }
 
 export function createResearchExperimentPlan(payload: {

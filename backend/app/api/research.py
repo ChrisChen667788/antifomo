@@ -37,6 +37,7 @@ from app.schemas.research import (
     ResearchEntityDetailOut,
     ResearchConnectorStatusOut,
     ResearchDeliveryExportDiagnosticsOut,
+    ResearchExperimentActivePolicyOut,
     ResearchExperimentControlPlaneOut,
     ResearchExperimentOrchestrationOut,
     ResearchExperimentPlanCreateRequest,
@@ -90,6 +91,7 @@ from app.services.research_experiment_orchestration_service import (
     create_research_experiment_plan,
     evaluate_research_experiment_rollout_gate,
     freeze_research_experiment_cohort,
+    list_research_experiment_active_policies,
     lock_research_experiment_baseline,
     promote_research_experiment_rollout,
     revoke_research_experiment_rollout,
@@ -650,6 +652,14 @@ def get_research_experiment_orchestration(
 ) -> ResearchExperimentOrchestrationOut:
     ensure_demo_user(db)
     return build_research_experiment_orchestration(db)
+
+
+@router.get("/experiments/active-policies", response_model=list[ResearchExperimentActivePolicyOut])
+def get_research_experiment_active_policies(
+    db: Session = Depends(get_db),
+) -> list[ResearchExperimentActivePolicyOut]:
+    ensure_demo_user(db)
+    return list_research_experiment_active_policies(db)
 
 
 @router.post("/experiments/plans", response_model=ResearchExperimentPlanOut)

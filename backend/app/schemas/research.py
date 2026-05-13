@@ -418,6 +418,23 @@ class ResearchExperimentRolloutManifestOut(BaseModel):
     revoked_at: datetime | None = None
 
 
+class ResearchExperimentActivePolicyOut(BaseModel):
+    lane_key: ResearchExperimentLaneKey
+    plan_id: str
+    plan_name: str = ""
+    strategy_family: ResearchExperimentStrategyFamily
+    candidate_label: str = ""
+    promoted_version_label: str = ""
+    baseline_version_label: str = ""
+    candidate_percent: int = 0
+    observed_uplift_points: int = 0
+    sample_size: int = 0
+    promoted_at: datetime | None = None
+    gate_evaluated_at: datetime | None = None
+    activation_payload: dict[str, Any] = Field(default_factory=dict)
+    conflict_plan_ids: list[str] = Field(default_factory=list)
+
+
 class ResearchExperimentPlanOut(BaseModel):
     id: str
     name: str
@@ -456,6 +473,9 @@ class ResearchExperimentOrchestrationOut(BaseModel):
     hold_plan_count: int = 0
     promoted_plan_count: int = 0
     revoked_plan_count: int = 0
+    active_policy_count: int = 0
+    active_policy_conflict_count: int = 0
+    active_policies: list[ResearchExperimentActivePolicyOut] = Field(default_factory=list)
     plans: list[ResearchExperimentPlanOut] = Field(default_factory=list)
     summary_lines: list[str] = Field(default_factory=list)
 

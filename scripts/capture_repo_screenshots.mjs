@@ -8,6 +8,13 @@ import puppeteer from "puppeteer-core";
 const DEFAULT_FRONTEND_URL = "http://127.0.0.1:3010";
 const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const DEFAULT_MAC_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const SCREENSHOT_SCROLL_TOP_PADDING = 64;
+const SCREENSHOT_PREFERENCES = {
+  themeMode: "light",
+  fontFamily: "system",
+  textSize: "md",
+  language: "zh-CN",
+};
 const CHROME_COMMAND_CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium", "chrome"];
 const CHROME_PATH_CANDIDATES = [
   DEFAULT_MAC_CHROME_PATH,
@@ -89,18 +96,103 @@ async function fetchWorkspace(apiBase) {
 }
 
 async function waitForText(page, text) {
-  if (!text) return;
-  await page.waitForFunction(
-    (expected) => document.body?.innerText?.includes(expected),
-    { timeout: 20000 },
-    text,
-  );
+  if (!text) return true;
+  try {
+    await page.waitForFunction(
+      (expected) => document.body?.innerText?.includes(expected),
+      { timeout: 20000 },
+      text,
+    );
+    return true;
+  } catch {
+    console.warn(`[screenshots] text not found before capture: "${text}"`);
+    return false;
+  }
 }
 
-async function capturePage(page, { baseUrl, route, waitText, filePath }) {
+async function scrollToText(page, text) {
+  if (!text) return;
+  await page.evaluate((expected, topPadding) => {
+    document.documentElement.style.scrollBehavior = "auto";
+    document.body.style.scrollBehavior = "auto";
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+      if (node.textContent?.includes(expected)) {
+        const element = node.parentElement?.closest("section, article, div") || node.parentElement;
+        if (element) {
+          const top = element.getBoundingClientRect().top + window.scrollY - topPadding;
+          window.scrollTo({ top, left: 0, behavior: "auto" });
+        }
+        break;
+      }
+      node = walker.nextNode();
+    }
+  }, text, SCREENSHOT_SCROLL_TOP_PADDING);
+  await new Promise((resolve) => setTimeout(resolve, 450));
+}
+
+async function scrollToSelector(page, selector) {
+  if (!selector) return;
+  await page.evaluate((targetSelector, topPadding) => {
+    document.documentElement.style.scrollBehavior = "auto";
+    document.body.style.scrollBehavior = "auto";
+    const element = document.querySelector(targetSelector);
+    if (element) {
+      const top = element.getBoundingClientRect().top + window.scrollY - topPadding;
+      window.scrollTo({ top, left: 0, behavior: "auto" });
+    }
+  }, selector, SCREENSHOT_SCROLL_TOP_PADDING);
+  await new Promise((resolve) => setTimeout(resolve, 450));
+}
+
+async function assertNoRuntimeOverlay(page, filePath) {
+  const overlayDetected = await page.evaluate(() => {
+    const bodyText = document.body?.innerText || "";
+    return (
+      bodyText.includes("Runtime SyntaxError") ||
+      bodyText.includes("Runtime Error") ||
+      bodyText.includes("Unhandled Runtime Error") ||
+      bodyText.includes("Unexpected end of JSON input")
+    );
+  });
+  if (overlayDetected) {
+    throw new Error(`Runtime overlay detected before writing ${path.basename(filePath)}`);
+  }
+}
+
+async function preparePageForCapture(page) {
+  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
+  await page.evaluateOnNewDocument((preferences) => {
+    window.localStorage.setItem("anti_fomo_app_preferences_v1", JSON.stringify(preferences));
+  }, SCREENSHOT_PREFERENCES);
+}
+
+async function hideDevelopmentChrome(page) {
+  await page.addStyleTag({
+    content: `
+      nextjs-portal,
+      [data-nextjs-toast],
+      [data-nextjs-dialog-overlay],
+      [data-nextjs-dev-overlay],
+      [data-nextjs-build-indicator] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    `,
+  });
+}
+
+async function capturePage(page, { baseUrl, route, waitText, scrollSelector, scrollText, filePath }) {
   const targetUrl = `${baseUrl.replace(/\/+$/, "")}${route}`;
+  console.log(`[screenshots] capturing ${path.basename(filePath)} from ${route}`);
   await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
   await waitForText(page, waitText);
+  await scrollToSelector(page, scrollSelector);
+  await scrollToText(page, scrollText);
+  await assertNoRuntimeOverlay(page, filePath);
+  await hideDevelopmentChrome(page);
   await page.screenshot({
     path: filePath,
     fullPage: false,
@@ -130,11 +222,10 @@ async function main() {
   });
 
   try {
-    const page = await browser.newPage();
     const captures = [
       {
         route: "/inbox",
-        waitText: "生成研报",
+        waitText: "添加内容",
         filename: "inbox-research-workspace.png",
       },
       {
@@ -148,6 +239,13 @@ async function main() {
         filename: "research-compare-workspace.png",
       },
       {
+        route: "/research",
+        waitText: "实验编排层",
+        scrollSelector: "[data-screenshot-anchor='research-experiment-control-plane']",
+        scrollText: "实验编排层",
+        filename: "research-experiment-control-plane.png",
+      },
+      {
         route: "/knowledge/accounts",
         waitText: "账户情报",
         filename: "knowledge-commercial-hub.png",
@@ -155,12 +253,20 @@ async function main() {
     ];
 
     for (const item of captures) {
-      await capturePage(page, {
-        baseUrl: args.frontendUrl,
-        route: item.route,
-        waitText: item.waitText,
-        filePath: path.join(outputDir, item.filename),
-      });
+      const page = await browser.newPage();
+      try {
+        await preparePageForCapture(page);
+        await capturePage(page, {
+          baseUrl: args.frontendUrl,
+          route: item.route,
+          waitText: item.waitText,
+          scrollSelector: item.scrollSelector,
+          scrollText: item.scrollText,
+          filePath: path.join(outputDir, item.filename),
+        });
+      } finally {
+        await page.close();
+      }
     }
   } finally {
     await browser.close();
