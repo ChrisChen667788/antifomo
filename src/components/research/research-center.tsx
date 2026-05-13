@@ -8,6 +8,8 @@ import {
   ApiResearchCompareSnapshot,
   ApiResearchDeliveryExportDiagnostics,
   ApiResearchExperimentControlPlane,
+  ApiResearchExperimentOrchestration,
+  ApiResearchExperimentPlan,
   ApiResearchFollowupDeltaEvaluation,
   ApiResearchLowQualityReviewQueue,
   ApiResearchLowQualityReviewQueueItem,
@@ -24,6 +26,7 @@ import {
   ApiResearchWatchlistRun,
   ApiResearchWatchlistRunDueResponse,
   createResearchWatchlist,
+  createResearchExperimentPlan,
   deleteResearchCompareSnapshot,
   deleteResearchMarkdownArchive,
   deleteResearchTrackingTopic,
@@ -32,6 +35,7 @@ import {
   getResearchDailyBrief,
   getResearchDeliveryExportDiagnostics,
   getResearchExperimentControlPlane,
+  getResearchExperimentOrchestration,
   getResearchFollowupDeltaEvaluation,
   getResearchMarkdownArchive,
   getResearchOfflineEvaluation,
@@ -47,6 +51,9 @@ import {
   refreshResearchWatchlist,
   refreshResearchTrackingTopic,
   rebuildResearchRetrievalIndex,
+  evaluateResearchExperimentGate,
+  freezeResearchExperimentCohort,
+  lockResearchExperimentBaseline,
   resolveLowQualityResearchReviewItem,
   rewriteLowQualityResearchReviewItem,
   runDueResearchWatchlists,
@@ -605,6 +612,38 @@ function exportDeltaTrendTone(status: string) {
   return "text-slate-500";
 }
 
+function experimentPlanStatusLabel(status: ApiResearchExperimentPlan["status"]) {
+  if (status === "cohort_frozen") return "Cohort 已冻结";
+  if (status === "baseline_locked") return "Baseline 已锁定";
+  if (status === "gate_allowed") return "Gate 放行";
+  if (status === "gate_hold") return "Gate 待观察";
+  if (status === "gate_blocked") return "Gate 阻塞";
+  return "草稿";
+}
+
+function experimentPlanStatusTone(status: ApiResearchExperimentPlan["status"]) {
+  if (status === "gate_allowed") return "bg-emerald-100 text-emerald-700";
+  if (status === "gate_blocked") return "bg-rose-100 text-rose-700";
+  if (status === "gate_hold") return "bg-amber-100 text-amber-700";
+  if (status === "baseline_locked") return "bg-sky-100 text-sky-700";
+  if (status === "cohort_frozen") return "bg-indigo-100 text-indigo-700";
+  return "bg-slate-100 text-slate-600";
+}
+
+function experimentGateDecisionLabel(decision?: string | null) {
+  if (decision === "allow") return "允许 rollout";
+  if (decision === "block") return "阻塞 rollout";
+  if (decision === "hold") return "继续观察";
+  return "尚未判定";
+}
+
+function experimentGateDecisionTone(decision?: string | null) {
+  if (decision === "allow") return "bg-emerald-100 text-emerald-700";
+  if (decision === "block") return "bg-rose-100 text-rose-700";
+  if (decision === "hold") return "bg-amber-100 text-amber-700";
+  return "bg-slate-100 text-slate-600";
+}
+
 function watchlistAutomationStatusLabel(status?: string | null) {
   if (status === "ok") return "最近运行正常";
   if (status === "partial_failure") return "最近运行部分失败";
@@ -729,8 +768,18 @@ export function ResearchCenter() {
   const [experimentControlPlane, setExperimentControlPlane] = useState<ApiResearchExperimentControlPlane | null>(null);
   const [followupDeltaEvaluation, setFollowupDeltaEvaluation] = useState<ApiResearchFollowupDeltaEvaluation | null>(null);
   const [deliveryExportDiagnostics, setDeliveryExportDiagnostics] = useState<ApiResearchDeliveryExportDiagnostics | null>(null);
+  const [experimentOrchestration, setExperimentOrchestration] = useState<ApiResearchExperimentOrchestration | null>(null);
   const [controlPlaneLoading, setControlPlaneLoading] = useState(true);
   const [controlPlaneRefreshing, setControlPlaneRefreshing] = useState(false);
+  const [experimentPlanName, setExperimentPlanName] = useState("");
+  const [experimentLaneKey, setExperimentLaneKey] = useState<ApiResearchExperimentPlan["lane_key"]>("query_recovery");
+  const [experimentStrategyFamily, setExperimentStrategyFamily] = useState<ApiResearchExperimentPlan["strategy_family"]>("query_plan");
+  const [experimentCandidateLabel, setExperimentCandidateLabel] = useState("");
+  const [experimentMinSampleSize, setExperimentMinSampleSize] = useState("6");
+  const [experimentMinUpliftPoints, setExperimentMinUpliftPoints] = useState("0");
+  const [experimentPlanActionKey, setExperimentPlanActionKey] = useState("");
+  const [experimentPlanMessage, setExperimentPlanMessage] = useState("");
+  const [experimentPlanError, setExperimentPlanError] = useState("");
   const [retrievalIndexStatus, setRetrievalIndexStatus] = useState<ApiResearchRetrievalIndexStatus | null>(null);
   const [retrievalIndexLoading, setRetrievalIndexLoading] = useState(true);
   const [retrievalIndexRebuilding, setRetrievalIndexRebuilding] = useState(false);
@@ -928,12 +977,14 @@ export function ResearchCenter() {
       getResearchExperimentControlPlane(),
       getResearchFollowupDeltaEvaluation(6),
       getResearchDeliveryExportDiagnostics(8),
+      getResearchExperimentOrchestration(),
     ])
-      .then(([controlPlane, followupDelta, exportDiagnostics]) => {
+      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration]) => {
         if (!active) return;
         setExperimentControlPlane(controlPlane);
         setFollowupDeltaEvaluation(followupDelta);
         setDeliveryExportDiagnostics(exportDiagnostics);
+        setExperimentOrchestration(orchestration);
       })
       .finally(() => {
         if (!active) return;
@@ -1049,18 +1100,84 @@ export function ResearchCenter() {
   const refreshControlPlaneDiagnostics = async () => {
     setControlPlaneRefreshing(true);
     try {
-      const [controlPlane, followupDelta, exportDiagnostics] = await Promise.all([
+      const [controlPlane, followupDelta, exportDiagnostics, orchestration] = await Promise.all([
         getResearchExperimentControlPlane(),
         getResearchFollowupDeltaEvaluation(6),
         getResearchDeliveryExportDiagnostics(8),
+        getResearchExperimentOrchestration(),
       ]);
       setExperimentControlPlane(controlPlane);
       setFollowupDeltaEvaluation(followupDelta);
       setDeliveryExportDiagnostics(exportDiagnostics);
-      return [controlPlane, followupDelta, exportDiagnostics] as const;
+      setExperimentOrchestration(orchestration);
+      return [controlPlane, followupDelta, exportDiagnostics, orchestration] as const;
     } finally {
       setControlPlaneLoading(false);
       setControlPlaneRefreshing(false);
+    }
+  };
+
+  const handleCreateExperimentPlan = async () => {
+    const name = experimentPlanName.trim();
+    const candidateLabel = experimentCandidateLabel.trim();
+    if (!name || !candidateLabel) {
+      setExperimentPlanError("请先补齐实验计划名称和候选策略标签。");
+      return;
+    }
+    setExperimentPlanActionKey("create");
+    setExperimentPlanError("");
+    setExperimentPlanMessage("");
+    try {
+      const parsedSampleSize = Number(experimentMinSampleSize);
+      const parsedUplift = Number(experimentMinUpliftPoints);
+      await createResearchExperimentPlan({
+        name,
+        lane_key: experimentLaneKey,
+        strategy_family: experimentStrategyFamily,
+        candidate_label: candidateLabel,
+        gate_config: {
+          minimum_sample_size: Number.isFinite(parsedSampleSize)
+            ? Math.min(500, Math.max(1, Math.round(parsedSampleSize)))
+            : 6,
+          minimum_uplift_points: Number.isFinite(parsedUplift)
+            ? Math.min(100, Math.max(-100, Math.round(parsedUplift)))
+            : 0,
+        },
+      });
+      await refreshControlPlaneDiagnostics();
+      setExperimentPlanName("");
+      setExperimentCandidateLabel("");
+      setExperimentPlanMessage("实验计划已创建，可继续冻结 cohort。");
+    } catch {
+      setExperimentPlanError("创建实验计划失败，请检查配置后重试。");
+    } finally {
+      setExperimentPlanActionKey("");
+    }
+  };
+
+  const handleExperimentPlanAction = async (
+    plan: ApiResearchExperimentPlan,
+    action: "freeze" | "lock" | "gate",
+  ) => {
+    setExperimentPlanActionKey(`${plan.id}:${action}`);
+    setExperimentPlanError("");
+    setExperimentPlanMessage("");
+    try {
+      if (action === "freeze") {
+        await freezeResearchExperimentCohort(plan.id);
+        setExperimentPlanMessage("Cohort 已冻结。");
+      } else if (action === "lock") {
+        await lockResearchExperimentBaseline(plan.id);
+        setExperimentPlanMessage("Baseline 已锁定。");
+      } else {
+        await evaluateResearchExperimentGate(plan.id);
+        setExperimentPlanMessage("Rollout gate 已完成判定。");
+      }
+      await refreshControlPlaneDiagnostics();
+    } catch {
+      setExperimentPlanError("实验编排动作失败，当前状态可能不满足前置条件。");
+    } finally {
+      setExperimentPlanActionKey("");
     }
   };
 
@@ -2224,6 +2341,233 @@ export function ResearchCenter() {
                   <p className="mt-4 text-sm text-slate-500">当前暂无 follow-up delta 样本。</p>
                 )}
               </div>
+            </div>
+
+            <div className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">实验编排层</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    固化 cohort、锁定版本 baseline，并用 rollout gate 决定候选策略是否进入默认路径。
+                  </p>
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Orchestration</span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-6">
+                {[
+                  { label: "实验计划", value: String(experimentOrchestration?.total_plans ?? 0) },
+                  { label: "已冻结", value: String(experimentOrchestration?.frozen_plan_count ?? 0) },
+                  { label: "已锁定", value: String(experimentOrchestration?.locked_plan_count ?? 0) },
+                  { label: "Gate 放行", value: String(experimentOrchestration?.allowed_plan_count ?? 0) },
+                  { label: "Gate 阻塞", value: String(experimentOrchestration?.blocked_plan_count ?? 0) },
+                  { label: "待观察", value: String(experimentOrchestration?.hold_plan_count ?? 0) },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">新实验计划</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      计划名称
+                      <input
+                        value={experimentPlanName}
+                        onChange={(event) => setExperimentPlanName(event.target.value)}
+                        className="af-input mt-1 w-full bg-white/80"
+                        placeholder="例：CrossEncoder reranker rollout"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      候选策略标签
+                      <input
+                        value={experimentCandidateLabel}
+                        onChange={(event) => setExperimentCandidateLabel(event.target.value)}
+                        className="af-input mt-1 w-full bg-white/80"
+                        placeholder="例：cross-encoder-v1"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      Lane
+                      <select
+                        value={experimentLaneKey}
+                        onChange={(event) => {
+                          const nextLane = event.target.value as ApiResearchExperimentPlan["lane_key"];
+                          setExperimentLaneKey(nextLane);
+                          setExperimentStrategyFamily(
+                            nextLane === "query_recovery"
+                              ? "query_plan"
+                              : nextLane === "routing_followup"
+                                ? "routing_policy"
+                                : "reranker",
+                          );
+                        }}
+                        className="af-input mt-1 w-full bg-white/80"
+                      >
+                        <option value="query_recovery">Query recovery</option>
+                        <option value="routing_followup">Routing follow-up</option>
+                        <option value="reranker_official_recall">Reranker official recall</option>
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      策略族
+                      <select
+                        value={experimentStrategyFamily}
+                        onChange={(event) => setExperimentStrategyFamily(event.target.value as ApiResearchExperimentPlan["strategy_family"])}
+                        className="af-input mt-1 w-full bg-white/80"
+                      >
+                        <option value="query_plan">Query plan</option>
+                        <option value="routing_policy">Routing policy</option>
+                        <option value="reranker">Reranker</option>
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      最小样本量
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={experimentMinSampleSize}
+                        onChange={(event) => setExperimentMinSampleSize(event.target.value)}
+                        className="af-input mt-1 w-full bg-white/80"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-slate-600">
+                      最小 uplift
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        value={experimentMinUpliftPoints}
+                        onChange={(event) => setExperimentMinUpliftPoints(event.target.value)}
+                        className="af-input mt-1 w-full bg-white/80"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateExperimentPlan()}
+                      className="af-btn af-btn-primary px-4 py-2 text-sm"
+                      disabled={experimentPlanActionKey === "create"}
+                    >
+                      创建实验计划
+                    </button>
+                    {experimentPlanMessage ? <span className="text-sm text-emerald-700">{experimentPlanMessage}</span> : null}
+                    {experimentPlanError ? <span className="text-sm text-rose-600">{experimentPlanError}</span> : null}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">编排摘要</p>
+                  {experimentOrchestration?.summary_lines?.length ? (
+                    <div className="mt-3 space-y-2">
+                      {experimentOrchestration.summary_lines.map((line) => (
+                        <p key={line} className="rounded-2xl border border-white bg-white px-3 py-2 text-sm leading-6 text-slate-600">
+                          {sanitizeExternalDisplayText(line)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-slate-500">创建计划后会在这里显示冻结、锁定和 gate 结果。</p>
+                  )}
+                </div>
+              </div>
+
+              {controlPlaneLoading ? (
+                <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中")}</p>
+              ) : experimentOrchestration?.plans?.length ? (
+                <div className="mt-4 space-y-3">
+                  {experimentOrchestration.plans.map((plan) => {
+                    const latestGate = plan.latest_gate;
+                    const actionBusy = experimentPlanActionKey.startsWith(`${plan.id}:`);
+                    const canFreeze = !plan.baseline_locked_at;
+                    const canLock = Boolean(plan.cohort_frozen_at) && !plan.baseline_locked_at;
+                    const canEvaluate = Boolean(plan.baseline_locked_at);
+                    return (
+                      <div key={plan.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(plan.name)}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              {sanitizeExternalDisplayText(plan.candidate_label)} · {plan.lane_key} · {plan.strategy_family}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentPlanStatusTone(plan.status)}`}>
+                              {experimentPlanStatusLabel(plan.status)}
+                            </span>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentGateDecisionTone(latestGate?.decision)}`}>
+                              {experimentGateDecisionLabel(latestGate?.decision)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid gap-2 md:grid-cols-4">
+                          {[
+                            { label: "Cohort", value: `${plan.cohort_size} 条` },
+                            { label: "Baseline", value: plan.baseline_version_label || "未锁定" },
+                            { label: "候选表现", value: latestGate ? `${latestGate.candidate_percent}%` : `${plan.baseline_lane?.candidate.percent ?? 0}%` },
+                            { label: "Uplift", value: latestGate ? `${latestGate.observed_uplift_points >= 0 ? "+" : ""}${latestGate.observed_uplift_points} pt` : "未判定" },
+                          ].map((item) => (
+                            <div key={item.label} className="rounded-2xl border border-white bg-white px-3 py-2">
+                              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">{item.value}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {plan.cohort_preview_titles.length ? (
+                          <p className="mt-3 text-xs leading-5 text-slate-500">
+                            样本预览：{plan.cohort_preview_titles.map(sanitizeExternalDisplayText).join(" / ")}
+                          </p>
+                        ) : null}
+                        {latestGate?.reasons?.length ? (
+                          <div className="mt-3 rounded-2xl border border-white bg-white px-3 py-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Gate reason</p>
+                            <p className="mt-1 text-sm leading-6 text-slate-600">
+                              {latestGate.reasons.map(sanitizeExternalDisplayText).join("；")}
+                            </p>
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleExperimentPlanAction(plan, "freeze")}
+                            className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                            disabled={!canFreeze || actionBusy}
+                          >
+                            冻结 cohort
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExperimentPlanAction(plan, "lock")}
+                            className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                            disabled={!canLock || actionBusy}
+                          >
+                            锁定 baseline
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExperimentPlanAction(plan, "gate")}
+                            className="af-btn af-btn-primary px-3 py-1.5 text-xs"
+                            disabled={!canEvaluate || actionBusy}
+                          >
+                            判定 rollout gate
+                          </button>
+                          <span className="text-xs text-slate-500">
+                            {plan.baseline_locked_at ? `锁定于 ${formatWatchlistTime(plan.baseline_locked_at)}` : "baseline 锁定后 cohort 不再变更"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-500">当前暂无实验计划。</p>
+              )}
             </div>
 
             <div className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4">

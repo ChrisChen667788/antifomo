@@ -38,6 +38,9 @@ from app.schemas.research import (
     ResearchConnectorStatusOut,
     ResearchDeliveryExportDiagnosticsOut,
     ResearchExperimentControlPlaneOut,
+    ResearchExperimentOrchestrationOut,
+    ResearchExperimentPlanCreateRequest,
+    ResearchExperimentPlanOut,
     ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
     ResearchJobCreateRequest,
@@ -81,6 +84,13 @@ from app.schemas.research import (
 )
 from app.services.research_solution_intelligence_service import build_market_intelligence_pack, build_solution_delivery_pack
 from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
+from app.services.research_experiment_orchestration_service import (
+    build_research_experiment_orchestration,
+    create_research_experiment_plan,
+    evaluate_research_experiment_rollout_gate,
+    freeze_research_experiment_cohort,
+    lock_research_experiment_baseline,
+)
 from app.services.research_evaluation_service import (
     build_followup_delta_evaluation,
     build_golden_research_evaluation,
@@ -629,6 +639,68 @@ def get_research_experiment_control_plane(
 ) -> ResearchExperimentControlPlaneOut:
     ensure_demo_user(db)
     return build_research_experiment_control_plane(db)
+
+
+@router.get("/experiments/orchestration", response_model=ResearchExperimentOrchestrationOut)
+def get_research_experiment_orchestration(
+    db: Session = Depends(get_db),
+) -> ResearchExperimentOrchestrationOut:
+    ensure_demo_user(db)
+    return build_research_experiment_orchestration(db)
+
+
+@router.post("/experiments/plans", response_model=ResearchExperimentPlanOut)
+def create_research_experiment_plan_endpoint(
+    payload: ResearchExperimentPlanCreateRequest,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    return ResearchExperimentPlanOut(**create_research_experiment_plan(db, payload))
+
+
+@router.post("/experiments/plans/{plan_id}/freeze-cohort", response_model=ResearchExperimentPlanOut)
+def freeze_research_experiment_plan_cohort(
+    plan_id: str,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    try:
+        payload = freeze_research_experiment_cohort(db, plan_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ResearchExperimentPlanOut(**payload)
+
+
+@router.post("/experiments/plans/{plan_id}/lock-baseline", response_model=ResearchExperimentPlanOut)
+def lock_research_experiment_plan_baseline(
+    plan_id: str,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    try:
+        payload = lock_research_experiment_baseline(db, plan_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ResearchExperimentPlanOut(**payload)
+
+
+@router.post("/experiments/plans/{plan_id}/evaluate-gate", response_model=ResearchExperimentPlanOut)
+def evaluate_research_experiment_plan_gate(
+    plan_id: str,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    try:
+        payload = evaluate_research_experiment_rollout_gate(db, plan_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ResearchExperimentPlanOut(**payload)
 
 
 @router.get("/evaluation/followup-delta", response_model=ResearchFollowupDeltaEvaluationOut)

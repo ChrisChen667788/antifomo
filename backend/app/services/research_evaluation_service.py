@@ -874,12 +874,9 @@ def _experiment_lane_status(
     return "watch"
 
 
-def build_research_experiment_control_plane(
-    db: Session,
-) -> ResearchExperimentControlPlaneOut:
-    entries, stored_reports, invalid_payloads = _load_stored_reports(db)
-    reports = [report for _entry, report in stored_reports]
-
+def _build_query_recovery_lane(
+    reports: list[ResearchReportResponse],
+) -> ResearchExperimentLaneOut:
     query_baseline_reports = [report for report in reports if not _query_recovery_enabled(report)]
     query_candidate_reports = [report for report in reports if _query_recovery_enabled(report)]
     query_baseline_hits = sum(1 for report in query_baseline_reports if _report_retrieval_hit(report))
@@ -900,7 +897,21 @@ def build_research_experiment_control_plane(
         denominator=len(query_candidate_reports),
         summary="按已进入扩展或纠偏链路的研报统计最终严格检索命中率。",
     )
+    return ResearchExperimentLaneOut(
+        key="query_recovery",
+        label="Query 纠偏控制面",
+        metric_label="严格检索命中率",
+        baseline=query_baseline,
+        candidate=query_candidate,
+        uplift_points=query_candidate.percent - query_baseline.percent,
+        status=_experiment_lane_status(query_baseline, query_candidate),  # type: ignore[arg-type]
+        interpretation="这是 shadow cohort 观察，不等同于线上随机 A/B；候选组用于评估扩展/纠偏链路是否值得继续收敛。",
+    )
 
+
+def _build_routing_followup_lane(
+    reports: list[ResearchReportResponse],
+) -> ResearchExperimentLaneOut:
     routing_baseline_reports: list[ResearchReportResponse] = []
     routing_candidate_reports: list[ResearchReportResponse] = []
     for report in reports:
@@ -929,7 +940,21 @@ def build_research_experiment_control_plane(
         denominator=routing_candidate_total,
         summary="追问已形成 impacted sections 的样本，观察其章节证据配额通过率。",
     )
+    return ResearchExperimentLaneOut(
+        key="routing_followup",
+        label="Follow-up 路由控制面",
+        metric_label="章节证据配额通过率",
+        baseline=routing_baseline,
+        candidate=routing_candidate,
+        uplift_points=routing_candidate.percent - routing_baseline.percent,
+        status=_experiment_lane_status(routing_baseline, routing_candidate),  # type: ignore[arg-type]
+        interpretation="用追问是否真正落到 impacted sections 作为路由分流依据，重点看章节证据配额是否同步改善。",
+    )
 
+
+def _build_reranker_official_recall_lane(
+    reports: list[ResearchReportResponse],
+) -> ResearchExperimentLaneOut:
     raw_official_hits = 0
     raw_official_total = 0
     reranked_official_hits = 0
@@ -971,38 +996,74 @@ def build_research_experiment_control_plane(
         denominator=reranked_official_total,
         summary="同一批样本经过 CrossEncoder adapter 复排后的官方源 Recall@5。",
     )
+    return ResearchExperimentLaneOut(
+        key="reranker_official_recall",
+        label="Reranker 控制面",
+        metric_label="官方源 Recall@5",
+        baseline=reranker_baseline,
+        candidate=reranker_candidate,
+        uplift_points=reranker_candidate.percent - reranker_baseline.percent,
+        status=_experiment_lane_status(reranker_baseline, reranker_candidate),  # type: ignore[arg-type]
+        interpretation="这是同样本离线对照，可直接用于判断 CrossEncoder 复排是否保留在默认链路。",
+    )
 
+
+def _build_experiment_lane_from_reports(
+    lane_key: str,
+    reports: list[ResearchReportResponse],
+) -> ResearchExperimentLaneOut:
+    if lane_key == "routing_followup":
+        return _build_routing_followup_lane(reports)
+    if lane_key == "reranker_official_recall":
+        return _build_reranker_official_recall_lane(reports)
+    return _build_query_recovery_lane(reports)
+
+
+def _stored_reports_for_entry_ids(
+    stored_reports: list[tuple[KnowledgeEntry, ResearchReportResponse]],
+    entry_ids: set[str] | None,
+) -> list[tuple[KnowledgeEntry, ResearchReportResponse]]:
+    if not entry_ids:
+        return stored_reports
+    return [(entry, report) for entry, report in stored_reports if str(entry.id) in entry_ids]
+
+
+def list_research_experiment_entry_ids(
+    db: Session,
+    lane_key: str,
+) -> list[str]:
+    _entries, stored_reports, _invalid_payloads = _load_stored_reports(db)
+    entry_ids: list[str] = []
+    for entry, report in stored_reports:
+        if lane_key == "routing_followup" and not report.followup_diagnostics.enabled:
+            continue
+        if lane_key == "reranker_official_recall":
+            if not any(_source_is_official(source) for source in report.sources) or len(report.sources) <= 1:
+                continue
+        entry_ids.append(str(entry.id))
+    return entry_ids
+
+
+def build_research_experiment_lane(
+    db: Session,
+    lane_key: str,
+    *,
+    entry_ids: set[str] | None = None,
+) -> ResearchExperimentLaneOut:
+    _entries, stored_reports, _invalid_payloads = _load_stored_reports(db)
+    selected = _stored_reports_for_entry_ids(stored_reports, entry_ids)
+    return _build_experiment_lane_from_reports(lane_key, [report for _entry, report in selected])
+
+
+def build_research_experiment_control_plane(
+    db: Session,
+) -> ResearchExperimentControlPlaneOut:
+    entries, stored_reports, invalid_payloads = _load_stored_reports(db)
+    reports = [report for _entry, report in stored_reports]
     lanes = [
-        ResearchExperimentLaneOut(
-            key="query_recovery",
-            label="Query 纠偏控制面",
-            metric_label="严格检索命中率",
-            baseline=query_baseline,
-            candidate=query_candidate,
-            uplift_points=query_candidate.percent - query_baseline.percent,
-            status=_experiment_lane_status(query_baseline, query_candidate),  # type: ignore[arg-type]
-            interpretation="这是 shadow cohort 观察，不等同于线上随机 A/B；候选组用于评估扩展/纠偏链路是否值得继续收敛。",
-        ),
-        ResearchExperimentLaneOut(
-            key="routing_followup",
-            label="Follow-up 路由控制面",
-            metric_label="章节证据配额通过率",
-            baseline=routing_baseline,
-            candidate=routing_candidate,
-            uplift_points=routing_candidate.percent - routing_baseline.percent,
-            status=_experiment_lane_status(routing_baseline, routing_candidate),  # type: ignore[arg-type]
-            interpretation="用追问是否真正落到 impacted sections 作为路由分流依据，重点看章节证据配额是否同步改善。",
-        ),
-        ResearchExperimentLaneOut(
-            key="reranker_official_recall",
-            label="Reranker 控制面",
-            metric_label="官方源 Recall@5",
-            baseline=reranker_baseline,
-            candidate=reranker_candidate,
-            uplift_points=reranker_candidate.percent - reranker_baseline.percent,
-            status=_experiment_lane_status(reranker_baseline, reranker_candidate),  # type: ignore[arg-type]
-            interpretation="这是同样本离线对照，可直接用于判断 CrossEncoder 复排是否保留在默认链路。",
-        ),
+        _build_query_recovery_lane(reports),
+        _build_routing_followup_lane(reports),
+        _build_reranker_official_recall_lane(reports),
     ]
 
     summary_lines = [

@@ -199,6 +199,36 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
                 "CREATE INDEX IF NOT EXISTS idx_research_watchlist_runs_run_id ON research_watchlist_runs (run_id)",
             ]
         )
+    if not _table_exists(engine, "research_experiment_plans"):
+        statements.extend(
+            [
+                """
+                CREATE TABLE research_experiment_plans (
+                    id CHAR(32) NOT NULL PRIMARY KEY,
+                    user_id CHAR(32) NOT NULL,
+                    name VARCHAR(160) NOT NULL,
+                    lane_key VARCHAR(60) NOT NULL,
+                    strategy_family VARCHAR(40) NOT NULL,
+                    candidate_label VARCHAR(180) NOT NULL DEFAULT '',
+                    notes TEXT NOT NULL DEFAULT '',
+                    strategy_payload JSON NOT NULL DEFAULT '{}',
+                    gate_config_payload JSON NOT NULL DEFAULT '{}',
+                    cohort_payload JSON NOT NULL DEFAULT '{}',
+                    baseline_payload JSON NOT NULL DEFAULT '{}',
+                    latest_gate_payload JSON NOT NULL DEFAULT '{}',
+                    status VARCHAR(32) NOT NULL DEFAULT 'draft',
+                    cohort_frozen_at DATETIME NULL,
+                    baseline_locked_at DATETIME NULL,
+                    last_gate_evaluated_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_research_experiment_plans_user_updated_at ON research_experiment_plans (user_id, updated_at)",
+                "CREATE INDEX IF NOT EXISTS idx_research_experiment_plans_lane_status ON research_experiment_plans (lane_key, status)",
+            ]
+        )
 
     if not statements:
         return

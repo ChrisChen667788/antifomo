@@ -64,6 +64,17 @@ ResearchCompareRole = Literal["甲方", "中标方", "竞品", "伙伴"]
 ResearchCompareSnapshotDiffStatus = Literal["unavailable", "aligned", "expanded", "trimmed", "mixed"]
 ResearchTopicTimelineEventType = Literal["report_version", "compare_snapshot", "markdown_archive"]
 ResearchMarkdownArchiveKind = Literal["compare_markdown", "topic_version_recap", "archive_diff_recap"]
+ResearchExperimentLaneKey = Literal["query_recovery", "routing_followup", "reranker_official_recall"]
+ResearchExperimentStrategyFamily = Literal["query_plan", "routing_policy", "reranker"]
+ResearchExperimentPlanStatus = Literal[
+    "draft",
+    "cohort_frozen",
+    "baseline_locked",
+    "gate_allowed",
+    "gate_hold",
+    "gate_blocked",
+]
+ResearchExperimentGateDecision = Literal["allow", "hold", "block"]
 
 
 class ResearchSavedViewBase(BaseModel):
@@ -331,7 +342,7 @@ class ResearchExperimentArmOut(BaseModel):
 
 
 class ResearchExperimentLaneOut(BaseModel):
-    key: Literal["query_recovery", "routing_followup", "reranker_official_recall"]
+    key: ResearchExperimentLaneKey
     label: str
     metric_label: str
     baseline: ResearchExperimentArmOut
@@ -347,6 +358,71 @@ class ResearchExperimentControlPlaneOut(BaseModel):
     evaluated_reports: int = 0
     invalid_payloads: int = 0
     lanes: list[ResearchExperimentLaneOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
+class ResearchExperimentGateConfigOut(BaseModel):
+    minimum_sample_size: int = Field(default=6, ge=1, le=500)
+    minimum_uplift_points: int = Field(default=0, ge=-100, le=100)
+
+
+class ResearchExperimentPlanCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    lane_key: ResearchExperimentLaneKey
+    strategy_family: ResearchExperimentStrategyFamily
+    candidate_label: str = Field(min_length=1, max_length=180)
+    notes: str = Field(default="", max_length=1200)
+    strategy_payload: dict[str, Any] = Field(default_factory=dict)
+    gate_config: ResearchExperimentGateConfigOut = Field(default_factory=ResearchExperimentGateConfigOut)
+
+
+class ResearchExperimentRolloutGateOut(BaseModel):
+    decision: ResearchExperimentGateDecision
+    lane_key: ResearchExperimentLaneKey
+    baseline_version_label: str = ""
+    locked_baseline_percent: int = 0
+    candidate_percent: int = 0
+    observed_uplift_points: int = 0
+    required_uplift_points: int = 0
+    sample_size: int = 0
+    minimum_sample_size: int = 0
+    reasons: list[str] = Field(default_factory=list)
+    evaluated_at: datetime
+    current_lane: ResearchExperimentLaneOut | None = None
+
+
+class ResearchExperimentPlanOut(BaseModel):
+    id: str
+    name: str
+    lane_key: ResearchExperimentLaneKey
+    strategy_family: ResearchExperimentStrategyFamily
+    candidate_label: str
+    notes: str = ""
+    strategy_payload: dict[str, Any] = Field(default_factory=dict)
+    gate_config: ResearchExperimentGateConfigOut = Field(default_factory=ResearchExperimentGateConfigOut)
+    status: ResearchExperimentPlanStatus = "draft"
+    cohort_size: int = 0
+    cohort_entry_ids: list[str] = Field(default_factory=list)
+    cohort_preview_titles: list[str] = Field(default_factory=list)
+    cohort_frozen_at: datetime | None = None
+    baseline_version_label: str = ""
+    baseline_lane: ResearchExperimentLaneOut | None = None
+    baseline_locked_at: datetime | None = None
+    latest_gate: ResearchExperimentRolloutGateOut | None = None
+    last_gate_evaluated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResearchExperimentOrchestrationOut(BaseModel):
+    generated_at: datetime
+    total_plans: int = 0
+    frozen_plan_count: int = 0
+    locked_plan_count: int = 0
+    allowed_plan_count: int = 0
+    blocked_plan_count: int = 0
+    hold_plan_count: int = 0
+    plans: list[ResearchExperimentPlanOut] = Field(default_factory=list)
     summary_lines: list[str] = Field(default_factory=list)
 
 

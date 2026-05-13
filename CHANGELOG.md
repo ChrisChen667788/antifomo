@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.5+20260513 - 2026-05-13
+
+- Upgraded the diagnostics control plane into a persistent experiment orchestration layer with configurable strategy plans, frozen cohorts, locked version baselines, and rollout gate decisions.
+- Added backend persistence, Alembic migration, SQLite compatibility backfill, API endpoints, and service tests for experiment plan creation, cohort freeze, baseline lock, and gate evaluation.
+- Added a research-center orchestration panel so operators can create plans, inspect frozen samples, lock baselines, and review allow/hold/block gate reasons beside existing diagnostics.
+
 ## 0.6.4+20260513 - 2026-05-13
 
 - Added a research experiment control plane that compares query-recovery cohorts, follow-up routing cohorts, and same-sample reranker official-source Recall@5 so rollout choices are inspectable instead of implicit.

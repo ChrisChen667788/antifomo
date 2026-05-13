@@ -1386,6 +1386,61 @@ export interface ApiResearchExperimentControlPlane {
   summary_lines: string[];
 }
 
+export interface ApiResearchExperimentGateConfig {
+  minimum_sample_size: number;
+  minimum_uplift_points: number;
+}
+
+export interface ApiResearchExperimentRolloutGate {
+  decision: "allow" | "hold" | "block";
+  lane_key: ApiResearchExperimentLane["key"];
+  baseline_version_label: string;
+  locked_baseline_percent: number;
+  candidate_percent: number;
+  observed_uplift_points: number;
+  required_uplift_points: number;
+  sample_size: number;
+  minimum_sample_size: number;
+  reasons: string[];
+  evaluated_at: string;
+  current_lane?: ApiResearchExperimentLane | null;
+}
+
+export interface ApiResearchExperimentPlan {
+  id: string;
+  name: string;
+  lane_key: ApiResearchExperimentLane["key"];
+  strategy_family: "query_plan" | "routing_policy" | "reranker";
+  candidate_label: string;
+  notes: string;
+  strategy_payload: Record<string, unknown>;
+  gate_config: ApiResearchExperimentGateConfig;
+  status: "draft" | "cohort_frozen" | "baseline_locked" | "gate_allowed" | "gate_hold" | "gate_blocked";
+  cohort_size: number;
+  cohort_entry_ids: string[];
+  cohort_preview_titles: string[];
+  cohort_frozen_at?: string | null;
+  baseline_version_label: string;
+  baseline_lane?: ApiResearchExperimentLane | null;
+  baseline_locked_at?: string | null;
+  latest_gate?: ApiResearchExperimentRolloutGate | null;
+  last_gate_evaluated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiResearchExperimentOrchestration {
+  generated_at: string;
+  total_plans: number;
+  frozen_plan_count: number;
+  locked_plan_count: number;
+  allowed_plan_count: number;
+  blocked_plan_count: number;
+  hold_plan_count: number;
+  plans: ApiResearchExperimentPlan[];
+  summary_lines: string[];
+}
+
 export interface ApiResearchFollowupDeltaMetric {
   key:
     | "followup_title_resolution_rate"
@@ -2741,6 +2796,61 @@ export function getResearchExperimentControlPlane(): Promise<ApiResearchExperime
     lanes: [],
     summary_lines: [],
   }));
+}
+
+export function getResearchExperimentOrchestration(): Promise<ApiResearchExperimentOrchestration> {
+  return request<ApiResearchExperimentOrchestration>("/api/research/experiments/orchestration", {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_plans: 0,
+    frozen_plan_count: 0,
+    locked_plan_count: 0,
+    allowed_plan_count: 0,
+    blocked_plan_count: 0,
+    hold_plan_count: 0,
+    plans: [],
+    summary_lines: [],
+  }));
+}
+
+export function createResearchExperimentPlan(payload: {
+  name: string;
+  lane_key: ApiResearchExperimentLane["key"];
+  strategy_family: ApiResearchExperimentPlan["strategy_family"];
+  candidate_label: string;
+  notes?: string;
+  strategy_payload?: Record<string, unknown>;
+  gate_config?: Partial<ApiResearchExperimentGateConfig>;
+}): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>("/api/research/experiments/plans", {
+    method: "POST",
+    body: JSON.stringify({
+      ...payload,
+      gate_config: {
+        minimum_sample_size: payload.gate_config?.minimum_sample_size ?? 6,
+        minimum_uplift_points: payload.gate_config?.minimum_uplift_points ?? 0,
+      },
+    }),
+  });
+}
+
+export function freezeResearchExperimentCohort(planId: string): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/freeze-cohort`, {
+    method: "POST",
+  });
+}
+
+export function lockResearchExperimentBaseline(planId: string): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/lock-baseline`, {
+    method: "POST",
+  });
+}
+
+export function evaluateResearchExperimentGate(planId: string): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/evaluate-gate`, {
+    method: "POST",
+  });
 }
 
 export function getResearchFollowupDeltaEvaluation(weakestLimit = 6): Promise<ApiResearchFollowupDeltaEvaluation> {

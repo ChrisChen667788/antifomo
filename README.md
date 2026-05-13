@@ -96,6 +96,7 @@ Anti-FOMO is built for the whole operating loop:
 - runtime optimization panel for incremental rebuild, persisted-cache reuse, and recovery guidance
 - optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
 - query / routing / reranker A/B control-plane views plus follow-up delta offline evaluation
+- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, and rollout gates
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
@@ -191,7 +192,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.3+20260513`
+- current version: `0.6.5+20260513`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

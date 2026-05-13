@@ -140,3 +140,21 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
         "retry_count",
         "notification_payload",
     }.issubset(watchlist_run_columns)
+
+    experiment_plan_columns = _columns_for(engine, "research_experiment_plans")
+    assert {
+        "user_id",
+        "name",
+        "lane_key",
+        "strategy_family",
+        "candidate_label",
+        "strategy_payload",
+        "gate_config_payload",
+        "cohort_payload",
+        "baseline_payload",
+        "latest_gate_payload",
+        "status",
+        "cohort_frozen_at",
+        "baseline_locked_at",
+        "last_gate_evaluated_at",
+    }.issubset(experiment_plan_columns)

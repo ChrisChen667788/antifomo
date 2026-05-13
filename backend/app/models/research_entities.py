@@ -252,6 +252,39 @@ class ResearchMarkdownArchive(Base):
     )
 
 
+class ResearchExperimentPlan(Base):
+    __tablename__ = "research_experiment_plans"
+    __table_args__ = (
+        Index("idx_research_experiment_plans_user_updated_at", "user_id", "updated_at"),
+        Index("idx_research_experiment_plans_lane_status", "lane_key", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    lane_key: Mapped[str] = mapped_column(String(60), nullable=False)
+    strategy_family: Mapped[str] = mapped_column(String(40), nullable=False)
+    candidate_label: Mapped[str] = mapped_column(String(180), nullable=False, default="", server_default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    strategy_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    gate_config_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    cohort_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    baseline_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    latest_gate_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft", server_default="draft")
+    cohort_frozen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    baseline_locked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_gate_evaluated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class ResearchRetrievalIndexChunkRecord(Base):
     __tablename__ = "research_retrieval_index_chunks"
     __table_args__ = (
