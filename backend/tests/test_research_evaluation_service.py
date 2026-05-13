@@ -185,9 +185,15 @@ def test_build_offline_research_evaluation_summarizes_core_metrics_and_weak_repo
         assert metric_map["unsupported_target_rate"].denominator == 2
         assert metric_map["reranker_official_recall_at_5"].denominator == 2
         assert metric_map["reranker_official_recall_at_5"].numerator == 2
+        assert metric_map["solution_delivery_quality_pass_rate"].denominator == 2
+        assert metric_map["project_proposal_quality_pass_rate"].denominator == 2
+        assert metric_map["delivery_self_review_gain_rate"].denominator >= 0
         assert evaluation.weakest_reports
         assert evaluation.weakest_reports[0].report_title == "南京政务云候选推进"
         assert evaluation.weakest_reports[0].unsupported_targets == ["南京市数据局"]
+        assert evaluation.weakest_reports[0].solution_delivery_quality_score > 0
+        assert evaluation.weakest_reports[0].project_proposal_quality_score > 0
+        assert evaluation.weakest_reports[0].delivery_quality_status in {"pass", "watch", "fail"}
         assert evaluation.summary_lines
     finally:
         db.close()

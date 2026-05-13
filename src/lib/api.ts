@@ -1339,6 +1339,10 @@ export interface ApiResearchOfflineEvaluationWeakReport {
   official_source_ratio: number;
   strict_match_ratio: number;
   retrieval_quality: "low" | "medium" | "high" | string;
+  solution_delivery_quality_score: number;
+  project_proposal_quality_score: number;
+  delivery_quality_status: "pass" | "watch" | "fail";
+  delivery_missing_axes: string[];
 }
 
 export interface ApiResearchOfflineEvaluation {

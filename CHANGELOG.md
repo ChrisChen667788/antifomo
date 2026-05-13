@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3+20260513 - 2026-05-13
+
+- Extended the offline evaluation control plane with delivery-quality regressions: solution-delivery pass rate, project-proposal pass rate, and delivery self-review gain rate now sit beside retrieval, target-support, evidence-quota, and official-source recall metrics.
+- Enriched weak-report regression entries with delivery-quality scores, worst delivery status, and missing proposal-review axes so operators can see which old reports still fail China-tech delivery expectations.
+- Updated the research center regression panel and compare-snapshot compatibility parser so both live evaluations and frozen historical snapshots tolerate the expanded evaluation payload.
+
 ## 0.6.2+20260513 - 2026-05-13
 
 - Added a China-tech delivery quality control plane for solution packs, feasibility-study exports, and project-proposal exports: outputs are scored against structure completeness, evidence grounding, execution readiness, and review governance.

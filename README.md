@@ -98,6 +98,7 @@ Anti-FOMO is built for the whole operating loop:
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
 - China-tech delivery quality review for solution packs and proposal-grade formal materials, including automatic structural self-repair
+- offline regression metrics now track solution-delivery pass rate, project-proposal pass rate, and delivery self-review gain rate
 
 ### 4. Execution outputs
 
@@ -187,7 +188,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.2+20260513`
+- current version: `0.6.3+20260513`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

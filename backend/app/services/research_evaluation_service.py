@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.models.entities import KnowledgeEntry
 from app.schemas.research import (
     ResearchCommercialSummaryOut,
+    ResearchDeliveryQualityProfileOut,
     ResearchGoldenEvaluationCaseOut,
     ResearchGoldenEvaluationOut,
     ResearchOfflineEvaluationMetricOut,
@@ -26,6 +27,7 @@ from app.schemas.research import (
 from app.services.content_extractor import normalize_text
 from app.services.research_quality_service import build_research_quality_profile
 from app.services.research_rag_quality_service import rerank_sources_cross_encoder
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 
 _METRIC_BENCHMARKS: dict[str, float] = {
     "retrieval_hit_rate": 0.72,
@@ -34,6 +36,9 @@ _METRIC_BENCHMARKS: dict[str, float] = {
     "official_source_recall_at_5": 0.62,
     "unsupported_target_rate": 0.18,
     "reranker_official_recall_at_5": 0.68,
+    "solution_delivery_quality_pass_rate": 0.70,
+    "project_proposal_quality_pass_rate": 0.68,
+    "delivery_self_review_gain_rate": 0.80,
 }
 
 
@@ -157,7 +162,41 @@ def _report_retrieval_hit(report: ResearchReportResponse) -> bool:
     return report.evidence_density != "low" and report.source_quality != "low"
 
 
-def _weakness_score(report: ResearchReportResponse) -> int:
+def _delivery_profiles_for_evaluation(
+    report: ResearchReportResponse,
+) -> tuple[ResearchDeliveryQualityProfileOut, ResearchDeliveryQualityProfileOut]:
+    pack = report.solution_delivery_pack
+    solution_profile = pack.solution_quality_profile
+    proposal_profile = pack.project_proposal_quality_profile
+    if int(solution_profile.overall_score or 0) > 0 and int(proposal_profile.overall_score or 0) > 0:
+        return solution_profile, proposal_profile
+    rebuilt_pack = build_solution_delivery_pack(
+        report,
+        scenario=pack.scenario,
+        target_customer=pack.target_customer,
+        vertical_scene=pack.vertical_scene,
+    )
+    return rebuilt_pack.solution_quality_profile, rebuilt_pack.project_proposal_quality_profile
+
+
+def _delivery_status_rank(value: str) -> int:
+    return {"pass": 0, "watch": 1, "fail": 2}.get(normalize_text(value).lower(), 1)
+
+
+def _worst_delivery_status(
+    solution_profile: ResearchDeliveryQualityProfileOut,
+    proposal_profile: ResearchDeliveryQualityProfileOut,
+) -> str:
+    statuses = [solution_profile.status, proposal_profile.status]
+    return max(statuses, key=_delivery_status_rank)
+
+
+def _weakness_score(
+    report: ResearchReportResponse,
+    *,
+    solution_profile: ResearchDeliveryQualityProfileOut | None = None,
+    proposal_profile: ResearchDeliveryQualityProfileOut | None = None,
+) -> int:
     diagnostics = report.source_diagnostics
     supported_targets = _supported_target_accounts(report)
     unsupported_targets = _unsupported_target_accounts(report)
@@ -174,6 +213,13 @@ def _weakness_score(report: ResearchReportResponse) -> int:
         score += 6
     if not supported_targets and _declared_target_accounts(report):
         score += 8
+    resolved_solution = solution_profile
+    resolved_proposal = proposal_profile
+    if resolved_solution is not None and resolved_solution.status != "pass":
+        score += 10 if resolved_solution.status == "watch" else 18
+    if resolved_proposal is not None and resolved_proposal.status != "pass":
+        score += 12 if resolved_proposal.status == "watch" else 22
+        score += min(12, len(resolved_proposal.missing_axes) * 3)
     return score
 
 
@@ -491,6 +537,11 @@ def build_offline_research_evaluation(
     reranker_official_recall_hits = 0
     reranker_official_recall_total = 0
     unsupported_target_total = 0
+    solution_delivery_quality_passed = 0
+    project_proposal_quality_passed = 0
+    delivery_quality_total = 0
+    delivery_self_review_triggered = 0
+    delivery_self_review_gained = 0
     weak_reports: list[ResearchOfflineEvaluationWeakReportOut] = []
     settings = get_settings()
 
@@ -504,6 +555,17 @@ def build_offline_research_evaluation(
         supported_target_total += len(supported_targets)
         total_target_total += len(supported_targets) + len(unsupported_targets)
         unsupported_target_total += len(unsupported_targets)
+        solution_profile, proposal_profile = _delivery_profiles_for_evaluation(report)
+        delivery_quality_total += 1
+        if solution_profile.status == "pass":
+            solution_delivery_quality_passed += 1
+        if proposal_profile.status == "pass":
+            project_proposal_quality_passed += 1
+        self_reviews = [solution_profile.self_review, proposal_profile.self_review]
+        if any(review.triggered for review in self_reviews):
+            delivery_self_review_triggered += 1
+            if any(review.triggered and review.after_score >= review.before_score for review in self_reviews):
+                delivery_self_review_gained += 1
         if any(_source_is_official(source) for source in report.sources):
             official_recall_total += 1
             if _has_official_source_at_k(report.sources, k=5):
@@ -534,7 +596,11 @@ def build_offline_research_evaluation(
             if not bool(getattr(section, "meets_evidence_quota", False))
         ]
 
-        weakness_score = _weakness_score(report)
+        weakness_score = _weakness_score(
+            report,
+            solution_profile=solution_profile,
+            proposal_profile=proposal_profile,
+        )
         if weakness_score <= 0:
             continue
         weak_reports.append(
@@ -554,6 +620,10 @@ def build_offline_research_evaluation(
                 official_source_ratio=float(report.source_diagnostics.official_source_ratio or 0.0),
                 strict_match_ratio=float(report.source_diagnostics.strict_match_ratio or 0.0),
                 retrieval_quality=report.source_diagnostics.retrieval_quality,
+                solution_delivery_quality_score=int(solution_profile.overall_score or 0),
+                project_proposal_quality_score=int(proposal_profile.overall_score or 0),
+                delivery_quality_status=_worst_delivery_status(solution_profile, proposal_profile),  # type: ignore[arg-type]
+                delivery_missing_axes=list(proposal_profile.missing_axes[:4]),
             )
         )
 
@@ -563,6 +633,17 @@ def build_offline_research_evaluation(
     official_source_recall_at_5 = _safe_rate(official_recall_hits, official_recall_total)
     reranker_official_recall_at_5 = _safe_rate(reranker_official_recall_hits, reranker_official_recall_total)
     unsupported_target_rate = _safe_rate(unsupported_target_total, total_target_total)
+    solution_delivery_quality_pass_rate = _safe_rate(solution_delivery_quality_passed, delivery_quality_total)
+    project_proposal_quality_pass_rate = _safe_rate(project_proposal_quality_passed, delivery_quality_total)
+    delivery_self_review_gain_rate = _safe_rate(delivery_self_review_gained, delivery_self_review_triggered)
+    delivery_self_review_gain_status = (
+        "watch"
+        if delivery_self_review_triggered <= 0
+        else _metric_status(
+            delivery_self_review_gain_rate,
+            benchmark=_METRIC_BENCHMARKS["delivery_self_review_gain_rate"],
+        )
+    )
 
     metrics = [
         ResearchOfflineEvaluationMetricOut(
@@ -640,6 +721,49 @@ def build_offline_research_evaluation(
             ),
             summary="按研报口径统计：离线样本经 reranker 复排后，前 5 个来源召回至少一个官方源的比例。",
         ),
+        ResearchOfflineEvaluationMetricOut(
+            key="solution_delivery_quality_pass_rate",
+            label="解决方案交付质量通过率",
+            numerator=solution_delivery_quality_passed,
+            denominator=delivery_quality_total,
+            rate=solution_delivery_quality_pass_rate,
+            percent=_percent(solution_delivery_quality_pass_rate),
+            benchmark=_METRIC_BENCHMARKS["solution_delivery_quality_pass_rate"],
+            status=_metric_status(
+                solution_delivery_quality_pass_rate,
+                benchmark=_METRIC_BENCHMARKS["solution_delivery_quality_pass_rate"],
+            ),
+            summary="按研报口径统计：解决方案交付包完成中国科技项目交付质量自审并达到 pass 的比例。",
+        ),
+        ResearchOfflineEvaluationMetricOut(
+            key="project_proposal_quality_pass_rate",
+            label="项目建议书质量通过率",
+            numerator=project_proposal_quality_passed,
+            denominator=delivery_quality_total,
+            rate=project_proposal_quality_pass_rate,
+            percent=_percent(project_proposal_quality_pass_rate),
+            benchmark=_METRIC_BENCHMARKS["project_proposal_quality_pass_rate"],
+            status=_metric_status(
+                project_proposal_quality_pass_rate,
+                benchmark=_METRIC_BENCHMARKS["project_proposal_quality_pass_rate"],
+            ),
+            summary="按研报口径统计：项目建议书交付质量画像达到 pass 的比例。",
+        ),
+        ResearchOfflineEvaluationMetricOut(
+            key="delivery_self_review_gain_rate",
+            label="交付自修订增益率",
+            numerator=delivery_self_review_gained,
+            denominator=delivery_self_review_triggered,
+            rate=delivery_self_review_gain_rate,
+            percent=_percent(delivery_self_review_gain_rate),
+            benchmark=_METRIC_BENCHMARKS["delivery_self_review_gain_rate"],
+            status=delivery_self_review_gain_status,  # type: ignore[arg-type]
+            summary=(
+                "当前暂无触发交付自修订的存量样本；该指标将在 watch/fail 交付件补缺后累计。"
+                if delivery_self_review_triggered <= 0
+                else "按触发自修订的样本统计：结构化补缺后质量分数不回退的比例。"
+            ),
+        ),
     ]
 
     weak_reports.sort(
@@ -658,6 +782,11 @@ def build_offline_research_evaluation(
             f"当前检索命中率 {_percent(retrieval_hit_rate)}%，目标账户支撑率 {_percent(target_support_rate)}%，"
             f"章节证据配额通过率 {_percent(section_quota_pass_rate)}%，官方源 Recall@5 {_percent(official_source_recall_at_5)}%，"
             f"Reranker 官方源 Recall@5 {_percent(reranker_official_recall_at_5)}%。"
+        ),
+        (
+            f"解决方案交付质量通过率 {_percent(solution_delivery_quality_pass_rate)}%，"
+            f"项目建议书质量通过率 {_percent(project_proposal_quality_pass_rate)}%，"
+            f"交付自修订增益率 {_percent(delivery_self_review_gain_rate)}%。"
         ),
     ]
     if weak_reports:

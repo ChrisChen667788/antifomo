@@ -199,7 +199,7 @@ Acceptance:
 
 Goal: make quality improvement and retrieval/runtime optimization measurable, repeatable, and safe to iterate.
 
-Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. Broader offline A/B and runtime controls remain next.
+Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. Broader A/B and runtime controls remain next.
 
 Scope:
 

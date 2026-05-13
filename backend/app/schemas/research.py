@@ -273,6 +273,9 @@ class ResearchOfflineEvaluationMetricOut(BaseModel):
         "official_source_recall_at_5",
         "unsupported_target_rate",
         "reranker_official_recall_at_5",
+        "solution_delivery_quality_pass_rate",
+        "project_proposal_quality_pass_rate",
+        "delivery_self_review_gain_rate",
     ]
     label: str
     numerator: int = 0
@@ -300,6 +303,10 @@ class ResearchOfflineEvaluationWeakReportOut(BaseModel):
     official_source_ratio: float = 0.0
     strict_match_ratio: float = 0.0
     retrieval_quality: Literal["low", "medium", "high"] = "low"
+    solution_delivery_quality_score: int = 0
+    project_proposal_quality_score: int = 0
+    delivery_quality_status: Literal["pass", "watch", "fail"] = "watch"
+    delivery_missing_axes: list[str] = Field(default_factory=list)
 
 
 class ResearchOfflineEvaluationOut(BaseModel):

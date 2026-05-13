@@ -1900,7 +1900,7 @@ export function ResearchCenter() {
             <p className="af-kicker">质量复核</p>
             <h3 className="mt-2 text-xl font-semibold text-slate-900">质量复核评估</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              将来源命中率、目标账户支撑率和章节依据完整度集中展示，方便每轮修订后快速回看质量变化。
+              将检索、账户支撑、章节依据和方案/项目建议书交付质量集中展示，方便每轮修订后快速回看质量变化。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -2050,7 +2050,7 @@ export function ResearchCenter() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">弱样本回归列表</p>
-                    <p className="mt-1 text-xs text-slate-500">优先处理目标账户缺支撑、章节配额未达标和检索命中偏弱的旧报告。</p>
+                    <p className="mt-1 text-xs text-slate-500">优先处理目标账户缺支撑、章节配额未达标、检索命中偏弱和交付质量未过线的旧报告。</p>
                   </div>
                   <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
                     Top {Math.min(offlineEvaluation?.weakest_reports?.length ?? 0, 4)}
@@ -2092,8 +2092,20 @@ export function ResearchCenter() {
                             <span className="rounded-full bg-white px-2.5 py-1">
                               严格命中 {Math.round(item.strict_match_ratio * 100)}%
                             </span>
+                            <span className={`rounded-full px-2.5 py-1 ${
+                              item.delivery_quality_status === "pass"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : item.delivery_quality_status === "watch"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-rose-100 text-rose-700"
+                            }`}>
+                              交付质量 {item.delivery_quality_status === "pass" ? "通过" : item.delivery_quality_status === "watch" ? "待补强" : "待重审"}
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1">
+                              方案/建议书 {item.solution_delivery_quality_score}/{item.project_proposal_quality_score}
+                            </span>
                           </div>
-                          {(item.unsupported_targets.length || item.failing_sections.length) ? (
+                          {(item.unsupported_targets.length || item.failing_sections.length || item.delivery_missing_axes.length) ? (
                             <div className="mt-3 space-y-2">
                               {item.unsupported_targets.length ? (
                                 <p className="text-sm leading-6 text-slate-600">
@@ -2103,6 +2115,11 @@ export function ResearchCenter() {
                               {item.failing_sections.length ? (
                                 <p className="text-sm leading-6 text-slate-600">
                                   未过配额章节 · {sanitizeExternalDisplayText(item.failing_sections.join(" / "))} {quotaGap > 0 ? `(${quotaGap} 处待补)` : ""}
+                                </p>
+                              ) : null}
+                              {item.delivery_missing_axes.length ? (
+                                <p className="text-sm leading-6 text-slate-600">
+                                  交付缺口 · {sanitizeExternalDisplayText(item.delivery_missing_axes.join(" / "))}
                                 </p>
                               ) : null}
                             </div>

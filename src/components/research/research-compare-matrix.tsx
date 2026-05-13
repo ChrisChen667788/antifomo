@@ -139,6 +139,10 @@ function parseSnapshotOfflineEvaluation(metadata: Record<string, unknown> | null
       ? summary.weakest_reports
           .map((item) => {
             const record = asRecord(item);
+            const deliveryQualityStatus: ApiResearchOfflineEvaluation["weakest_reports"][number]["delivery_quality_status"] =
+              record.delivery_quality_status === "pass" || record.delivery_quality_status === "fail"
+                ? record.delivery_quality_status
+                : "watch";
             return {
               entry_id: String(record.entry_id || ""),
               entry_title: String(record.entry_title || ""),
@@ -155,6 +159,10 @@ function parseSnapshotOfflineEvaluation(metadata: Record<string, unknown> | null
               official_source_ratio: Number(record.official_source_ratio || 0),
               strict_match_ratio: Number(record.strict_match_ratio || 0),
               retrieval_quality: String(record.retrieval_quality || "low"),
+              solution_delivery_quality_score: asPositiveNumber(record.solution_delivery_quality_score),
+              project_proposal_quality_score: asPositiveNumber(record.project_proposal_quality_score),
+              delivery_quality_status: deliveryQualityStatus,
+              delivery_missing_axes: asStringList(record.delivery_missing_axes, 6),
             };
           })
           .filter((item) => item.entry_id || item.entry_title || item.report_title)
