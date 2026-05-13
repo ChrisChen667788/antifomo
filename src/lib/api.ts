@@ -1406,6 +1406,26 @@ export interface ApiResearchExperimentRolloutGate {
   current_lane?: ApiResearchExperimentLane | null;
 }
 
+export interface ApiResearchExperimentRolloutManifest {
+  decision: "promoted" | "revoked";
+  plan_id: string;
+  plan_name: string;
+  lane_key: ApiResearchExperimentLane["key"];
+  strategy_family: "query_plan" | "routing_policy" | "reranker";
+  candidate_label: string;
+  baseline_version_label: string;
+  promoted_version_label: string;
+  gate_evaluated_at?: string | null;
+  locked_baseline_percent: number;
+  candidate_percent: number;
+  observed_uplift_points: number;
+  sample_size: number;
+  note: string;
+  activation_payload: Record<string, unknown>;
+  promoted_at?: string | null;
+  revoked_at?: string | null;
+}
+
 export interface ApiResearchExperimentPlan {
   id: string;
   name: string;
@@ -1415,7 +1435,15 @@ export interface ApiResearchExperimentPlan {
   notes: string;
   strategy_payload: Record<string, unknown>;
   gate_config: ApiResearchExperimentGateConfig;
-  status: "draft" | "cohort_frozen" | "baseline_locked" | "gate_allowed" | "gate_hold" | "gate_blocked";
+  status:
+    | "draft"
+    | "cohort_frozen"
+    | "baseline_locked"
+    | "gate_allowed"
+    | "gate_hold"
+    | "gate_blocked"
+    | "rollout_promoted"
+    | "rollout_revoked";
   cohort_size: number;
   cohort_entry_ids: string[];
   cohort_preview_titles: string[];
@@ -1424,7 +1452,12 @@ export interface ApiResearchExperimentPlan {
   baseline_lane?: ApiResearchExperimentLane | null;
   baseline_locked_at?: string | null;
   latest_gate?: ApiResearchExperimentRolloutGate | null;
+  gate_history: ApiResearchExperimentRolloutGate[];
+  gate_history_count: number;
+  rollout_manifest?: ApiResearchExperimentRolloutManifest | null;
   last_gate_evaluated_at?: string | null;
+  promoted_at?: string | null;
+  rollout_revoked_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1437,6 +1470,8 @@ export interface ApiResearchExperimentOrchestration {
   allowed_plan_count: number;
   blocked_plan_count: number;
   hold_plan_count: number;
+  promoted_plan_count: number;
+  revoked_plan_count: number;
   plans: ApiResearchExperimentPlan[];
   summary_lines: string[];
 }
@@ -2809,6 +2844,8 @@ export function getResearchExperimentOrchestration(): Promise<ApiResearchExperim
     allowed_plan_count: 0,
     blocked_plan_count: 0,
     hold_plan_count: 0,
+    promoted_plan_count: 0,
+    revoked_plan_count: 0,
     plans: [],
     summary_lines: [],
   }));
@@ -2850,6 +2887,20 @@ export function lockResearchExperimentBaseline(planId: string): Promise<ApiResea
 export function evaluateResearchExperimentGate(planId: string): Promise<ApiResearchExperimentPlan> {
   return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/evaluate-gate`, {
     method: "POST",
+  });
+}
+
+export function promoteResearchExperimentRollout(planId: string, note = ""): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/promote-rollout`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export function revokeResearchExperimentRollout(planId: string, note = ""): Promise<ApiResearchExperimentPlan> {
+  return request<ApiResearchExperimentPlan>(`/api/research/experiments/plans/${encodeURIComponent(planId)}/revoke-rollout`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
   });
 }
 

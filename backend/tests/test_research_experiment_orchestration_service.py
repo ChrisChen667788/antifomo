@@ -10,13 +10,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.entities import KnowledgeEntry, User
-from app.schemas.research import ResearchExperimentPlanCreateRequest, ResearchReportResponse
+from app.schemas.research import (
+    ResearchExperimentPlanCreateRequest,
+    ResearchExperimentRolloutActionRequest,
+    ResearchReportResponse,
+)
 from app.services.research_experiment_orchestration_service import (
     build_research_experiment_orchestration,
     create_research_experiment_plan,
     evaluate_research_experiment_rollout_gate,
     freeze_research_experiment_cohort,
     lock_research_experiment_baseline,
+    promote_research_experiment_rollout,
+    revoke_research_experiment_rollout,
 )
 
 
@@ -106,7 +112,7 @@ def _build_report(title: str, keyword: str) -> ResearchReportResponse:
     )
 
 
-def test_experiment_plan_freezes_cohort_locks_baseline_and_blocks_gate_when_threshold_fails() -> None:
+def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
     db = _new_session()
     try:
         user = _seed_demo_user(db)
@@ -159,11 +165,58 @@ def test_experiment_plan_freezes_cohort_locks_baseline_and_blocks_gate_when_thre
         assert gated["latest_gate"]["sample_size"] == 2
         assert gated["latest_gate"]["required_uplift_points"] == 1
         assert gated["latest_gate"]["observed_uplift_points"] == 0
+        assert gated["gate_history_count"] == 1
+
+        with pytest.raises(ValueError, match="Only allowed rollout gates"):
+            promote_research_experiment_rollout(
+                db,
+                created["id"],
+                ResearchExperimentRolloutActionRequest(note="blocked strategy must not promote"),
+            )
+
+        allowed_created = create_research_experiment_plan(
+            db,
+            ResearchExperimentPlanCreateRequest(
+                name="CrossEncoder rollout allowed",
+                lane_key="reranker_official_recall",
+                strategy_family="reranker",
+                candidate_label="cross-encoder-v1",
+                gate_config={"minimum_sample_size": 1, "minimum_uplift_points": 0},
+            ),
+        )
+        freeze_research_experiment_cohort(db, allowed_created["id"])
+        lock_research_experiment_baseline(db, allowed_created["id"])
+        allowed = evaluate_research_experiment_rollout_gate(db, allowed_created["id"])
+        assert allowed["status"] == "gate_allowed"
+        assert allowed["latest_gate"]["decision"] == "allow"
+        assert allowed["gate_history_count"] == 1
+
+        promoted = promote_research_experiment_rollout(
+            db,
+            allowed_created["id"],
+            ResearchExperimentRolloutActionRequest(note="promote after gate allow"),
+        )
+        assert promoted["status"] == "rollout_promoted"
+        assert promoted["rollout_manifest"]["decision"] == "promoted"
+        assert promoted["rollout_manifest"]["activation_payload"]["rollout_gate"]["decision"] == "allow"
+        assert promoted["promoted_at"] is not None
+
+        revoked = revoke_research_experiment_rollout(
+            db,
+            allowed_created["id"],
+            ResearchExperimentRolloutActionRequest(note="revoke after validation"),
+        )
+        assert revoked["status"] == "rollout_revoked"
+        assert revoked["rollout_manifest"]["decision"] == "revoked"
+        assert revoked["rollout_revoked_at"] is not None
 
         orchestration = build_research_experiment_orchestration(db)
-        assert orchestration.total_plans == 1
-        assert orchestration.frozen_plan_count == 1
-        assert orchestration.locked_plan_count == 1
+        assert orchestration.total_plans == 2
+        assert orchestration.frozen_plan_count == 2
+        assert orchestration.locked_plan_count == 2
+        assert orchestration.allowed_plan_count == 1
         assert orchestration.blocked_plan_count == 1
+        assert orchestration.promoted_plan_count == 0
+        assert orchestration.revoked_plan_count == 1
     finally:
         db.close()

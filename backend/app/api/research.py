@@ -41,6 +41,7 @@ from app.schemas.research import (
     ResearchExperimentOrchestrationOut,
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
+    ResearchExperimentRolloutActionRequest,
     ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
     ResearchJobCreateRequest,
@@ -90,6 +91,8 @@ from app.services.research_experiment_orchestration_service import (
     evaluate_research_experiment_rollout_gate,
     freeze_research_experiment_cohort,
     lock_research_experiment_baseline,
+    promote_research_experiment_rollout,
+    revoke_research_experiment_rollout,
 )
 from app.services.research_evaluation_service import (
     build_followup_delta_evaluation,
@@ -701,6 +704,38 @@ def evaluate_research_experiment_plan_gate(
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ResearchExperimentPlanOut(**payload)
+
+
+@router.post("/experiments/plans/{plan_id}/promote-rollout", response_model=ResearchExperimentPlanOut)
+def promote_research_experiment_plan_rollout(
+    plan_id: str,
+    payload: ResearchExperimentRolloutActionRequest,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    try:
+        result = promote_research_experiment_rollout(db, plan_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ResearchExperimentPlanOut(**result)
+
+
+@router.post("/experiments/plans/{plan_id}/revoke-rollout", response_model=ResearchExperimentPlanOut)
+def revoke_research_experiment_plan_rollout(
+    plan_id: str,
+    payload: ResearchExperimentRolloutActionRequest,
+    db: Session = Depends(get_db),
+) -> ResearchExperimentPlanOut:
+    ensure_demo_user(db)
+    try:
+        result = revoke_research_experiment_rollout(db, plan_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ResearchExperimentPlanOut(**result)
 
 
 @router.get("/evaluation/followup-delta", response_model=ResearchFollowupDeltaEvaluationOut)

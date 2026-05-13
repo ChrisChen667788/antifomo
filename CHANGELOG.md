@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.6+20260513 - 2026-05-13
+
+- Added experiment rollout audit history: each gate evaluation is now appended to a bounded history instead of replacing the only decision record.
+- Added rollout manifests for allowed strategies, including activation payload, baseline version, gate metrics, promotion note, and revocation state so rollout decisions are auditable before they touch runtime defaults.
+- Extended the research-center orchestration panel with gate-history counts, rollout confirmation/revocation actions, manifest status, and promoted/revoked plan counters.
+
 ## 0.6.5+20260513 - 2026-05-13
 
 - Upgraded the diagnostics control plane into a persistent experiment orchestration layer with configurable strategy plans, frozen cohorts, locked version baselines, and rollout gate decisions.

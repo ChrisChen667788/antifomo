@@ -153,8 +153,12 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
         "cohort_payload",
         "baseline_payload",
         "latest_gate_payload",
+        "gate_history_payload",
+        "rollout_payload",
         "status",
         "cohort_frozen_at",
         "baseline_locked_at",
         "last_gate_evaluated_at",
+        "promoted_at",
+        "rollout_revoked_at",
     }.issubset(experiment_plan_columns)

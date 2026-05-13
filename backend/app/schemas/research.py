@@ -73,8 +73,11 @@ ResearchExperimentPlanStatus = Literal[
     "gate_allowed",
     "gate_hold",
     "gate_blocked",
+    "rollout_promoted",
+    "rollout_revoked",
 ]
 ResearchExperimentGateDecision = Literal["allow", "hold", "block"]
+ResearchExperimentRolloutDecision = Literal["promoted", "revoked"]
 
 
 class ResearchSavedViewBase(BaseModel):
@@ -391,6 +394,30 @@ class ResearchExperimentRolloutGateOut(BaseModel):
     current_lane: ResearchExperimentLaneOut | None = None
 
 
+class ResearchExperimentRolloutActionRequest(BaseModel):
+    note: str = Field(default="", max_length=1200)
+
+
+class ResearchExperimentRolloutManifestOut(BaseModel):
+    decision: ResearchExperimentRolloutDecision
+    plan_id: str
+    plan_name: str = ""
+    lane_key: ResearchExperimentLaneKey
+    strategy_family: ResearchExperimentStrategyFamily
+    candidate_label: str = ""
+    baseline_version_label: str = ""
+    promoted_version_label: str = ""
+    gate_evaluated_at: datetime | None = None
+    locked_baseline_percent: int = 0
+    candidate_percent: int = 0
+    observed_uplift_points: int = 0
+    sample_size: int = 0
+    note: str = ""
+    activation_payload: dict[str, Any] = Field(default_factory=dict)
+    promoted_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
 class ResearchExperimentPlanOut(BaseModel):
     id: str
     name: str
@@ -409,7 +436,12 @@ class ResearchExperimentPlanOut(BaseModel):
     baseline_lane: ResearchExperimentLaneOut | None = None
     baseline_locked_at: datetime | None = None
     latest_gate: ResearchExperimentRolloutGateOut | None = None
+    gate_history: list[ResearchExperimentRolloutGateOut] = Field(default_factory=list)
+    gate_history_count: int = 0
+    rollout_manifest: ResearchExperimentRolloutManifestOut | None = None
     last_gate_evaluated_at: datetime | None = None
+    promoted_at: datetime | None = None
+    rollout_revoked_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -422,6 +454,8 @@ class ResearchExperimentOrchestrationOut(BaseModel):
     allowed_plan_count: int = 0
     blocked_plan_count: int = 0
     hold_plan_count: int = 0
+    promoted_plan_count: int = 0
+    revoked_plan_count: int = 0
     plans: list[ResearchExperimentPlanOut] = Field(default_factory=list)
     summary_lines: list[str] = Field(default_factory=list)
 

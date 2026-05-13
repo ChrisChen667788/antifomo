@@ -216,10 +216,14 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
                     cohort_payload JSON NOT NULL DEFAULT '{}',
                     baseline_payload JSON NOT NULL DEFAULT '{}',
                     latest_gate_payload JSON NOT NULL DEFAULT '{}',
+                    gate_history_payload JSON NOT NULL DEFAULT '[]',
+                    rollout_payload JSON NOT NULL DEFAULT '{}',
                     status VARCHAR(32) NOT NULL DEFAULT 'draft',
                     cohort_frozen_at DATETIME NULL,
                     baseline_locked_at DATETIME NULL,
                     last_gate_evaluated_at DATETIME NULL,
+                    promoted_at DATETIME NULL,
+                    rollout_revoked_at DATETIME NULL,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -229,6 +233,26 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
                 "CREATE INDEX IF NOT EXISTS idx_research_experiment_plans_lane_status ON research_experiment_plans (lane_key, status)",
             ]
         )
+    if _table_exists(engine, "research_experiment_plans") and not _table_has_column(
+        engine, "research_experiment_plans", "gate_history_payload"
+    ):
+        statements.append(
+            "ALTER TABLE research_experiment_plans ADD COLUMN gate_history_payload JSON NOT NULL DEFAULT '[]'"
+        )
+    if _table_exists(engine, "research_experiment_plans") and not _table_has_column(
+        engine, "research_experiment_plans", "rollout_payload"
+    ):
+        statements.append(
+            "ALTER TABLE research_experiment_plans ADD COLUMN rollout_payload JSON NOT NULL DEFAULT '{}'"
+        )
+    if _table_exists(engine, "research_experiment_plans") and not _table_has_column(
+        engine, "research_experiment_plans", "promoted_at"
+    ):
+        statements.append("ALTER TABLE research_experiment_plans ADD COLUMN promoted_at DATETIME NULL")
+    if _table_exists(engine, "research_experiment_plans") and not _table_has_column(
+        engine, "research_experiment_plans", "rollout_revoked_at"
+    ):
+        statements.append("ALTER TABLE research_experiment_plans ADD COLUMN rollout_revoked_at DATETIME NULL")
 
     if not statements:
         return

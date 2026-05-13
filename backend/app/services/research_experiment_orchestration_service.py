@@ -16,6 +16,8 @@ from app.models.research_entities import ResearchExperimentPlan
 from app.schemas.research import (
     ResearchExperimentGateConfigOut,
     ResearchExperimentOrchestrationOut,
+    ResearchExperimentRolloutActionRequest,
+    ResearchExperimentRolloutManifestOut,
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
     ResearchExperimentRolloutGateOut,
@@ -92,6 +94,27 @@ def _gate_from_payload(payload: Any) -> ResearchExperimentRolloutGateOut | None:
         return None
 
 
+def _gate_history_from_payload(payload: Any) -> list[ResearchExperimentRolloutGateOut]:
+    if not isinstance(payload, list):
+        return []
+    gates: list[ResearchExperimentRolloutGateOut] = []
+    for item in payload:
+        gate = _gate_from_payload(item)
+        if gate is not None:
+            gates.append(gate)
+    return gates
+
+
+def _rollout_manifest_from_payload(payload: Any) -> ResearchExperimentRolloutManifestOut | None:
+    data = _dict(payload)
+    if not data:
+        return None
+    try:
+        return ResearchExperimentRolloutManifestOut.model_validate(data)
+    except Exception:
+        return None
+
+
 def _parse_plan_id(plan_id: str) -> uuid.UUID | None:
     try:
         return uuid.UUID(str(plan_id))
@@ -117,6 +140,8 @@ def _serialize_plan(plan: ResearchExperimentPlan) -> dict[str, Any]:
     gate_config = _gate_config_from_payload(plan.gate_config_payload)
     baseline_lane = _lane_from_payload(baseline_payload.get("lane_snapshot"))
     latest_gate = _gate_from_payload(latest_gate_payload)
+    gate_history = _gate_history_from_payload(plan.gate_history_payload)
+    rollout_manifest = _rollout_manifest_from_payload(plan.rollout_payload)
     return ResearchExperimentPlanOut(
         id=str(plan.id),
         name=plan.name,
@@ -135,7 +160,12 @@ def _serialize_plan(plan: ResearchExperimentPlan) -> dict[str, Any]:
         baseline_lane=baseline_lane,
         baseline_locked_at=plan.baseline_locked_at,
         latest_gate=latest_gate,
+        gate_history=gate_history[-8:],
+        gate_history_count=len(gate_history),
+        rollout_manifest=rollout_manifest,
         last_gate_evaluated_at=plan.last_gate_evaluated_at,
+        promoted_at=plan.promoted_at,
+        rollout_revoked_at=plan.rollout_revoked_at,
         created_at=plan.created_at,
         updated_at=plan.updated_at,
     ).model_dump(mode="python")
@@ -157,9 +187,12 @@ def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOr
     allowed_count = sum(1 for plan in plans if plan.latest_gate and plan.latest_gate.decision == "allow")
     blocked_count = sum(1 for plan in plans if plan.latest_gate and plan.latest_gate.decision == "block")
     hold_count = sum(1 for plan in plans if plan.latest_gate and plan.latest_gate.decision == "hold")
+    promoted_count = sum(1 for plan in plans if plan.rollout_manifest and plan.rollout_manifest.decision == "promoted")
+    revoked_count = sum(1 for plan in plans if plan.rollout_manifest and plan.rollout_manifest.decision == "revoked")
     summary_lines = [
         f"实验计划 {len(plans)} 个，已冻结 cohort {frozen_count} 个，已锁定 baseline {locked_count} 个。",
         f"最近 gate 判定：允许 {allowed_count} 个，阻塞 {blocked_count} 个，待观察 {hold_count} 个。",
+        f"Rollout manifest：已确认 {promoted_count} 个，已撤回 {revoked_count} 个。",
     ]
     return ResearchExperimentOrchestrationOut(
         generated_at=_utc_now(),
@@ -169,6 +202,8 @@ def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOr
         allowed_plan_count=allowed_count,
         blocked_plan_count=blocked_count,
         hold_plan_count=hold_count,
+        promoted_plan_count=promoted_count,
+        revoked_plan_count=revoked_count,
         plans=plans,
         summary_lines=summary_lines,
     )
@@ -190,6 +225,8 @@ def create_research_experiment_plan(
         cohort_payload={},
         baseline_payload={},
         latest_gate_payload={},
+        gate_history_payload=[],
+        rollout_payload={},
         status="draft",
     )
     db.add(plan)
@@ -253,6 +290,8 @@ def lock_research_experiment_baseline(
     entry_ids = set(_string_list(cohort_payload.get("entry_ids")))
     if not entry_ids:
         raise ValueError("Freeze cohort before locking baseline")
+    if plan.promoted_at is not None and plan.rollout_revoked_at is None:
+        raise ValueError("Rollout already promoted; revoke it before relocking baseline")
 
     lane = build_research_experiment_lane(db, plan.lane_key, entry_ids=entry_ids)
     locked_at = _utc_now()
@@ -265,7 +304,11 @@ def lock_research_experiment_baseline(
     }
     plan.baseline_locked_at = locked_at
     plan.latest_gate_payload = {}
+    plan.gate_history_payload = []
+    plan.rollout_payload = {}
     plan.last_gate_evaluated_at = None
+    plan.promoted_at = None
+    plan.rollout_revoked_at = None
     plan.status = "baseline_locked"
     db.add(plan)
     db.commit()
@@ -331,12 +374,109 @@ def evaluate_research_experiment_rollout_gate(
         current_lane=current_lane,
     )
     plan.latest_gate_payload = gate.model_dump(mode="json")
+    gate_history = [
+        item.model_dump(mode="json")
+        for item in _gate_history_from_payload(plan.gate_history_payload)
+    ]
+    gate_history.append(gate.model_dump(mode="json"))
+    plan.gate_history_payload = gate_history[-30:]
     plan.last_gate_evaluated_at = evaluated_at
-    plan.status = {
-        "allow": "gate_allowed",
-        "hold": "gate_hold",
-        "block": "gate_blocked",
-    }[decision]
+    if plan.promoted_at is not None and plan.rollout_revoked_at is None:
+        plan.status = "rollout_promoted"
+    elif plan.rollout_revoked_at is not None:
+        plan.status = "rollout_revoked"
+    else:
+        plan.status = {
+            "allow": "gate_allowed",
+            "hold": "gate_hold",
+            "block": "gate_blocked",
+        }[decision]
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return _serialize_plan(plan)
+
+
+def promote_research_experiment_rollout(
+    db: Session,
+    plan_id: str,
+    payload: ResearchExperimentRolloutActionRequest,
+) -> dict[str, Any]:
+    plan = _get_plan_model(db, plan_id)
+    if plan is None:
+        raise LookupError("Experiment plan not found")
+    latest_gate = _gate_from_payload(plan.latest_gate_payload)
+    if latest_gate is None:
+        raise ValueError("Evaluate rollout gate before promoting a strategy")
+    if latest_gate.decision != "allow":
+        raise ValueError("Only allowed rollout gates can be promoted")
+
+    baseline_payload = _dict(plan.baseline_payload)
+    gate_config = _gate_config_from_payload(plan.gate_config_payload)
+    promoted_at = _utc_now()
+    manifest = ResearchExperimentRolloutManifestOut(
+        decision="promoted",
+        plan_id=str(plan.id),
+        plan_name=plan.name,
+        lane_key=plan.lane_key,  # type: ignore[arg-type]
+        strategy_family=plan.strategy_family,  # type: ignore[arg-type]
+        candidate_label=plan.candidate_label,
+        baseline_version_label=normalize_text(str(baseline_payload.get("version_label") or "")),
+        promoted_version_label=_project_version_label(),
+        gate_evaluated_at=latest_gate.evaluated_at,
+        locked_baseline_percent=latest_gate.locked_baseline_percent,
+        candidate_percent=latest_gate.candidate_percent,
+        observed_uplift_points=latest_gate.observed_uplift_points,
+        sample_size=latest_gate.sample_size,
+        note=payload.note,
+        activation_payload={
+            "lane_key": plan.lane_key,
+            "strategy_family": plan.strategy_family,
+            "candidate_label": plan.candidate_label,
+            "strategy_payload": _dict(plan.strategy_payload),
+            "gate_config": gate_config.model_dump(mode="json"),
+            "baseline": {
+                "version_label": normalize_text(str(baseline_payload.get("version_label") or "")),
+                "baseline_percent": latest_gate.locked_baseline_percent,
+            },
+            "rollout_gate": latest_gate.model_dump(mode="json"),
+        },
+        promoted_at=promoted_at,
+        revoked_at=None,
+    )
+    plan.rollout_payload = manifest.model_dump(mode="json")
+    plan.promoted_at = promoted_at
+    plan.rollout_revoked_at = None
+    plan.status = "rollout_promoted"
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return _serialize_plan(plan)
+
+
+def revoke_research_experiment_rollout(
+    db: Session,
+    plan_id: str,
+    payload: ResearchExperimentRolloutActionRequest,
+) -> dict[str, Any]:
+    plan = _get_plan_model(db, plan_id)
+    if plan is None:
+        raise LookupError("Experiment plan not found")
+    manifest = _rollout_manifest_from_payload(plan.rollout_payload)
+    if plan.promoted_at is None or manifest is None:
+        raise ValueError("No promoted rollout manifest exists for this experiment")
+
+    revoked_at = _utc_now()
+    revoked_manifest = manifest.model_copy(
+        update={
+            "decision": "revoked",
+            "note": payload.note or manifest.note,
+            "revoked_at": revoked_at,
+        }
+    )
+    plan.rollout_payload = revoked_manifest.model_dump(mode="json")
+    plan.rollout_revoked_at = revoked_at
+    plan.status = "rollout_revoked"
     db.add(plan)
     db.commit()
     db.refresh(plan)

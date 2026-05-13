@@ -54,6 +54,8 @@ import {
   evaluateResearchExperimentGate,
   freezeResearchExperimentCohort,
   lockResearchExperimentBaseline,
+  promoteResearchExperimentRollout,
+  revokeResearchExperimentRollout,
   resolveLowQualityResearchReviewItem,
   rewriteLowQualityResearchReviewItem,
   runDueResearchWatchlists,
@@ -618,10 +620,14 @@ function experimentPlanStatusLabel(status: ApiResearchExperimentPlan["status"]) 
   if (status === "gate_allowed") return "Gate 放行";
   if (status === "gate_hold") return "Gate 待观察";
   if (status === "gate_blocked") return "Gate 阻塞";
+  if (status === "rollout_promoted") return "Rollout 已确认";
+  if (status === "rollout_revoked") return "Rollout 已撤回";
   return "草稿";
 }
 
 function experimentPlanStatusTone(status: ApiResearchExperimentPlan["status"]) {
+  if (status === "rollout_promoted") return "bg-emerald-100 text-emerald-700";
+  if (status === "rollout_revoked") return "bg-slate-100 text-slate-600";
   if (status === "gate_allowed") return "bg-emerald-100 text-emerald-700";
   if (status === "gate_blocked") return "bg-rose-100 text-rose-700";
   if (status === "gate_hold") return "bg-amber-100 text-amber-700";
@@ -1157,7 +1163,7 @@ export function ResearchCenter() {
 
   const handleExperimentPlanAction = async (
     plan: ApiResearchExperimentPlan,
-    action: "freeze" | "lock" | "gate",
+    action: "freeze" | "lock" | "gate" | "promote" | "revoke",
   ) => {
     setExperimentPlanActionKey(`${plan.id}:${action}`);
     setExperimentPlanError("");
@@ -1169,9 +1175,15 @@ export function ResearchCenter() {
       } else if (action === "lock") {
         await lockResearchExperimentBaseline(plan.id);
         setExperimentPlanMessage("Baseline 已锁定。");
-      } else {
+      } else if (action === "gate") {
         await evaluateResearchExperimentGate(plan.id);
         setExperimentPlanMessage("Rollout gate 已完成判定。");
+      } else if (action === "promote") {
+        await promoteResearchExperimentRollout(plan.id, "UI confirmed after rollout gate allowed.");
+        setExperimentPlanMessage("Rollout manifest 已确认。");
+      } else {
+        await revokeResearchExperimentRollout(plan.id, "UI revoked rollout manifest.");
+        setExperimentPlanMessage("Rollout manifest 已撤回。");
       }
       await refreshControlPlaneDiagnostics();
     } catch {
@@ -2353,7 +2365,7 @@ export function ResearchCenter() {
                 </div>
                 <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Orchestration</span>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-6">
+              <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-8">
                 {[
                   { label: "实验计划", value: String(experimentOrchestration?.total_plans ?? 0) },
                   { label: "已冻结", value: String(experimentOrchestration?.frozen_plan_count ?? 0) },
@@ -2361,6 +2373,8 @@ export function ResearchCenter() {
                   { label: "Gate 放行", value: String(experimentOrchestration?.allowed_plan_count ?? 0) },
                   { label: "Gate 阻塞", value: String(experimentOrchestration?.blocked_plan_count ?? 0) },
                   { label: "待观察", value: String(experimentOrchestration?.hold_plan_count ?? 0) },
+                  { label: "已确认", value: String(experimentOrchestration?.promoted_plan_count ?? 0) },
+                  { label: "已撤回", value: String(experimentOrchestration?.revoked_plan_count ?? 0) },
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
@@ -2488,6 +2502,9 @@ export function ResearchCenter() {
                     const canFreeze = !plan.baseline_locked_at;
                     const canLock = Boolean(plan.cohort_frozen_at) && !plan.baseline_locked_at;
                     const canEvaluate = Boolean(plan.baseline_locked_at);
+                    const activeRollout = plan.rollout_manifest?.decision === "promoted";
+                    const canPromote = latestGate?.decision === "allow" && !activeRollout;
+                    const canRevoke = activeRollout;
                     return (
                       <div key={plan.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2512,6 +2529,7 @@ export function ResearchCenter() {
                             { label: "Baseline", value: plan.baseline_version_label || "未锁定" },
                             { label: "候选表现", value: latestGate ? `${latestGate.candidate_percent}%` : `${plan.baseline_lane?.candidate.percent ?? 0}%` },
                             { label: "Uplift", value: latestGate ? `${latestGate.observed_uplift_points >= 0 ? "+" : ""}${latestGate.observed_uplift_points} pt` : "未判定" },
+                            { label: "Gate 历史", value: `${plan.gate_history_count} 次` },
                           ].map((item) => (
                             <div key={item.label} className="rounded-2xl border border-white bg-white px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
@@ -2529,6 +2547,31 @@ export function ResearchCenter() {
                             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Gate reason</p>
                             <p className="mt-1 text-sm leading-6 text-slate-600">
                               {latestGate.reasons.map(sanitizeExternalDisplayText).join("；")}
+                            </p>
+                          </div>
+                        ) : null}
+                        {plan.rollout_manifest ? (
+                          <div className="mt-3 rounded-2xl border border-white bg-white px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                Rollout manifest
+                              </p>
+                              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${plan.rollout_manifest.decision === "promoted" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                {plan.rollout_manifest.decision === "promoted" ? "已确认" : "已撤回"}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                              {sanitizeExternalDisplayText(plan.rollout_manifest.promoted_version_label || "local-dev")} ·{" "}
+                              {plan.rollout_manifest.candidate_percent}% · uplift{" "}
+                              {plan.rollout_manifest.observed_uplift_points >= 0 ? "+" : ""}
+                              {plan.rollout_manifest.observed_uplift_points} pt · 样本 {plan.rollout_manifest.sample_size}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              {plan.rollout_manifest.revoked_at
+                                ? `撤回于 ${formatWatchlistTime(plan.rollout_manifest.revoked_at)}`
+                                : plan.rollout_manifest.promoted_at
+                                  ? `确认于 ${formatWatchlistTime(plan.rollout_manifest.promoted_at)}`
+                                  : "尚未写入确认时间"}
                             </p>
                           </div>
                         ) : null}
@@ -2556,6 +2599,22 @@ export function ResearchCenter() {
                             disabled={!canEvaluate || actionBusy}
                           >
                             判定 rollout gate
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExperimentPlanAction(plan, "promote")}
+                            className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                            disabled={!canPromote || actionBusy}
+                          >
+                            确认 rollout
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExperimentPlanAction(plan, "revoke")}
+                            className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+                            disabled={!canRevoke || actionBusy}
+                          >
+                            撤回 rollout
                           </button>
                           <span className="text-xs text-slate-500">
                             {plan.baseline_locked_at ? `锁定于 ${formatWatchlistTime(plan.baseline_locked_at)}` : "baseline 锁定后 cohort 不再变更"}
