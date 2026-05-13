@@ -6,6 +6,9 @@ import {
   ApiMobileDailyBrief,
   ApiKnowledgeEntry,
   ApiResearchCompareSnapshot,
+  ApiResearchDeliveryExportDiagnostics,
+  ApiResearchExperimentControlPlane,
+  ApiResearchFollowupDeltaEvaluation,
   ApiResearchLowQualityReviewQueue,
   ApiResearchLowQualityReviewQueueItem,
   ApiResearchMarkdownArchive,
@@ -27,6 +30,9 @@ import {
   deleteResearchView,
   getLowQualityResearchReviewQueue,
   getResearchDailyBrief,
+  getResearchDeliveryExportDiagnostics,
+  getResearchExperimentControlPlane,
+  getResearchFollowupDeltaEvaluation,
   getResearchMarkdownArchive,
   getResearchOfflineEvaluation,
   getResearchRetrievalIndexStatus,
@@ -567,6 +573,38 @@ function offlineEvaluationStatusTone(status: string) {
   return "border-rose-200 bg-rose-50/75 text-rose-700";
 }
 
+function experimentLaneStatusLabel(status: string) {
+  if (status === "ready") return "候选占优";
+  if (status === "insufficient") return "样本不足";
+  return "继续观察";
+}
+
+function experimentLaneStatusTone(status: string) {
+  if (status === "ready") return "bg-emerald-100 text-emerald-700";
+  if (status === "insufficient") return "bg-slate-100 text-slate-600";
+  return "bg-amber-100 text-amber-700";
+}
+
+function runtimeCacheHealthLabel(status?: string | null) {
+  if (status === "warm") return "热缓存";
+  if (status === "warming") return "预热中";
+  if (status === "stale") return "需恢复";
+  return "冷启动";
+}
+
+function runtimeCacheHealthTone(status?: string | null) {
+  if (status === "warm") return "bg-emerald-100 text-emerald-700";
+  if (status === "warming") return "bg-sky-100 text-sky-700";
+  if (status === "stale") return "bg-rose-100 text-rose-700";
+  return "bg-slate-100 text-slate-600";
+}
+
+function exportDeltaTrendTone(status: string) {
+  if (status === "up") return "text-emerald-700";
+  if (status === "down") return "text-rose-700";
+  return "text-slate-500";
+}
+
 function watchlistAutomationStatusLabel(status?: string | null) {
   if (status === "ok") return "最近运行正常";
   if (status === "partial_failure") return "最近运行部分失败";
@@ -688,6 +726,11 @@ export function ResearchCenter() {
   const [offlineEvaluation, setOfflineEvaluation] = useState<ApiResearchOfflineEvaluation | null>(null);
   const [offlineEvaluationLoading, setOfflineEvaluationLoading] = useState(true);
   const [offlineEvaluationRefreshing, setOfflineEvaluationRefreshing] = useState(false);
+  const [experimentControlPlane, setExperimentControlPlane] = useState<ApiResearchExperimentControlPlane | null>(null);
+  const [followupDeltaEvaluation, setFollowupDeltaEvaluation] = useState<ApiResearchFollowupDeltaEvaluation | null>(null);
+  const [deliveryExportDiagnostics, setDeliveryExportDiagnostics] = useState<ApiResearchDeliveryExportDiagnostics | null>(null);
+  const [controlPlaneLoading, setControlPlaneLoading] = useState(true);
+  const [controlPlaneRefreshing, setControlPlaneRefreshing] = useState(false);
   const [retrievalIndexStatus, setRetrievalIndexStatus] = useState<ApiResearchRetrievalIndexStatus | null>(null);
   const [retrievalIndexLoading, setRetrievalIndexLoading] = useState(true);
   const [retrievalIndexRebuilding, setRetrievalIndexRebuilding] = useState(false);
@@ -880,6 +923,29 @@ export function ResearchCenter() {
 
   useEffect(() => {
     let active = true;
+    setControlPlaneLoading(true);
+    Promise.all([
+      getResearchExperimentControlPlane(),
+      getResearchFollowupDeltaEvaluation(6),
+      getResearchDeliveryExportDiagnostics(8),
+    ])
+      .then(([controlPlane, followupDelta, exportDiagnostics]) => {
+        if (!active) return;
+        setExperimentControlPlane(controlPlane);
+        setFollowupDeltaEvaluation(followupDelta);
+        setDeliveryExportDiagnostics(exportDiagnostics);
+      })
+      .finally(() => {
+        if (!active) return;
+        setControlPlaneLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     setRetrievalIndexLoading(true);
     getResearchRetrievalIndexStatus()
       .then((res) => {
@@ -980,6 +1046,24 @@ export function ResearchCenter() {
     return status;
   };
 
+  const refreshControlPlaneDiagnostics = async () => {
+    setControlPlaneRefreshing(true);
+    try {
+      const [controlPlane, followupDelta, exportDiagnostics] = await Promise.all([
+        getResearchExperimentControlPlane(),
+        getResearchFollowupDeltaEvaluation(6),
+        getResearchDeliveryExportDiagnostics(8),
+      ]);
+      setExperimentControlPlane(controlPlane);
+      setFollowupDeltaEvaluation(followupDelta);
+      setDeliveryExportDiagnostics(exportDiagnostics);
+      return [controlPlane, followupDelta, exportDiagnostics] as const;
+    } finally {
+      setControlPlaneLoading(false);
+      setControlPlaneRefreshing(false);
+    }
+  };
+
   const handleRebuildRetrievalIndex = async (reset = false) => {
     setRetrievalIndexRebuilding(true);
     setRetrievalIndexMessage("");
@@ -1020,7 +1104,12 @@ export function ResearchCenter() {
     setLowQualityError("");
     try {
       await rewriteLowQualityResearchReviewItem(entryId);
-      await Promise.all([refreshLowQualityQueue(), refreshResearchCards(), refreshOfflineEvaluation()]);
+      await Promise.all([
+        refreshLowQualityQueue(),
+        refreshResearchCards(),
+        refreshOfflineEvaluation(),
+        refreshControlPlaneDiagnostics(),
+      ]);
       setLowQualityMessage("已生成修订建议，请复核后接受或回退。");
     } catch {
       setLowQualityError("低质量研报重写失败，请稍后重试。");
@@ -1035,7 +1124,7 @@ export function ResearchCenter() {
     setLowQualityError("");
     try {
       await resolveLowQualityResearchReviewItem(entryId, action);
-      await Promise.all([refreshLowQualityQueue(), refreshOfflineEvaluation()]);
+      await Promise.all([refreshLowQualityQueue(), refreshOfflineEvaluation(), refreshControlPlaneDiagnostics()]);
       if (action === "revert") {
         await refreshResearchCards();
         setLowQualityMessage("已回退到修订前版本。");
@@ -1370,6 +1459,7 @@ export function ResearchCenter() {
     try {
       await deleteResearchMarkdownArchive(archiveId);
       setMarkdownArchives((current) => current.filter((item) => item.id !== archiveId));
+      await refreshControlPlaneDiagnostics();
     } finally {
       setWorkspaceSaving(false);
     }
@@ -1910,6 +2000,9 @@ export function ResearchCenter() {
             <div className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs font-medium text-slate-500">
               可评估 · {offlineEvaluation?.evaluated_reports ?? 0}
             </div>
+            <div className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs font-medium text-slate-500">
+              Follow-up · {followupDeltaEvaluation?.followup_reports ?? 0}
+            </div>
             {(offlineEvaluation?.invalid_payloads ?? 0) > 0 ? (
               <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
                 schema 异常 · {offlineEvaluation?.invalid_payloads ?? 0}
@@ -1922,6 +2015,14 @@ export function ResearchCenter() {
               className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
             >
               {offlineEvaluationRefreshing ? "刷新中..." : "刷新评估"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void refreshControlPlaneDiagnostics()}
+              disabled={controlPlaneRefreshing}
+              className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
+            >
+              {controlPlaneRefreshing ? "刷新中..." : "刷新控制面"}
             </button>
           </div>
         </div>
@@ -1939,9 +2040,16 @@ export function ResearchCenter() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Retrieval index 增量重建</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    可视化持久化索引断点、父块路由覆盖和孤儿子块风险。
+                    统一查看 rebuild / cache / recovery 的运行时状态，辅助断点续建和异常恢复。
                   </p>
                 </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold ${runtimeCacheHealthTone(
+                    retrievalIndexStatus?.cache_health,
+                  )}`}
+                >
+                  {runtimeCacheHealthLabel(retrievalIndexStatus?.cache_health)}
+                </span>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -1969,12 +2077,14 @@ export function ResearchCenter() {
                   </button>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                 {[
                   { label: "断点状态", value: retrievalIndexStatus?.checkpoint_status || "idle" },
                   { label: "已持久化", value: String(retrievalIndexStatus?.persisted_chunk_count ?? 0) },
                   { label: "父块路由", value: String(retrievalIndexStatus?.parent_link_count ?? 0) },
                   { label: "孤儿子块", value: String(retrievalIndexStatus?.orphan_child_count ?? 0) },
+                  { label: "待处理", value: String(retrievalIndexStatus?.remaining_chunks ?? 0) },
+                  { label: "缓存复用", value: `${retrievalIndexStatus?.persisted_reuse_percent ?? 0}%` },
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
@@ -1996,8 +2106,200 @@ export function ResearchCenter() {
                   />
                 </div>
               </div>
+              <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 text-xs leading-5 text-slate-600">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-slate-800">Recovery</span>
+                  <span className="rounded-full bg-white px-2 py-0.5 font-medium text-slate-600">
+                    {retrievalIndexStatus?.recovery_mode || "none"}
+                  </span>
+                  {retrievalIndexStatus?.checkpoint_resume_ready ? (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-700">
+                      resume ready
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2">
+                  {retrievalIndexStatus?.recovery_recommendation || "当前暂无恢复建议。"}
+                </p>
+              </div>
               {retrievalIndexMessage ? <p className="mt-3 text-sm text-emerald-700">{retrievalIndexMessage}</p> : null}
               {retrievalIndexError ? <p className="mt-3 text-sm text-rose-600">{retrievalIndexError}</p> : null}
+            </div>
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+              <div className="rounded-[24px] border border-white/70 bg-white/68 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Query / routing / reranker A/B 控制面</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      同屏比较 shadow cohort 与同样本 reranker 离线对照，方便判断下一轮默认策略。
+                    </p>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Control Plane</span>
+                </div>
+                {controlPlaneLoading ? (
+                  <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中")}</p>
+                ) : experimentControlPlane?.lanes?.length ? (
+                  <div className="mt-4 space-y-3">
+                    {experimentControlPlane.lanes.map((lane) => (
+                      <div key={lane.key} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{lane.label}</p>
+                            <p className="mt-1 text-xs text-slate-500">{lane.metric_label}</p>
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentLaneStatusTone(lane.status)}`}>
+                            {experimentLaneStatusLabel(lane.status)}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                          {[lane.baseline, lane.candidate].map((arm) => (
+                            <div key={arm.key} className="rounded-2xl border border-white bg-white px-3 py-2">
+                              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                                {arm.role === "baseline" ? "Baseline" : "Candidate"}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">{arm.label}</p>
+                              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-900">{arm.percent}%</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {arm.numerator}/{arm.denominator}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="mt-3 text-xs leading-5 text-slate-600">
+                          候选相对基线 {lane.uplift_points >= 0 ? "+" : ""}
+                          {lane.uplift_points} pt。{lane.interpretation}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-500">当前暂无可比较控制面样本。</p>
+                )}
+              </div>
+
+              <div className="rounded-[24px] border border-white/70 bg-white/68 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Follow-up delta 离线评估</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      检查标题/摘要 delta、影响章节路由和官方证据支撑是否真正闭环。
+                    </p>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Delta Eval</span>
+                </div>
+                {controlPlaneLoading ? (
+                  <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中")}</p>
+                ) : followupDeltaEvaluation?.metrics?.length ? (
+                  <>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {followupDeltaEvaluation.metrics.map((metric) => (
+                        <div
+                          key={metric.key}
+                          className={`rounded-2xl border px-3 py-3 ${offlineEvaluationStatusTone(metric.status)}`}
+                        >
+                          <p className="text-sm font-semibold">{metric.label}</p>
+                          <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{metric.percent}%</p>
+                          <p className="mt-1 text-xs">
+                            当前 {metric.numerator}/{metric.denominator} · 基准 {Math.round(metric.benchmark * 100)}%
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {followupDeltaEvaluation.weakest_reports?.length ? (
+                      <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">待补样本</p>
+                        <div className="mt-2 space-y-2">
+                          {followupDeltaEvaluation.weakest_reports.slice(0, 3).map((item) => (
+                            <div key={item.entry_id} className="text-sm leading-6 text-slate-700">
+                              《{sanitizeExternalDisplayText(item.report_title || item.entry_title)}》 ·{" "}
+                              {item.weak_reasons.slice(0, 2).map(sanitizeExternalDisplayText).join(" / ")}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-500">当前暂无 follow-up delta 样本。</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[24px] border border-white/70 bg-white/68 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Delivery export diagnostics</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    汇总导出归档的质量快照、追问影响摘要和相邻版本差异，观察趋势而不是只看单点结果。
+                  </p>
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Export Trend</span>
+              </div>
+              {controlPlaneLoading ? (
+                <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中")}</p>
+              ) : deliveryExportDiagnostics ? (
+                <>
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    {[
+                      { label: "导出归档", value: String(deliveryExportDiagnostics.total_archives) },
+                      { label: "可比较样本", value: String(deliveryExportDiagnostics.analyzed_archives) },
+                      { label: "质量快照", value: String(deliveryExportDiagnostics.archives_with_quality_snapshot) },
+                      { label: "追问摘要", value: String(deliveryExportDiagnostics.archives_with_followup_summary) },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                        <p className="mt-1 text-lg font-semibold text-slate-900">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr),minmax(0,0.95fr)]">
+                    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">历史趋势</p>
+                      <div className="mt-3 space-y-2">
+                        {deliveryExportDiagnostics.trend_points.slice(0, 5).map((point) => (
+                          <div key={point.archive_id} className="rounded-2xl border border-white bg-white px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(point.archive_name)}</p>
+                              <span className="text-xs text-slate-500">{formatWatchlistTime(point.updated_at)}</span>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-600">
+                              方案/建议书 {point.solution_quality_percent}/{point.proposal_quality_percent} · 自修订{" "}
+                              {point.self_review_gain_percent}% · 追问章节 {point.followup_impacted_section_count} · 差异章节{" "}
+                              {point.changed_section_count}
+                            </p>
+                          </div>
+                        ))}
+                        {!deliveryExportDiagnostics.trend_points.length ? (
+                          <p className="text-sm text-slate-500">当前暂无带诊断字段的导出归档。</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">版本对比</p>
+                      <div className="mt-3 space-y-2">
+                        {deliveryExportDiagnostics.version_deltas.map((item) => (
+                          <div key={item.key} className="rounded-2xl border border-white bg-white px-3 py-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                              <span className={`text-sm font-semibold ${exportDeltaTrendTone(item.trend)}`}>
+                                {item.delta_value >= 0 ? "+" : ""}
+                                {item.delta_value}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">{item.summary}</p>
+                          </div>
+                        ))}
+                        {!deliveryExportDiagnostics.version_deltas.length ? (
+                          <p className="text-sm text-slate-500">至少需要两份带诊断的导出归档，才能形成版本对比。</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-4 text-sm text-slate-500">导出诊断暂时无法读取。</p>
+              )}
             </div>
 
             {offlineEvaluation?.metrics?.length ? (

@@ -34,7 +34,7 @@ Scope:
 - Build section retrieval targets from methodology axes.
 - Route research retrieval index hits into chapter-specific evidence packs.
 - Add context compression for official/procurement/source excerpts before generation. Current delivery exposes compressed snippets in section retrieval packs; generation-time injection remains a later optimization.
-- Generate follow-up delta packs from supplemental evidence and previous report sections. Current delivery covers report-section routing; follow-up delta routing remains a later optimization.
+- Generate follow-up delta packs from supplemental evidence and previous report sections. Report-section routing shipped earlier; `0.6.4+20260513` adds offline delta evaluation and operator-facing diagnostics for the same path.
 
 Acceptance:
 
@@ -199,7 +199,7 @@ Acceptance:
 
 Goal: make quality improvement and retrieval/runtime optimization measurable, repeatable, and safe to iterate.
 
-Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. Broader A/B and runtime controls remain next.
+Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. `0.6.4+20260513` closes the next control-plane tranche with query/routing/reranker diagnostics, follow-up delta offline evaluation, delivery export trend/version comparison, and runtime rebuild/cache/recovery visualization.
 
 Scope:
 

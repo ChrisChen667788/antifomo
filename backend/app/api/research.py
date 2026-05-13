@@ -36,6 +36,9 @@ from app.schemas.research import (
     ResearchEntityAliasResolveRequest,
     ResearchEntityDetailOut,
     ResearchConnectorStatusOut,
+    ResearchDeliveryExportDiagnosticsOut,
+    ResearchExperimentControlPlaneOut,
+    ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
     ResearchJobCreateRequest,
     ResearchJobOut,
@@ -77,7 +80,13 @@ from app.schemas.research import (
     ResearchWorkspaceOut,
 )
 from app.services.research_solution_intelligence_service import build_market_intelligence_pack, build_solution_delivery_pack
-from app.services.research_evaluation_service import build_golden_research_evaluation, build_offline_research_evaluation
+from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
+from app.services.research_evaluation_service import (
+    build_followup_delta_evaluation,
+    build_golden_research_evaluation,
+    build_offline_research_evaluation,
+    build_research_experiment_control_plane,
+)
 from app.services.research_retrieval_index_service import (
     build_research_retrieval_index,
     get_persistent_research_retrieval_index_status,
@@ -612,6 +621,38 @@ def get_research_offline_evaluation(
 @router.get("/evaluation/golden", response_model=ResearchGoldenEvaluationOut)
 def get_research_golden_evaluation() -> ResearchGoldenEvaluationOut:
     return build_golden_research_evaluation()
+
+
+@router.get("/evaluation/control-plane", response_model=ResearchExperimentControlPlaneOut)
+def get_research_experiment_control_plane(
+    db: Session = Depends(get_db),
+) -> ResearchExperimentControlPlaneOut:
+    ensure_demo_user(db)
+    return build_research_experiment_control_plane(db)
+
+
+@router.get("/evaluation/followup-delta", response_model=ResearchFollowupDeltaEvaluationOut)
+def get_research_followup_delta_evaluation(
+    weakest_limit: int = 6,
+    db: Session = Depends(get_db),
+) -> ResearchFollowupDeltaEvaluationOut:
+    ensure_demo_user(db)
+    return build_followup_delta_evaluation(
+        db,
+        weakest_limit=max(1, min(weakest_limit, 12)),
+    )
+
+
+@router.get("/delivery/export-diagnostics", response_model=ResearchDeliveryExportDiagnosticsOut)
+def get_research_delivery_export_diagnostics(
+    trend_limit: int = 8,
+    db: Session = Depends(get_db),
+) -> ResearchDeliveryExportDiagnosticsOut:
+    ensure_demo_user(db)
+    return build_delivery_export_diagnostics(
+        db,
+        trend_limit=max(1, min(trend_limit, 16)),
+    )
 
 
 @router.post("/retrieval/section-packs", response_model=list[ResearchSectionRetrievalPackOut])

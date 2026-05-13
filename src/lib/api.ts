@@ -1355,6 +1355,113 @@ export interface ApiResearchOfflineEvaluation {
   summary_lines: string[];
 }
 
+export interface ApiResearchExperimentArm {
+  key: string;
+  label: string;
+  role: "baseline" | "candidate";
+  numerator: number;
+  denominator: number;
+  rate: number;
+  percent: number;
+  summary: string;
+}
+
+export interface ApiResearchExperimentLane {
+  key: "query_recovery" | "routing_followup" | "reranker_official_recall";
+  label: string;
+  metric_label: string;
+  baseline: ApiResearchExperimentArm;
+  candidate: ApiResearchExperimentArm;
+  uplift_points: number;
+  status: "ready" | "watch" | "insufficient";
+  interpretation: string;
+}
+
+export interface ApiResearchExperimentControlPlane {
+  generated_at: string;
+  total_reports: number;
+  evaluated_reports: number;
+  invalid_payloads: number;
+  lanes: ApiResearchExperimentLane[];
+  summary_lines: string[];
+}
+
+export interface ApiResearchFollowupDeltaMetric {
+  key:
+    | "followup_title_resolution_rate"
+    | "followup_summary_resolution_rate"
+    | "followup_impacted_section_routing_rate"
+    | "followup_delta_official_support_rate";
+  label: string;
+  numerator: number;
+  denominator: number;
+  rate: number;
+  percent: number;
+  benchmark: number;
+  status: "good" | "watch" | "bad";
+  summary: string;
+}
+
+export interface ApiResearchFollowupDeltaWeakReport {
+  entry_id: string;
+  entry_title: string;
+  report_title: string;
+  keyword: string;
+  impacted_section_count: number;
+  official_supported_section_count: number;
+  title_resolution: "baseline" | "reused" | "corrected";
+  summary_resolution: "baseline" | "reused" | "corrected";
+  weak_reasons: string[];
+}
+
+export interface ApiResearchFollowupDeltaEvaluation {
+  generated_at: string;
+  total_reports: number;
+  followup_reports: number;
+  invalid_payloads: number;
+  metrics: ApiResearchFollowupDeltaMetric[];
+  weakest_reports: ApiResearchFollowupDeltaWeakReport[];
+  summary_lines: string[];
+}
+
+export interface ApiResearchDeliveryExportTrendPoint {
+  archive_id: string;
+  archive_kind: "compare_markdown" | "topic_version_recap" | "archive_diff_recap";
+  archive_name: string;
+  updated_at: string;
+  solution_quality_percent: number;
+  proposal_quality_percent: number;
+  self_review_gain_percent: number;
+  followup_impacted_section_count: number;
+  changed_section_count: number;
+}
+
+export interface ApiResearchDeliveryExportVersionDelta {
+  key:
+    | "solution_delivery_quality_pass_rate"
+    | "project_proposal_quality_pass_rate"
+    | "delivery_self_review_gain_rate"
+    | "followup_impacted_section_count"
+    | "changed_section_count";
+  label: string;
+  current_value: number;
+  previous_value: number;
+  delta_value: number;
+  trend: "up" | "flat" | "down";
+  summary: string;
+}
+
+export interface ApiResearchDeliveryExportDiagnostics {
+  generated_at: string;
+  total_archives: number;
+  analyzed_archives: number;
+  archives_with_quality_snapshot: number;
+  archives_with_followup_summary: number;
+  trend_points: ApiResearchDeliveryExportTrendPoint[];
+  version_deltas: ApiResearchDeliveryExportVersionDelta[];
+  summary_lines: string[];
+}
+
 export interface ApiResearchGoldenEvaluationCase {
   case_id: string;
   title: string;
@@ -1406,6 +1513,12 @@ export interface ApiResearchRetrievalIndexStatus {
   persisted_chunk_count: number;
   parent_link_count: number;
   orphan_child_count: number;
+  remaining_chunks: number;
+  persisted_reuse_percent: number;
+  checkpoint_resume_ready: boolean;
+  cache_health: "cold" | "warming" | "warm" | "stale";
+  recovery_mode: "none" | "resume" | "reset_recommended";
+  recovery_recommendation: string;
   source_counts: Record<string, number>;
   document_type_counts: Record<string, number>;
   started_at?: string | null;
@@ -2613,6 +2726,52 @@ export function getResearchGoldenEvaluation(): Promise<ApiResearchGoldenEvaluati
     average_target_support_rate: 0,
     average_section_quota_pass_rate: 0,
     cases: [],
+    summary_lines: [],
+  }));
+}
+
+export function getResearchExperimentControlPlane(): Promise<ApiResearchExperimentControlPlane> {
+  return request<ApiResearchExperimentControlPlane>("/api/research/evaluation/control-plane", {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_reports: 0,
+    evaluated_reports: 0,
+    invalid_payloads: 0,
+    lanes: [],
+    summary_lines: [],
+  }));
+}
+
+export function getResearchFollowupDeltaEvaluation(weakestLimit = 6): Promise<ApiResearchFollowupDeltaEvaluation> {
+  const params = new URLSearchParams();
+  params.set("weakest_limit", String(weakestLimit));
+  return request<ApiResearchFollowupDeltaEvaluation>(`/api/research/evaluation/followup-delta?${params.toString()}`, {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_reports: 0,
+    followup_reports: 0,
+    invalid_payloads: 0,
+    metrics: [],
+    weakest_reports: [],
+    summary_lines: [],
+  }));
+}
+
+export function getResearchDeliveryExportDiagnostics(trendLimit = 8): Promise<ApiResearchDeliveryExportDiagnostics> {
+  const params = new URLSearchParams();
+  params.set("trend_limit", String(trendLimit));
+  return request<ApiResearchDeliveryExportDiagnostics>(`/api/research/delivery/export-diagnostics?${params.toString()}`, {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    total_archives: 0,
+    analyzed_archives: 0,
+    archives_with_quality_snapshot: 0,
+    archives_with_followup_summary: 0,
+    trend_points: [],
+    version_deltas: [],
     summary_lines: [],
   }));
 }

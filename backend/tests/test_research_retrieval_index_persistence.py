@@ -162,6 +162,11 @@ def test_persistent_retrieval_index_status_reports_incremental_progress_and_pare
         assert partial_status.indexed_chunks == 1
         assert partial_status.progress_percent < 100
         assert partial_status.persisted_chunk_count == 1
+        assert partial_status.remaining_chunks > 0
+        assert partial_status.persisted_reuse_percent > 0
+        assert partial_status.checkpoint_resume_ready is True
+        assert partial_status.cache_health == "warming"
+        assert partial_status.recovery_mode == "resume"
 
         completed = rebuild_persistent_research_retrieval_index(db, user_id=user.id, batch_size=50, resume=True)
         completed_status = get_persistent_research_retrieval_index_status(db, user_id=user.id)
@@ -172,6 +177,10 @@ def test_persistent_retrieval_index_status_reports_incremental_progress_and_pare
         assert completed_status.persisted_chunk_count == completed_status.total_chunks
         assert completed_status.parent_link_count > 0
         assert completed_status.orphan_child_count == 0
+        assert completed_status.remaining_chunks == 0
+        assert completed_status.persisted_reuse_percent == 100
+        assert completed_status.cache_health == "warm"
+        assert completed_status.recovery_mode == "none"
         assert completed_status.document_type_counts["research_report"] >= 1
     finally:
         db.close()

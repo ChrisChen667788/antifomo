@@ -319,6 +319,115 @@ class ResearchOfflineEvaluationOut(BaseModel):
     summary_lines: list[str] = Field(default_factory=list)
 
 
+class ResearchExperimentArmOut(BaseModel):
+    key: str
+    label: str
+    role: Literal["baseline", "candidate"]
+    numerator: int = 0
+    denominator: int = 0
+    rate: float = 0.0
+    percent: int = 0
+    summary: str = ""
+
+
+class ResearchExperimentLaneOut(BaseModel):
+    key: Literal["query_recovery", "routing_followup", "reranker_official_recall"]
+    label: str
+    metric_label: str
+    baseline: ResearchExperimentArmOut
+    candidate: ResearchExperimentArmOut
+    uplift_points: int = 0
+    status: Literal["ready", "watch", "insufficient"] = "watch"
+    interpretation: str = ""
+
+
+class ResearchExperimentControlPlaneOut(BaseModel):
+    generated_at: datetime
+    total_reports: int = 0
+    evaluated_reports: int = 0
+    invalid_payloads: int = 0
+    lanes: list[ResearchExperimentLaneOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
+class ResearchFollowupDeltaMetricOut(BaseModel):
+    key: Literal[
+        "followup_title_resolution_rate",
+        "followup_summary_resolution_rate",
+        "followup_impacted_section_routing_rate",
+        "followup_delta_official_support_rate",
+    ]
+    label: str
+    numerator: int = 0
+    denominator: int = 0
+    rate: float = 0.0
+    percent: int = 0
+    benchmark: float = 0.0
+    status: Literal["good", "watch", "bad"] = "watch"
+    summary: str = ""
+
+
+class ResearchFollowupDeltaWeakReportOut(BaseModel):
+    entry_id: str
+    entry_title: str = ""
+    report_title: str = ""
+    keyword: str = ""
+    impacted_section_count: int = 0
+    official_supported_section_count: int = 0
+    title_resolution: Literal["baseline", "reused", "corrected"] = "baseline"
+    summary_resolution: Literal["baseline", "reused", "corrected"] = "baseline"
+    weak_reasons: list[str] = Field(default_factory=list)
+
+
+class ResearchFollowupDeltaEvaluationOut(BaseModel):
+    generated_at: datetime
+    total_reports: int = 0
+    followup_reports: int = 0
+    invalid_payloads: int = 0
+    metrics: list[ResearchFollowupDeltaMetricOut] = Field(default_factory=list)
+    weakest_reports: list[ResearchFollowupDeltaWeakReportOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
+class ResearchDeliveryExportTrendPointOut(BaseModel):
+    archive_id: str
+    archive_kind: ResearchMarkdownArchiveKind
+    archive_name: str
+    updated_at: datetime
+    solution_quality_percent: int = 0
+    proposal_quality_percent: int = 0
+    self_review_gain_percent: int = 0
+    followup_impacted_section_count: int = 0
+    changed_section_count: int = 0
+
+
+class ResearchDeliveryExportVersionDeltaOut(BaseModel):
+    key: Literal[
+        "solution_delivery_quality_pass_rate",
+        "project_proposal_quality_pass_rate",
+        "delivery_self_review_gain_rate",
+        "followup_impacted_section_count",
+        "changed_section_count",
+    ]
+    label: str
+    current_value: int = 0
+    previous_value: int = 0
+    delta_value: int = 0
+    trend: Literal["up", "flat", "down"] = "flat"
+    summary: str = ""
+
+
+class ResearchDeliveryExportDiagnosticsOut(BaseModel):
+    generated_at: datetime
+    total_archives: int = 0
+    analyzed_archives: int = 0
+    archives_with_quality_snapshot: int = 0
+    archives_with_followup_summary: int = 0
+    trend_points: list[ResearchDeliveryExportTrendPointOut] = Field(default_factory=list)
+    version_deltas: list[ResearchDeliveryExportVersionDeltaOut] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
 class ResearchGoldenEvaluationCaseOut(BaseModel):
     case_id: str
     title: str
@@ -378,6 +487,12 @@ class ResearchRetrievalIndexStatusOut(BaseModel):
     persisted_chunk_count: int = 0
     parent_link_count: int = 0
     orphan_child_count: int = 0
+    remaining_chunks: int = 0
+    persisted_reuse_percent: int = 0
+    checkpoint_resume_ready: bool = False
+    cache_health: Literal["cold", "warming", "warm", "stale"] = "cold"
+    recovery_mode: Literal["none", "resume", "reset_recommended"] = "none"
+    recovery_recommendation: str = ""
     source_counts: dict[str, int] = Field(default_factory=dict)
     document_type_counts: dict[str, int] = Field(default_factory=dict)
     started_at: datetime | None = None

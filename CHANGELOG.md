@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4+20260513 - 2026-05-13
+
+- Added a research experiment control plane that compares query-recovery cohorts, follow-up routing cohorts, and same-sample reranker official-source Recall@5 so rollout choices are inspectable instead of implicit.
+- Added follow-up delta offline evaluation for title handling, summary handling, impacted-section routing, and official-source support yield, with weak-sample surfacing for unfinished delta behavior.
+- Added delivery export diagnostics history and adjacent-version comparisons across markdown archives, preserving quality snapshots, follow-up impact summaries, and export-change counts in one panel.
+- Expanded retrieval-index runtime status into an optimization panel for remaining chunks, persisted-cache reuse, resume readiness, cache health, and recovery recommendations.
+
 ## 0.6.3+20260513 - 2026-05-13
 
 - Extended the offline evaluation control plane with delivery-quality regressions: solution-delivery pass rate, project-proposal pass rate, and delivery self-review gain rate now sit beside retrieval, target-support, evidence-quota, and official-source recall metrics.

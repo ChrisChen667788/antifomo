@@ -93,12 +93,15 @@ Anti-FOMO is built for the whole operating loop:
 
 - local research retrieval index with persistent rebuild, resume, and search
 - retrieval-index status panel with resumable rebuild progress and parent-block routing diagnostics
+- runtime optimization panel for incremental rebuild, persisted-cache reuse, and recovery guidance
 - optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
+- query / routing / reranker A/B control-plane views plus follow-up delta offline evaluation
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
 - China-tech delivery quality review for solution packs and proposal-grade formal materials, including automatic structural self-repair
 - offline regression metrics now track solution-delivery pass rate, project-proposal pass rate, and delivery self-review gain rate
+- delivery export diagnostics now preserve historical quality trends and adjacent-version comparisons
 
 ### 4. Execution outputs
 

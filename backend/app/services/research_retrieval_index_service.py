@@ -194,6 +194,12 @@ class ResearchRetrievalIndexStatus:
     persisted_chunk_count: int = 0
     parent_link_count: int = 0
     orphan_child_count: int = 0
+    remaining_chunks: int = 0
+    persisted_reuse_percent: int = 0
+    checkpoint_resume_ready: bool = False
+    cache_health: str = "cold"
+    recovery_mode: str = "none"
+    recovery_recommendation: str = ""
     source_counts: dict[str, int] = field(default_factory=dict)
     document_type_counts: dict[str, int] = field(default_factory=dict)
     started_at: datetime | None = None
@@ -213,6 +219,12 @@ class ResearchRetrievalIndexStatus:
             "persisted_chunk_count": self.persisted_chunk_count,
             "parent_link_count": self.parent_link_count,
             "orphan_child_count": self.orphan_child_count,
+            "remaining_chunks": self.remaining_chunks,
+            "persisted_reuse_percent": self.persisted_reuse_percent,
+            "checkpoint_resume_ready": self.checkpoint_resume_ready,
+            "cache_health": self.cache_health,
+            "recovery_mode": self.recovery_mode,
+            "recovery_recommendation": self.recovery_recommendation,
             "source_counts": self.source_counts,
             "document_type_counts": self.document_type_counts,
             "started_at": self.started_at,
@@ -1640,12 +1652,44 @@ def get_persistent_research_retrieval_index_status(
         progress_percent = 100
     else:
         progress_percent = 0
+    remaining_chunks = max(total_chunks - indexed_chunks, 0)
+    persisted_reuse_percent = (
+        max(0, min(100, round(persisted_chunk_count / total_chunks * 100)))
+        if total_chunks > 0
+        else (100 if persisted_chunk_count > 0 else 0)
+    )
+    checkpoint_status = checkpoint.status if checkpoint else "idle"
+    checkpoint_resume_ready = checkpoint_status == "running" and remaining_chunks > 0 and next_offset > 0
+    if orphan_child_count > 0 or checkpoint_status == "failed":
+        cache_health = "stale"
+        recovery_mode = "reset_recommended"
+        recovery_recommendation = "检测到孤儿子块或失败断点，优先执行 reset rebuild 后再恢复增量写入。"
+    elif checkpoint_resume_ready:
+        cache_health = "warming"
+        recovery_mode = "resume"
+        recovery_recommendation = "当前断点可 resume，继续增量重建即可复用已持久化 chunk。"
+    elif checkpoint_status == "completed" and persisted_chunk_count >= total_chunks > 0:
+        cache_health = "warm"
+        recovery_mode = "none"
+        recovery_recommendation = "索引缓存已热，当前无需恢复动作。"
+    elif persisted_chunk_count > 0:
+        cache_health = "warming"
+        recovery_mode = "resume"
+        recovery_recommendation = "已有部分持久化 chunk，建议继续增量重建完成缓存预热。"
+    else:
+        cache_health = "cold"
+        recovery_mode = "resume" if total_chunks > 0 else "none"
+        recovery_recommendation = (
+            "索引尚未写入持久化缓存，可直接启动首次增量重建。"
+            if total_chunks > 0
+            else "当前暂无待重建 chunk。"
+        )
 
     return ResearchRetrievalIndexStatus(
         user_id=str(resolved_user_id),
         schema_version=RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
         backend=checkpoint.backend if checkpoint else "sqlite",
-        checkpoint_status=checkpoint.status if checkpoint else "idle",
+        checkpoint_status=checkpoint_status,
         total_chunks=total_chunks,
         indexed_chunks=indexed_chunks,
         next_offset=next_offset,
@@ -1653,6 +1697,12 @@ def get_persistent_research_retrieval_index_status(
         persisted_chunk_count=persisted_chunk_count,
         parent_link_count=parent_link_count,
         orphan_child_count=orphan_child_count,
+        remaining_chunks=remaining_chunks,
+        persisted_reuse_percent=persisted_reuse_percent,
+        checkpoint_resume_ready=checkpoint_resume_ready,
+        cache_health=cache_health,
+        recovery_mode=recovery_mode,
+        recovery_recommendation=recovery_recommendation,
         source_counts=source_counts,
         document_type_counts=document_type_counts,
         started_at=checkpoint.started_at if checkpoint else None,

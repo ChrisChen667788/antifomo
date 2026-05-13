@@ -9,8 +9,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.entities import KnowledgeEntry, User
-from app.schemas.research import ResearchReportResponse
-from app.services.research_evaluation_service import build_offline_research_evaluation
+from app.schemas.research import (
+    ResearchFollowupContextOut,
+    ResearchFollowupDiagnosticsOut,
+    ResearchFollowupSectionImpactOut,
+    ResearchReportResponse,
+)
+from app.services.research_evaluation_service import (
+    build_followup_delta_evaluation,
+    build_offline_research_evaluation,
+    build_research_experiment_control_plane,
+)
 
 
 def _new_session() -> Session:
@@ -110,6 +119,43 @@ def _build_report(
     )
 
 
+def _build_followup_report() -> ResearchReportResponse:
+    report = _build_report(
+        title="上海数据集团预算窗口追问",
+        keyword="上海数据集团预算窗口 采购中心",
+        strict_topic_source_count=5,
+        strict_match_ratio=0.76,
+        retrieval_quality="high",
+        supported_targets=["上海数据集团"],
+        unsupported_targets=[],
+        official_source_ratio=0.75,
+        section_passed=True,
+    )
+    return report.model_copy(
+        update={
+            "followup_context": ResearchFollowupContextOut(
+                followup_report_title="上海数据集团预算窗口追问",
+                followup_report_summary="上一版摘要",
+                supplemental_context="采购中心确认项目推进窗口。",
+            ),
+            "followup_diagnostics": ResearchFollowupDiagnosticsOut(
+                enabled=True,
+                title_resolution="reused",
+                summary_resolution="corrected",
+                impacted_sections=[
+                    ResearchFollowupSectionImpactOut(
+                        section_title="项目与商机判断",
+                        impact_label="high",
+                        impact_score=84,
+                        official_hit_count=2,
+                        retrieval_hit_count=3,
+                    )
+                ],
+            ),
+        }
+    )
+
+
 def test_build_offline_research_evaluation_summarizes_core_metrics_and_weak_reports() -> None:
     db = _new_session()
     try:
@@ -195,5 +241,60 @@ def test_build_offline_research_evaluation_summarizes_core_metrics_and_weak_repo
         assert evaluation.weakest_reports[0].project_proposal_quality_score > 0
         assert evaluation.weakest_reports[0].delivery_quality_status in {"pass", "watch", "fail"}
         assert evaluation.summary_lines
+    finally:
+        db.close()
+
+
+def test_control_plane_and_followup_delta_evaluation_surface_shadow_cohorts() -> None:
+    db = _new_session()
+    try:
+        user = _seed_demo_user(db)
+        followup_report = _build_followup_report()
+        baseline_report = _build_report(
+            title="南京政务云基础研判",
+            keyword="南京政务云预算",
+            strict_topic_source_count=0,
+            strict_match_ratio=0.18,
+            retrieval_quality="low",
+            supported_targets=[],
+            unsupported_targets=["南京市数据局"],
+            official_source_ratio=0.22,
+            section_passed=False,
+        )
+        db.add_all(
+            [
+                KnowledgeEntry(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    title=followup_report.report_title,
+                    content="追问样本",
+                    source_domain="research.report",
+                    metadata_payload={"report": followup_report.model_dump(mode="json")},
+                ),
+                KnowledgeEntry(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    title=baseline_report.report_title,
+                    content="基线样本",
+                    source_domain="research.report",
+                    metadata_payload={"report": baseline_report.model_dump(mode="json")},
+                ),
+            ]
+        )
+        db.commit()
+
+        control_plane = build_research_experiment_control_plane(db)
+        followup_delta = build_followup_delta_evaluation(db)
+
+        assert control_plane.evaluated_reports == 2
+        lane_map = {lane.key: lane for lane in control_plane.lanes}
+        assert set(lane_map) == {"query_recovery", "routing_followup", "reranker_official_recall"}
+        assert lane_map["reranker_official_recall"].candidate.denominator == 2
+        assert followup_delta.followup_reports == 1
+        metric_map = {metric.key: metric for metric in followup_delta.metrics}
+        assert metric_map["followup_title_resolution_rate"].percent == 100
+        assert metric_map["followup_summary_resolution_rate"].percent == 100
+        assert metric_map["followup_impacted_section_routing_rate"].percent == 100
+        assert metric_map["followup_delta_official_support_rate"].percent == 100
     finally:
         db.close()

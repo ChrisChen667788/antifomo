@@ -92,12 +92,15 @@ Anti-FOMO 关注的是整条工作链路：
 
 - 本地 research retrieval index，支持持久化 rebuild、resume 和 search
 - retrieval index 状态面板，展示增量重建进度、父块路由和孤儿子块风险
+- 增量 rebuild / 持久化 cache / recovery 的运行时优化面板
 - 可选 SentenceTransformers CrossEncoder reranker adapter，并接入离线官方源召回评估
+- query / routing / reranker A/B 控制面，以及 follow-up delta 离线评估
 - 章节级 retrieval pack 和 section 级证据诊断
 - canonical org linking、guarded backlog、低质量研报 rewrite / backfill
 - 近 3 年招投标/产品/技术参数情报包和 advisory-grade 方案交付包
 - 面向中国科技项目交付的解决方案/项目建议书质量自审、自修订和显式缺口提示
 - 离线回归评估新增解决方案通过率、项目建议书通过率和交付自修订增益率
+- 导出诊断新增历史趋势与相邻版本对比，能回看交付质量是否持续改善
 
 ### 4. 执行与交付
 

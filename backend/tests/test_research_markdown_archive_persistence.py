@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.models import User
 from app.services import research_workspace_store
+from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
 from app.services.research_workspace_store import (
     delete_markdown_archive,
     get_markdown_archive,
@@ -176,6 +177,78 @@ def test_markdown_archive_supports_archive_diff_recap_kind() -> None:
         assert loaded["archive_kind"] == "archive_diff_recap"
         assert loaded["metadata_payload"]["current_archive_id"] == "archive-a"
         assert loaded["metadata_payload"]["changed_section_count"] == 3
+    finally:
+        research_workspace_store._WORKSPACE_BACKFILL_ATTEMPTED = original_backfill_flag
+        db.close()
+
+
+def test_delivery_export_diagnostics_tracks_history_and_adjacent_version_delta() -> None:
+    db = _new_session()
+    settings = get_settings()
+    original_backfill_flag = research_workspace_store._WORKSPACE_BACKFILL_ATTEMPTED
+    try:
+        research_workspace_store._WORKSPACE_BACKFILL_ATTEMPTED = True
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.commit()
+
+        save_markdown_archive(
+            db,
+            {
+                "archive_kind": "compare_markdown",
+                "name": "导出版本一",
+                "filename": "delivery-v1.md",
+                "content": "# V1\n",
+                "metadata_payload": {
+                    "offline_evaluation_snapshot": {
+                        "metrics": [
+                            {"key": "solution_delivery_quality_pass_rate", "percent": 60},
+                            {"key": "project_proposal_quality_pass_rate", "percent": 58},
+                            {"key": "delivery_self_review_gain_rate", "percent": 70},
+                        ]
+                    },
+                    "followup_impact_summary": {
+                        "current_impacted_sections": ["方案建议"],
+                    },
+                    "changed_section_count": 1,
+                },
+            },
+        )
+        save_markdown_archive(
+            db,
+            {
+                "archive_kind": "archive_diff_recap",
+                "name": "导出版本二",
+                "filename": "delivery-v2.md",
+                "content": "# V2\n",
+                "metadata_payload": {
+                    "current_offline_evaluation_snapshot": {
+                        "metrics": [
+                            {"key": "solution_delivery_quality_pass_rate", "percent": 78},
+                            {"key": "project_proposal_quality_pass_rate", "percent": 76},
+                            {"key": "delivery_self_review_gain_rate", "percent": 88},
+                        ]
+                    },
+                    "current_followup_impact_summary": {
+                        "current_impacted_sections": ["方案建议", "投标准备"],
+                    },
+                    "changed_section_count": 3,
+                },
+            },
+        )
+
+        diagnostics = build_delivery_export_diagnostics(db, trend_limit=4)
+
+        assert diagnostics.total_archives == 2
+        assert diagnostics.analyzed_archives == 2
+        assert diagnostics.archives_with_quality_snapshot == 2
+        assert diagnostics.archives_with_followup_summary == 2
+        assert diagnostics.trend_points[0].archive_name == "导出版本二"
+        assert diagnostics.trend_points[0].solution_quality_percent == 78
+        assert diagnostics.trend_points[0].followup_impacted_section_count == 2
+        delta_map = {item.key: item for item in diagnostics.version_deltas}
+        assert delta_map["solution_delivery_quality_pass_rate"].delta_value == 18
+        assert delta_map["followup_impacted_section_count"].delta_value == 1
+        assert diagnostics.summary_lines
     finally:
         research_workspace_store._WORKSPACE_BACKFILL_ATTEMPTED = original_backfill_flag
         db.close()

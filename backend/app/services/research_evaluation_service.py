@@ -11,6 +11,12 @@ from app.models.entities import KnowledgeEntry
 from app.schemas.research import (
     ResearchCommercialSummaryOut,
     ResearchDeliveryQualityProfileOut,
+    ResearchExperimentArmOut,
+    ResearchExperimentControlPlaneOut,
+    ResearchExperimentLaneOut,
+    ResearchFollowupDeltaEvaluationOut,
+    ResearchFollowupDeltaMetricOut,
+    ResearchFollowupDeltaWeakReportOut,
     ResearchGoldenEvaluationCaseOut,
     ResearchGoldenEvaluationOut,
     ResearchOfflineEvaluationMetricOut,
@@ -39,6 +45,10 @@ _METRIC_BENCHMARKS: dict[str, float] = {
     "solution_delivery_quality_pass_rate": 0.70,
     "project_proposal_quality_pass_rate": 0.68,
     "delivery_self_review_gain_rate": 0.80,
+    "followup_title_resolution_rate": 0.72,
+    "followup_summary_resolution_rate": 0.72,
+    "followup_impacted_section_routing_rate": 0.68,
+    "followup_delta_official_support_rate": 0.58,
 }
 
 
@@ -77,6 +87,27 @@ def _parse_stored_report(entry: KnowledgeEntry) -> ResearchReportResponse | None
         return ResearchReportResponse.model_validate(report_payload)
     except Exception:
         return None
+
+
+def _load_stored_reports(
+    db: Session,
+) -> tuple[list[KnowledgeEntry], list[tuple[KnowledgeEntry, ResearchReportResponse]], int]:
+    settings = get_settings()
+    entries = db.scalars(
+        select(KnowledgeEntry)
+        .where(KnowledgeEntry.user_id == settings.single_user_id)
+        .where(KnowledgeEntry.source_domain == "research.report")
+        .order_by(desc(KnowledgeEntry.updated_at), desc(KnowledgeEntry.created_at))
+    ).all()
+    reports: list[tuple[KnowledgeEntry, ResearchReportResponse]] = []
+    invalid_payloads = 0
+    for entry in entries:
+        report = _parse_stored_report(entry)
+        if report is None:
+            invalid_payloads += 1
+            continue
+        reports.append((entry, report))
+    return entries, reports, invalid_payloads
 
 
 def _ranked_entity_names(values: Any) -> list[str]:
@@ -510,22 +541,7 @@ def build_offline_research_evaluation(
     *,
     weakest_limit: int = 6,
 ) -> ResearchOfflineEvaluationOut:
-    settings = get_settings()
-    entries = db.scalars(
-        select(KnowledgeEntry)
-        .where(KnowledgeEntry.user_id == settings.single_user_id)
-        .where(KnowledgeEntry.source_domain == "research.report")
-        .order_by(desc(KnowledgeEntry.updated_at), desc(KnowledgeEntry.created_at))
-    ).all()
-
-    reports: list[tuple[KnowledgeEntry, ResearchReportResponse]] = []
-    invalid_payloads = 0
-    for entry in entries:
-        report = _parse_stored_report(entry)
-        if report is None:
-            invalid_payloads += 1
-            continue
-        reports.append((entry, report))
+    entries, reports, invalid_payloads = _load_stored_reports(db)
 
     retrieval_hits = 0
     supported_target_total = 0
@@ -800,6 +816,358 @@ def build_offline_research_evaluation(
         generated_at=datetime.now(timezone.utc),
         total_reports=len(entries),
         evaluated_reports=len(reports),
+        invalid_payloads=invalid_payloads,
+        metrics=metrics,
+        weakest_reports=weak_reports[: max(1, min(weakest_limit, 12))],
+        summary_lines=summary_lines,
+    )
+
+
+def _query_recovery_enabled(report: ResearchReportResponse) -> bool:
+    diagnostics = report.source_diagnostics
+    return bool(
+        getattr(diagnostics, "expansion_triggered", False)
+        or getattr(diagnostics, "corrective_triggered", False)
+    )
+
+
+def _quota_pass_counts(reports: list[ResearchReportResponse]) -> tuple[int, int]:
+    numerator = 0
+    denominator = 0
+    for report in reports:
+        quota_sections = _quota_sections(report)
+        denominator += len(quota_sections)
+        numerator += sum(1 for section in quota_sections if bool(getattr(section, "meets_evidence_quota", False)))
+    return numerator, denominator
+
+
+def _experiment_arm(
+    *,
+    key: str,
+    label: str,
+    role: str,
+    numerator: int,
+    denominator: int,
+    summary: str,
+) -> ResearchExperimentArmOut:
+    rate = _safe_rate(numerator, denominator)
+    return ResearchExperimentArmOut(
+        key=key,
+        label=label,
+        role=role,  # type: ignore[arg-type]
+        numerator=numerator,
+        denominator=denominator,
+        rate=rate,
+        percent=_percent(rate),
+        summary=summary,
+    )
+
+
+def _experiment_lane_status(
+    baseline: ResearchExperimentArmOut,
+    candidate: ResearchExperimentArmOut,
+) -> str:
+    if baseline.denominator <= 0 or candidate.denominator <= 0:
+        return "insufficient"
+    if candidate.percent >= baseline.percent:
+        return "ready"
+    return "watch"
+
+
+def build_research_experiment_control_plane(
+    db: Session,
+) -> ResearchExperimentControlPlaneOut:
+    entries, stored_reports, invalid_payloads = _load_stored_reports(db)
+    reports = [report for _entry, report in stored_reports]
+
+    query_baseline_reports = [report for report in reports if not _query_recovery_enabled(report)]
+    query_candidate_reports = [report for report in reports if _query_recovery_enabled(report)]
+    query_baseline_hits = sum(1 for report in query_baseline_reports if _report_retrieval_hit(report))
+    query_candidate_hits = sum(1 for report in query_candidate_reports if _report_retrieval_hit(report))
+    query_baseline = _experiment_arm(
+        key="query_static",
+        label="未触发 query 扩展/纠偏",
+        role="baseline",
+        numerator=query_baseline_hits,
+        denominator=len(query_baseline_reports),
+        summary="按无需扩展/纠偏的存量研报统计严格检索命中率。",
+    )
+    query_candidate = _experiment_arm(
+        key="query_recovery",
+        label="已触发 query 扩展/纠偏",
+        role="candidate",
+        numerator=query_candidate_hits,
+        denominator=len(query_candidate_reports),
+        summary="按已进入扩展或纠偏链路的研报统计最终严格检索命中率。",
+    )
+
+    routing_baseline_reports: list[ResearchReportResponse] = []
+    routing_candidate_reports: list[ResearchReportResponse] = []
+    for report in reports:
+        diagnostics = report.followup_diagnostics
+        if not diagnostics.enabled:
+            continue
+        if diagnostics.impacted_sections:
+            routing_candidate_reports.append(report)
+        else:
+            routing_baseline_reports.append(report)
+    routing_baseline_passed, routing_baseline_total = _quota_pass_counts(routing_baseline_reports)
+    routing_candidate_passed, routing_candidate_total = _quota_pass_counts(routing_candidate_reports)
+    routing_baseline = _experiment_arm(
+        key="routing_without_delta",
+        label="追问未落到章节路由",
+        role="baseline",
+        numerator=routing_baseline_passed,
+        denominator=routing_baseline_total,
+        summary="追问已开启但未识别受影响章节的样本，观察其章节证据配额通过率。",
+    )
+    routing_candidate = _experiment_arm(
+        key="routing_with_delta",
+        label="追问已落到章节路由",
+        role="candidate",
+        numerator=routing_candidate_passed,
+        denominator=routing_candidate_total,
+        summary="追问已形成 impacted sections 的样本，观察其章节证据配额通过率。",
+    )
+
+    raw_official_hits = 0
+    raw_official_total = 0
+    reranked_official_hits = 0
+    reranked_official_total = 0
+    settings = get_settings()
+    for report in reports:
+        if not any(_source_is_official(source) for source in report.sources) or len(report.sources) <= 1:
+            continue
+        raw_official_total += 1
+        reranked_official_total += 1
+        if _has_official_source_at_k(report.sources, k=5):
+            raw_official_hits += 1
+        reranked_sources, _profile = rerank_sources_cross_encoder(
+            report.sources,
+            query=" ".join(
+                item
+                for item in [report.keyword, report.research_focus or "", *report.target_accounts[:3]]
+                if normalize_text(item)
+            ),
+            model_name=settings.research_cross_encoder_model,
+            top_k=min(settings.research_cross_encoder_top_k, 20),
+            backend="local",
+        )
+        if _has_official_source_at_k(reranked_sources, k=5):  # type: ignore[arg-type]
+            reranked_official_hits += 1
+    reranker_baseline = _experiment_arm(
+        key="reranker_raw_order",
+        label="原始来源顺序",
+        role="baseline",
+        numerator=raw_official_hits,
+        denominator=raw_official_total,
+        summary="同一批含官方源样本在原始来源顺序下的官方源 Recall@5。",
+    )
+    reranker_candidate = _experiment_arm(
+        key="reranker_cross_encoder",
+        label="CrossEncoder 复排",
+        role="candidate",
+        numerator=reranked_official_hits,
+        denominator=reranked_official_total,
+        summary="同一批样本经过 CrossEncoder adapter 复排后的官方源 Recall@5。",
+    )
+
+    lanes = [
+        ResearchExperimentLaneOut(
+            key="query_recovery",
+            label="Query 纠偏控制面",
+            metric_label="严格检索命中率",
+            baseline=query_baseline,
+            candidate=query_candidate,
+            uplift_points=query_candidate.percent - query_baseline.percent,
+            status=_experiment_lane_status(query_baseline, query_candidate),  # type: ignore[arg-type]
+            interpretation="这是 shadow cohort 观察，不等同于线上随机 A/B；候选组用于评估扩展/纠偏链路是否值得继续收敛。",
+        ),
+        ResearchExperimentLaneOut(
+            key="routing_followup",
+            label="Follow-up 路由控制面",
+            metric_label="章节证据配额通过率",
+            baseline=routing_baseline,
+            candidate=routing_candidate,
+            uplift_points=routing_candidate.percent - routing_baseline.percent,
+            status=_experiment_lane_status(routing_baseline, routing_candidate),  # type: ignore[arg-type]
+            interpretation="用追问是否真正落到 impacted sections 作为路由分流依据，重点看章节证据配额是否同步改善。",
+        ),
+        ResearchExperimentLaneOut(
+            key="reranker_official_recall",
+            label="Reranker 控制面",
+            metric_label="官方源 Recall@5",
+            baseline=reranker_baseline,
+            candidate=reranker_candidate,
+            uplift_points=reranker_candidate.percent - reranker_baseline.percent,
+            status=_experiment_lane_status(reranker_baseline, reranker_candidate),  # type: ignore[arg-type]
+            interpretation="这是同样本离线对照，可直接用于判断 CrossEncoder 复排是否保留在默认链路。",
+        ),
+    ]
+
+    summary_lines = [
+        f"已扫描 {len(entries)} 份研报，可进入控制面聚合的样本 {len(reports)} 份。",
+        "Query 与 follow-up 路由当前属于 shadow cohort，对外展示时应按诊断趋势理解；reranker 通道是同样本离线对照。",
+    ]
+    reranker_lane = lanes[-1]
+    if reranker_lane.status == "ready":
+        summary_lines.append(
+            f"CrossEncoder 复排相对原始来源顺序提升 {reranker_lane.uplift_points} 个百分点，可继续作为默认候选。"
+        )
+    elif reranker_lane.status == "watch":
+        summary_lines.append("CrossEncoder 复排暂未领先原始顺序，建议继续结合样本结构复核来源排序。")
+
+    return ResearchExperimentControlPlaneOut(
+        generated_at=datetime.now(timezone.utc),
+        total_reports=len(entries),
+        evaluated_reports=len(reports),
+        invalid_payloads=invalid_payloads,
+        lanes=lanes,
+        summary_lines=summary_lines,
+    )
+
+
+def build_followup_delta_evaluation(
+    db: Session,
+    *,
+    weakest_limit: int = 6,
+) -> ResearchFollowupDeltaEvaluationOut:
+    entries, stored_reports, invalid_payloads = _load_stored_reports(db)
+    followup_reports = [
+        (entry, report)
+        for entry, report in stored_reports
+        if report.followup_diagnostics.enabled
+    ]
+
+    title_resolved = 0
+    summary_resolved = 0
+    routed_reports = 0
+    impacted_section_total = 0
+    official_supported_sections = 0
+    weak_reports: list[ResearchFollowupDeltaWeakReportOut] = []
+
+    for entry, report in followup_reports:
+        diagnostics = report.followup_diagnostics
+        impacted_sections = list(diagnostics.impacted_sections or [])
+        impacted_section_total += len(impacted_sections)
+        official_hits = sum(1 for item in impacted_sections if int(item.official_hit_count or 0) > 0)
+        official_supported_sections += official_hits
+        if diagnostics.title_resolution != "baseline":
+            title_resolved += 1
+        if diagnostics.summary_resolution != "baseline":
+            summary_resolved += 1
+        if impacted_sections:
+            routed_reports += 1
+
+        weak_reasons: list[str] = []
+        if diagnostics.title_resolution == "baseline":
+            weak_reasons.append("标题 delta 未形成可见处理结果")
+        if diagnostics.summary_resolution == "baseline":
+            weak_reasons.append("摘要 delta 未形成可见处理结果")
+        if not impacted_sections:
+            weak_reasons.append("未识别受影响章节")
+        elif official_hits <= 0:
+            weak_reasons.append("受影响章节尚无官方源支撑")
+        if weak_reasons:
+            weak_reports.append(
+                ResearchFollowupDeltaWeakReportOut(
+                    entry_id=str(entry.id),
+                    entry_title=normalize_text(entry.title or "") or normalize_text(report.report_title or "") or "知识卡片",
+                    report_title=normalize_text(report.report_title or ""),
+                    keyword=normalize_text(report.keyword or ""),
+                    impacted_section_count=len(impacted_sections),
+                    official_supported_section_count=official_hits,
+                    title_resolution=diagnostics.title_resolution,
+                    summary_resolution=diagnostics.summary_resolution,
+                    weak_reasons=weak_reasons[:4],
+                )
+            )
+
+    metrics = [
+        ResearchFollowupDeltaMetricOut(
+            key="followup_title_resolution_rate",
+            label="追问标题处理覆盖率",
+            numerator=title_resolved,
+            denominator=len(followup_reports),
+            rate=_safe_rate(title_resolved, len(followup_reports)),
+            percent=_percent(_safe_rate(title_resolved, len(followup_reports))),
+            benchmark=_METRIC_BENCHMARKS["followup_title_resolution_rate"],
+            status=_metric_status(
+                _safe_rate(title_resolved, len(followup_reports)),
+                benchmark=_METRIC_BENCHMARKS["followup_title_resolution_rate"],
+            ),
+            summary="追问任务中，标题被识别为 reused/corrected 的比例。",
+        ),
+        ResearchFollowupDeltaMetricOut(
+            key="followup_summary_resolution_rate",
+            label="追问摘要处理覆盖率",
+            numerator=summary_resolved,
+            denominator=len(followup_reports),
+            rate=_safe_rate(summary_resolved, len(followup_reports)),
+            percent=_percent(_safe_rate(summary_resolved, len(followup_reports))),
+            benchmark=_METRIC_BENCHMARKS["followup_summary_resolution_rate"],
+            status=_metric_status(
+                _safe_rate(summary_resolved, len(followup_reports)),
+                benchmark=_METRIC_BENCHMARKS["followup_summary_resolution_rate"],
+            ),
+            summary="追问任务中，执行摘要被识别为 reused/corrected 的比例。",
+        ),
+        ResearchFollowupDeltaMetricOut(
+            key="followup_impacted_section_routing_rate",
+            label="追问章节路由命中率",
+            numerator=routed_reports,
+            denominator=len(followup_reports),
+            rate=_safe_rate(routed_reports, len(followup_reports)),
+            percent=_percent(_safe_rate(routed_reports, len(followup_reports))),
+            benchmark=_METRIC_BENCHMARKS["followup_impacted_section_routing_rate"],
+            status=_metric_status(
+                _safe_rate(routed_reports, len(followup_reports)),
+                benchmark=_METRIC_BENCHMARKS["followup_impacted_section_routing_rate"],
+            ),
+            summary="追问任务中，成功识别至少一个 impacted section 的比例。",
+        ),
+        ResearchFollowupDeltaMetricOut(
+            key="followup_delta_official_support_rate",
+            label="Delta 官方源支撑率",
+            numerator=official_supported_sections,
+            denominator=impacted_section_total,
+            rate=_safe_rate(official_supported_sections, impacted_section_total),
+            percent=_percent(_safe_rate(official_supported_sections, impacted_section_total)),
+            benchmark=_METRIC_BENCHMARKS["followup_delta_official_support_rate"],
+            status=_metric_status(
+                _safe_rate(official_supported_sections, impacted_section_total),
+                benchmark=_METRIC_BENCHMARKS["followup_delta_official_support_rate"],
+            ),
+            summary="已识别受影响章节中，至少具备一个官方命中的比例，用于衡量 delta evidence yield。",
+        ),
+    ]
+
+    weak_reports.sort(
+        key=lambda item: (
+            len(item.weak_reasons),
+            -item.official_supported_section_count,
+            -item.impacted_section_count,
+            item.report_title,
+        ),
+        reverse=True,
+    )
+    summary_lines = [
+        f"追问样本 {len(followup_reports)} 份，占全部可解析研报 {len(stored_reports)} 份中的一部分。",
+        (
+            f"章节路由命中率 {_percent(_safe_rate(routed_reports, len(followup_reports)))}%，"
+            f"delta 官方源支撑率 {_percent(_safe_rate(official_supported_sections, impacted_section_total))}%。"
+        ),
+    ]
+    if weak_reports:
+        summary_lines.append(
+            f"最弱样本《{weak_reports[0].report_title or weak_reports[0].entry_title}》仍存在"
+            f"{' / '.join(weak_reports[0].weak_reasons[:2])}。"
+        )
+
+    return ResearchFollowupDeltaEvaluationOut(
+        generated_at=datetime.now(timezone.utc),
+        total_reports=len(entries),
+        followup_reports=len(followup_reports),
         invalid_payloads=invalid_payloads,
         metrics=metrics,
         weakest_reports=weak_reports[: max(1, min(weakest_limit, 12))],
