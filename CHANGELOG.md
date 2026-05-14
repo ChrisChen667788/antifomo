@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.10+20260514 - 2026-05-14
+
+- Injected active experiment runtime config into report generation so query recovery and source-reranker policies can affect the actual research pipeline, not only retrieval APIs.
+- Added runtime strategy diagnostics to research source diagnostics, including applied/fallback lanes, warnings, query-recovery state, and source-reranker state.
+- Extended the experiment control panel with report-generation runtime config so operators can inspect query recovery and source reranker behavior before expanding rollout.
+
 ## 0.6.9+20260514 - 2026-05-14
 
 - Added an effective runtime config resolver for query generation, section routing, retrieval search, source reranking, and all-lane consumers.

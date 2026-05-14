@@ -213,6 +213,7 @@ async function main() {
   const browser = await puppeteer.launch({
     executablePath: chromePath,
     headless: args.headless ? "new" : false,
+    protocolTimeout: 120000,
     defaultViewport: {
       width: 1600,
       height: 1100,

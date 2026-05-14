@@ -793,6 +793,7 @@ export function ResearchCenter() {
   const [experimentOrchestration, setExperimentOrchestration] = useState<ApiResearchExperimentOrchestration | null>(null);
   const [experimentRuntimeSnapshot, setExperimentRuntimeSnapshot] = useState<ApiResearchExperimentRuntimeSnapshot | null>(null);
   const [experimentRuntimeConfig, setExperimentRuntimeConfig] = useState<ApiResearchExperimentEffectiveRuntimeConfig | null>(null);
+  const [experimentRuntimeAllConfig, setExperimentRuntimeAllConfig] = useState<ApiResearchExperimentEffectiveRuntimeConfig | null>(null);
   const [controlPlaneLoading, setControlPlaneLoading] = useState(true);
   const [controlPlaneRefreshing, setControlPlaneRefreshing] = useState(false);
   const [experimentPlanName, setExperimentPlanName] = useState("");
@@ -1004,8 +1005,9 @@ export function ResearchCenter() {
       getResearchExperimentOrchestration(),
       getResearchExperimentRuntimeSnapshot(),
       getResearchExperimentRuntimeConfig("retrieval_search"),
+      getResearchExperimentRuntimeConfig("all"),
     ])
-      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig]) => {
+      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig, runtimeAllConfig]) => {
         if (!active) return;
         setExperimentControlPlane(controlPlane);
         setFollowupDeltaEvaluation(followupDelta);
@@ -1013,6 +1015,7 @@ export function ResearchCenter() {
         setExperimentOrchestration(orchestration);
         setExperimentRuntimeSnapshot(runtimeSnapshot);
         setExperimentRuntimeConfig(runtimeConfig);
+        setExperimentRuntimeAllConfig(runtimeAllConfig);
       })
       .finally(() => {
         if (!active) return;
@@ -1128,13 +1131,14 @@ export function ResearchCenter() {
   const refreshControlPlaneDiagnostics = async () => {
     setControlPlaneRefreshing(true);
     try {
-      const [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig] = await Promise.all([
+      const [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig, runtimeAllConfig] = await Promise.all([
         getResearchExperimentControlPlane(),
         getResearchFollowupDeltaEvaluation(6),
         getResearchDeliveryExportDiagnostics(8),
         getResearchExperimentOrchestration(),
         getResearchExperimentRuntimeSnapshot(),
         getResearchExperimentRuntimeConfig("retrieval_search"),
+        getResearchExperimentRuntimeConfig("all"),
       ]);
       setExperimentControlPlane(controlPlane);
       setFollowupDeltaEvaluation(followupDelta);
@@ -1142,7 +1146,8 @@ export function ResearchCenter() {
       setExperimentOrchestration(orchestration);
       setExperimentRuntimeSnapshot(runtimeSnapshot);
       setExperimentRuntimeConfig(runtimeConfig);
-      return [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig] as const;
+      setExperimentRuntimeAllConfig(runtimeAllConfig);
+      return [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig, runtimeAllConfig] as const;
     } finally {
       setControlPlaneLoading(false);
       setControlPlaneRefreshing(false);
@@ -2553,6 +2558,37 @@ export function ResearchCenter() {
                       <p className="mt-2 text-sm leading-6 text-slate-600">
                         {experimentRuntimeSnapshot.summary_lines[0] || "当前没有可接入的运行时策略。"}
                       </p>
+                      {experimentRuntimeAllConfig ? (() => {
+                        const queryRuntime = (experimentRuntimeAllConfig.effective_config["query_generation"] || {}) as Record<string, unknown>;
+                        const rerankerRuntime = (experimentRuntimeAllConfig.effective_config["source_reranker"] || {}) as Record<string, unknown>;
+                        return (
+                          <div className="mt-2 grid gap-2 md:grid-cols-4">
+                            {[
+                              {
+                                label: "report query",
+                                value: String(queryRuntime["query_recovery_enabled"] ?? false),
+                              },
+                              {
+                                label: "corrective",
+                                value: String(queryRuntime["corrective_query_limit"] ?? 0),
+                              },
+                              {
+                                label: "source reranker",
+                                value: String(rerankerRuntime["reranker_adapter"] ?? "local_rrf"),
+                              },
+                              {
+                                label: "top k",
+                                value: String(rerankerRuntime["recall_at_k"] ?? 5),
+                              },
+                            ].map((item) => (
+                              <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
+                                <p className="mt-1 truncate text-xs font-semibold text-slate-700">{sanitizeExternalDisplayText(item.value)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })() : null}
                       {experimentRuntimeSnapshot.strategies.length ? (
                         <div className="mt-2 space-y-2">
                           {experimentRuntimeSnapshot.strategies.slice(0, 3).map((strategy) => {
@@ -2614,6 +2650,50 @@ export function ResearchCenter() {
                           </p>
                         </div>
                       ) : null}
+                      {experimentRuntimeAllConfig ? (() => {
+                        const queryRuntime = (experimentRuntimeAllConfig.effective_config["query_generation"] || {}) as Record<string, unknown>;
+                        const rerankerRuntime = (experimentRuntimeAllConfig.effective_config["source_reranker"] || {}) as Record<string, unknown>;
+                        return (
+                          <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                Report generation runtime
+                              </p>
+                              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeAllConfig.status)}`}>
+                                {experimentRuntimeStatusLabel(experimentRuntimeAllConfig.status)}
+                              </span>
+                            </div>
+                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                              {[
+                                {
+                                  label: "query recovery",
+                                  value: String(queryRuntime["query_recovery_enabled"] ?? false),
+                                },
+                                {
+                                  label: "corrective limit",
+                                  value: String(queryRuntime["corrective_query_limit"] ?? 0),
+                                },
+                                {
+                                  label: "source reranker",
+                                  value: String(rerankerRuntime["reranker_adapter"] ?? "local_rrf"),
+                                },
+                                {
+                                  label: "reranker top k",
+                                  value: String(rerankerRuntime["recall_at_k"] ?? 5),
+                                },
+                              ].map((item) => (
+                                <div key={item.label} className="rounded-xl border border-white bg-white px-2.5 py-2">
+                                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
+                                  <p className="mt-1 truncate text-xs font-semibold text-slate-700">{sanitizeExternalDisplayText(item.value)}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              {experimentRuntimeAllConfig.summary_lines[0] || "研报生成保持本地默认策略。"}
+                            </p>
+                          </div>
+                        );
+                      })() : null}
                       {experimentRuntimeSnapshot.warnings.length ? (
                         <p className="mt-2 text-xs leading-5 text-amber-700">
                           {experimentRuntimeSnapshot.warnings.slice(0, 2).map(sanitizeExternalDisplayText).join("；")}

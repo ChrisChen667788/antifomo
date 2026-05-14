@@ -283,6 +283,12 @@ export interface ApiResearchSourceDiagnostics {
   strategy_scope_summary: string;
   strategy_query_expansion_count: number;
   strategy_exclusion_terms: string[];
+  runtime_strategy_status?: "ready" | "degraded" | "fallback" | "";
+  runtime_strategy_applied_lanes?: Array<ApiResearchExperimentLane["key"]>;
+  runtime_strategy_fallback_lanes?: Array<ApiResearchExperimentLane["key"]>;
+  runtime_strategy_warnings?: string[];
+  runtime_query_recovery_enabled?: boolean;
+  runtime_source_reranker_enabled?: boolean;
   pipeline_summary: string;
   pipeline_stages: Array<{
     key: "fetch" | "clean" | "analyze";

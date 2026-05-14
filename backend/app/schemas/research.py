@@ -30,6 +30,7 @@ class ResearchReportRequest(BaseModel):
     include_wechat: bool = True
     research_mode: ResearchMode = "deep"
     max_sources: int = Field(default=14, ge=6, le=24)
+    runtime_strategy_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class ResearchSourceSettingsOut(BaseModel):
@@ -1110,6 +1111,12 @@ class ResearchSourceDiagnosticsOut(BaseModel):
     strategy_scope_summary: str = ""
     strategy_query_expansion_count: int = 0
     strategy_exclusion_terms: list[str] = Field(default_factory=list)
+    runtime_strategy_status: Literal["ready", "degraded", "fallback", ""] = ""
+    runtime_strategy_applied_lanes: list[ResearchExperimentLaneKey] = Field(default_factory=list)
+    runtime_strategy_fallback_lanes: list[ResearchExperimentLaneKey] = Field(default_factory=list)
+    runtime_strategy_warnings: list[str] = Field(default_factory=list)
+    runtime_query_recovery_enabled: bool = False
+    runtime_source_reranker_enabled: bool = False
     pipeline_summary: str = ""
     pipeline_stages: list[ResearchPipelineStageOut] = Field(default_factory=list)
 

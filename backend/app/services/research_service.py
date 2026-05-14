@@ -2243,12 +2243,20 @@ def _rerank_sources_hybrid(
     )
     if not reranker_enabled:
         return ranked
+    reranker_backend = normalize_text(str(mutable_scope_hints.get("runtime_reranker_backend") or settings.research_cross_encoder_backend))
+    reranker_top_k = _safe_int(
+        mutable_scope_hints.get("runtime_reranker_top_k"),
+        settings.research_cross_encoder_top_k,
+        minimum=1,
+        maximum=80,
+    )
+    reranker_model = normalize_text(str(mutable_scope_hints.get("runtime_reranker_model") or settings.research_cross_encoder_model))
     reranked, profile = rerank_sources_cross_encoder(
         ranked,
         query=retrieval_query,
-        model_name=settings.research_cross_encoder_model,
-        top_k=settings.research_cross_encoder_top_k,
-        backend=settings.research_cross_encoder_backend,
+        model_name=reranker_model,
+        top_k=reranker_top_k,
+        backend=reranker_backend,
     )
     mutable_scope_hints.update(profile.to_diagnostics_update())
     return list(reranked)
@@ -5337,6 +5345,61 @@ def _merge_scope_hints(
         ],
         6,
     )
+    runtime_strategy_applied_lanes = _dedupe_strings(
+        [
+            *(base.get("runtime_strategy_applied_lanes", []) or []),
+            *(refined.get("runtime_strategy_applied_lanes", []) or []),
+        ],
+        8,
+    )
+    runtime_strategy_fallback_lanes = _dedupe_strings(
+        [
+            *(base.get("runtime_strategy_fallback_lanes", []) or []),
+            *(refined.get("runtime_strategy_fallback_lanes", []) or []),
+        ],
+        8,
+    )
+    runtime_strategy_warnings = _dedupe_strings(
+        [
+            *(base.get("runtime_strategy_warnings", []) or []),
+            *(refined.get("runtime_strategy_warnings", []) or []),
+        ],
+        8,
+    )
+    runtime_strategy_status = normalize_text(str(refined.get("runtime_strategy_status") or base.get("runtime_strategy_status") or ""))
+    runtime_query_recovery_enabled = bool(base.get("runtime_query_recovery_enabled")) or bool(
+        refined.get("runtime_query_recovery_enabled")
+    )
+    runtime_source_reranker_enabled = bool(base.get("runtime_source_reranker_enabled")) or bool(
+        refined.get("runtime_source_reranker_enabled")
+    )
+    runtime_corrective_query_limit = _safe_int(
+        refined.get("runtime_corrective_query_limit") or base.get("runtime_corrective_query_limit"),
+        0,
+        minimum=0,
+        maximum=12,
+    )
+    runtime_public_expansion_on_watch = bool(base.get("runtime_public_expansion_on_watch")) or bool(
+        refined.get("runtime_public_expansion_on_watch")
+    )
+    runtime_reranker_adapter = normalize_text(str(refined.get("runtime_reranker_adapter") or base.get("runtime_reranker_adapter") or ""))
+    runtime_reranker_backend = normalize_text(str(refined.get("runtime_reranker_backend") or base.get("runtime_reranker_backend") or ""))
+    runtime_reranker_top_k = _safe_int(
+        refined.get("runtime_reranker_top_k") or base.get("runtime_reranker_top_k"),
+        0,
+        minimum=0,
+        maximum=20,
+    )
+    runtime_reranker_fallback_adapter = normalize_text(
+        str(refined.get("runtime_reranker_fallback_adapter") or base.get("runtime_reranker_fallback_adapter") or "")
+    )
+    runtime_official_source_bias = bool(base.get("runtime_official_source_bias")) or bool(
+        refined.get("runtime_official_source_bias")
+    )
+    enable_cross_encoder_rerank = bool(base.get("enable_cross_encoder_rerank")) or bool(
+        refined.get("enable_cross_encoder_rerank")
+    )
+    cross_encoder_rerank = bool(base.get("cross_encoder_rerank")) or bool(refined.get("cross_encoder_rerank"))
     anchor_text = normalize_text(" / ".join(regions[:2] + industries[:2] + clients[:2]))
     if not anchor_text:
         anchor_text = normalize_text(str(refined.get("anchor_text", ""))) or normalize_text(str(base.get("anchor_text", "")))
@@ -5363,6 +5426,21 @@ def _merge_scope_hints(
         "industry_methodology_bidding_lenses": industry_methodology_bidding_lenses,
         "industry_methodology_outreach_lenses": industry_methodology_outreach_lenses,
         "industry_methodology_ecosystem_lenses": industry_methodology_ecosystem_lenses,
+        "runtime_strategy_status": runtime_strategy_status,
+        "runtime_strategy_applied_lanes": runtime_strategy_applied_lanes,
+        "runtime_strategy_fallback_lanes": runtime_strategy_fallback_lanes,
+        "runtime_strategy_warnings": runtime_strategy_warnings,
+        "runtime_query_recovery_enabled": runtime_query_recovery_enabled,
+        "runtime_source_reranker_enabled": runtime_source_reranker_enabled,
+        "runtime_corrective_query_limit": runtime_corrective_query_limit,
+        "runtime_public_expansion_on_watch": runtime_public_expansion_on_watch,
+        "runtime_reranker_adapter": runtime_reranker_adapter,
+        "runtime_reranker_backend": runtime_reranker_backend,
+        "runtime_reranker_top_k": runtime_reranker_top_k,
+        "runtime_reranker_fallback_adapter": runtime_reranker_fallback_adapter,
+        "runtime_official_source_bias": runtime_official_source_bias,
+        "enable_cross_encoder_rerank": enable_cross_encoder_rerank,
+        "cross_encoder_rerank": cross_encoder_rerank,
     }
 
 
@@ -10014,6 +10092,12 @@ def _build_source_diagnostics(
         strategy_scope_summary=normalize_text(str(scope_hints.get("strategy_scope_summary", ""))),
         strategy_query_expansion_count=len(scope_hints.get("strategy_query_expansions", []) or []),
         strategy_exclusion_terms=_dedupe_strings(scope_hints.get("strategy_exclusion_terms", []) or [], 8),
+        runtime_strategy_status=normalize_text(str(scope_hints.get("runtime_strategy_status") or "")),
+        runtime_strategy_applied_lanes=_dedupe_strings(scope_hints.get("runtime_strategy_applied_lanes", []) or [], 8),
+        runtime_strategy_fallback_lanes=_dedupe_strings(scope_hints.get("runtime_strategy_fallback_lanes", []) or [], 8),
+        runtime_strategy_warnings=_dedupe_strings(scope_hints.get("runtime_strategy_warnings", []) or [], 8),
+        runtime_query_recovery_enabled=bool(scope_hints.get("runtime_query_recovery_enabled")),
+        runtime_source_reranker_enabled=bool(scope_hints.get("runtime_source_reranker_enabled")),
         reranker_used=bool(scope_hints.get("reranker_used")),
         reranker_model=normalize_text(str(scope_hints.get("reranker_model") or "")),
         reranker_top_k=int(scope_hints.get("reranker_top_k") or 0),
@@ -12030,11 +12114,140 @@ def _resolve_research_mode(payload: ResearchReportRequest) -> str:
     return "deep"
 
 
+def _safe_int(value: object, default: int, *, minimum: int = 0, maximum: int = 1000) -> int:
+    try:
+        parsed = int(value if value is not None else default)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _report_runtime_strategy_payload(payload: ResearchReportRequest) -> dict[str, Any]:
+    data = getattr(payload, "runtime_strategy_config", {}) or {}
+    return data if isinstance(data, dict) else {}
+
+
+def _runtime_consumer_payload(payload: ResearchReportRequest, consumer: str) -> dict[str, Any]:
+    data = _report_runtime_strategy_payload(payload).get(consumer)
+    return data if isinstance(data, dict) else {}
+
+
+def _runtime_consumer_effective_config(payload: ResearchReportRequest, consumer: str) -> dict[str, Any]:
+    data = _runtime_consumer_payload(payload, consumer)
+    effective = data.get("effective_config")
+    return effective if isinstance(effective, dict) else {}
+
+
+def _runtime_consumer_list(payload: ResearchReportRequest, consumer: str, key: str) -> list[str]:
+    data = _runtime_consumer_payload(payload, consumer)
+    values = data.get(key)
+    return _dedupe_strings(values if isinstance(values, list) else [], 8)
+
+
+def _runtime_consumer_status(payload: ResearchReportRequest, consumer: str) -> str:
+    return normalize_text(str(_runtime_consumer_payload(payload, consumer).get("status") or ""))
+
+
+def _runtime_consumer_warnings(payload: ResearchReportRequest, consumer: str) -> list[str]:
+    return _runtime_consumer_list(payload, consumer, "warnings")
+
+
+def _runtime_strategy_scope_hints(payload: ResearchReportRequest) -> dict[str, object]:
+    query_config = _runtime_consumer_effective_config(payload, "query_generation")
+    reranker_config = _runtime_consumer_effective_config(payload, "source_reranker")
+    query_enabled = bool(query_config.get("enabled") or query_config.get("query_recovery_enabled"))
+    reranker_enabled = bool(reranker_config.get("enabled"))
+    applied_lanes = _dedupe_strings(
+        [
+            *_runtime_consumer_list(payload, "query_generation", "applied_lanes"),
+            *_runtime_consumer_list(payload, "source_reranker", "applied_lanes"),
+        ],
+        8,
+    )
+    fallback_lanes = _dedupe_strings(
+        [
+            *_runtime_consumer_list(payload, "query_generation", "fallback_lanes"),
+            *_runtime_consumer_list(payload, "source_reranker", "fallback_lanes"),
+        ],
+        8,
+    )
+    warnings = _dedupe_strings(
+        [
+            *_runtime_consumer_warnings(payload, "query_generation"),
+            *_runtime_consumer_warnings(payload, "source_reranker"),
+        ],
+        8,
+    )
+    statuses = [
+        _runtime_consumer_status(payload, "query_generation"),
+        _runtime_consumer_status(payload, "source_reranker"),
+    ]
+    runtime_status = "fallback"
+    if "degraded" in statuses:
+        runtime_status = "degraded"
+    elif "ready" in statuses:
+        runtime_status = "ready"
+
+    reranker_adapter = normalize_text(str(reranker_config.get("reranker_adapter") or ""))
+    reranker_backend = "local"
+    if reranker_adapter == "sentence_transformers_cross_encoder":
+        reranker_backend = "sentence_transformers"
+    elif reranker_adapter and reranker_adapter != "local_rrf":
+        reranker_backend = "auto"
+
+    hints: dict[str, object] = {
+        "runtime_strategy_status": runtime_status,
+        "runtime_strategy_applied_lanes": applied_lanes,
+        "runtime_strategy_fallback_lanes": fallback_lanes,
+        "runtime_strategy_warnings": warnings,
+        "runtime_query_recovery_enabled": query_enabled,
+        "runtime_source_reranker_enabled": reranker_enabled,
+    }
+    if query_enabled:
+        hints["runtime_corrective_query_limit"] = _safe_int(
+            query_config.get("corrective_query_limit"),
+            4,
+            minimum=1,
+            maximum=12,
+        )
+        hints["runtime_public_expansion_on_watch"] = bool(query_config.get("public_expansion_on_watch"))
+    if reranker_enabled:
+        hints.update(
+            {
+                "enable_cross_encoder_rerank": reranker_adapter != "local_rrf",
+                "cross_encoder_rerank": reranker_adapter != "local_rrf",
+                "runtime_reranker_adapter": reranker_adapter or "local_rrf",
+                "runtime_reranker_backend": reranker_backend,
+                "runtime_reranker_top_k": _safe_int(reranker_config.get("recall_at_k"), 5, minimum=3, maximum=20),
+                "runtime_reranker_fallback_adapter": normalize_text(str(reranker_config.get("fallback_adapter") or "local_rrf")),
+                "runtime_official_source_bias": bool(reranker_config.get("official_source_bias", True)),
+            }
+        )
+    return hints
+
+
+def _apply_runtime_query_config(
+    runtime: dict[str, int | bool],
+    payload: ResearchReportRequest,
+) -> dict[str, int | bool]:
+    query_config = _runtime_consumer_effective_config(payload, "query_generation")
+    if not bool(query_config.get("enabled") or query_config.get("query_recovery_enabled")):
+        return runtime
+    corrective_limit = _safe_int(query_config.get("corrective_query_limit"), 4, minimum=1, maximum=12)
+    next_runtime = dict(runtime)
+    next_runtime["runtime_query_recovery_enabled"] = True
+    next_runtime["corrective_query_limit"] = corrective_limit
+    if bool(query_config.get("public_expansion_on_watch")):
+        next_runtime["enable_expansion"] = True
+        next_runtime["expanded_query_limit"] = max(int(next_runtime.get("expanded_query_limit", 3)), corrective_limit)
+    return next_runtime
+
+
 def _build_research_runtime(payload: ResearchReportRequest) -> dict[str, int | bool]:
     mode = _resolve_research_mode(payload)
     if mode == "fast":
         effective_max_sources = min(max(6, int(payload.max_sources)), 8)
-        return {
+        return _apply_runtime_query_config({
             "mode": 0,
             "query_limit": 4,
             "expanded_query_limit": 3,
@@ -12050,9 +12263,10 @@ def _build_research_runtime(payload: ResearchReportRequest) -> dict[str, int | b
             "expansion_min_sources": 4,
             "expansion_min_dimensions": 3,
             "enable_expansion": True,
-        }
+            "corrective_query_limit": 4,
+        }, payload)
     effective_max_sources = min(max(8, int(payload.max_sources)), 18)
-    return {
+    return _apply_runtime_query_config({
         "mode": 1,
         "query_limit": min(12, max(6, get_settings().research_search_query_limit)),
         "expanded_query_limit": 8,
@@ -12068,7 +12282,8 @@ def _build_research_runtime(payload: ResearchReportRequest) -> dict[str, int | b
         "expansion_min_sources": min(effective_max_sources, 6),
         "expansion_min_dimensions": 5,
         "enable_expansion": True,
-    }
+        "corrective_query_limit": 6,
+    }, payload)
 
 
 def _build_research_focus_terms(keyword: str, research_focus: str | None) -> list[str]:
@@ -14635,6 +14850,7 @@ def generate_research_report(
     )
     input_scope_hints = _infer_input_scope_hints(keyword, research_focus)
     input_scope_hints = _merge_scope_hints_with_followup_context(input_scope_hints, followup_scope_hints)
+    input_scope_hints = _merge_scope_hints(input_scope_hints, _runtime_strategy_scope_hints(payload))
     input_scope_hints = _apply_strategy_scope_planning(
         keyword=keyword,
         research_focus=research_focus,
@@ -15096,7 +15312,7 @@ def generate_research_report(
         research_focus=research_focus,
         scope_hints=scope_hints,
         query_plan=effective_query_plan,
-        corrective_query_limit=max(4, min(int(runtime["expanded_query_limit"]) + 2, 10)),
+        corrective_query_limit=int(runtime.get("corrective_query_limit", 6)),
     )
     if (
         len(sources) == 0
@@ -15119,11 +15335,11 @@ def generate_research_report(
             scope_hints=scope_hints,
             include_wechat=payload.include_wechat,
             preferred_wechat_accounts=preferred_wechat_accounts,
-            limit=max(4, min(int(runtime["expanded_query_limit"]) + 2, 10)),
+            limit=int(runtime.get("corrective_query_limit", 6)),
         )
         corrective_query_plan = _dedupe_strings(
             [*retrieval_correction_profile.corrective_queries, *corrective_query_plan],
-            max(4, min(int(runtime["expanded_query_limit"]) + 4, 12)),
+            max(4, min(int(runtime.get("corrective_query_limit", 6)) + 2, 12)),
         )
         corrective_hits: list[SearchHit] = _build_company_seed_hits(seed_companies, keyword=keyword)
         for query in corrective_query_plan:
@@ -15251,7 +15467,7 @@ def generate_research_report(
         research_focus=research_focus,
         scope_hints=scope_hints,
         query_plan=effective_query_plan,
-        corrective_query_limit=6,
+        corrective_query_limit=int(runtime.get("corrective_query_limit", 6)),
     )
     entity_graph = _build_entity_graph(
         sources,

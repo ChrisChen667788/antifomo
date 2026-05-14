@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from app.services import research_service
-from app.schemas.research import ResearchEntityGraphOut, ResearchRankedEntityOut, ResearchReportDocument, ResearchReportSectionOut
+from app.schemas.research import (
+    ResearchEntityGraphOut,
+    ResearchRankedEntityOut,
+    ResearchReportDocument,
+    ResearchReportRequest,
+    ResearchReportSectionOut,
+)
 
 
 def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
@@ -235,6 +241,97 @@ def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagn
     assert scope_hints["reranker_model"]
     assert scope_hints["reranker_top_k"] >= 1
     assert scope_hints["reranker_notes"]
+
+
+def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatch) -> None:
+    payload = ResearchReportRequest(
+        keyword="南京市数据局 政务云",
+        research_focus="核验采购意向、预算窗口和官方来源",
+        runtime_strategy_config={
+            "query_generation": {
+                "status": "ready",
+                "applied_lanes": ["query_recovery"],
+                "fallback_lanes": [],
+                "warnings": [],
+                "effective_config": {
+                    "enabled": True,
+                    "query_recovery_enabled": True,
+                    "public_expansion_on_watch": True,
+                    "corrective_query_limit": 7,
+                },
+            },
+            "source_reranker": {
+                "status": "ready",
+                "applied_lanes": ["reranker_official_recall"],
+                "fallback_lanes": [],
+                "warnings": [],
+                "effective_config": {
+                    "enabled": True,
+                    "reranker_adapter": "sentence_transformers_cross_encoder",
+                    "official_source_bias": True,
+                    "recall_at_k": 7,
+                    "fallback_adapter": "local_rrf",
+                },
+            },
+        },
+    )
+
+    runtime = research_service._build_research_runtime(payload)
+    hints = research_service._runtime_strategy_scope_hints(payload)
+
+    assert runtime["runtime_query_recovery_enabled"] is True
+    assert runtime["corrective_query_limit"] == 7
+    assert hints["runtime_strategy_status"] == "ready"
+    assert hints["runtime_query_recovery_enabled"] is True
+    assert hints["runtime_source_reranker_enabled"] is True
+    assert hints["enable_cross_encoder_rerank"] is True
+    assert hints["runtime_reranker_backend"] == "sentence_transformers"
+    assert hints["runtime_reranker_top_k"] == 7
+
+    captured: dict[str, object] = {}
+
+    class _FakeRerankProfile:
+        def to_diagnostics_update(self) -> dict[str, object]:
+            return {
+                "reranker_used": True,
+                "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                "reranker_top_k": 7,
+                "reranker_backend": "sentence-transformers",
+                "reranker_notes": ["runtime strategy test"],
+            }
+
+    def _fake_rerank(sources, *, query, model_name, top_k=20, backend="auto"):
+        captured.update({"top_k": top_k, "backend": backend})
+        return list(sources), _FakeRerankProfile()
+
+    monkeypatch.setattr(research_service, "rerank_sources_cross_encoder", _fake_rerank)
+    scope_hints = {
+        "enable_cross_encoder_rerank": True,
+        "runtime_reranker_backend": "sentence_transformers",
+        "runtime_reranker_top_k": 7,
+    }
+    research_service._rerank_sources_hybrid(
+        [
+            research_service.SourceDocument(
+                title="南京市数据局电子政务云采购意向公告",
+                url="https://www.nanjing.gov.cn/data/procurement-intent",
+                domain="www.nanjing.gov.cn",
+                snippet="官方公告披露采购意向、预算安排和后续项目建设路径。",
+                search_query=payload.keyword,
+                source_type="policy",
+                content_status="browser_extracted",
+                excerpt="南京市数据局电子政务云采购意向公告披露预算安排、采购意向和项目建设路径。",
+                source_label="官网",
+                source_tier="official",
+                source_origin="search",
+            )
+        ],
+        keyword=payload.keyword,
+        research_focus=payload.research_focus,
+        scope_hints=scope_hints,
+    )
+
+    assert captured == {"top_k": 7, "backend": "sentence_transformers"}
 
 
 def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:

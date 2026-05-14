@@ -497,6 +497,22 @@ def _build_source_settings_out() -> ResearchSourceSettingsOut:
     )
 
 
+def _with_runtime_generation_strategy(
+    db: Session,
+    payload: ResearchReportRequest,
+) -> ResearchReportRequest:
+    runtime_strategy_config = dict(payload.runtime_strategy_config or {})
+    query_config = resolve_research_experiment_runtime_config(db, consumer="query_generation")
+    reranker_config = resolve_research_experiment_runtime_config(db, consumer="source_reranker")
+    runtime_strategy_config.update(
+        {
+            "query_generation": query_config.model_dump(mode="json"),
+            "source_reranker": reranker_config.model_dump(mode="json"),
+        }
+    )
+    return payload.model_copy(update={"runtime_strategy_config": runtime_strategy_config})
+
+
 def _refresh_tracking_topic_core(
     db: Session,
     *,
@@ -515,7 +531,7 @@ def _refresh_tracking_topic_core(
         max_sources=payload.max_sources,
     )
     try:
-        report = generate_research_report(request_payload)
+        report = generate_research_report(_with_runtime_generation_strategy(db, request_payload))
         action_cards = build_research_action_cards(report)
         saved_entry_id: str | None = None
         saved_entry_title: str | None = None
@@ -1470,14 +1486,18 @@ def resolve_research_entity_alias(
 
 
 @router.post("/report", response_model=ResearchReportResponse)
-def create_research_report(payload: ResearchReportRequest) -> ResearchReportResponse:
-    return generate_research_report(payload)
+def create_research_report(
+    payload: ResearchReportRequest,
+    db: Session = Depends(get_db),
+) -> ResearchReportResponse:
+    ensure_demo_user(db)
+    return generate_research_report(_with_runtime_generation_strategy(db, payload))
 
 
 @router.post("/jobs", response_model=ResearchJobOut)
 def create_research_job(payload: ResearchJobCreateRequest, db: Session = Depends(get_db)) -> ResearchJobOut:
     ensure_demo_user(db)
-    return start_research_job(payload)
+    return start_research_job(_with_runtime_generation_strategy(db, payload))
 
 
 @router.get("/jobs/{job_id}", response_model=ResearchJobOut)
