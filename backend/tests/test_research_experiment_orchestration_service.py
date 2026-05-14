@@ -17,6 +17,7 @@ from app.schemas.research import (
 )
 from app.services.research_experiment_orchestration_service import (
     build_research_experiment_orchestration,
+    build_research_experiment_runtime_snapshot,
     create_research_experiment_plan,
     evaluate_research_experiment_rollout_gate,
     freeze_research_experiment_cohort,
@@ -206,6 +207,14 @@ def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
         assert active_orchestration.active_policy_count == 1
         assert active_orchestration.active_policy_conflict_count == 0
         assert active_orchestration.active_policies[0].plan_id == allowed_created["id"]
+        active_runtime = build_research_experiment_runtime_snapshot(db)
+        assert active_runtime.status in {"ready", "degraded"}
+        assert active_runtime.policy_count == 1
+        assert active_runtime.strategy_count == 1
+        assert active_runtime.strategies[0].lane_key == "reranker_official_recall"
+        assert active_runtime.runtime_config["reranker_official_recall"]["enabled"] is True
+        assert active_runtime.runtime_config["reranker_official_recall"]["reranker_adapter"] == "sentence_transformers_cross_encoder"
+        assert active_runtime.runtime_config["query_recovery"]["enabled"] is False
 
         superseding_created = create_research_experiment_plan(
             db,
@@ -237,6 +246,10 @@ def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
         assert superseded_orchestration.revoked_plan_count == 1
         assert superseded_orchestration.active_policy_count == 1
         assert superseded_orchestration.active_policies[0].plan_id == superseding_created["id"]
+        superseded_runtime = build_research_experiment_runtime_snapshot(db)
+        assert superseded_runtime.policy_count == 1
+        assert superseded_runtime.conflict_count == 0
+        assert superseded_runtime.strategies[0].plan_id == superseding_created["id"]
 
         revoked = revoke_research_experiment_rollout(
             db,
@@ -256,5 +269,9 @@ def test_experiment_plan_audits_gate_history_and_rollout_manifest() -> None:
         assert orchestration.promoted_plan_count == 0
         assert orchestration.revoked_plan_count == 2
         assert orchestration.active_policy_count == 0
+        empty_runtime = build_research_experiment_runtime_snapshot(db)
+        assert empty_runtime.status == "empty"
+        assert empty_runtime.policy_count == 0
+        assert empty_runtime.runtime_config["reranker_official_recall"]["enabled"] is False
     finally:
         db.close()

@@ -10,6 +10,7 @@ import {
   ApiResearchExperimentControlPlane,
   ApiResearchExperimentOrchestration,
   ApiResearchExperimentPlan,
+  ApiResearchExperimentRuntimeSnapshot,
   ApiResearchFollowupDeltaEvaluation,
   ApiResearchLowQualityReviewQueue,
   ApiResearchLowQualityReviewQueueItem,
@@ -36,6 +37,7 @@ import {
   getResearchDeliveryExportDiagnostics,
   getResearchExperimentControlPlane,
   getResearchExperimentOrchestration,
+  getResearchExperimentRuntimeSnapshot,
   getResearchFollowupDeltaEvaluation,
   getResearchMarkdownArchive,
   getResearchOfflineEvaluation,
@@ -650,6 +652,18 @@ function experimentGateDecisionTone(decision?: string | null) {
   return "bg-slate-100 text-slate-600";
 }
 
+function experimentRuntimeStatusLabel(status?: string | null) {
+  if (status === "ready") return "可接入";
+  if (status === "degraded") return "有告警";
+  return "未启用";
+}
+
+function experimentRuntimeStatusTone(status?: string | null) {
+  if (status === "ready") return "bg-emerald-100 text-emerald-700";
+  if (status === "degraded") return "bg-amber-100 text-amber-700";
+  return "bg-slate-100 text-slate-600";
+}
+
 function watchlistAutomationStatusLabel(status?: string | null) {
   if (status === "ok") return "最近运行正常";
   if (status === "partial_failure") return "最近运行部分失败";
@@ -775,6 +789,7 @@ export function ResearchCenter() {
   const [followupDeltaEvaluation, setFollowupDeltaEvaluation] = useState<ApiResearchFollowupDeltaEvaluation | null>(null);
   const [deliveryExportDiagnostics, setDeliveryExportDiagnostics] = useState<ApiResearchDeliveryExportDiagnostics | null>(null);
   const [experimentOrchestration, setExperimentOrchestration] = useState<ApiResearchExperimentOrchestration | null>(null);
+  const [experimentRuntimeSnapshot, setExperimentRuntimeSnapshot] = useState<ApiResearchExperimentRuntimeSnapshot | null>(null);
   const [controlPlaneLoading, setControlPlaneLoading] = useState(true);
   const [controlPlaneRefreshing, setControlPlaneRefreshing] = useState(false);
   const [experimentPlanName, setExperimentPlanName] = useState("");
@@ -984,13 +999,15 @@ export function ResearchCenter() {
       getResearchFollowupDeltaEvaluation(6),
       getResearchDeliveryExportDiagnostics(8),
       getResearchExperimentOrchestration(),
+      getResearchExperimentRuntimeSnapshot(),
     ])
-      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration]) => {
+      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot]) => {
         if (!active) return;
         setExperimentControlPlane(controlPlane);
         setFollowupDeltaEvaluation(followupDelta);
         setDeliveryExportDiagnostics(exportDiagnostics);
         setExperimentOrchestration(orchestration);
+        setExperimentRuntimeSnapshot(runtimeSnapshot);
       })
       .finally(() => {
         if (!active) return;
@@ -1106,17 +1123,19 @@ export function ResearchCenter() {
   const refreshControlPlaneDiagnostics = async () => {
     setControlPlaneRefreshing(true);
     try {
-      const [controlPlane, followupDelta, exportDiagnostics, orchestration] = await Promise.all([
+      const [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot] = await Promise.all([
         getResearchExperimentControlPlane(),
         getResearchFollowupDeltaEvaluation(6),
         getResearchDeliveryExportDiagnostics(8),
         getResearchExperimentOrchestration(),
+        getResearchExperimentRuntimeSnapshot(),
       ]);
       setExperimentControlPlane(controlPlane);
       setFollowupDeltaEvaluation(followupDelta);
       setDeliveryExportDiagnostics(exportDiagnostics);
       setExperimentOrchestration(orchestration);
-      return [controlPlane, followupDelta, exportDiagnostics, orchestration] as const;
+      setExperimentRuntimeSnapshot(runtimeSnapshot);
+      return [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot] as const;
     } finally {
       setControlPlaneLoading(false);
       setControlPlaneRefreshing(false);
@@ -2512,6 +2531,45 @@ export function ResearchCenter() {
                           </p>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+                  {experimentRuntimeSnapshot ? (
+                    <div className="mt-3 rounded-2xl border border-white bg-white px-3 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          Runtime strategy snapshot
+                        </p>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeSnapshot.status)}`}>
+                          {experimentRuntimeStatusLabel(experimentRuntimeSnapshot.status)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        {experimentRuntimeSnapshot.summary_lines[0] || "当前没有可接入的运行时策略。"}
+                      </p>
+                      {experimentRuntimeSnapshot.strategies.length ? (
+                        <div className="mt-2 space-y-2">
+                          {experimentRuntimeSnapshot.strategies.slice(0, 3).map((strategy) => {
+                            const configPreview = Object.entries(strategy.runtime_config)
+                              .slice(0, 4)
+                              .map(([key, value]) => `${key}: ${String(value)}`)
+                              .join(" / ");
+                            return (
+                              <div key={`${strategy.lane_key}-${strategy.plan_id}`} className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-sm font-semibold text-slate-900">{sanitizeExternalDisplayText(strategy.candidate_label)}</p>
+                                  <span className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{strategy.lane_key}</span>
+                                </div>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">{sanitizeExternalDisplayText(configPreview)}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                      {experimentRuntimeSnapshot.warnings.length ? (
+                        <p className="mt-2 text-xs leading-5 text-amber-700">
+                          {experimentRuntimeSnapshot.warnings.slice(0, 2).map(sanitizeExternalDisplayText).join("；")}
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -43,6 +43,7 @@ from app.schemas.research import (
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
     ResearchExperimentRolloutActionRequest,
+    ResearchExperimentRuntimeSnapshotOut,
     ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
     ResearchJobCreateRequest,
@@ -88,6 +89,7 @@ from app.services.research_solution_intelligence_service import build_market_int
 from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
 from app.services.research_experiment_orchestration_service import (
     build_research_experiment_orchestration,
+    build_research_experiment_runtime_snapshot,
     create_research_experiment_plan,
     evaluate_research_experiment_rollout_gate,
     freeze_research_experiment_cohort,
@@ -660,6 +662,14 @@ def get_research_experiment_active_policies(
 ) -> list[ResearchExperimentActivePolicyOut]:
     ensure_demo_user(db)
     return list_research_experiment_active_policies(db)
+
+
+@router.get("/experiments/runtime-snapshot", response_model=ResearchExperimentRuntimeSnapshotOut)
+def get_research_experiment_runtime_snapshot(
+    db: Session = Depends(get_db),
+) -> ResearchExperimentRuntimeSnapshotOut:
+    ensure_demo_user(db)
+    return build_research_experiment_runtime_snapshot(db)
 
 
 @router.post("/experiments/plans", response_model=ResearchExperimentPlanOut)

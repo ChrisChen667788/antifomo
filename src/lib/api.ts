@@ -1443,6 +1443,36 @@ export interface ApiResearchExperimentActivePolicy {
   conflict_plan_ids: string[];
 }
 
+export interface ApiResearchExperimentRuntimeStrategy {
+  lane_key: ApiResearchExperimentLane["key"];
+  plan_id: string;
+  plan_name: string;
+  strategy_family: "query_plan" | "routing_policy" | "reranker";
+  candidate_label: string;
+  enabled: boolean;
+  promoted_version_label: string;
+  baseline_version_label: string;
+  promoted_at?: string | null;
+  gate_evaluated_at?: string | null;
+  runtime_config: Record<string, unknown>;
+  gate: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  warnings: string[];
+}
+
+export interface ApiResearchExperimentRuntimeSnapshot {
+  generated_at: string;
+  project_version_label: string;
+  status: "ready" | "degraded" | "empty";
+  policy_count: number;
+  conflict_count: number;
+  strategy_count: number;
+  runtime_config: Record<string, unknown>;
+  strategies: ApiResearchExperimentRuntimeStrategy[];
+  warnings: string[];
+  summary_lines: string[];
+}
+
 export interface ApiResearchExperimentPlan {
   id: string;
   name: string;
@@ -2878,6 +2908,23 @@ export function getResearchExperimentActivePolicies(): Promise<ApiResearchExperi
   return request<ApiResearchExperimentActivePolicy[]>("/api/research/experiments/active-policies", {
     method: "GET",
   }).catch(() => []);
+}
+
+export function getResearchExperimentRuntimeSnapshot(): Promise<ApiResearchExperimentRuntimeSnapshot> {
+  return request<ApiResearchExperimentRuntimeSnapshot>("/api/research/experiments/runtime-snapshot", {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    project_version_label: "",
+    status: "empty",
+    policy_count: 0,
+    conflict_count: 0,
+    strategy_count: 0,
+    runtime_config: {},
+    strategies: [],
+    warnings: [],
+    summary_lines: [],
+  }));
 }
 
 export function createResearchExperimentPlan(payload: {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.8+20260514 - 2026-05-14
+
+- Added a runtime strategy snapshot for promoted experiment policies, translating active query/routing/reranker lanes into explicit runtime config with provenance, gate metrics, and version-drift warnings.
+- Added `/api/research/experiments/runtime-snapshot` so downstream strategy readers can consume the current default policy set without reparsing rollout manifests.
+- Surfaced the runtime snapshot in the research-center experiment panel, including ready/degraded/empty status, lane config previews, and conflict or version warnings.
+
 ## 0.6.7+20260513 - 2026-05-13
 
 - Added an active experiment policy registry that resolves promoted rollout manifests into one current strategy per lane and reports any remaining same-lane conflicts.

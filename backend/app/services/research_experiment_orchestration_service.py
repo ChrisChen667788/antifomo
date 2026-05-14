@@ -21,6 +21,8 @@ from app.schemas.research import (
     ResearchExperimentRolloutManifestOut,
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
+    ResearchExperimentRuntimeSnapshotOut,
+    ResearchExperimentRuntimeStrategyOut,
     ResearchExperimentRolloutGateOut,
 )
 from app.services.content_extractor import normalize_text
@@ -226,6 +228,191 @@ def _active_policies_from_plans(
 def list_research_experiment_active_policies(db: Session) -> list[ResearchExperimentActivePolicyOut]:
     plans = [ResearchExperimentPlanOut(**item) for item in list_research_experiment_plans(db)]
     return _active_policies_from_plans(plans)
+
+
+def _bool_config_value(payload: dict[str, Any], key: str, default: bool) -> bool:
+    value = payload.get(key)
+    if isinstance(value, bool):
+        return value
+    return default
+
+
+def _int_config_value(payload: dict[str, Any], key: str, default: int, *, minimum: int = 0, maximum: int = 1000) -> int:
+    try:
+        value = int(payload.get(key, default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def _float_config_value(
+    payload: dict[str, Any],
+    key: str,
+    default: float,
+    *,
+    minimum: float = 0.0,
+    maximum: float = 10.0,
+) -> float:
+    try:
+        value = float(payload.get(key, default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def _disabled_runtime_config(lane_key: str) -> dict[str, Any]:
+    if lane_key == "query_recovery":
+        return {
+            "enabled": False,
+            "query_recovery_enabled": False,
+            "public_expansion_on_watch": False,
+            "corrective_query_limit": 0,
+        }
+    if lane_key == "routing_followup":
+        return {
+            "enabled": False,
+            "followup_delta_routing_enabled": False,
+            "section_router": "baseline",
+            "parent_block_boost": 1.0,
+            "delta_evidence_min_yield": 0,
+        }
+    if lane_key == "reranker_official_recall":
+        return {
+            "enabled": False,
+            "reranker_adapter": "local_rrf",
+            "official_source_bias": False,
+            "recall_at_k": 5,
+            "fallback_adapter": "local_rrf",
+        }
+    return {"enabled": False}
+
+
+def _runtime_config_for_policy(policy: ResearchExperimentActivePolicyOut) -> dict[str, Any]:
+    activation_payload = _dict(policy.activation_payload)
+    strategy_payload = _dict(activation_payload.get("strategy_payload"))
+    if policy.lane_key == "query_recovery":
+        return {
+            "enabled": True,
+            "query_recovery_enabled": _bool_config_value(strategy_payload, "query_recovery_enabled", True),
+            "public_expansion_on_watch": _bool_config_value(strategy_payload, "public_expansion_on_watch", True),
+            "corrective_query_limit": _int_config_value(strategy_payload, "corrective_query_limit", 4, minimum=1, maximum=12),
+        }
+    if policy.lane_key == "routing_followup":
+        section_router = normalize_text(str(strategy_payload.get("section_router") or "parent_block_boost"))
+        return {
+            "enabled": True,
+            "followup_delta_routing_enabled": _bool_config_value(strategy_payload, "followup_delta_routing_enabled", True),
+            "section_router": section_router or "parent_block_boost",
+            "parent_block_boost": _float_config_value(strategy_payload, "parent_block_boost", 1.15, minimum=1.0, maximum=2.5),
+            "delta_evidence_min_yield": _int_config_value(strategy_payload, "delta_evidence_min_yield", 2, minimum=1, maximum=20),
+        }
+    if policy.lane_key == "reranker_official_recall":
+        adapter = normalize_text(str(strategy_payload.get("reranker_adapter") or "sentence_transformers_cross_encoder"))
+        fallback_adapter = normalize_text(str(strategy_payload.get("fallback_adapter") or "local_rrf"))
+        return {
+            "enabled": True,
+            "reranker_adapter": adapter or "sentence_transformers_cross_encoder",
+            "official_source_bias": _bool_config_value(strategy_payload, "official_source_bias", True),
+            "recall_at_k": _int_config_value(strategy_payload, "recall_at_k", 5, minimum=3, maximum=20),
+            "fallback_adapter": fallback_adapter or "local_rrf",
+        }
+    return {"enabled": True, **strategy_payload}
+
+
+def _runtime_strategy_from_policy(
+    policy: ResearchExperimentActivePolicyOut,
+    *,
+    project_version_label: str,
+) -> ResearchExperimentRuntimeStrategyOut:
+    warnings: list[str] = []
+    if policy.conflict_plan_ids:
+        warnings.append(f"同 lane 仍存在 {len(policy.conflict_plan_ids)} 个旧 active manifest。")
+    if policy.promoted_version_label and policy.promoted_version_label != project_version_label:
+        warnings.append(
+            f"策略在 {policy.promoted_version_label} 确认，当前代码版本为 {project_version_label}，建议重新判定 gate。"
+        )
+    activation_payload = _dict(policy.activation_payload)
+    rollout_gate = _dict(activation_payload.get("rollout_gate"))
+    return ResearchExperimentRuntimeStrategyOut(
+        lane_key=policy.lane_key,
+        plan_id=policy.plan_id,
+        plan_name=policy.plan_name,
+        strategy_family=policy.strategy_family,
+        candidate_label=policy.candidate_label,
+        enabled=True,
+        promoted_version_label=policy.promoted_version_label,
+        baseline_version_label=policy.baseline_version_label,
+        promoted_at=policy.promoted_at,
+        gate_evaluated_at=policy.gate_evaluated_at,
+        runtime_config=_runtime_config_for_policy(policy),
+        gate={
+            "candidate_percent": policy.candidate_percent,
+            "observed_uplift_points": policy.observed_uplift_points,
+            "sample_size": policy.sample_size,
+            "decision": rollout_gate.get("decision") or "promoted",
+        },
+        provenance={
+            "plan_id": policy.plan_id,
+            "plan_name": policy.plan_name,
+            "baseline_version_label": policy.baseline_version_label,
+            "promoted_version_label": policy.promoted_version_label,
+            "conflict_plan_ids": policy.conflict_plan_ids,
+        },
+        warnings=warnings,
+    )
+
+
+def build_research_experiment_runtime_snapshot(db: Session) -> ResearchExperimentRuntimeSnapshotOut:
+    project_version_label = _project_version_label()
+    policies = list_research_experiment_active_policies(db)
+    strategies = [
+        _runtime_strategy_from_policy(policy, project_version_label=project_version_label)
+        for policy in policies
+    ]
+    runtime_config = {
+        "query_recovery": _disabled_runtime_config("query_recovery"),
+        "routing_followup": _disabled_runtime_config("routing_followup"),
+        "reranker_official_recall": _disabled_runtime_config("reranker_official_recall"),
+    }
+    for strategy in strategies:
+        runtime_config[strategy.lane_key] = {
+            **strategy.runtime_config,
+            "plan_id": strategy.plan_id,
+            "candidate_label": strategy.candidate_label,
+            "promoted_version_label": strategy.promoted_version_label,
+        }
+    conflict_count = sum(len(policy.conflict_plan_ids) for policy in policies)
+    warnings = [warning for strategy in strategies for warning in strategy.warnings]
+    if conflict_count:
+        warnings.append("检测到同 lane 策略冲突，运行时只会采用最近确认的一条策略。")
+    status: str
+    if not policies:
+        status = "empty"
+    elif warnings:
+        status = "degraded"
+    else:
+        status = "ready"
+    summary_lines = [
+        f"运行时策略快照包含 {len(strategies)} 条 active 策略，覆盖 {', '.join(strategy.lane_key for strategy in strategies) or '暂无 lane'}。",
+    ]
+    if status == "ready":
+        summary_lines.append("当前没有版本漂移或同 lane 冲突，可作为默认策略配置输入。")
+    elif status == "empty":
+        summary_lines.append("当前没有 promoted rollout manifest，运行时保持保守默认策略。")
+    else:
+        summary_lines.append("当前策略可读但存在告警，建议重新判定 gate 或撤回旧 manifest 后再扩大 rollout。")
+    return ResearchExperimentRuntimeSnapshotOut(
+        generated_at=_utc_now(),
+        project_version_label=project_version_label,
+        status=status,  # type: ignore[arg-type]
+        policy_count=len(policies),
+        conflict_count=conflict_count,
+        strategy_count=len(strategies),
+        runtime_config=runtime_config,
+        strategies=strategies,
+        warnings=warnings,
+        summary_lines=summary_lines,
+    )
 
 
 def build_research_experiment_orchestration(db: Session) -> ResearchExperimentOrchestrationOut:

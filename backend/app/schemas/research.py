@@ -435,6 +435,36 @@ class ResearchExperimentActivePolicyOut(BaseModel):
     conflict_plan_ids: list[str] = Field(default_factory=list)
 
 
+class ResearchExperimentRuntimeStrategyOut(BaseModel):
+    lane_key: ResearchExperimentLaneKey
+    plan_id: str
+    plan_name: str = ""
+    strategy_family: ResearchExperimentStrategyFamily
+    candidate_label: str = ""
+    enabled: bool = True
+    promoted_version_label: str = ""
+    baseline_version_label: str = ""
+    promoted_at: datetime | None = None
+    gate_evaluated_at: datetime | None = None
+    runtime_config: dict[str, Any] = Field(default_factory=dict)
+    gate: dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ResearchExperimentRuntimeSnapshotOut(BaseModel):
+    generated_at: datetime
+    project_version_label: str = ""
+    status: Literal["ready", "degraded", "empty"] = "empty"
+    policy_count: int = 0
+    conflict_count: int = 0
+    strategy_count: int = 0
+    runtime_config: dict[str, Any] = Field(default_factory=dict)
+    strategies: list[ResearchExperimentRuntimeStrategyOut] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
 class ResearchExperimentPlanOut(BaseModel):
     id: str
     name: str
