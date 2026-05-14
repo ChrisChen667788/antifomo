@@ -1473,6 +1473,20 @@ export interface ApiResearchExperimentRuntimeSnapshot {
   summary_lines: string[];
 }
 
+export interface ApiResearchExperimentEffectiveRuntimeConfig {
+  generated_at: string;
+  project_version_label: string;
+  consumer: "all" | "query_generation" | "section_routing" | "retrieval_search" | "source_reranker";
+  status: "ready" | "degraded" | "fallback";
+  enabled_lane_count: number;
+  applied_lanes: ApiResearchExperimentLane["key"][];
+  fallback_lanes: ApiResearchExperimentLane["key"][];
+  effective_config: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  warnings: string[];
+  summary_lines: string[];
+}
+
 export interface ApiResearchExperimentPlan {
   id: string;
   name: string;
@@ -1691,6 +1705,9 @@ export interface ApiResearchRetrievalIndexSearchResult {
   query: string;
   hit_count: number;
   hits: ApiResearchRetrievalIndexSearchHit[];
+  runtime_strategy_status: "ready" | "degraded" | "fallback";
+  runtime_strategy_config: Record<string, unknown>;
+  runtime_strategy_warnings: string[];
 }
 
 export interface ApiResearchTrackingTopicRefresh {
@@ -2922,6 +2939,28 @@ export function getResearchExperimentRuntimeSnapshot(): Promise<ApiResearchExper
     strategy_count: 0,
     runtime_config: {},
     strategies: [],
+    warnings: [],
+    summary_lines: [],
+  }));
+}
+
+export function getResearchExperimentRuntimeConfig(
+  consumer: ApiResearchExperimentEffectiveRuntimeConfig["consumer"] = "all",
+): Promise<ApiResearchExperimentEffectiveRuntimeConfig> {
+  const params = new URLSearchParams();
+  params.set("consumer", consumer);
+  return request<ApiResearchExperimentEffectiveRuntimeConfig>(`/api/research/experiments/runtime-config?${params.toString()}`, {
+    method: "GET",
+  }).catch(() => ({
+    generated_at: new Date().toISOString(),
+    project_version_label: "",
+    consumer,
+    status: "fallback",
+    enabled_lane_count: 0,
+    applied_lanes: [],
+    fallback_lanes: [],
+    effective_config: {},
+    provenance: {},
     warnings: [],
     summary_lines: [],
   }));

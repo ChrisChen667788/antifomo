@@ -443,6 +443,25 @@ def test_search_research_retrieval_index_boosts_parent_block_for_child_matches()
         db.close()
 
 
+def test_search_research_retrieval_index_marks_runtime_parent_boost() -> None:
+    db = _new_session()
+    try:
+        user, _topic = _seed_research_assets(db)
+        index = build_research_retrieval_index(db, user_id=user.id)
+
+        hits = search_research_retrieval_index(
+            index,
+            "7 月预算复核 采购中心 确认政务云扩容需求",
+            limit=8,
+            document_types={"report_version"},
+            parent_block_boost=1.35,
+        )
+
+        assert any("runtime_parent_boost" in hit.match_modes for hit in hits)
+    finally:
+        db.close()
+
+
 def test_search_research_retrieval_index_supports_source_region_industry_field_and_perspective_filters() -> None:
     db = _new_session()
     try:

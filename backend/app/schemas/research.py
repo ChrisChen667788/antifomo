@@ -78,6 +78,13 @@ ResearchExperimentPlanStatus = Literal[
 ]
 ResearchExperimentGateDecision = Literal["allow", "hold", "block"]
 ResearchExperimentRolloutDecision = Literal["promoted", "revoked"]
+ResearchExperimentRuntimeConsumer = Literal[
+    "all",
+    "query_generation",
+    "section_routing",
+    "retrieval_search",
+    "source_reranker",
+]
 
 
 class ResearchSavedViewBase(BaseModel):
@@ -465,6 +472,20 @@ class ResearchExperimentRuntimeSnapshotOut(BaseModel):
     summary_lines: list[str] = Field(default_factory=list)
 
 
+class ResearchExperimentEffectiveRuntimeConfigOut(BaseModel):
+    generated_at: datetime
+    project_version_label: str = ""
+    consumer: ResearchExperimentRuntimeConsumer = "all"
+    status: Literal["ready", "degraded", "fallback"] = "fallback"
+    enabled_lane_count: int = 0
+    applied_lanes: list[ResearchExperimentLaneKey] = Field(default_factory=list)
+    fallback_lanes: list[ResearchExperimentLaneKey] = Field(default_factory=list)
+    effective_config: dict[str, Any] = Field(default_factory=dict)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+    summary_lines: list[str] = Field(default_factory=list)
+
+
 class ResearchExperimentPlanOut(BaseModel):
     id: str
     name: str
@@ -685,6 +706,9 @@ class ResearchRetrievalIndexSearchOut(BaseModel):
     query: str
     hit_count: int = 0
     hits: list[ResearchRetrievalIndexSearchHitOut] = Field(default_factory=list)
+    runtime_strategy_status: Literal["ready", "degraded", "fallback"] = "fallback"
+    runtime_strategy_config: dict[str, Any] = Field(default_factory=dict)
+    runtime_strategy_warnings: list[str] = Field(default_factory=list)
 
 
 class ResearchCompareSnapshotCreateRequest(BaseModel):

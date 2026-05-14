@@ -15,12 +15,14 @@ from app.models.entities import KnowledgeEntry
 from app.models.research_entities import ResearchExperimentPlan
 from app.schemas.research import (
     ResearchExperimentActivePolicyOut,
+    ResearchExperimentEffectiveRuntimeConfigOut,
     ResearchExperimentGateConfigOut,
     ResearchExperimentOrchestrationOut,
     ResearchExperimentRolloutActionRequest,
     ResearchExperimentRolloutManifestOut,
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
+    ResearchExperimentRuntimeConsumer,
     ResearchExperimentRuntimeSnapshotOut,
     ResearchExperimentRuntimeStrategyOut,
     ResearchExperimentRolloutGateOut,
@@ -411,6 +413,189 @@ def build_research_experiment_runtime_snapshot(db: Session) -> ResearchExperimen
         runtime_config=runtime_config,
         strategies=strategies,
         warnings=warnings,
+        summary_lines=summary_lines,
+    )
+
+
+_RUNTIME_CONSUMER_LANES: dict[str, tuple[str, ...]] = {
+    "query_generation": ("query_recovery",),
+    "section_routing": ("routing_followup",),
+    "retrieval_search": ("routing_followup", "reranker_official_recall"),
+    "source_reranker": ("reranker_official_recall",),
+    "all": ("query_recovery", "routing_followup", "reranker_official_recall"),
+}
+
+
+def _runtime_config_enabled(config: dict[str, Any]) -> bool:
+    return bool(config.get("enabled"))
+
+
+def _effective_query_generation_config(query_config: dict[str, Any]) -> dict[str, Any]:
+    enabled = _runtime_config_enabled(query_config) and bool(query_config.get("query_recovery_enabled"))
+    return {
+        "enabled": enabled,
+        "query_recovery_enabled": enabled,
+        "public_expansion_on_watch": bool(query_config.get("public_expansion_on_watch")) if enabled else False,
+        "corrective_query_limit": _int_config_value(query_config, "corrective_query_limit", 0 if not enabled else 4, minimum=0, maximum=12),
+    }
+
+
+def _effective_section_routing_config(routing_config: dict[str, Any]) -> dict[str, Any]:
+    enabled = _runtime_config_enabled(routing_config) and bool(routing_config.get("followup_delta_routing_enabled"))
+    parent_block_boost = _float_config_value(
+        routing_config,
+        "parent_block_boost",
+        1.0 if not enabled else 1.15,
+        minimum=1.0,
+        maximum=2.5,
+    )
+    return {
+        "enabled": enabled,
+        "followup_delta_routing_enabled": enabled,
+        "section_router": normalize_text(str(routing_config.get("section_router") or "baseline")),
+        "parent_block_boost": parent_block_boost if enabled else 1.0,
+        "delta_evidence_min_yield": _int_config_value(
+            routing_config,
+            "delta_evidence_min_yield",
+            0 if not enabled else 2,
+            minimum=0,
+            maximum=20,
+        ),
+    }
+
+
+def _effective_source_reranker_config(reranker_config: dict[str, Any]) -> dict[str, Any]:
+    enabled = _runtime_config_enabled(reranker_config)
+    adapter = normalize_text(str(reranker_config.get("reranker_adapter") or "local_rrf"))
+    fallback_adapter = normalize_text(str(reranker_config.get("fallback_adapter") or "local_rrf"))
+    return {
+        "enabled": enabled,
+        "reranker_adapter": adapter or "local_rrf",
+        "official_source_bias": bool(reranker_config.get("official_source_bias")) if enabled else True,
+        "recall_at_k": _int_config_value(reranker_config, "recall_at_k", 5, minimum=3, maximum=20),
+        "fallback_adapter": fallback_adapter or "local_rrf",
+    }
+
+
+def _effective_retrieval_search_config(
+    routing_config: dict[str, Any],
+    reranker_config: dict[str, Any],
+) -> dict[str, Any]:
+    section_config = _effective_section_routing_config(routing_config)
+    reranker_effective = _effective_source_reranker_config(reranker_config)
+    return {
+        "enabled": bool(section_config["enabled"] or reranker_effective["enabled"]),
+        "parent_block_boost": section_config["parent_block_boost"],
+        "official_source_bias": reranker_effective["official_source_bias"],
+        "reranker_adapter": reranker_effective["reranker_adapter"],
+        "recall_at_k": reranker_effective["recall_at_k"],
+        "fallback_adapter": reranker_effective["fallback_adapter"],
+    }
+
+
+def _runtime_strategy_provenance(
+    strategies: list[ResearchExperimentRuntimeStrategyOut],
+    lanes: tuple[str, ...],
+) -> dict[str, Any]:
+    provenance: dict[str, Any] = {}
+    for strategy in strategies:
+        if strategy.lane_key not in lanes:
+            continue
+        provenance[strategy.lane_key] = {
+            "plan_id": strategy.plan_id,
+            "plan_name": strategy.plan_name,
+            "candidate_label": strategy.candidate_label,
+            "promoted_version_label": strategy.promoted_version_label,
+            "baseline_version_label": strategy.baseline_version_label,
+            "promoted_at": strategy.promoted_at.isoformat() if strategy.promoted_at else None,
+        }
+    return provenance
+
+
+def _runtime_strategy_warnings(
+    strategies: list[ResearchExperimentRuntimeStrategyOut],
+    lanes: tuple[str, ...],
+) -> list[str]:
+    warnings: list[str] = []
+    for strategy in strategies:
+        if strategy.lane_key not in lanes:
+            continue
+        for warning in strategy.warnings:
+            if warning and warning not in warnings:
+                warnings.append(warning)
+    return warnings
+
+
+def resolve_research_experiment_runtime_config(
+    db: Session,
+    *,
+    consumer: ResearchExperimentRuntimeConsumer = "all",
+) -> ResearchExperimentEffectiveRuntimeConfigOut:
+    snapshot = build_research_experiment_runtime_snapshot(db)
+    lanes = _RUNTIME_CONSUMER_LANES.get(consumer, _RUNTIME_CONSUMER_LANES["all"])
+    query_config = _dict(snapshot.runtime_config.get("query_recovery"))
+    routing_config = _dict(snapshot.runtime_config.get("routing_followup"))
+    reranker_config = _dict(snapshot.runtime_config.get("reranker_official_recall"))
+    lane_config_map = {
+        "query_recovery": query_config,
+        "routing_followup": routing_config,
+        "reranker_official_recall": reranker_config,
+    }
+    applied_lanes = [
+        lane
+        for lane in lanes
+        if _runtime_config_enabled(lane_config_map.get(lane, {}))
+    ]
+    fallback_lanes = [lane for lane in lanes if lane not in applied_lanes]
+
+    query_effective = _effective_query_generation_config(query_config)
+    section_effective = _effective_section_routing_config(routing_config)
+    reranker_effective = _effective_source_reranker_config(reranker_config)
+    retrieval_effective = _effective_retrieval_search_config(routing_config, reranker_config)
+    if consumer == "query_generation":
+        effective_config = query_effective
+    elif consumer == "section_routing":
+        effective_config = section_effective
+    elif consumer == "retrieval_search":
+        effective_config = retrieval_effective
+    elif consumer == "source_reranker":
+        effective_config = reranker_effective
+    else:
+        effective_config = {
+            "query_generation": query_effective,
+            "section_routing": section_effective,
+            "retrieval_search": retrieval_effective,
+            "source_reranker": reranker_effective,
+        }
+
+    if applied_lanes and snapshot.status == "ready":
+        status = "ready"
+    elif applied_lanes:
+        status = "degraded"
+    else:
+        status = "fallback"
+
+    summary_lines = [
+        f"{consumer} 解析到 {len(applied_lanes)} 条 active lane，{len(fallback_lanes)} 条 lane 使用保守默认值。",
+    ]
+    if status == "ready":
+        summary_lines.append("运行时配置可直接用于当前调用路径。")
+    elif status == "degraded":
+        summary_lines.append("运行时配置已生成，但存在版本漂移或策略告警，建议重新跑 gate 后扩大范围。")
+    else:
+        summary_lines.append("当前调用路径没有 active policy，保持本地默认策略。")
+
+    return ResearchExperimentEffectiveRuntimeConfigOut(
+        generated_at=snapshot.generated_at,
+        project_version_label=snapshot.project_version_label,
+        consumer=consumer,
+        status=status,  # type: ignore[arg-type]
+        enabled_lane_count=len(applied_lanes),
+        applied_lanes=applied_lanes,  # type: ignore[arg-type]
+        fallback_lanes=fallback_lanes,  # type: ignore[arg-type]
+        effective_config=effective_config,
+        provenance=_runtime_strategy_provenance(snapshot.strategies, lanes),
+        warnings=_runtime_strategy_warnings(snapshot.strategies, lanes),
         summary_lines=summary_lines,
     )
 

@@ -262,11 +262,19 @@ def build_section_retrieval_packs(
     index: ResearchRetrievalIndex,
     *,
     limit_per_section: int = 4,
+    parent_block_boost: float = 1.0,
+    official_source_bias: bool = True,
 ) -> list[ResearchSectionRetrievalPackOut]:
     packs: list[ResearchSectionRetrievalPackOut] = []
     capped_limit = max(1, min(int(limit_per_section or 4), 10))
     for target in build_section_retrieval_targets(report):
-        hits = search_research_retrieval_index(index, target.query, limit=capped_limit)
+        hits = search_research_retrieval_index(
+            index,
+            target.query,
+            limit=capped_limit,
+            parent_block_boost=parent_block_boost,
+            official_source_bias=official_source_bias,
+        )
         official_hit_count = sum(1 for hit in hits if hit.chunk.source_tier == "official")
         max_score = max((float(hit.score or 0.0) for hit in hits), default=0.0)
         coverage_rate, missing_terms = _coverage(target.required_terms, hits)
@@ -304,13 +312,21 @@ def attach_section_retrieval_packs(
     index: ResearchRetrievalIndex,
     *,
     limit_per_section: int = 4,
+    parent_block_boost: float = 1.0,
+    official_source_bias: bool = True,
 ) -> ResearchReportDocument:
     quality_profile = (
         report.quality_profile
         if getattr(report, "quality_profile", None) and report.quality_profile.methodology.axes
         else build_research_quality_profile(report)
     )
-    packs = build_section_retrieval_packs(report, index, limit_per_section=limit_per_section)
+    packs = build_section_retrieval_packs(
+        report,
+        index,
+        limit_per_section=limit_per_section,
+        parent_block_boost=parent_block_boost,
+        official_source_bias=official_source_bias,
+    )
     return report.model_copy(
         update={
             "quality_profile": quality_profile.model_copy(update={"section_retrieval_packs": packs}),

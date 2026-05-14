@@ -68,7 +68,7 @@ Anti-FOMO is built for the whole operating loop:
     </td>
     <td width="50%">
       <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="Research experiment control plane screenshot" />
-      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and inspect runtime strategy snapshots.</p>
+      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and inspect effective runtime strategy config.</p>
     </td>
   </tr>
   <tr>
@@ -103,7 +103,7 @@ Anti-FOMO is built for the whole operating loop:
 - runtime optimization panel for incremental rebuild, persisted-cache reuse, and recovery guidance
 - optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
 - query / routing / reranker A/B control-plane views plus follow-up delta offline evaluation
-- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, gate history, active strategy registry, runtime strategy snapshots, and auditable rollout manifests
+- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, gate history, active strategy registry, runtime strategy snapshots, effective retrieval config, and auditable rollout manifests
 - section-level retrieval packs and evidence diagnostics
 - quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
 - market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
@@ -199,7 +199,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.8+20260514`
+- current version: `0.6.9+20260514`
 - web build passes
 - backend test suite passes via `npm run check`
 - public repository sanitized for open-source release

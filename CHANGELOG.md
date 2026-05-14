@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.9+20260514 - 2026-05-14
+
+- Added an effective runtime config resolver for query generation, section routing, retrieval search, source reranking, and all-lane consumers.
+- Wired retrieval-index search and section-retrieval packs to consume the active experiment strategy layer for parent-block boost and official-source bias.
+- Surfaced the effective retrieval config in the research-center experiment panel so operators can see the applied lanes, fallback lanes, and runtime warnings before rollout expansion.
+
 ## 0.6.8+20260514 - 2026-05-14
 
 - Added a runtime strategy snapshot for promoted experiment policies, translating active query/routing/reranker lanes into explicit runtime config with provenance, gate metrics, and version-drift warnings.

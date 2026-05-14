@@ -8,6 +8,7 @@ import {
   ApiResearchCompareSnapshot,
   ApiResearchDeliveryExportDiagnostics,
   ApiResearchExperimentControlPlane,
+  ApiResearchExperimentEffectiveRuntimeConfig,
   ApiResearchExperimentOrchestration,
   ApiResearchExperimentPlan,
   ApiResearchExperimentRuntimeSnapshot,
@@ -37,6 +38,7 @@ import {
   getResearchDeliveryExportDiagnostics,
   getResearchExperimentControlPlane,
   getResearchExperimentOrchestration,
+  getResearchExperimentRuntimeConfig,
   getResearchExperimentRuntimeSnapshot,
   getResearchFollowupDeltaEvaluation,
   getResearchMarkdownArchive,
@@ -790,6 +792,7 @@ export function ResearchCenter() {
   const [deliveryExportDiagnostics, setDeliveryExportDiagnostics] = useState<ApiResearchDeliveryExportDiagnostics | null>(null);
   const [experimentOrchestration, setExperimentOrchestration] = useState<ApiResearchExperimentOrchestration | null>(null);
   const [experimentRuntimeSnapshot, setExperimentRuntimeSnapshot] = useState<ApiResearchExperimentRuntimeSnapshot | null>(null);
+  const [experimentRuntimeConfig, setExperimentRuntimeConfig] = useState<ApiResearchExperimentEffectiveRuntimeConfig | null>(null);
   const [controlPlaneLoading, setControlPlaneLoading] = useState(true);
   const [controlPlaneRefreshing, setControlPlaneRefreshing] = useState(false);
   const [experimentPlanName, setExperimentPlanName] = useState("");
@@ -1000,14 +1003,16 @@ export function ResearchCenter() {
       getResearchDeliveryExportDiagnostics(8),
       getResearchExperimentOrchestration(),
       getResearchExperimentRuntimeSnapshot(),
+      getResearchExperimentRuntimeConfig("retrieval_search"),
     ])
-      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot]) => {
+      .then(([controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig]) => {
         if (!active) return;
         setExperimentControlPlane(controlPlane);
         setFollowupDeltaEvaluation(followupDelta);
         setDeliveryExportDiagnostics(exportDiagnostics);
         setExperimentOrchestration(orchestration);
         setExperimentRuntimeSnapshot(runtimeSnapshot);
+        setExperimentRuntimeConfig(runtimeConfig);
       })
       .finally(() => {
         if (!active) return;
@@ -1123,19 +1128,21 @@ export function ResearchCenter() {
   const refreshControlPlaneDiagnostics = async () => {
     setControlPlaneRefreshing(true);
     try {
-      const [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot] = await Promise.all([
+      const [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig] = await Promise.all([
         getResearchExperimentControlPlane(),
         getResearchFollowupDeltaEvaluation(6),
         getResearchDeliveryExportDiagnostics(8),
         getResearchExperimentOrchestration(),
         getResearchExperimentRuntimeSnapshot(),
+        getResearchExperimentRuntimeConfig("retrieval_search"),
       ]);
       setExperimentControlPlane(controlPlane);
       setFollowupDeltaEvaluation(followupDelta);
       setDeliveryExportDiagnostics(exportDiagnostics);
       setExperimentOrchestration(orchestration);
       setExperimentRuntimeSnapshot(runtimeSnapshot);
-      return [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot] as const;
+      setExperimentRuntimeConfig(runtimeConfig);
+      return [controlPlane, followupDelta, exportDiagnostics, orchestration, runtimeSnapshot, runtimeConfig] as const;
     } finally {
       setControlPlaneLoading(false);
       setControlPlaneRefreshing(false);
@@ -2563,6 +2570,48 @@ export function ResearchCenter() {
                               </div>
                             );
                           })}
+                        </div>
+                      ) : null}
+                      {experimentRuntimeConfig ? (
+                        <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                              Effective retrieval config
+                            </p>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeConfig.status)}`}>
+                              {experimentRuntimeStatusLabel(experimentRuntimeConfig.status)}
+                            </span>
+                          </div>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            {[
+                              {
+                                label: "parent boost",
+                                value: String(experimentRuntimeConfig.effective_config["parent_block_boost"] ?? "1"),
+                              },
+                              {
+                                label: "official bias",
+                                value: String(experimentRuntimeConfig.effective_config["official_source_bias"] ?? true),
+                              },
+                              {
+                                label: "reranker",
+                                value: String(experimentRuntimeConfig.effective_config["reranker_adapter"] ?? "local_rrf"),
+                              },
+                              {
+                                label: "applied lanes",
+                                value: experimentRuntimeConfig.applied_lanes.length
+                                  ? experimentRuntimeConfig.applied_lanes.join(" / ")
+                                  : "fallback",
+                              },
+                            ].map((item) => (
+                              <div key={item.label} className="rounded-xl border border-white bg-white px-2.5 py-2">
+                                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{item.label}</p>
+                                <p className="mt-1 truncate text-xs font-semibold text-slate-700">{sanitizeExternalDisplayText(item.value)}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            {experimentRuntimeConfig.summary_lines[0] || "检索调用路径保持本地默认策略。"}
+                          </p>
                         </div>
                       ) : null}
                       {experimentRuntimeSnapshot.warnings.length ? (

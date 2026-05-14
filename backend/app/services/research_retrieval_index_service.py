@@ -1238,10 +1238,13 @@ def search_research_retrieval_index(
     industry: str | None = None,
     field_keys: set[str] | None = None,
     perspectives: set[str] | None = None,
+    parent_block_boost: float = 1.0,
+    official_source_bias: bool = True,
 ) -> list[ResearchRetrievalIndexHit]:
     normalized_query = normalize_text(query)
     if not normalized_query or not index.chunks:
         return []
+    safe_parent_block_boost = max(1.0, min(2.5, float(parent_block_boost or 1.0)))
 
     normalized_topic_id = _safe_text(topic_id)
     normalized_document_types = {_safe_text(item) for item in (document_types or set()) if _safe_text(item)}
@@ -1329,11 +1332,17 @@ def search_research_retrieval_index(
         parent = all_chunks_by_id.get(chunk.parent_chunk_id) if chunk.parent_chunk_id else None
         if parent is not None and parent.chunk_id in by_key:
             current_parent_hit = hits_by_chunk_id.get(parent.chunk_id)
-            parent_score = max(match.score * 0.92, match.score - 0.08) + min(max(parent.priority, 0), 8) * 0.01
+            parent_score = (
+                max(match.score * 0.92, match.score - 0.08)
+                + min(max(parent.priority, 0), 8) * 0.01
+            ) * safe_parent_block_boost
+            parent_match_modes = [*match.match_modes, "parent_block"]
+            if safe_parent_block_boost > 1.0:
+                parent_match_modes.append("runtime_parent_boost")
             parent_hit = ResearchRetrievalIndexHit(
                 chunk=parent,
                 score=parent_score,
-                match_modes=_dedupe_strings([*match.match_modes, "parent_block"], limit=6),
+                match_modes=_dedupe_strings(parent_match_modes, limit=6),
                 matched_terms=match.matched_terms,
                 lexical_overlap=match.lexical_overlap,
                 dense_similarity=match.dense_similarity,
@@ -1344,7 +1353,7 @@ def search_research_retrieval_index(
     hits = sorted(
         hits_by_chunk_id.values(),
         key=lambda hit: (
-            float(hit.score) + (0.12 if hit.chunk.source_tier == "official" else 0.0),
+            float(hit.score) + (0.12 if official_source_bias and hit.chunk.source_tier == "official" else 0.0),
             1 if hit.chunk.source_tier == "official" else 0,
             1 if hit.chunk.field_key in {"report_summary", "section_summary"} else 0,
             hit.chunk.priority,
@@ -1724,6 +1733,8 @@ def search_persistent_research_retrieval_index(
     industry: str | None = None,
     field_keys: set[str] | None = None,
     perspectives: set[str] | None = None,
+    parent_block_boost: float = 1.0,
+    official_source_bias: bool = True,
 ) -> list[ResearchRetrievalIndexHit]:
     index = load_persistent_research_retrieval_index(db, user_id=user_id)
     return search_research_retrieval_index(
@@ -1737,4 +1748,6 @@ def search_persistent_research_retrieval_index(
         industry=industry,
         field_keys=field_keys,
         perspectives=perspectives,
+        parent_block_boost=parent_block_boost,
+        official_source_bias=official_source_bias,
     )

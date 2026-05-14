@@ -39,10 +39,12 @@ from app.schemas.research import (
     ResearchDeliveryExportDiagnosticsOut,
     ResearchExperimentActivePolicyOut,
     ResearchExperimentControlPlaneOut,
+    ResearchExperimentEffectiveRuntimeConfigOut,
     ResearchExperimentOrchestrationOut,
     ResearchExperimentPlanCreateRequest,
     ResearchExperimentPlanOut,
     ResearchExperimentRolloutActionRequest,
+    ResearchExperimentRuntimeConsumer,
     ResearchExperimentRuntimeSnapshotOut,
     ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
@@ -96,6 +98,7 @@ from app.services.research_experiment_orchestration_service import (
     list_research_experiment_active_policies,
     lock_research_experiment_baseline,
     promote_research_experiment_rollout,
+    resolve_research_experiment_runtime_config,
     revoke_research_experiment_rollout,
 )
 from app.services.research_evaluation_service import (
@@ -672,6 +675,15 @@ def get_research_experiment_runtime_snapshot(
     return build_research_experiment_runtime_snapshot(db)
 
 
+@router.get("/experiments/runtime-config", response_model=ResearchExperimentEffectiveRuntimeConfigOut)
+def get_research_experiment_runtime_config(
+    consumer: ResearchExperimentRuntimeConsumer = "all",
+    db: Session = Depends(get_db),
+) -> ResearchExperimentEffectiveRuntimeConfigOut:
+    ensure_demo_user(db)
+    return resolve_research_experiment_runtime_config(db, consumer=consumer)
+
+
 @router.post("/experiments/plans", response_model=ResearchExperimentPlanOut)
 def create_research_experiment_plan_endpoint(
     payload: ResearchExperimentPlanCreateRequest,
@@ -788,6 +800,7 @@ def build_research_section_retrieval_packs(
     db: Session = Depends(get_db),
 ) -> list[ResearchSectionRetrievalPackOut]:
     ensure_demo_user(db)
+    runtime_config = resolve_research_experiment_runtime_config(db, consumer="retrieval_search").effective_config
     index = build_research_retrieval_index(
         db,
         user_id=settings.single_user_id,
@@ -797,6 +810,8 @@ def build_research_section_retrieval_packs(
         payload.report,
         index,
         limit_per_section=payload.limit_per_section,
+        parent_block_boost=float(runtime_config.get("parent_block_boost") or 1.0),
+        official_source_bias=bool(runtime_config.get("official_source_bias", True)),
     )
 
 
@@ -913,6 +928,8 @@ def search_research_retrieval_index_endpoint(
     db: Session = Depends(get_db),
 ) -> ResearchRetrievalIndexSearchOut:
     ensure_demo_user(db)
+    runtime_config = resolve_research_experiment_runtime_config(db, consumer="retrieval_search")
+    effective_config = runtime_config.effective_config
     hits = search_persistent_research_retrieval_index(
         db,
         query,
@@ -925,11 +942,16 @@ def search_research_retrieval_index_endpoint(
         industry=industry,
         field_keys=_split_query_filter_values(field_key),
         perspectives=_split_query_filter_values(perspective),
+        parent_block_boost=float(effective_config.get("parent_block_boost") or 1.0),
+        official_source_bias=bool(effective_config.get("official_source_bias", True)),
     )
     return ResearchRetrievalIndexSearchOut(
         query=query,
         hit_count=len(hits),
         hits=[_retrieval_hit_out(hit) for hit in hits],
+        runtime_strategy_status=runtime_config.status,
+        runtime_strategy_config=effective_config,
+        runtime_strategy_warnings=runtime_config.warnings,
     )
 
 
