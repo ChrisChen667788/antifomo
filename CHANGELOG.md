@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0+20260518 - 2026-05-18
+
+- Added a headless-source-first Focus collection path: starting or resuming Focus now brings up the source collector daemon first, with the WeChat PC agent kept as a supplementary URL harvester.
+- Added collector run coverage metrics and source-level health diagnostics, including handled count, coverage rate, body success rate, poor/watch source counts, and per-source recommendations.
+- Extended collector reports, Focus status, miniapp startup, and Collector Ops with source health visibility so operators can see which公众号 source is stale, failing, skipped, or under-covered instead of only seeing total coverage.
+- Refreshed version metadata, GitHub-facing documentation, release screenshot coverage, product whitepaper, and commercial launch copy for the 0.7.0 reliability release.
+
+## 0.6.11+20260514 - 2026-05-14
+
+- Expanded GitHub-facing screenshot capture from the previous five-highlight set to release-grade coverage across the primary product surfaces: home, inbox, saved, focus, session summary, collector, settings, knowledge library, commercial hub, merge workflow, research center, topic workspace, compare workspace, experiment orchestration, and archive viewer.
+- Added screenshot quality gates and a generated manifest so release screenshots fail fast on runtime overlays or suspiciously small/blank captures before they are committed.
+- Added a feature screenshot coverage gallery and a release history / feature map that document historical major-version progress, the latest complete capability set, and industry-standard release checks for future iterations.
+- Refreshed English and Chinese README product screenshots, current version metadata, and links to the full screenshot and capability-map docs.
+
 ## 0.6.10+20260514 - 2026-05-14
 
 - Injected active experiment runtime config into report generation so query recovery and source-reranker policies can affect the actual research pipeline, not only retrieval APIs.

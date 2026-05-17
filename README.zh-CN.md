@@ -21,6 +21,7 @@ Anti-FOMO 是一个开源 AI 研究工作台，适合咨询顾问、创业者、
 - [适合新贡献者的入口](https://github.com/ChrisChen667788/antifomo/issues/2)
 - [微信采集可靠性 help wanted](https://github.com/ChrisChen667788/antifomo/issues/3)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
+- [产品白皮书](./docs/product-whitepaper.md)
 - [开源宣发素材包](./docs/open-source-launch-kit.md)
 - [增长文案包](./docs/open-source-growth-copy.md)
 
@@ -42,18 +43,40 @@ Anti-FOMO 关注的是整条工作链路：
 
 ## 为什么更容易吸引用户
 
-- `WeChat-first`：不是泛网页收藏器，而是把微信信息环境当一等输入面。
+- `WeChat-first`：不是泛网页收藏器，而是把微信信息环境当一等输入面，并补上无头源采集和按公众号源的健康度诊断。
 - `Evidence-aware`：来源质量、章节证据配额、目标账户支撑率、官方源占比都被前台化。
 - `Execution-oriented`：研报不是终点，后面还有专注会话、行动卡、brief、可研、项目建议书和对客 PPT 大纲。
 - `Hackable`：本地优先的 Next.js + FastAPI 架构，附带浏览器扩展、小程序外壳、采集器和可跑的测试链路。
 
 ## 产品截图
 
+完整的发布级截图覆盖维护在 [功能界面截图覆盖清单](./docs/feature-screenshot-coverage.md)，历代大版本能力地图维护在 [版本历史与功能地图](./docs/release-history-and-feature-map.md)。
+
 <table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/home-signal-dashboard.png" alt="首页信号面板截图" />
+      <p><strong>首页信号面板</strong><br />快速判断信息价值，并进入研究、专注、收藏和运维入口。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-center-dashboard.png" alt="商机情报中心截图" />
+      <p><strong>商机情报中心</strong><br />集中查看 Watchlist、检索健康、历史归档、诊断和交付质量。</p>
+    </td>
+  </tr>
   <tr>
     <td width="50%">
       <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox 研报工作区截图" />
       <p><strong>Inbox / 研报工作区</strong><br />在一个界面里完成采集、生成研报、补场景信息和正式文档导出。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="对比矩阵截图" />
+      <p><strong>对比矩阵</strong><br />横向查看多版本差异、章节证据和面向账户推进的对比信号。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="实验控制面截图" />
+      <p><strong>实验控制面</strong><br />固化 cohort、锁定 baseline、审计 rollout gate，并查看实际生效的检索与研报生成运行时配置。</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/screenshots/research-topic-workspace.png" alt="专题工作台截图" />
@@ -62,20 +85,13 @@ Anti-FOMO 关注的是整条工作链路：
   </tr>
   <tr>
     <td width="50%">
-      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="对比矩阵截图" />
-      <p><strong>对比矩阵</strong><br />横向查看多版本差异、章节证据和面向账户推进的对比信号。</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="实验控制面截图" />
-      <p><strong>实验控制面</strong><br />固化 cohort、锁定 baseline、审计 rollout gate，并查看实际生效的检索与研报生成运行时配置。</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
       <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="账户情报截图" />
       <p><strong>账户情报</strong><br />把研报沉淀成甲方对象、商机、待核验队列和下一步动作。</p>
     </td>
-    <td width="50%"></td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/collector-operations-workspace.png" alt="Collector 运维截图" />
+      <p><strong>Collector 运维</strong><br />管理本地采集、源健康诊断、OCR 补录、积压恢复、自动化状态和日报导出。</p>
+    </td>
   </tr>
 </table>
 
@@ -85,7 +101,7 @@ Anti-FOMO 关注的是整条工作链路：
 
 - URL、纯文本、RSS、Newsletter、文件、YouTube transcript 输入
 - 浏览器扩展快速采集当前页面
-- 微信 URL-first 采集、Collector 运维、Wechat PC Agent 工具链
+- 微信 URL-first 采集、无头源采集、Collector 运维、按公众号源的健康度诊断，以及作为补充 URL 发现通道的 WeChat PC Agent 工具链
 - 针对截图 OCR、markdown dump、论坛奖项噪声、弱 vendor 推进稿的清洗规则
 
 ### 2. 研究工作台
@@ -112,7 +128,7 @@ Anti-FOMO 关注的是整条工作链路：
 
 ### 4. 执行与交付
 
-- 专注会话和会话总结导出
+- 专注会话和会话总结导出，进入 Focus 时自动拉起混合采集链路
 - 行动卡、老板简报、销售简报、外联草稿、watchlist digest
 - Watchlist run history、失败重试说明、通知摘要和 Markdown digest 导出
 - 可行性研究报告、项目建议书、对客 PPT、客户 brief、投标准备 memo 和执行材料导出
@@ -198,9 +214,12 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.6.10+20260514`
+- 当前版本：`0.7.0+20260518`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
+- 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面
+- 历代大版本核心迭代与当前完整功能地图维护在 `docs/release-history-and-feature-map.md`
+- 产品白皮书和商业化亮点文案维护在 `docs/product-whitepaper.md`、`docs/open-source-launch-kit.md` 和 `docs/open-source-growth-copy.md`
 - 仓库已做开源脱敏
 
 公开仓库刻意不包含：
@@ -222,6 +241,7 @@ npm run demo:simulate
 
 - [开源宣发素材包](./docs/open-source-launch-kit.md)
 - [增长文案包](./docs/open-source-growth-copy.md)
+- [产品白皮书](./docs/product-whitepaper.md)
 - [公开 backlog](./docs/open-source-backlog.md)
 - [GitHub hero 图](./docs/assets/github-hero.svg)
 - [GitHub social preview](./docs/assets/github-social-preview.png)

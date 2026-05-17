@@ -8,13 +8,14 @@ import puppeteer from "puppeteer-core";
 const DEFAULT_FRONTEND_URL = "http://127.0.0.1:3010";
 const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const DEFAULT_MAC_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const SCREENSHOT_SCROLL_TOP_PADDING = 64;
+const SCREENSHOT_SCROLL_TOP_PADDING = 132;
 const SCREENSHOT_PREFERENCES = {
   themeMode: "light",
   fontFamily: "system",
   textSize: "md",
   language: "zh-CN",
 };
+const MIN_SCREENSHOT_BYTES = 40_000;
 const CHROME_COMMAND_CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium", "chrome"];
 const CHROME_PATH_CANDIDATES = [
   DEFAULT_MAC_CHROME_PATH,
@@ -87,12 +88,184 @@ function resolveChromePath(requestedPath) {
   );
 }
 
+function readPackageVersion() {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+    return packageJson.version || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 async function fetchWorkspace(apiBase) {
   const response = await fetch(`${apiBase.replace(/\/+$/, "")}/api/research/workspace`);
   if (!response.ok) {
     throw new Error(`Workspace fetch failed: ${response.status}`);
   }
   return response.json();
+}
+
+async function fetchKnowledgeEntries(apiBase) {
+  const response = await fetch(`${apiBase.replace(/\/+$/, "")}/api/knowledge?limit=2`);
+  if (!response.ok) {
+    console.warn(`[screenshots] knowledge fetch failed: ${response.status}`);
+    return [];
+  }
+  const payload = await response.json();
+  return Array.isArray(payload?.items) ? payload.items : [];
+}
+
+function createCaptureManifestEntry(item, outputDir) {
+  const filePath = path.join(outputDir, item.filename);
+  const stats = fs.statSync(filePath);
+  return {
+    feature: item.feature,
+    route: item.route,
+    file: `docs/assets/screenshots/${item.filename}`,
+    description: item.description,
+    quality_gate: {
+      status: "accepted",
+      min_file_size_bytes: MIN_SCREENSHOT_BYTES,
+      actual_file_size_bytes: stats.size,
+    },
+  };
+}
+
+function validateScreenshotFile(filePath) {
+  const stats = fs.statSync(filePath);
+  if (stats.size < MIN_SCREENSHOT_BYTES) {
+    throw new Error(
+      `Screenshot ${path.basename(filePath)} is only ${stats.size} bytes; expected at least ${MIN_SCREENSHOT_BYTES} bytes.`,
+    );
+  }
+}
+
+function buildCaptures(workspace, knowledgeEntries) {
+  const topicId = workspace?.tracking_topics?.[0]?.id || "";
+  const snapshotId = workspace?.compare_snapshots?.[0]?.id || "";
+  const archiveId = workspace?.markdown_archives?.[0]?.id || "";
+  const mergeEntryIds = (knowledgeEntries || [])
+    .map((entry) => entry?.id)
+    .filter(Boolean)
+    .slice(0, 2);
+  const mergeRoute =
+    mergeEntryIds.length >= 2
+      ? `/knowledge/merge?ids=${mergeEntryIds.map((id) => encodeURIComponent(id)).join(",")}&title=${encodeURIComponent("政务云投标推进材料合并")}`
+      : "/knowledge/merge";
+
+  return [
+    {
+      feature: "Home signal dashboard",
+      route: "/",
+      waitText: "Anti-FOMO",
+      filename: "home-signal-dashboard.png",
+      description: "Feed triage homepage for high-signal intake and quick route switching.",
+    },
+    {
+      feature: "Inbox research workspace",
+      route: "/inbox",
+      waitText: "添加内容",
+      filename: "inbox-research-workspace.png",
+      description: "Intake, keyword research, report generation, and formal delivery export workspace.",
+    },
+    {
+      feature: "Saved read-later workspace",
+      route: "/saved",
+      waitText: "稍后再读",
+      filename: "saved-readlater-workspace.png",
+      description: "Saved-item and read-later review surface with topic and scoring context.",
+    },
+    {
+      feature: "Focus session workspace",
+      route: "/focus",
+      waitText: "专注模式",
+      filename: "focus-session-workspace.png",
+      description: "Focused execution timer with headless-source-first collector startup and WeChat PC supplementary harvesting.",
+    },
+    {
+      feature: "Session summary workspace",
+      route: "/session-summary",
+      waitText: "专注总结",
+      filename: "session-summary-workspace.png",
+      description: "Session metrics, markdown summary, reading list, and follow-up draft workspace.",
+    },
+    {
+      feature: "Collector operations workspace",
+      route: "/collector",
+      waitText: "采集器",
+      filename: "collector-operations-workspace.png",
+      description: "Desktop collector, source health diagnostics, coverage rates, OCR backfill, pending queue, and daily export operations panel.",
+    },
+    {
+      feature: "Settings and tuning workspace",
+      route: "/settings",
+      waitText: "设置",
+      filename: "settings-tuning-workspace.png",
+      description: "Preference, WorkBuddy, collector, and recommender tuning controls.",
+    },
+    {
+      feature: "Knowledge library workspace",
+      route: "/knowledge",
+      waitText: "知识库",
+      filename: "knowledge-library-workspace.png",
+      description: "Knowledge list, commercial dashboard, account signals, and saved intelligence cards.",
+    },
+    {
+      feature: "Knowledge commercial hub",
+      route: "/knowledge/accounts",
+      waitText: "账户情报",
+      filename: "knowledge-commercial-hub.png",
+      description: "Account intelligence, opportunity context, review queues, and commercial follow-up actions.",
+    },
+    {
+      feature: "Knowledge merge workflow",
+      route: mergeRoute,
+      waitText: "知识卡片合并",
+      filename: "knowledge-merge-workflow.png",
+      description: "Knowledge-card merge preview, inherited state checks, and target-title workflow.",
+    },
+    {
+      feature: "Research center dashboard",
+      route: "/research",
+      waitText: "商机情报中心",
+      filename: "research-center-dashboard.png",
+      description: "Research center overview for watchlists, archives, retrieval health, and delivery diagnostics.",
+    },
+    {
+      feature: "Research topic workspace",
+      route: topicId ? `/research/topics/${topicId}` : "/research",
+      waitText: "专题工作台",
+      filename: "research-topic-workspace.png",
+      description: "Topic-version workspace for evidence density, follow-up impact, and long-running changes.",
+    },
+    {
+      feature: "Research compare workspace",
+      route: snapshotId && topicId ? `/research/compare?snapshot=${snapshotId}&topicId=${topicId}` : "/research/compare",
+      waitText: "对比矩阵",
+      filename: "research-compare-workspace.png",
+      description: "Multi-version comparison matrix for account, competitor, evidence, and delivery deltas.",
+    },
+    {
+      feature: "Research experiment orchestration",
+      route: "/research",
+      waitText: "实验编排层",
+      scrollSelector: "[data-screenshot-anchor='research-experiment-control-plane']",
+      scrollText: "实验编排层",
+      filename: "research-experiment-control-plane.png",
+      description: "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics.",
+    },
+    ...(archiveId
+      ? [
+          {
+            feature: "Research archive viewer",
+            route: `/research/archives/${archiveId}`,
+            waitText: "Markdown 归档",
+            filename: "research-archive-viewer.png",
+            description: "Historical Markdown archive viewer with delivery digest, section links, and version context.",
+          },
+        ]
+      : []),
+  ];
 }
 
 async function waitForText(page, text) {
@@ -108,6 +281,22 @@ async function waitForText(page, text) {
     console.warn(`[screenshots] text not found before capture: "${text}"`);
     return false;
   }
+}
+
+async function waitForPageContent(page, route) {
+  try {
+    await page.waitForFunction(
+      () => (document.body?.innerText || "").trim().length > 40,
+      { timeout: 30000 },
+    );
+  } catch {
+    throw new Error(`Page content did not render before capture: ${route}`);
+  }
+}
+
+async function waitForCaptureAnchor(page, selector) {
+  if (!selector) return;
+  await page.waitForSelector(selector, { timeout: 45000 });
 }
 
 async function scrollToText(page, text) {
@@ -188,7 +377,9 @@ async function capturePage(page, { baseUrl, route, waitText, scrollSelector, scr
   const targetUrl = `${baseUrl.replace(/\/+$/, "")}${route}`;
   console.log(`[screenshots] capturing ${path.basename(filePath)} from ${route}`);
   await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+  await waitForPageContent(page, route);
   await waitForText(page, waitText);
+  await waitForCaptureAnchor(page, scrollSelector);
   await scrollToSelector(page, scrollSelector);
   await scrollToText(page, scrollText);
   await assertNoRuntimeOverlay(page, filePath);
@@ -198,6 +389,7 @@ async function capturePage(page, { baseUrl, route, waitText, scrollSelector, scr
     fullPage: false,
     type: "png",
   });
+  validateScreenshotFile(filePath);
 }
 
 async function main() {
@@ -206,9 +398,11 @@ async function main() {
   const outputDir = path.resolve(args.outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
 
-  const workspace = await fetchWorkspace(args.apiBase);
-  const topicId = workspace?.tracking_topics?.[0]?.id || "";
-  const snapshotId = workspace?.compare_snapshots?.[0]?.id || "";
+  const [workspace, knowledgeEntries] = await Promise.all([
+    fetchWorkspace(args.apiBase),
+    fetchKnowledgeEntries(args.apiBase),
+  ]);
+  const captures = buildCaptures(workspace, knowledgeEntries);
 
   const browser = await puppeteer.launch({
     executablePath: chromePath,
@@ -223,36 +417,7 @@ async function main() {
   });
 
   try {
-    const captures = [
-      {
-        route: "/inbox",
-        waitText: "添加内容",
-        filename: "inbox-research-workspace.png",
-      },
-      {
-        route: topicId ? `/research/topics/${topicId}` : "/research",
-        waitText: "专题工作台",
-        filename: "research-topic-workspace.png",
-      },
-      {
-        route: snapshotId && topicId ? `/research/compare?snapshot=${snapshotId}&topicId=${topicId}` : "/research/compare",
-        waitText: "对比矩阵",
-        filename: "research-compare-workspace.png",
-      },
-      {
-        route: "/research",
-        waitText: "实验编排层",
-        scrollSelector: "[data-screenshot-anchor='research-experiment-control-plane']",
-        scrollText: "实验编排层",
-        filename: "research-experiment-control-plane.png",
-      },
-      {
-        route: "/knowledge/accounts",
-        waitText: "账户情报",
-        filename: "knowledge-commercial-hub.png",
-      },
-    ];
-
+    const manifestEntries = [];
     for (const item of captures) {
       const page = await browser.newPage();
       try {
@@ -265,10 +430,28 @@ async function main() {
           scrollText: item.scrollText,
           filePath: path.join(outputDir, item.filename),
         });
+        manifestEntries.push(createCaptureManifestEntry(item, outputDir));
       } finally {
         await page.close();
       }
     }
+    const manifest = {
+      version: readPackageVersion(),
+      generated_at: new Date().toISOString(),
+      viewport: {
+        width: 1600,
+        height: 1100,
+        device_scale_factor: 1.2,
+      },
+      quality_gate: {
+        min_file_size_bytes: MIN_SCREENSHOT_BYTES,
+        runtime_overlay_check: true,
+        expected_screenshot_count: captures.length,
+        accepted_screenshot_count: manifestEntries.length,
+      },
+      screenshots: manifestEntries,
+    };
+    fs.writeFileSync(path.join(outputDir, "screenshot-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   } finally {
     await browser.close();
   }

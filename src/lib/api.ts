@@ -2219,6 +2219,30 @@ export interface CollectorDaemonStatus {
   last_run_url_count: number;
   last_run_failed_count: number;
   last_run_skipped_seen_count: number;
+  last_run_handled_count: number;
+  last_run_coverage_rate: number;
+  last_run_body_success_rate: number;
+  coverage_state: "idle" | "good" | "watch" | "poor";
+  coverage_recommendation: string;
+  poor_source_count: number;
+  watch_source_count: number;
+  source_health: Array<{
+    source_url: string;
+    source_token: string;
+    scanned: boolean;
+    health_state: "good" | "watch" | "poor";
+    recommendation: string;
+    discovered_count: number;
+    handled_count: number;
+    collected_count: number;
+    plugin_count: number;
+    url_count: number;
+    skipped_seen_count: number;
+    failed_count: number;
+    coverage_rate: number;
+    body_success_rate: number;
+    last_error: string | null;
+  }>;
   last_rows: Array<{
     source_token: string | null;
     article_token: string | null;

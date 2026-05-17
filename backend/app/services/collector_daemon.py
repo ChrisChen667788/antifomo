@@ -25,6 +25,25 @@ COLLECTOR_SCRIPT = PROJECT_ROOT / "scripts" / "desktop_wechat_collector.mjs"
 
 
 @dataclass(slots=True)
+class CollectorSourceHealth:
+    source_url: str
+    source_token: str
+    scanned: bool
+    health_state: str
+    recommendation: str
+    discovered_count: int
+    handled_count: int
+    collected_count: int
+    plugin_count: int
+    url_count: int
+    skipped_seen_count: int
+    failed_count: int
+    coverage_rate: float
+    body_success_rate: float
+    last_error: str | None
+
+
+@dataclass(slots=True)
 class CollectorDaemonStatus:
     running: bool
     pid: int | None
@@ -44,6 +63,14 @@ class CollectorDaemonStatus:
     last_run_url_count: int
     last_run_failed_count: int
     last_run_skipped_seen_count: int
+    last_run_handled_count: int
+    last_run_coverage_rate: float
+    last_run_body_success_rate: float
+    coverage_state: str
+    coverage_recommendation: str
+    poor_source_count: int
+    watch_source_count: int
+    source_health: list[CollectorSourceHealth]
     last_rows: list[dict[str, str | None]]
     log_tail: list[str]
 
@@ -241,6 +268,162 @@ def _read_latest_rows(limit: int = 12) -> list[dict[str, str | None]]:
     return output
 
 
+def _safe_str(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _safe_float(value: object) -> float:
+    try:
+        return round(max(0.0, min(1.0, float(value or 0))), 3)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _ratio(numerator: int, denominator: int) -> float:
+    if denominator <= 0:
+        return 0.0
+    return round(max(0.0, min(1.0, numerator / denominator)), 3)
+
+
+def _coverage_summary(
+    *,
+    running: bool,
+    source_count: int,
+    last_run_at: datetime | None,
+    discovered_count: int,
+    collected_count: int,
+    skipped_seen_count: int,
+    failed_count: int,
+    plugin_count: int,
+) -> tuple[int, float, float, str, str]:
+    handled_count = collected_count + skipped_seen_count
+    denominator = max(discovered_count, handled_count + failed_count)
+    coverage_rate = _ratio(handled_count, denominator)
+    body_success_rate = _ratio(plugin_count, collected_count)
+
+    if source_count <= 0:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "idle",
+            "还没有配置源页面 URL，先在采集器设置中导入高价值公众号源。",
+        )
+
+    if last_run_at is None:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "watch" if running else "idle",
+            "采集器还没有完成第一轮，等待下一次报告或手动执行单轮采集。",
+        )
+
+    now = datetime.now(timezone.utc)
+    normalized_run_at = last_run_at if last_run_at.tzinfo else last_run_at.replace(tzinfo=timezone.utc)
+    stale = now - normalized_run_at > timedelta(minutes=30)
+
+    if stale and not running:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "poor",
+            "最近一轮已超过 30 分钟，建议检查守护进程或手动执行单轮采集。",
+        )
+
+    if discovered_count <= 0:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "watch",
+            "最近一轮没有发现新文章；如果预期有更新，请检查源页面是否仍可访问。",
+        )
+
+    if failed_count > 0 and coverage_rate < 0.8:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "poor",
+            "最近一轮存在较多未处理文章，建议检查浏览器登录态、源页面结构或网络状态。",
+        )
+
+    if coverage_rate < 0.9:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "watch",
+            "最近一轮仍有部分文章未处理，建议关注失败列表和采集器日志。",
+        )
+
+    if collected_count > 0 and body_success_rate < 0.5:
+        return (
+            handled_count,
+            coverage_rate,
+            body_success_rate,
+            "watch",
+            "多数文章走链接兜底，建议检查浏览器正文抽取链路和登录态。",
+        )
+
+    return (
+        handled_count,
+        coverage_rate,
+        body_success_rate,
+        "good",
+        "最近一轮覆盖稳定，源页面采集可作为专注模式主链路。",
+    )
+
+
+def _read_source_health(limit: int = 20) -> list[CollectorSourceHealth]:
+    if not STATE_FILE.exists():
+        return []
+    try:
+        payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    rows = payload.get("last_source_summaries")
+    if not isinstance(rows, list):
+        return []
+
+    output: list[CollectorSourceHealth] = []
+    for row in rows[:limit]:
+        if not isinstance(row, dict):
+            continue
+        health_state = _safe_str(row.get("health_state")) or "watch"
+        if health_state not in {"good", "watch", "poor"}:
+            health_state = "watch"
+        output.append(
+            CollectorSourceHealth(
+                source_url=_safe_str(row.get("source_url")),
+                source_token=_safe_str(row.get("source_token")) or _safe_str(row.get("source_url")) or "-",
+                scanned=bool(row.get("scanned")),
+                health_state=health_state,
+                recommendation=_safe_str(row.get("recommendation")),
+                discovered_count=_safe_int(row.get("discovered_count")),
+                handled_count=_safe_int(row.get("handled_count")),
+                collected_count=_safe_int(row.get("collected_count")),
+                plugin_count=_safe_int(row.get("plugin_count")),
+                url_count=_safe_int(row.get("url_count")),
+                skipped_seen_count=_safe_int(row.get("skipped_seen_count")),
+                failed_count=_safe_int(row.get("failed_count")),
+                coverage_rate=_safe_float(row.get("coverage_rate")),
+                body_success_rate=_safe_float(row.get("body_success_rate")),
+                last_error=_safe_str(row.get("last_error")) or None,
+            )
+        )
+    return output
+
+
 def read_collector_daemon_status() -> CollectorDaemonStatus:
     running_pid, pid_from_file, pid_file_present = _resolve_running_pid()
     running = running_pid is not None and _pid_alive(running_pid)
@@ -259,6 +442,33 @@ def read_collector_daemon_status() -> CollectorDaemonStatus:
     except ValueError:
         last_run_at = None
 
+    source_count = _count_source_file_urls()
+    discovered_count = _safe_int(latest_run.get("discovered_count"))
+    collected_count = _safe_int(latest_run.get("collected_count"))
+    plugin_count = _safe_int(latest_run.get("plugin_count"))
+    url_count = _safe_int(latest_run.get("url_count"))
+    failed_count = _safe_int(latest_run.get("failed_count"))
+    skipped_seen_count = _safe_int(latest_run.get("skipped_seen_count"))
+    source_health = _read_source_health()
+    poor_source_count = sum(1 for source in source_health if source.health_state == "poor")
+    watch_source_count = sum(1 for source in source_health if source.health_state == "watch")
+    (
+        handled_count,
+        coverage_rate,
+        body_success_rate,
+        coverage_state,
+        coverage_recommendation,
+    ) = _coverage_summary(
+        running=running,
+        source_count=source_count,
+        last_run_at=last_run_at,
+        discovered_count=discovered_count,
+        collected_count=collected_count,
+        skipped_seen_count=skipped_seen_count,
+        failed_count=failed_count,
+        plugin_count=plugin_count,
+    )
+
     return CollectorDaemonStatus(
         running=running,
         pid=running_pid if running else None,
@@ -269,15 +479,23 @@ def read_collector_daemon_status() -> CollectorDaemonStatus:
         last_daily_summary_at=_file_mtime(DAILY_REPORT_FILE),
         log_file=str(LOG_FILE),
         log_size_bytes=log_size,
-        source_file_count=_count_source_file_urls(),
+        source_file_count=source_count,
         last_run_at=last_run_at,
         last_run_submit_mode=str(latest_run.get("submit_mode") or "").strip() or None,
-        last_run_discovered_count=int(latest_run.get("discovered_count") or 0),
-        last_run_collected_count=int(latest_run.get("collected_count") or 0),
-        last_run_plugin_count=int(latest_run.get("plugin_count") or 0),
-        last_run_url_count=int(latest_run.get("url_count") or 0),
-        last_run_failed_count=int(latest_run.get("failed_count") or 0),
-        last_run_skipped_seen_count=int(latest_run.get("skipped_seen_count") or 0),
+        last_run_discovered_count=discovered_count,
+        last_run_collected_count=collected_count,
+        last_run_plugin_count=plugin_count,
+        last_run_url_count=url_count,
+        last_run_failed_count=failed_count,
+        last_run_skipped_seen_count=skipped_seen_count,
+        last_run_handled_count=handled_count,
+        last_run_coverage_rate=coverage_rate,
+        last_run_body_success_rate=body_success_rate,
+        coverage_state=coverage_state,
+        coverage_recommendation=coverage_recommendation,
+        poor_source_count=poor_source_count,
+        watch_source_count=watch_source_count,
+        source_health=source_health,
         last_rows=last_rows,
         log_tail=_tail_log(),
     )

@@ -1,10 +1,11 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { ApiSession, WechatAgentBatchStatus } from "@/lib/api";
+import type { ApiSession, CollectorDaemonStatus, WechatAgentBatchStatus } from "@/lib/api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   finishSession,
+  getCollectorDaemonStatus,
   getWechatAgentConfig,
   getSession,
   getWechatAgentBatchStatus,
@@ -13,6 +14,7 @@ import {
   runWechatAgentBatch,
   runWechatAgentOnce,
   resumeSession,
+  startCollectorDaemon,
   startSession,
   startWechatAgent,
   stopWechatAgent,
@@ -110,6 +112,31 @@ function getBatchProgress(status: WechatAgentBatchStatus | null): number {
   return status.finished_at ? 100 : 0;
 }
 
+function formatRatioPercent(value: number | null | undefined): string {
+  const safe = Math.max(0, Math.min(1, Number(value || 0)));
+  return `${Math.round(safe * 100)}%`;
+}
+
+function sourceCoverageLabel(state: CollectorDaemonStatus["coverage_state"] | undefined): string {
+  if (state === "good") return "覆盖稳定";
+  if (state === "watch") return "需观察";
+  if (state === "poor") return "需处理";
+  return "待配置";
+}
+
+function sourceCoverageClass(state: CollectorDaemonStatus["coverage_state"] | undefined): string {
+  if (state === "good") {
+    return "rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1 text-xs font-medium text-emerald-700";
+  }
+  if (state === "watch") {
+    return "rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium text-amber-700";
+  }
+  if (state === "poor") {
+    return "rounded-full border border-rose-200/80 bg-rose-50/90 px-3 py-1 text-xs font-medium text-rose-700";
+  }
+  return "rounded-full border border-slate-200/80 bg-slate-50/90 px-3 py-1 text-xs font-medium text-slate-600";
+}
+
 export function FocusTimer() {
   const { t, preferences } = useAppPreferences();
   const [duration, setDuration] = useState<FocusDuration>(25);
@@ -127,6 +154,7 @@ export function FocusTimer() {
   const [transportMode, setTransportMode] = useState<FocusTransportMode>("idle");
   const [focusOwnsWechatAgent, setFocusOwnsWechatAgent] = useState(false);
   const [newItemsCount, setNewItemsCount] = useState(0);
+  const [collectorDaemonStatus, setCollectorDaemonStatus] = useState<CollectorDaemonStatus | null>(null);
   const [wechatBatchStatus, setWechatBatchStatus] = useState<WechatAgentBatchStatus | null>(null);
   const durationRef = useRef<FocusDuration>(25);
   const focusBootstrapTokenRef = useRef(0);
@@ -176,8 +204,25 @@ export function FocusTimer() {
     }
   }, [clearFocusWechatFlags, focusOwnsWechatAgent]);
 
+  const ensureHeadlessSourceCollector = async () => {
+    const currentStatus = await getCollectorDaemonStatus().catch(() => null);
+    if (currentStatus) {
+      setCollectorDaemonStatus(currentStatus);
+    }
+    if (currentStatus?.running) {
+      return true;
+    }
+
+    const result = await startCollectorDaemon().catch(() => null);
+    if (result?.status) {
+      setCollectorDaemonStatus(result.status);
+    }
+    return Boolean(result?.ok || result?.status?.running);
+  };
+
   const ensureFocusCollectionOnResume = async () => {
     try {
+      await ensureHeadlessSourceCollector().catch(() => false);
       const status = await getWechatAgentStatus().catch(() => ({ running: false }));
       if (status && status.running) {
         setSessionMessage(t("focus.autoCollectReady", "公众号采集已接入本轮专注。"));
@@ -291,6 +336,31 @@ export function FocusTimer() {
   useEffect(() => {
     let cancelled = false;
 
+    const refreshCollectorDaemonStatus = async () => {
+      try {
+        const status = await getCollectorDaemonStatus();
+        if (!cancelled) {
+          setCollectorDaemonStatus(status);
+        }
+      } catch {
+        // keep last visible daemon snapshot on transient failures
+      }
+    };
+
+    void refreshCollectorDaemonStatus();
+    const poller = window.setInterval(() => {
+      void refreshCollectorDaemonStatus();
+    }, running || Boolean(sessionId) ? 8000 : 20000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poller);
+    };
+  }, [running, sessionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const refreshWechatBatchStatus = async () => {
       try {
         const status = await getWechatAgentBatchStatus();
@@ -391,6 +461,16 @@ export function FocusTimer() {
   const progress = clampProgress(((totalSeconds - secondsLeft) / totalSeconds) * 100);
   const batchProgress = getBatchProgress(wechatBatchStatus);
   const showBatchCard = hasBatchSnapshot(wechatBatchStatus);
+  const showSourceCollectorCard = Boolean(
+    collectorDaemonStatus &&
+      (running ||
+        collectorDaemonStatus.running ||
+        collectorDaemonStatus.last_run_at ||
+        collectorDaemonStatus.source_file_count > 0),
+  );
+  const problematicSources = (collectorDaemonStatus?.source_health || [])
+    .filter((source) => source.health_state !== "good")
+    .slice(0, 3);
   const orbStyle = {
     "--af-focus-progress": `${progress.toFixed(2)}%`,
   } as CSSProperties;
@@ -428,6 +508,22 @@ export function FocusTimer() {
 
   const bootstrapFocusCollection = async (bootstrapToken: number) => {
     try {
+      const headlessReady = await ensureHeadlessSourceCollector().catch(() => false);
+      if (!isFocusBootstrapActive(bootstrapToken)) {
+        return;
+      }
+      setSessionMessage(
+        headlessReady
+          ? t(
+              "focus.headlessCollectEnabled",
+              "源页面采集已接入，微信真链采集将作为补充。",
+            )
+          : t(
+              "focus.headlessCollectFailed",
+              "源页面采集暂不可用，正在尝试微信真链采集。",
+            ),
+      );
+
       const status = await getWechatAgentStatus().catch(() => ({ running: false }));
       if (!isFocusBootstrapActive(bootstrapToken)) {
         return;
@@ -891,6 +987,105 @@ export function FocusTimer() {
         </div>
         {sessionMessage ? <p className="mt-3 text-xs text-slate-500">{sessionMessage}</p> : null}
       </section>
+
+      {showSourceCollectorCard ? (
+        <section className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="af-kicker">{t("focus.sourceCollectorKicker", "源页面采集")}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.running
+                  ? t("focus.sourceCollectorRunning", "Headless 正在后台增量扫描")
+                  : t("focus.sourceCollectorLatest", "最近一轮源页面结果")}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {t("focus.sourceCollectorSourceCount", "已配置源")}{" "}
+                {collectorDaemonStatus?.source_file_count || 0} ·{" "}
+                {t("focus.sourceCollectorProblemSources", "异常源")}{" "}
+                {(collectorDaemonStatus?.poor_source_count || 0) +
+                  (collectorDaemonStatus?.watch_source_count || 0)} ·{" "}
+                {t("focus.sourceCollectorDiscovered", "发现")}{" "}
+                {collectorDaemonStatus?.last_run_discovered_count || 0} ·{" "}
+                {t("focus.sourceCollectorCollected", "入库")}{" "}
+                {collectorDaemonStatus?.last_run_collected_count || 0}
+              </p>
+            </div>
+            <span className={sourceCoverageClass(collectorDaemonStatus?.coverage_state)}>
+              {t(
+                `focus.sourceCollectorCoverage.${collectorDaemonStatus?.coverage_state || "idle"}`,
+                sourceCoverageLabel(collectorDaemonStatus?.coverage_state),
+              )}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 md:grid-cols-4">
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorCoverageRate", "处理覆盖")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {formatRatioPercent(collectorDaemonStatus?.last_run_coverage_rate)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorBodyRate", "正文命中")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {formatRatioPercent(collectorDaemonStatus?.last_run_body_success_rate)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorPlugin", "正文抽取")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.last_run_plugin_count || 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorUrlFallback", "链接兜底")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.last_run_url_count || 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorSeen", "历史跳过")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.last_run_skipped_seen_count || 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.sourceCollectorFailed", "失败")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.last_run_failed_count || 0}
+              </p>
+            </div>
+          </div>
+          {collectorDaemonStatus?.coverage_recommendation ? (
+            <p className="mt-3 text-xs text-slate-500">{collectorDaemonStatus.coverage_recommendation}</p>
+          ) : null}
+          {problematicSources.length ? (
+            <div className="mt-3 space-y-2">
+              {problematicSources.map((source) => (
+                <div
+                  key={source.source_url || source.source_token}
+                  className="rounded-xl border border-white/80 bg-white/70 px-3 py-2 text-xs text-slate-500"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-slate-700">{source.source_token}</span>
+                    <span className={sourceCoverageClass(source.health_state)}>
+                      {t(
+                        `focus.sourceCollectorCoverage.${source.health_state}`,
+                        sourceCoverageLabel(source.health_state),
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-1">
+                    {t("focus.sourceCollectorDiscovered", "发现")} {source.discovered_count} ·{" "}
+                    {t("focus.sourceCollectorCollected", "入库")} {source.collected_count} ·{" "}
+                    {t("focus.sourceCollectorFailed", "失败")} {source.failed_count}
+                  </p>
+                  <p className="mt-1">{source.last_error || source.recommendation}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {showBatchCard ? (
         <section className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600">

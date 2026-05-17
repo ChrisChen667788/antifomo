@@ -21,6 +21,7 @@ Start here:
 - [Good first issue](https://github.com/ChrisChen667788/antifomo/issues/2)
 - [Help wanted: WeChat collection reliability](https://github.com/ChrisChen667788/antifomo/issues/3)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
+- [Product whitepaper](./docs/product-whitepaper.md)
 - [Launch kit](./docs/open-source-launch-kit.md)
 - [Growth copy kit](./docs/open-source-growth-copy.md)
 
@@ -43,18 +44,40 @@ Anti-FOMO is built for the whole operating loop:
 
 ## Why people star it
 
-- `WeChat-first`: not just another generic web clipper; the collection pipeline is designed around WeChat-heavy information environments.
+- `WeChat-first`: not just another generic web clipper; the collection pipeline is designed around WeChat-heavy information environments, with headless source collection and per-source health diagnostics.
 - `Evidence-aware`: report quality, source mix, target-account support, and section-level evidence diagnostics are first-class.
 - `Execution-oriented`: focus sessions, action cards, watchlists, briefs, and export tasks are part of the same workspace.
 - `Hackable`: local-first Next.js + FastAPI stack with browser extension, miniapp, collector scripts, and a testable backend.
 
 ## Product screenshots
 
+The full release-grade screenshot coverage is maintained in [Feature Screenshot Coverage](./docs/feature-screenshot-coverage.md), with the historical release capability map in [Release History and Feature Map](./docs/release-history-and-feature-map.md).
+
 <table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/home-signal-dashboard.png" alt="Home signal dashboard screenshot" />
+      <p><strong>Home signal dashboard</strong><br />Triage noisy signals and move quickly into research, focus, saved knowledge, and operations.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-center-dashboard.png" alt="Research center dashboard screenshot" />
+      <p><strong>Research center</strong><br />Operate watchlists, retrieval health, archives, diagnostics, and delivery quality from one center.</p>
+    </td>
+  </tr>
   <tr>
     <td width="50%">
       <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox research workspace screenshot" />
       <p><strong>Inbox / research workspace</strong><br />Generate reports, refine scenario inputs, and export formal delivery documents from one surface.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research compare workspace screenshot" />
+      <p><strong>Compare workspace</strong><br />Review multi-version differences, section evidence, and account-oriented comparison signals.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="Research experiment control plane screenshot" />
+      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and inspect effective retrieval and report-generation runtime config.</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/screenshots/research-topic-workspace.png" alt="Research topic workspace screenshot" />
@@ -63,20 +86,13 @@ Anti-FOMO is built for the whole operating loop:
   </tr>
   <tr>
     <td width="50%">
-      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research compare workspace screenshot" />
-      <p><strong>Compare workspace</strong><br />Review multi-version differences, section evidence, and account-oriented comparison signals.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="Research experiment control plane screenshot" />
-      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and inspect effective retrieval and report-generation runtime config.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
       <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="Knowledge commercial hub screenshot" />
       <p><strong>Knowledge commercial hub</strong><br />Turn reports into account objects, opportunities, review queues, and follow-up actions.</p>
     </td>
-    <td width="50%"></td>
+    <td width="50%">
+      <img src="./docs/assets/screenshots/collector-operations-workspace.png" alt="Collector operations workspace screenshot" />
+      <p><strong>Collector operations</strong><br />Manage local collector imports, source health diagnostics, OCR backfill, queue recovery, automation, and daily exports.</p>
+    </td>
   </tr>
 </table>
 
@@ -86,7 +102,7 @@ Anti-FOMO is built for the whole operating loop:
 
 - URL, text, RSS, newsletter, file, and YouTube transcript intake
 - browser extension quick-send pipeline
-- WeChat URL-first collection chain, collector ops, and WeChat PC agent tooling
+- WeChat URL-first collection chain, headless source collector, collector ops, source-level health diagnostics, and WeChat PC agent supplementary harvesting
 - focused cleanup rules for screenshot OCR, markdown dumps, awards/forum noise, and weak vendor push pieces
 
 ### 2. Research workspace
@@ -113,7 +129,7 @@ Anti-FOMO is built for the whole operating loop:
 
 ### 4. Execution outputs
 
-- focus sessions and session-summary exports
+- focus sessions and session-summary exports with hybrid source collector startup during Focus mode
 - action cards, exec brief, sales brief, outreach draft, and watchlist digest
 - watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
 - feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
@@ -199,9 +215,12 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.6.10+20260514`
+- current version: `0.7.0+20260518`
 - web build passes
 - backend test suite passes via `npm run check`
+- release screenshots cover every primary feature surface through `npm run repo:screenshots`
+- major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
+- product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`
 - public repository sanitized for open-source release
 
 The public repo intentionally does not include:
@@ -223,6 +242,7 @@ Built-in launch assets:
 
 - [Launch kit](./docs/open-source-launch-kit.md)
 - [Growth copy kit](./docs/open-source-growth-copy.md)
+- [Product whitepaper](./docs/product-whitepaper.md)
 - [Open-source backlog](./docs/open-source-backlog.md)
 - [GitHub hero asset](./docs/assets/github-hero.svg)
 - [GitHub social preview](./docs/assets/github-social-preview.png)

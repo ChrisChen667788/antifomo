@@ -1,6 +1,6 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-05-13
+Updated: 2026-05-18
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
 
@@ -199,7 +199,7 @@ Acceptance:
 
 Goal: make quality improvement and retrieval/runtime optimization measurable, repeatable, and safe to iterate.
 
-Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. `0.6.4+20260513` closed the next control-plane tranche with query/routing/reranker diagnostics, follow-up delta offline evaluation, delivery export trend/version comparison, and runtime rebuild/cache/recovery visualization. `0.6.5+20260513` hardened that surface into a persisted experiment orchestration layer with configurable plans, frozen cohorts, locked version baselines, and rollout gate decisions. `0.6.6+20260513` added the rollout audit layer: bounded gate history, promoted/revoked rollout manifests, activation payloads, and UI actions for confirming or withdrawing allowed strategy rollouts. `0.6.7+20260513` added the active policy registry and same-lane supersede behavior so promoted manifests resolve to a single current strategy per experiment lane. `0.6.8+20260514` adds a runtime strategy snapshot that turns active policies into explicit query/routing/reranker config with provenance, version-drift warnings, and UI visibility. `0.6.9+20260514` adds an effective runtime config resolver and wires retrieval search / section retrieval packs to consume promoted routing and reranker policy parameters. `0.6.10+20260514` injects query-generation and source-reranker runtime config into the report-generation pipeline and records the applied strategy in source diagnostics.
+Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. `0.6.4+20260513` closed the next control-plane tranche with query/routing/reranker diagnostics, follow-up delta offline evaluation, delivery export trend/version comparison, and runtime rebuild/cache/recovery visualization. `0.6.5+20260513` hardened that surface into a persisted experiment orchestration layer with configurable plans, frozen cohorts, locked version baselines, and rollout gate decisions. `0.6.6+20260513` added the rollout audit layer: bounded gate history, promoted/revoked rollout manifests, activation payloads, and UI actions for confirming or withdrawing allowed strategy rollouts. `0.6.7+20260513` added the active policy registry and same-lane supersede behavior so promoted manifests resolve to a single current strategy per experiment lane. `0.6.8+20260514` adds a runtime strategy snapshot that turns active policies into explicit query/routing/reranker config with provenance, version-drift warnings, and UI visibility. `0.6.9+20260514` adds an effective runtime config resolver and wires retrieval search / section retrieval packs to consume promoted routing and reranker policy parameters. `0.6.10+20260514` injects query-generation and source-reranker runtime config into the report-generation pipeline and records the applied strategy in source diagnostics. `0.6.11+20260514` formalizes the GitHub release layer with full primary-surface screenshot coverage, screenshot quality gates, a generated screenshot manifest, and a release-history / feature-map document for future industry-standard updates. `0.7.0+20260518` starts the next reliability line by making Focus use the headless source collector first, adding run-level coverage metrics, and exposing source-level公众号 health diagnostics in reports, Focus, miniapp startup, and Collector Ops.
 
 Scope:
 
@@ -214,3 +214,26 @@ Acceptance:
 - Retrieval and generation changes can be judged on fixed quality metrics instead of ad hoc inspection.
 - Backfill, rebuild, and rewrite jobs are restartable and measurably faster.
 - The project can iterate on report quality, evidence quality, and export quality with explicit regression guards.
+
+## 0.7.0+20260518: Focus Collection Reliability and Source Health Operations
+
+Goal: make daily公众号 refreshes diagnosable by source, so Focus mode can keep collecting useful articles even when the WeChat PC article-window path is unavailable or incomplete.
+
+Status: delivered as `0.7.0+20260518`.
+
+Scope:
+
+- Shift Focus start/resume to ensure the headless source collector daemon is running first.
+- Keep the WeChat PC agent as a supplementary URL harvester rather than the only collection path.
+- Persist collector run coverage metrics: handled count, coverage rate, body success rate, and coverage state.
+- Persist per-source summaries for scanned, queued, collected, deduplicated, skipped, failed, and discovered articles.
+- Classify each source as good, watch, or poor, with recommendations that distinguish failed discovery, stale coverage, skipped seen links, and unscanned sources.
+- Surface source health in the backend daemon status, web Focus card, Collector Ops panel, and miniapp fallback response.
+- Refresh GitHub-facing screenshots, release history, whitepaper, and commercial launch copy for the reliability release.
+
+Acceptance:
+
+- Focus mode can start the source collector daemon without waiting for the WeChat PC agent path.
+- A collector status response includes `source_health`, `poor_source_count`, `watch_source_count`, coverage rate, and body success rate.
+- Operators can identify which公众号 source is stale or failing instead of only seeing aggregate coverage.
+- Release documentation and screenshot manifest use `0.7.0+20260518`.

@@ -1,6 +1,7 @@
 const {
   createFocusAssistantPlan,
   executeFocusAssistantAction,
+  getCollectorDaemonStatus,
   getSession,
   getWechatAgentConfig,
   getWechatAgentBatchStatus,
@@ -8,6 +9,7 @@ const {
   listKnowledgeEntries,
   runWechatAgentBatch,
   runWechatAgentOnce,
+  startCollectorDaemon,
   startSession,
   finishSession,
   startWechatAgent,
@@ -576,10 +578,24 @@ Page({
       });
   },
 
+  ensureHeadlessSourceCollector() {
+    return getCollectorDaemonStatus()
+      .catch(() => null)
+      .then((status) => {
+        if (status && status.running) {
+          return true;
+        }
+        return startCollectorDaemon()
+          .then((result) => !!(result && (result.ok || (result.status && result.status.running))))
+          .catch(() => false);
+      });
+  },
+
   enableFocusCollection() {
     const app = getApp();
     const language = app.globalData.preferences.language;
-    return getWechatAgentStatus()
+    return this.ensureHeadlessSourceCollector()
+      .then(() => getWechatAgentStatus())
       .catch(() => ({ running: false }))
       .then((status) => {
         const alreadyRunning = !!(status && status.running);
@@ -647,7 +663,8 @@ Page({
 
   resumeFocusCollectionIfNeeded() {
     const app = getApp();
-    return getWechatAgentStatus()
+    return this.ensureHeadlessSourceCollector()
+      .then(() => getWechatAgentStatus())
       .catch(() => ({ running: false }))
       .then((status) => {
         if (status && status.running) {

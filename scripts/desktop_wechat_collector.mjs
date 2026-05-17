@@ -244,6 +244,95 @@ function isDirectArticleUrl(url) {
   return /mp\.weixin\.qq\.com\/s(\/|\?)/i.test(url) || /mp\.weixin\.qq\.com\/mp\/appmsg/i.test(url);
 }
 
+function sourceToken(url) {
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || parsed.hostname || url;
+  } catch {
+    return String(url || "").split("/").pop() || String(url || "-");
+  }
+}
+
+function createSourceStats(sourceUrl) {
+  return {
+    source_url: sourceUrl,
+    source_token: sourceToken(sourceUrl),
+    scanned: false,
+    discovered_count: 0,
+    queued_count: 0,
+    collected_count: 0,
+    plugin_count: 0,
+    url_count: 0,
+    deduplicated_count: 0,
+    skipped_seen_count: 0,
+    failed_count: 0,
+    discover_failed_count: 0,
+    last_error: "",
+  };
+}
+
+function getSourceStats(sourceStats, sourceUrl) {
+  if (!sourceStats.has(sourceUrl)) {
+    sourceStats.set(sourceUrl, createSourceStats(sourceUrl));
+  }
+  return sourceStats.get(sourceUrl);
+}
+
+function ratio(numerator, denominator) {
+  if (!denominator || denominator <= 0) return 0;
+  return Math.max(0, Math.min(1, Math.round((numerator / denominator) * 1000) / 1000));
+}
+
+function summarizeSourceHealth(stats) {
+  const handledCount = stats.collected_count + stats.skipped_seen_count;
+  const denominator = Math.max(stats.discovered_count, handledCount + stats.failed_count);
+  const coverageRate = ratio(handledCount, denominator);
+  const bodySuccessRate = ratio(stats.plugin_count, stats.collected_count);
+  let healthState = "good";
+  let recommendation = "最近一轮源页面处理稳定。";
+
+  if (stats.discover_failed_count > 0) {
+    healthState = "poor";
+    recommendation = "源页面打开或解析失败，检查 URL 是否可访问、是否需要登录或页面结构是否变化。";
+  } else if (!stats.scanned) {
+    healthState = "watch";
+    recommendation = "本轮因采集上限未扫描到该源；如需全覆盖，调高单轮采集上限或减少源列表。";
+  } else if (stats.discovered_count <= 0) {
+    healthState = "watch";
+    recommendation = "最近一轮没有发现文章；如果预期有更新，检查源页面是否仍然暴露文章链接。";
+  } else if (stats.failed_count > 0 && coverageRate < 0.8) {
+    healthState = "poor";
+    recommendation = "发现文章后未能稳定入库，检查浏览器登录态、正文抽取或后端入库错误。";
+  } else if (coverageRate < 0.9) {
+    healthState = "watch";
+    recommendation = "还有部分文章未处理，建议观察失败明细或提高单轮采集上限。";
+  } else if (stats.collected_count > 0 && bodySuccessRate < 0.5) {
+    healthState = "watch";
+    recommendation = "多数文章走链接兜底，建议检查 headless 浏览器正文抽取链路。";
+  }
+
+  return {
+    ...stats,
+    handled_count: handledCount,
+    coverage_rate: coverageRate,
+    body_success_rate: bodySuccessRate,
+    health_state: healthState,
+    recommendation,
+  };
+}
+
+function buildSourceSummaries(sources, sourceStats) {
+  return sources
+    .map((sourceUrl) => summarizeSourceHealth(getSourceStats(sourceStats, sourceUrl)))
+    .sort((a, b) => {
+      const rank = { poor: 0, watch: 1, good: 2 };
+      const stateRank = (rank[a.health_state] ?? 3) - (rank[b.health_state] ?? 3);
+      if (stateRank !== 0) return stateRank;
+      return b.failed_count - a.failed_count || b.discovered_count - a.discovered_count;
+    });
+}
+
 async function discoverArticleLinks(page, sourceUrl, maxDiscover) {
   const direct = isDirectArticleUrl(sourceUrl);
   if (direct) return [sourceUrl];
@@ -367,6 +456,7 @@ async function extractFromArticle(page, articleUrl) {
 
 function renderRunReport(reportPath, summary) {
   const rows = summary.rows || [];
+  const sourceSummaries = summary.sourceSummaries || [];
   const lines = [
     "# Desktop WeChat Collector 报告",
     "",
@@ -382,9 +472,25 @@ function renderRunReport(reportPath, summary) {
     `- skipped_seen: ${summary.skippedSeenCount}`,
     `- failed: ${summary.failedCount}`,
     "",
+    "## Source health",
+    "",
+    "| source | health | discovered | handled | collected | body | skipped | failed | recommendation |",
+    "|---|---|---:|---:|---:|---:|---:|---:|---|",
+  ];
+  for (const source of sourceSummaries.slice(0, 30)) {
+    lines.push(
+      `| ${source.source_token} | ${source.health_state} | ${source.discovered_count} | ` +
+        `${source.handled_count} | ${source.collected_count} | ${Math.round(source.body_success_rate * 100)}% | ` +
+        `${source.skipped_seen_count} | ${source.failed_count} | ${source.recommendation} |`,
+    );
+  }
+  lines.push(
+    "",
+    "## Article rows",
+    "",
     "| source | article | mode | item_id | status | note |",
     "|---|---|---|---|---|---|",
-  ];
+  );
   for (const row of rows) {
     lines.push(
       `| ${row.sourceToken} | ${row.articleToken} | ${row.mode} | ${row.itemId || ""} | ${row.status} | ${row.note || ""} |`,
@@ -461,12 +567,14 @@ async function runSingleCycle(args) {
       ocrCount: 0,
       skippedSeenCount: 0,
       failedCount: 0,
+      sourceSummaries: [],
       rows: [],
     };
   }
 
   const state = loadState(args.stateFile);
   state.seen_links = state.seen_links || {};
+  const sourceStats = new Map(sources.map((sourceUrl) => [sourceUrl, createSourceStats(sourceUrl)]));
 
   await apiCall(args.apiBase, "/healthz");
 
@@ -501,22 +609,29 @@ async function runSingleCycle(args) {
       }
       const sourcePage = await browser.newPage();
       let articleLinks = [];
+      const stats = getSourceStats(sourceStats, sourceUrl);
+      stats.scanned = true;
       try {
         articleLinks = await discoverArticleLinks(sourcePage, sourceUrl, args.maxDiscoverPerSource);
       } catch (error) {
+        const note = `discover failed: ${error?.message || error}`;
+        stats.failed_count += 1;
+        stats.discover_failed_count += 1;
+        stats.last_error = String(note).slice(0, 220);
         rows.push({
-          sourceToken: sourceUrl.split("/").pop() || sourceUrl,
+          sourceToken: stats.source_token,
           articleToken: "-",
           mode: "discover",
           itemId: "",
           status: "failed",
-          note: `discover failed: ${error?.message || error}`,
+          note,
         });
         failedCount += 1;
       } finally {
         await sourcePage.close();
       }
       discoveredCount += articleLinks.length;
+      stats.discovered_count += articleLinks.length;
 
       for (const articleUrl of articleLinks) {
         if (
@@ -527,13 +642,15 @@ async function runSingleCycle(args) {
         }
         if (state.seen_links[articleUrl]) {
           skippedSeenCount += 1;
+          stats.skipped_seen_count += 1;
           continue;
         }
 
-        const sourceToken = sourceUrl.split("/").pop() || sourceUrl;
+        const sourceToken = stats.source_token;
         const articleToken = articleUrl.split("/").pop() || articleUrl;
 
         if (args.submitMode === "browser-batch") {
+          stats.queued_count += 1;
           pendingArticles.push({
             sourceUrl,
             articleUrl,
@@ -569,6 +686,7 @@ async function runSingleCycle(args) {
             status = result?.deduplicated ? "deduplicated" : "created";
             note = result?.deduplicated ? "plugin deduplicated" : "plugin synced";
             pluginCount += 1;
+            stats.plugin_count += 1;
           } else {
             mode = "url";
             const payload = {
@@ -586,6 +704,10 @@ async function runSingleCycle(args) {
             status = result?.deduplicated ? "deduplicated" : "created";
             note = result?.deduplicated ? "url deduplicated" : "url extracted by backend";
             urlCount += 1;
+            stats.url_count += 1;
+          }
+          if (status === "deduplicated") {
+            stats.deduplicated_count += 1;
           }
 
           state.seen_links[articleUrl] = {
@@ -596,13 +718,16 @@ async function runSingleCycle(args) {
           };
           rows.push({ sourceToken, articleToken, mode, itemId, status, note });
           collectedCount += 1;
+          stats.collected_count += 1;
           console.log(
             `[collector] ${mode} ${articleUrl} -> ${itemId || "no-item"} (${status})`,
           );
         } catch (error) {
           failedCount += 1;
+          stats.failed_count += 1;
+          stats.last_error = String(error?.message || error).slice(0, 220);
           rows.push({
-            sourceToken: sourceUrl.split("/").pop() || sourceUrl,
+            sourceToken: stats.source_token,
             articleToken: articleUrl.split("/").pop() || articleUrl,
             mode: "collect",
             itemId: "",
@@ -643,9 +768,13 @@ async function runSingleCycle(args) {
             let note = "";
 
             if (status === "failed") {
-              failedCount += 1;
               note = normalizeText(result?.error || "browser batch ingest failed");
+              failedCount += 1;
+              const sourceStatsEntry = getSourceStats(sourceStats, entry.sourceUrl);
+              sourceStatsEntry.failed_count += 1;
+              sourceStatsEntry.last_error = note.slice(0, 220);
             } else {
+              const sourceStatsEntry = getSourceStats(sourceStats, entry.sourceUrl);
               state.seen_links[articleUrl] = {
                 seen_at: new Date().toISOString(),
                 item_id: itemId,
@@ -653,12 +782,18 @@ async function runSingleCycle(args) {
                 status,
               };
               collectedCount += 1;
+              sourceStatsEntry.collected_count += 1;
+              if (status === "deduplicated") {
+                sourceStatsEntry.deduplicated_count += 1;
+              }
               if (ingestRoute === "browser_plugin") {
                 pluginCount += 1;
+                sourceStatsEntry.plugin_count += 1;
                 mode = "browser_plugin";
                 note = status === "deduplicated" ? "browser plugin deduplicated" : "browser plugin synced";
               } else {
                 urlCount += 1;
+                sourceStatsEntry.url_count += 1;
                 mode = "browser_url_fallback";
                 note = status === "deduplicated" ? "browser url deduplicated" : "browser url fallback";
               }
@@ -682,6 +817,9 @@ async function runSingleCycle(args) {
             const entry = pendingMap.get(articleUrl);
             if (!entry) continue;
             failedCount += 1;
+            const sourceStatsEntry = getSourceStats(sourceStats, entry.sourceUrl);
+            sourceStatsEntry.failed_count += 1;
+            sourceStatsEntry.last_error = String(error?.message || error).slice(0, 220);
             rows.push({
               sourceToken: entry.sourceToken,
               articleToken: entry.articleToken,
@@ -709,6 +847,7 @@ async function runSingleCycle(args) {
       });
   }
   state.runs = Array.isArray(state.runs) ? state.runs : [];
+  const sourceSummaries = buildSourceSummaries(sources, sourceStats);
   state.runs.unshift({
     ts: new Date().toISOString(),
     source_mode: sourceMode,
@@ -721,9 +860,12 @@ async function runSingleCycle(args) {
     ocr_count: ocrCount,
     skipped_seen_count: skippedSeenCount,
     failed_count: failedCount,
+    poor_source_count: sourceSummaries.filter((source) => source.health_state === "poor").length,
+    watch_source_count: sourceSummaries.filter((source) => source.health_state === "watch").length,
   });
   state.runs = state.runs.slice(0, 50);
   state.last_rows = rows.slice(0, 20);
+  state.last_source_summaries = sourceSummaries.slice(0, 100);
   saveState(args.stateFile, state);
 
   const summary = {
@@ -737,6 +879,7 @@ async function runSingleCycle(args) {
     ocrCount,
     skippedSeenCount,
     failedCount,
+    sourceSummaries,
     rows,
   };
   renderRunReport(args.reportFile, summary);

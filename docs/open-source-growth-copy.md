@@ -6,6 +6,26 @@ It complements:
 
 - `docs/open-source-launch-kit.md`
 - `docs/open-source-backlog.md`
+- `docs/product-whitepaper.md`
+
+## 0.7.0 release highlight
+
+### English
+
+Anti-FOMO 0.7.0 focuses on reliability in the hardest part of the workflow: daily WeChat-heavy collection. Focus mode now starts the headless source collector first, keeps the WeChat PC agent as a supplementary URL harvester, and exposes per-source health diagnostics so operators can see which公众号 source is stale, failing, skipped, or under-covered.
+
+### 中文
+
+Anti-FOMO 0.7.0 重点补强最容易失控的采集可靠性：进入专注模式时优先拉起无头源采集器，WeChat PC Agent 作为补充 URL 发现通道，同时把每个公众号源的健康度、覆盖率和建议前台化。现在不只是看到“总覆盖率不高”，而是能知道具体是哪几个源失效、遗漏或需要处理。
+
+### Product launch bullets
+
+- Headless-source-first Focus collection
+- WeChat PC Agent as supplementary URL harvesting
+- Collector coverage rate and body-success rate
+- Per-source health states and recommendations for good, watch, poor, failed discovery, skipped, stale, and unscanned source conditions
+- Collector Ops and Focus UI diagnostics for source-level recovery
+- Release-grade screenshot set, product whitepaper, and commercial launch copy maintained in the repo
 
 ## Repository short description
 
@@ -78,6 +98,7 @@ collect -> filter -> research -> focus -> action
 Built around:
 
 - WeChat-first collection
+- source-level collector health diagnostics
 - evidence-backed report drafts
 - focus sessions
 - action cards
@@ -99,6 +120,7 @@ collect -> filter -> research -> focus -> action
 核心包括：
 
 - 微信优先采集
+- 按公众号源的采集健康度诊断
 - 有证据研报草稿
 - 专注会话
 - 行动卡片
@@ -118,6 +140,7 @@ The project started from a simple frustration: saving links and reading summarie
 Anti-FOMO is my attempt to reconnect that full loop:
 
 - WeChat-first collection
+- source-level collector coverage diagnostics
 - signal triage and filtering
 - evidence-backed report drafting
 - focus sessions for execution
@@ -134,6 +157,7 @@ Repository: https://github.com/ChrisChen667788/antifomo
 Anti-FOMO 想把这些环节重新连起来：
 
 - 微信优先采集
+- 按源诊断采集覆盖率和遗漏
 - 信息分流和优先级判断
 - 有证据研报草稿
 - 用于执行的专注会话
@@ -153,7 +177,7 @@ Anti-FOMO closes the loop:
 
 collect -> filter -> research -> focus -> action
 
-Built around WeChat-first collection, evidence-backed report drafts, focus sessions, and action-ready delivery outputs.
+Built around WeChat-first collection, source-level collector health diagnostics, evidence-backed report drafts, focus sessions, and action-ready delivery outputs.
 
 Repo: https://github.com/ChrisChen667788/antifomo
 
@@ -166,6 +190,7 @@ The idea came from a simple frustration: a lot of information products help us c
 Anti-FOMO is my attempt to connect that full loop in one workspace:
 
 - WeChat-first collection
+- source-level collector reliability diagnostics
 - signal triage and filtering
 - retrieval-backed report drafting
 - focus sessions for execution
@@ -182,7 +207,7 @@ https://github.com/ChrisChen667788/antifomo
 
 collect -> filter -> research -> focus -> action
 
-Anti-FOMO 想做的，就是把微信优先采集、有证据研报、专注会话和行动卡片重新放回同一个研究工作台。
+Anti-FOMO 想做的，就是把微信优先采集、按源健康诊断、有证据研报、专注会话和行动卡片重新放回同一个研究工作台。
 
 Repo:
 https://github.com/ChrisChen667788/antifomo

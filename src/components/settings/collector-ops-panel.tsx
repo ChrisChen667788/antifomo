@@ -198,12 +198,40 @@ function localText(language: AppLanguage, key: string): string {
       ja: "失敗数",
       ko: "실패 수",
     },
+    daemonCoverageRate: {
+      "zh-CN": "处理覆盖",
+      "zh-TW": "處理覆蓋",
+      en: "Coverage",
+      ja: "処理カバレッジ",
+      ko: "처리 커버리지",
+    },
+    daemonBodyRate: {
+      "zh-CN": "正文命中",
+      "zh-TW": "正文命中",
+      en: "Body hit rate",
+      ja: "本文取得率",
+      ko: "본문 적중률",
+    },
+    daemonHandledCount: {
+      "zh-CN": "已处理/跳过",
+      "zh-TW": "已處理/跳過",
+      en: "Handled / skipped",
+      ja: "処理/スキップ済み",
+      ko: "처리/건너뜀",
+    },
     daemonRecentRows: {
       "zh-CN": "最近 batch 结果",
       "zh-TW": "最近 batch 結果",
       en: "Recent batch results",
       ja: "直近 batch 結果",
       ko: "최근 batch 결과",
+    },
+    daemonSourceHealth: {
+      "zh-CN": "源页面健康度",
+      "zh-TW": "源頁面健康度",
+      en: "Source health",
+      ja: "ソース健全性",
+      ko: "소스 상태",
     },
     daemonLogTail: {
       "zh-CN": "最近日志",
@@ -997,6 +1025,34 @@ function formatDuration(seconds: number | null): string {
   return `${s}s`;
 }
 
+function formatPercent(value: number | null | undefined): string {
+  const safe = Math.max(0, Math.min(1, Number(value || 0)));
+  return `${Math.round(safe * 100)}%`;
+}
+
+function daemonCoverageLabel(
+  language: AppLanguage,
+  state: CollectorDaemonStatus["coverage_state"] | undefined,
+): string {
+  if (state === "good") {
+    return pickText(language, { "zh-CN": "覆盖稳定", "zh-TW": "覆蓋穩定", en: "Stable" }, "Stable");
+  }
+  if (state === "watch") {
+    return pickText(language, { "zh-CN": "需观察", "zh-TW": "需觀察", en: "Watch" }, "Watch");
+  }
+  if (state === "poor") {
+    return pickText(language, { "zh-CN": "需处理", "zh-TW": "需處理", en: "Needs attention" }, "Needs attention");
+  }
+  return pickText(language, { "zh-CN": "待配置", "zh-TW": "待配置", en: "Idle" }, "Idle");
+}
+
+function daemonCoverageClass(state: CollectorDaemonStatus["coverage_state"] | undefined): string {
+  if (state === "good") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (state === "watch") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (state === "poor") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
 function shortText(value: string | null, maxLength = 96): string {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "-";
@@ -1638,6 +1694,19 @@ export function CollectorOpsPanel() {
           </button>
         </div>
 
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span
+            className={`rounded-full border px-3 py-1 font-medium ${daemonCoverageClass(
+              daemonStatus?.coverage_state,
+            )}`}
+          >
+            {daemonCoverageLabel(language, daemonStatus?.coverage_state)}
+          </span>
+          {daemonStatus?.coverage_recommendation ? (
+            <span className="text-slate-500">{daemonStatus.coverage_recommendation}</span>
+          ) : null}
+        </div>
+
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <StatCard label={localText(language, "daemonPid")} value={String(daemonStatus?.pid ?? "-")} />
           <StatCard label={localText(language, "daemonUptime")} value={formatDuration(daemonStatus?.uptime_seconds ?? null)} />
@@ -1666,6 +1735,18 @@ export function CollectorOpsPanel() {
             value={daemonStatus?.last_run_discovered_count ?? 0}
           />
           <StatCard
+            label={localText(language, "daemonHandledCount")}
+            value={daemonStatus?.last_run_handled_count ?? 0}
+          />
+          <StatCard
+            label={localText(language, "daemonCoverageRate")}
+            value={formatPercent(daemonStatus?.last_run_coverage_rate)}
+          />
+          <StatCard
+            label={localText(language, "daemonBodyRate")}
+            value={formatPercent(daemonStatus?.last_run_body_success_rate)}
+          />
+          <StatCard
             label={localText(language, "daemonCollected")}
             value={daemonStatus?.last_run_collected_count ?? 0}
           />
@@ -1684,6 +1765,41 @@ export function CollectorOpsPanel() {
         </div>
 
         <p className="mt-2 text-[11px] text-slate-500">{daemonStatus?.log_file || "-"}</p>
+        <div className="mt-3 rounded-xl border border-white/80 bg-white/70 px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
+            {localText(language, "daemonSourceHealth")}
+          </p>
+          <div className="mt-2 space-y-2">
+            {(daemonStatus?.source_health || []).length ? (
+              (daemonStatus?.source_health || []).slice(0, 8).map((source) => (
+                <div
+                  key={source.source_url || source.source_token}
+                  className="rounded-lg border border-slate-100 bg-white/80 px-3 py-2 text-xs text-slate-500"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-slate-700">{shortText(source.source_token, 64)}</span>
+                    <span
+                      className={`rounded-full border px-2.5 py-0.5 font-medium ${daemonCoverageClass(
+                        source.health_state,
+                      )}`}
+                    >
+                      {daemonCoverageLabel(language, source.health_state)}
+                    </span>
+                  </div>
+                  <p className="mt-1">
+                    {localText(language, "daemonDiscovered")}: {source.discovered_count} ·{" "}
+                    {localText(language, "daemonHandledCount")}: {source.handled_count} ·{" "}
+                    {localText(language, "daemonCoverageRate")}: {formatPercent(source.coverage_rate)} ·{" "}
+                    {localText(language, "daemonBodyRate")}: {formatPercent(source.body_success_rate)}
+                  </p>
+                  <p className="mt-1">{shortText(source.last_error || source.recommendation, 150)}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-400">-</p>
+            )}
+          </div>
+        </div>
         <div className="mt-3 rounded-xl border border-white/80 bg-white/70 px-3 py-3">
           <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
             {localText(language, "daemonRecentRows")}

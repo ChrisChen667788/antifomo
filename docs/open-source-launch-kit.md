@@ -4,6 +4,8 @@
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
 
+Current release: `0.7.0+20260518`, focused on reliable Focus-mode collection and source-level公众号 health diagnostics.
+
 ## GitHub About
 
 ### Description
@@ -36,10 +38,13 @@ Anti-FOMO is an open-source workspace for people who need more than save-later a
 
 Highlights:
 
+- Focus mode now starts with the headless source collector, while the WeChat PC agent works as a supplementary URL harvester.
+- Collector status now reports coverage rate, body success rate, poor/watch source counts, and per-source recommendations so failed公众号 sources are visible by name.
 - research center, compare workspace, archives, watchlists, and daily brief
 - retrieval-backed report quality layer with section evidence diagnostics
 - WeChat-first collection chain, collector ops, browser extension, and miniapp shell
 - market-intelligence packs, formal document export, and client-facing delivery outlines
+- product whitepaper, release-grade screenshots, and commercial launch copy are kept in-repo for GitHub and buyer-facing updates
 - local-first demo flow with testable Next.js + FastAPI stack
 
 ## X / Twitter post
@@ -48,7 +53,8 @@ Open sourced Anti-FOMO today.
 
 It is an open-source AI research workspace for turning noisy web and WeChat signals into useful output:
 
-- WeChat-first collection
+- headless-source-first WeChat collection
+- source-level公众号 health diagnostics
 - evidence-backed report drafts
 - retrieval-backed quality checks
 - focus sessions and action cards
@@ -66,6 +72,7 @@ The project grew out of a simple frustration: a lot of information tools stop at
 Anti-FOMO is my attempt to bring those pieces together:
 
 - WeChat-first collection workflows
+- collector coverage and source-health diagnostics
 - evidence-backed report drafting
 - retrieval-backed research quality checks
 - focus sessions for execution
@@ -89,17 +96,25 @@ Repository: https://github.com/ChrisChen667788/antifomo
 ## Screenshot order for README and social posts
 
 1. `docs/assets/github-hero.svg`
-2. `docs/assets/screenshots/inbox-research-workspace.png`
-3. `docs/assets/screenshots/research-topic-workspace.png`
-4. `docs/assets/screenshots/research-compare-workspace.png`
-5. `docs/assets/screenshots/knowledge-commercial-hub.png`
-6. `docs/assets/github-social-preview.png`
+2. `docs/assets/screenshots/home-signal-dashboard.png`
+3. `docs/assets/screenshots/research-center-dashboard.png`
+4. `docs/assets/screenshots/inbox-research-workspace.png`
+5. `docs/assets/screenshots/research-experiment-control-plane.png`
+6. `docs/assets/screenshots/research-topic-workspace.png`
+7. `docs/assets/screenshots/research-compare-workspace.png`
+8. `docs/assets/screenshots/knowledge-commercial-hub.png`
+9. `docs/assets/screenshots/collector-operations-workspace.png`
+10. `docs/assets/github-social-preview.png`
+
+The full primary-surface screenshot checklist lives in `docs/feature-screenshot-coverage.md`.
+The commercial product narrative lives in `docs/product-whitepaper.md`.
 
 ## Social assets
 
 - `docs/assets/github-hero.svg`: primary README hero
 - `docs/assets/screenshots/`: real product screenshots for README, repo posts, and release notes
 - `docs/assets/github-social-preview.png`: ready-to-upload GitHub social preview image
+- `docs/product-whitepaper.md`: commercial-grade product narrative and module map
 
 Refresh screenshots with:
 

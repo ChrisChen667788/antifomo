@@ -1,0 +1,182 @@
+{
+  "version": "0.7.0+20260518",
+  "generated_at": "2026-05-17T23:02:16.296Z",
+  "viewport": {
+    "width": 1600,
+    "height": 1100,
+    "device_scale_factor": 1.2
+  },
+  "quality_gate": {
+    "min_file_size_bytes": 40000,
+    "runtime_overlay_check": true,
+    "expected_screenshot_count": 15,
+    "accepted_screenshot_count": 15
+  },
+  "screenshots": [
+    {
+      "feature": "Home signal dashboard",
+      "route": "/",
+      "file": "docs/assets/screenshots/home-signal-dashboard.png",
+      "description": "Feed triage homepage for high-signal intake and quick route switching.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 731925
+      }
+    },
+    {
+      "feature": "Inbox research workspace",
+      "route": "/inbox",
+      "file": "docs/assets/screenshots/inbox-research-workspace.png",
+      "description": "Intake, keyword research, report generation, and formal delivery export workspace.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 336825
+      }
+    },
+    {
+      "feature": "Saved read-later workspace",
+      "route": "/saved",
+      "file": "docs/assets/screenshots/saved-readlater-workspace.png",
+      "description": "Saved-item and read-later review surface with topic and scoring context.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 590088
+      }
+    },
+    {
+      "feature": "Focus session workspace",
+      "route": "/focus",
+      "file": "docs/assets/screenshots/focus-session-workspace.png",
+      "description": "Focused execution timer with headless-source-first collector startup and WeChat PC supplementary harvesting.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 425712
+      }
+    },
+    {
+      "feature": "Session summary workspace",
+      "route": "/session-summary",
+      "file": "docs/assets/screenshots/session-summary-workspace.png",
+      "description": "Session metrics, markdown summary, reading list, and follow-up draft workspace.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 485818
+      }
+    },
+    {
+      "feature": "Collector operations workspace",
+      "route": "/collector",
+      "file": "docs/assets/screenshots/collector-operations-workspace.png",
+      "description": "Desktop collector, source health diagnostics, coverage rates, OCR backfill, pending queue, and daily export operations panel.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 404338
+      }
+    },
+    {
+      "feature": "Settings and tuning workspace",
+      "route": "/settings",
+      "file": "docs/assets/screenshots/settings-tuning-workspace.png",
+      "description": "Preference, WorkBuddy, collector, and recommender tuning controls.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 405887
+      }
+    },
+    {
+      "feature": "Knowledge library workspace",
+      "route": "/knowledge",
+      "file": "docs/assets/screenshots/knowledge-library-workspace.png",
+      "description": "Knowledge list, commercial dashboard, account signals, and saved intelligence cards.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 489587
+      }
+    },
+    {
+      "feature": "Knowledge commercial hub",
+      "route": "/knowledge/accounts",
+      "file": "docs/assets/screenshots/knowledge-commercial-hub.png",
+      "description": "Account intelligence, opportunity context, review queues, and commercial follow-up actions.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 479447
+      }
+    },
+    {
+      "feature": "Knowledge merge workflow",
+      "route": "/knowledge/merge?ids=f539d1d3-3aa3-4254-b944-548d85f1731d,bf0f7228-da9d-4cb9-8a9d-b39ac3dc1add&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
+      "file": "docs/assets/screenshots/knowledge-merge-workflow.png",
+      "description": "Knowledge-card merge preview, inherited state checks, and target-title workflow.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 420087
+      }
+    },
+    {
+      "feature": "Research center dashboard",
+      "route": "/research",
+      "file": "docs/assets/screenshots/research-center-dashboard.png",
+      "description": "Research center overview for watchlists, archives, retrieval health, and delivery diagnostics.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 520015
+      }
+    },
+    {
+      "feature": "Research topic workspace",
+      "route": "/research/topics/f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
+      "file": "docs/assets/screenshots/research-topic-workspace.png",
+      "description": "Topic-version workspace for evidence density, follow-up impact, and long-running changes.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 434765
+      }
+    },
+    {
+      "feature": "Research compare workspace",
+      "route": "/research/compare?snapshot=2888d87f-4dd2-4363-b978-4d22d9951111&topicId=f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
+      "file": "docs/assets/screenshots/research-compare-workspace.png",
+      "description": "Multi-version comparison matrix for account, competitor, evidence, and delivery deltas.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 505168
+      }
+    },
+    {
+      "feature": "Research experiment orchestration",
+      "route": "/research",
+      "file": "docs/assets/screenshots/research-experiment-control-plane.png",
+      "description": "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 388814
+      }
+    },
+    {
+      "feature": "Research archive viewer",
+      "route": "/research/archives/07d25909-3590-4ff4-ab2b-2a8b7e674306",
+      "file": "docs/assets/screenshots/research-archive-viewer.png",
+      "description": "Historical Markdown archive viewer with delivery digest, section links, and version context.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 497928
+      }
+    }
+  ]
+}

@@ -402,6 +402,24 @@ class CollectorDaemonRecentRowResponse(BaseModel):
     note: str | None = None
 
 
+class CollectorDaemonSourceHealthResponse(BaseModel):
+    source_url: str
+    source_token: str
+    scanned: bool = False
+    health_state: Literal["good", "watch", "poor"] = "watch"
+    recommendation: str = ""
+    discovered_count: int = 0
+    handled_count: int = 0
+    collected_count: int = 0
+    plugin_count: int = 0
+    url_count: int = 0
+    skipped_seen_count: int = 0
+    failed_count: int = 0
+    coverage_rate: float = 0.0
+    body_success_rate: float = 0.0
+    last_error: str | None = None
+
+
 class CollectorDaemonStatusResponse(BaseModel):
     running: bool
     pid: int | None = None
@@ -421,6 +439,14 @@ class CollectorDaemonStatusResponse(BaseModel):
     last_run_url_count: int = 0
     last_run_failed_count: int = 0
     last_run_skipped_seen_count: int = 0
+    last_run_handled_count: int = 0
+    last_run_coverage_rate: float = 0.0
+    last_run_body_success_rate: float = 0.0
+    coverage_state: Literal["idle", "good", "watch", "poor"] = "idle"
+    coverage_recommendation: str = ""
+    poor_source_count: int = 0
+    watch_source_count: int = 0
+    source_health: list[CollectorDaemonSourceHealthResponse] = Field(default_factory=list)
     last_rows: list[CollectorDaemonRecentRowResponse] = Field(default_factory=list)
     log_tail: list[str] = Field(default_factory=list)
 
