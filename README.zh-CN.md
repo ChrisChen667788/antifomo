@@ -9,9 +9,9 @@
 
 ![Anti-FOMO hero](./docs/assets/github-hero.svg)
 
-把嘈杂的网页与微信信息流，变成有证据的研报、专注执行和可交付动作。
+把嘈杂的网页与微信信息流，变成有证据的研报、解决方案架构蓝图、专注执行和可交付动作。
 
-Anti-FOMO 是一个开源 AI 研究工作台，适合咨询顾问、创业者、BD / 售前、策略团队和需要持续盯高信号内容的人。它不是“收藏稍后读 + AI 摘要”的叠加，而是把完整闭环重新接起来：
+Anti-FOMO 是一个开源 AI 研究工作台，适合解决方案架构师、行业咨询顾问、BD / 售前、策略团队和需要持续盯高信号内容的人。它不是“收藏稍后读 + AI 摘要”的叠加，而是把完整闭环重新接起来：
 
 `collect -> clean -> research -> compare -> focus -> action`
 
@@ -38,13 +38,14 @@ Anti-FOMO 关注的是整条工作链路：
 
 - 把 URL、文本、Feed 和微信重场景输入收进来
 - 在清洗层尽量打掉 OCR 噪声、markdown/source dump、奖项论坛和弱 vendor 推进稿
-- 基于证据生成研报、对比快照、历史版本和正式交付材料
+- 基于证据生成研报、对比快照、架构就绪度、历史版本和正式交付材料
 - 用专注会话、行动卡、brief 和 watchlist 把研究继续推进成动作
 
 ## 为什么更容易吸引用户
 
 - `WeChat-first`：不是泛网页收藏器，而是把微信信息环境当一等输入面，并补上无头源采集和按公众号源的健康度诊断。
 - `Evidence-aware`：来源质量、章节证据配额、目标账户支撑率、官方源占比都被前台化。
+- `Architecture-ready`：方案包新增架构就绪度、架构分层、集成风险、非功能要求和核验动作，贴近解决方案架构师的交付工作。
 - `Execution-oriented`：研报不是终点，后面还有专注会话、行动卡、brief、可研、项目建议书和对客 PPT 大纲。
 - `Hackable`：本地优先的 Next.js + FastAPI 架构，附带浏览器扩展、小程序外壳、采集器和可跑的测试链路。
 
@@ -66,7 +67,7 @@ Anti-FOMO 关注的是整条工作链路：
   <tr>
     <td width="50%">
       <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox 研报工作区截图" />
-      <p><strong>Inbox / 研报工作区</strong><br />在一个界面里完成采集、生成研报、补场景信息和正式文档导出。</p>
+      <p><strong>Inbox / 研报工作区</strong><br />在一个界面里完成采集、生成研报、补场景信息、审阅架构就绪度和正式文档导出。</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="对比矩阵截图" />
@@ -110,6 +111,7 @@ Anti-FOMO 关注的是整条工作链路：
 - 追问 / 二次思考 / 补证后的二轮研报
 - Compare Workspace、历史归档、字段 diff、导出链路
 - Watchlists、Daily Brief、Knowledge Intelligence、Commercial Hub
+- 面向解决方案架构师的架构就绪度评分，覆盖业务匹配、能力边界、接口依赖、安全合规和交付可行性
 
 ### 3. 检索增强与质量层
 
@@ -133,12 +135,14 @@ Anti-FOMO 关注的是整条工作链路：
 - Watchlist run history、失败重试说明、通知摘要和 Markdown digest 导出
 - 可行性研究报告、项目建议书、对客 PPT、客户 brief、投标准备 memo 和执行材料导出
 - 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档，并保留交付质量审查记录
+- 导出业务/角色层、应用能力层、模型/数据/集成层、安全/部署/运维层的架构蓝图
 
 ## 适合谁
 
-- 咨询顾问和策略团队
-- 创业者、产品负责人和行业研究人员
+- 解决方案架构师，把行业信号沉淀成客户可讨论的架构蓝图
+- 行业咨询顾问，准备有证据的机会研究、方案建议和交付材料
 - BD / 售前 / 解决方案团队
+- 创业者、产品负责人和行业研究人员
 - 需要持续盯公众号和高频公开信号的人
 - 想要本地运行、可改造、可验证的开源研究工作台的开发者
 
@@ -214,7 +218,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.7.0+20260518`
+- 当前版本：`0.8.0+20260518`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面

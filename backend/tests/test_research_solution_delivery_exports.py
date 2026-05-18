@@ -105,6 +105,8 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
         assert "客户 brief" in str(solution_task.output_payload.get("content") or "")
         assert "政务AI解决方案" in str(solution_task.output_payload.get("content") or "")
         assert "交付质量自审" in str(solution_task.output_payload.get("content") or "")
+        assert "解决方案架构就绪度" in str(solution_task.output_payload.get("content") or "")
+        assert "架构蓝图" in str(solution_task.output_payload.get("content") or "")
     finally:
         db.close()
 

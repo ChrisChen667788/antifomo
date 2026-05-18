@@ -1,10 +1,10 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `0.7.0+20260518`
+Version: `0.8.0+20260518`
 
-Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, focus sessions, and action-ready follow-up.
+Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-The product is designed for consultants, founders, BD and pre-sales teams, strategy operators, and builders who need a traceable path from raw signals to practical decisions.
+The product is designed for solution architects, industry consultants, BD and pre-sales teams, strategy operators, and builders who need a traceable path from raw signals to practical decisions.
 
 ## Executive Summary
 
@@ -12,7 +12,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 0.7.0 release strengthens the collection reliability layer. Focus mode now starts the headless source collector first, keeps the WeChat PC agent as supplementary URL harvesting, and exposes source-level health diagnostics so operators can identify which公众号 source is stale, skipped, failing, or under-covered.
+The 0.8.0 release strengthens the solution-architecture layer. Generated solution packs now include architecture readiness scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions so solution architects and industry consultants can move from research to client-ready architecture discussion.
 
 ## Problem
 
@@ -23,6 +23,7 @@ High-signal work often starts in fragmented channels: WeChat official accounts, 
 - generic summaries lose evidence lineage
 - research, comparison, execution, and delivery live in different tools
 - teams cannot tell whether a bad output came from poor collection, weak retrieval, or missing scenario context
+- solution architects still need to manually translate research into architecture boundaries, interface risks, security constraints, and implementation validation questions
 
 Anti-FOMO treats collection reliability, evidence quality, and execution output as one product system.
 
@@ -57,7 +58,29 @@ Anti-FOMO treats collection reliability, evidence quality, and execution output 
 
 - Focus sessions, session summaries, reading lists, todo drafts, exec briefs, sales briefs, outreach drafts, and watchlist digests.
 - Feasibility studies, project proposals, client PPT outlines, client briefs, bidding prep memos, and execution-material chains.
+- Solution architecture readiness with business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility scoring.
+- Architecture blueprint sections for business/role, application capability, model/data/integration, and security/deployment/operations layers.
 - Commercial Hub surfaces that turn research output into account intelligence, opportunities, review queues, and next actions.
+
+## 0.8.0 Solution Architecture Release
+
+The 0.8.0 release focuses on visible quality gains for solution architects and industry consultants.
+
+New release capabilities:
+
+- Architecture readiness score inside every generated solution delivery pack.
+- Five review dimensions: business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility.
+- Architecture blueprint sections with components, evidence, and open questions.
+- Non-functional requirements, integration risks, assumptions, stakeholder questions, and validation actions.
+- Research report card rendering for architecture readiness, blueprint layers, risks, and next actions.
+- Solution delivery markdown export with a dedicated architecture-readiness chapter.
+
+Commercial value:
+
+- Helps solution architects turn noisy market and procurement signals into a structured client architecture narrative.
+- Gives industry consultants a reusable bridge from research evidence to advisory deliverables.
+- Makes pre-sales work more reviewable before client meetings, bid preparation, or project proposal export.
+- Separates evidence-backed architecture statements from assumptions that still require customer confirmation.
 
 ## 0.7.0 Reliability Release
 
@@ -81,7 +104,8 @@ Commercial value:
 
 ## Target Users
 
-- Consulting teams preparing industry scans, opportunity briefs, and delivery materials.
+- Solution architects preparing architecture narratives, capability maps, integration plans, and client discussion materials.
+- Industry consultants preparing evidence-backed opportunity studies, advisory deliverables, and project proposal inputs.
 - BD, pre-sales, and solution teams tracking accounts, tenders, competitors, and market movements.
 - Founders and product leads who need repeatable research workflows across fast-moving AI and technology markets.
 - Operators who live in WeChat article flows but need evidence lineage, not just saved links.
@@ -119,5 +143,6 @@ Anti-FOMO is not a read-later app, not a generic summarizer, and not only a RAG 
 - side-by-side version comparison
 - focus sessions and action outputs
 - delivery-grade artifacts for client, opportunity, and strategy work
+- solution architecture readiness and blueprint exports for pre-sales and consulting workflows
 
 The product direction is to keep the core local-first and open-source while expanding reliability, evaluation, and commercial workflow depth.

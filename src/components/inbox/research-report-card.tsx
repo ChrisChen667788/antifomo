@@ -249,6 +249,24 @@ export function ResearchReportCard({
       className: "border-rose-200/90 bg-rose-50 text-rose-800",
     };
   };
+  const architectureReadinessMeta = (value?: string) => {
+    if (value === "ready") {
+      return {
+        label: "架构可进入方案评审",
+        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
+      };
+    }
+    if (value === "watch") {
+      return {
+        label: "架构需补齐边界",
+        className: "border-amber-200/90 bg-amber-50 text-amber-800",
+      };
+    }
+    return {
+      label: "架构暂不宜外发",
+      className: "border-rose-200/90 bg-rose-50 text-rose-800",
+    };
+  };
   const followupResolutionMeta = (value?: string) => {
     if (value === "corrected") {
       return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
@@ -356,8 +374,10 @@ export function ResearchReportCard({
   const solutionDeliveryPack = report.solution_delivery_pack;
   const solutionDeliveryQuality = solutionDeliveryPack?.solution_quality_profile;
   const projectProposalQuality = solutionDeliveryPack?.project_proposal_quality_profile;
+  const architectureReadiness = solutionDeliveryPack?.architecture_readiness;
   const solutionDeliveryQualityMeta = deliveryQualityMeta(solutionDeliveryQuality?.status);
   const projectProposalQualityMeta = deliveryQualityMeta(projectProposalQuality?.status);
+  const architectureReadinessState = architectureReadinessMeta(architectureReadiness?.status);
   const weakSections = (report.sections || [])
     .filter((section) => {
       const status = String(section.status || "").trim();
@@ -935,6 +955,85 @@ export function ResearchReportCard({
               ) : null}
             </div>
           </div>
+
+          {architectureReadiness ? (
+            <div className="mt-4 rounded-2xl border border-indigo-100/90 bg-indigo-50/70 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-600">解决方案架构就绪度</p>
+                  <h5 className="mt-2 text-base font-semibold tracking-[-0.02em] text-slate-900">
+                    架构蓝图、接口风险和核验动作
+                  </h5>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {architectureReadiness.summary || "已为解决方案架构师沉淀架构评估框架，需补充客户和接口约束后形成外发版。"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className={`rounded-full border px-2.5 py-1 font-semibold ${architectureReadinessState.className}`}>
+                    {architectureReadinessState.label}
+                  </span>
+                  <span className="rounded-full bg-slate-900 px-2.5 py-1 font-semibold text-white">
+                    {architectureReadiness.overall_score || 0}/100
+                  </span>
+                </div>
+              </div>
+              {architectureReadiness.metrics?.length ? (
+                <div className="mt-3 grid gap-2 md:grid-cols-5">
+                  {architectureReadiness.metrics.slice(0, 5).map((metric) => {
+                    const bucket = valueBucket(metric.score);
+                    return (
+                      <div key={`architecture-metric-${metric.key}`} className="rounded-xl border border-white/80 bg-white/88 px-3 py-2">
+                        <p className="text-[11px] font-semibold text-slate-500">{metric.label}</p>
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <span className="text-lg font-semibold tracking-[-0.03em] text-slate-900">{metric.score}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] ${bucket.className}`}>{bucket.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {architectureReadiness.blueprint_sections?.length ? (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {architectureReadiness.blueprint_sections.slice(0, 4).map((section) => (
+                    <div key={`architecture-section-${section.title}`} className="rounded-xl border border-white/80 bg-white/88 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-900">{section.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{section.purpose}</p>
+                      {section.components?.length ? (
+                        <p className="mt-1 text-xs leading-5 text-indigo-700">
+                          {section.components.slice(0, 4).join(" / ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {(architectureReadiness.integration_risks?.length || architectureReadiness.validation_actions?.length) ? (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {architectureReadiness.integration_risks?.length ? (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">集成 / 落地风险</p>
+                      <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900">
+                        {architectureReadiness.integration_risks.slice(0, 3).map((risk) => (
+                          <li key={`architecture-risk-${risk}`}>{risk}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {architectureReadiness.validation_actions?.length ? (
+                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/76 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">架构核验动作</p>
+                      <ul className="mt-2 space-y-1 text-xs leading-5 text-emerald-950">
+                        {architectureReadiness.validation_actions.slice(0, 3).map((action) => (
+                          <li key={`architecture-action-${action}`}>{action}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {marketIntelligence?.external_source_queries?.length ? (
             <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">

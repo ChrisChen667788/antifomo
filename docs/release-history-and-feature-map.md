@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `0.7.0+20260518`
+Current version: `0.8.0+20260518`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
@@ -18,6 +18,7 @@ This file is the compact product map for release notes, GitHub updates, and futu
 | `0.6.8` - `0.6.10` | Runtime strategy activation | Added runtime strategy snapshots, effective runtime config resolution, retrieval and section-pack strategy consumption, report-generation runtime strategy injection, source diagnostics, fallback-lane visibility, and report-generation config panels. |
 | `0.6.11` | Release-grade GitHub documentation and screenshot coverage | Expanded automated screenshot capture to all primary product surfaces, added screenshot quality gates and a manifest, refreshed README links, and documented historical version progress plus the current complete capability map. |
 | `0.7.0` | Focus collection reliability and source-health operations | Shifted Focus mode to a headless-source-first collector path, kept the WeChat PC agent as supplementary URL harvesting, and added run-level plus source-level health diagnostics so failed公众号 sources are visible by name instead of hidden inside aggregate coverage. |
+| `0.8.0` | Solution architecture readiness for consultants | Added architecture readiness scoring, architecture blueprint sections, non-functional requirements, integration risks, assumptions, stakeholder questions, and validation actions to solution delivery packs and research report UI. |
 
 ## Current Capability Inventory
 
@@ -54,6 +55,8 @@ This file is the compact product map for release notes, GitHub updates, and futu
 - Market intelligence packs with three-year tender history, products, technical parameters, source queries, and evidence gaps.
 - Scenario/customer/vertical-scene refresh loop before formal export.
 - Feasibility study, project proposal, client-facing PPT outline, client brief, bidding prep memo, and execution-material chains.
+- Solution architecture readiness for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility.
+- Architecture blueprint export covering business/role, application capability, model/data/integration, and security/deployment/operations layers.
 - China-tech delivery self-review and self-repair across demand, architecture, security/compliance, procurement/implementation, budget/performance, risks, acceptance, and evidence grounding.
 
 ### 6. Execution and Operations

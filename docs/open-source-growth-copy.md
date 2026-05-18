@@ -27,61 +27,79 @@ Anti-FOMO 0.7.0 重点补强最容易失控的采集可靠性：进入专注模�
 - Collector Ops and Focus UI diagnostics for source-level recovery
 - Release-grade screenshot set, product whitepaper, and commercial launch copy maintained in the repo
 
+## 0.8.0 release highlight
+
+### English
+
+Anti-FOMO 0.8.0 shifts the release story toward solution architects and industry consultants. Generated solution packs now include architecture readiness scoring, architecture blueprint layers, non-functional requirements, integration risks, stakeholder questions, and validation actions so research can move directly into client architecture discussions and proposal work.
+
+### 中文
+
+Anti-FOMO 0.8.0 把产品重点转向解决方案架构师和行业咨询顾问：方案交付包新增架构就绪度评分、架构分层蓝图、非功能要求、集成风险、客户访谈问题和核验动作。它不只是生成研报，而是把公开信号继续推进成可与客户讨论的解决方案架构。
+
+### Product launch bullets
+
+- Solution architecture readiness scoring
+- Architecture blueprint layers for business, application capability, model/data/integration, and security/operations
+- Non-functional requirements and integration risk extraction
+- Stakeholder questions and validation actions for client workshops
+- Research report UI and markdown exports updated for solution architects and consultants
+
 ## Repository short description
 
 ### English
 
-Open-source AI research workspace for turning noisy web + WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+Open-source AI research workspace for solution architects and consultants turning noisy web + WeChat signals into evidence-backed reports, architecture blueprints, and delivery actions.
 
 ### 中文
 
-一个把嘈杂网页与微信信息流，转成有证据研报、专注执行和可交付动作的开源 AI 研究工作台。
+一个面向解决方案架构师和行业咨询顾问，把嘈杂网页与微信信息流转成有证据研报、架构蓝图和可交付动作的开源 AI 研究工作台。
 
 ## GitHub pinned repo blurb
 
 ### English
 
-Anti-FOMO is the research workspace we wanted for turning noisy information into evidence-backed reports, focus sessions, and concrete follow-up. It brings WeChat-first collection, retrieval-backed drafting, and action workflows into one open-source surface.
+Anti-FOMO is the research workspace we wanted for turning noisy information into evidence-backed reports, solution architecture blueprints, focus sessions, and concrete follow-up. It brings WeChat-first collection, retrieval-backed drafting, architecture readiness, and action workflows into one open-source surface.
 
 ### 中文
 
-Anti-FOMO 想解决的是“信息采集、研报整理、专注执行和后续动作被拆散在多个工具里”的问题。它把微信优先采集、证据增强研报和行动工作流重新收回同一个开源研究工作台。
+Anti-FOMO 想解决的是“信息采集、研报整理、方案架构、专注执行和后续动作被拆散在多个工具里”的问题。它把微信优先采集、证据增强研报、架构就绪度和行动工作流重新收回同一个开源研究工作台。
 
 ## GitHub profile bio options
 
 ### English option 1
 
-Building open-source research workflows for WeChat-first collection, evidence-backed reports, and action execution.
+Building open-source research workflows for solution architects: WeChat-first collection, evidence-backed reports, architecture blueprints, and action execution.
 
 ### English option 2
 
-Open-sourcing tools for signal triage, WeChat-heavy research workflows, and execution-oriented AI products.
+Open-sourcing tools for signal triage, WeChat-heavy research workflows, solution architecture readiness, and execution-oriented AI products.
 
 ### 中文 option 1
 
-在做面向微信优先采集、有证据研报和行动执行的开源研究工作流工具。
+在做面向解决方案架构师的开源研究工作流：微信优先采集、有证据研报、架构蓝图和行动执行。
 
 ### 中文 option 2
 
-持续开源高信号信息分流、研究工作流和执行导向的 AI 工具。
+持续开源高信号信息分流、研究工作流、解决方案架构和执行导向的 AI 工具。
 
 ## Personal homepage / portfolio project intro
 
 ### English short
 
-Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+Anti-FOMO is an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into evidence-backed reports, architecture blueprints, focus sessions, and action-ready follow-up.
 
 ### English medium
 
-Anti-FOMO is the project I use to bring collection, filtering, retrieval-backed report drafting, focus sessions, and action outputs into one workspace. The goal is not just to save information, but to move from noisy input to concrete follow-up faster.
+Anti-FOMO is the project I use to bring collection, filtering, retrieval-backed report drafting, solution architecture readiness, focus sessions, and action outputs into one workspace. The goal is not just to save information, but to move from noisy input to client-ready architecture discussion and concrete follow-up faster.
 
 ### 中文短版
 
-Anti-FOMO 是一个开源 AI 研究工作台，围绕高信号采集、微信优先收集、有证据研报、专注会话和行动输出构建。
+Anti-FOMO 是一个开源 AI 研究工作台，围绕高信号采集、微信优先收集、有证据研报、解决方案架构蓝图、专注会话和行动输出构建。
 
 ### 中文中版
 
-Anti-FOMO 想解决的问题不是“怎样收藏更多信息”，而是“怎样更快把信息变成判断和动作”。它把采集、筛选、证据增强研报、专注会话和行动输出收进了一个统一工作流。
+Anti-FOMO 想解决的问题不是“怎样收藏更多信息”，而是“怎样更快把信息变成判断、架构和动作”。它把采集、筛选、证据增强研报、架构就绪度、专注会话和行动输出收进了一个统一工作流。
 
 ## X / Twitter launch post
 
@@ -98,6 +116,8 @@ collect -> filter -> research -> focus -> action
 Built around:
 
 - WeChat-first collection
+- solution architecture readiness
+- client-ready architecture blueprints
 - source-level collector health diagnostics
 - evidence-backed report drafts
 - focus sessions
@@ -120,6 +140,8 @@ collect -> filter -> research -> focus -> action
 核心包括：
 
 - 微信优先采集
+- 解决方案架构就绪度
+- 可与客户讨论的架构蓝图
 - 按公众号源的采集健康度诊断
 - 有证据研报草稿
 - 专注会话
@@ -140,6 +162,7 @@ The project started from a simple frustration: saving links and reading summarie
 Anti-FOMO is my attempt to reconnect that full loop:
 
 - WeChat-first collection
+- solution architecture readiness
 - source-level collector coverage diagnostics
 - signal triage and filtering
 - evidence-backed report drafting
@@ -157,6 +180,7 @@ Repository: https://github.com/ChrisChen667788/antifomo
 Anti-FOMO 想把这些环节重新连起来：
 
 - 微信优先采集
+- 解决方案架构就绪度
 - 按源诊断采集覆盖率和遗漏
 - 信息分流和优先级判断
 - 有证据研报草稿
@@ -177,7 +201,7 @@ Anti-FOMO closes the loop:
 
 collect -> filter -> research -> focus -> action
 
-Built around WeChat-first collection, source-level collector health diagnostics, evidence-backed report drafts, focus sessions, and action-ready delivery outputs.
+Built around WeChat-first collection, solution architecture readiness, source-level collector health diagnostics, evidence-backed report drafts, focus sessions, and action-ready delivery outputs.
 
 Repo: https://github.com/ChrisChen667788/antifomo
 
@@ -190,6 +214,7 @@ The idea came from a simple frustration: a lot of information products help us c
 Anti-FOMO is my attempt to connect that full loop in one workspace:
 
 - WeChat-first collection
+- solution architecture readiness
 - source-level collector reliability diagnostics
 - signal triage and filtering
 - retrieval-backed report drafting
@@ -207,7 +232,7 @@ https://github.com/ChrisChen667788/antifomo
 
 collect -> filter -> research -> focus -> action
 
-Anti-FOMO 想做的，就是把微信优先采集、按源健康诊断、有证据研报、专注会话和行动卡片重新放回同一个研究工作台。
+Anti-FOMO 想做的，就是把微信优先采集、按源健康诊断、有证据研报、解决方案架构蓝图、专注会话和行动卡片重新放回同一个研究工作台。
 
 Repo:
 https://github.com/ChrisChen667788/antifomo
@@ -216,22 +241,22 @@ https://github.com/ChrisChen667788/antifomo
 
 ### Title ideas
 
-- Show HN: Anti-FOMO, an open-source WeChat-first AI research workspace
+- Show HN: Anti-FOMO, an open-source AI research workspace for solution architects
 - Show HN: Anti-FOMO, a workspace for collection, evidence-backed reports, and focus sessions
 
 ### Intro paragraph
 
-I built this because I wanted a workflow that does more than save links. Anti-FOMO combines WeChat-first collection, evidence-backed reports, focus sessions, and action cards in one open-source workspace.
+I built this because I wanted a workflow that does more than save links. Anti-FOMO combines WeChat-first collection, evidence-backed reports, solution architecture readiness, focus sessions, and action cards in one open-source workspace.
 
 ## Reddit launch draft
 
 ### English
 
-Anti-FOMO is now open source. It is an AI research workspace for high-signal intake, WeChat-first collection, evidence-backed reports, focus sessions, and action-ready follow-up.
+Anti-FOMO is now open source. It is an AI research workspace for solution architects and consultants: high-signal intake, WeChat-first collection, evidence-backed reports, architecture blueprints, focus sessions, and action-ready follow-up.
 
 ### 中文
 
-Anti-FOMO 现在已经开源。它是一个面向高信号信息分流、微信优先采集、有证据研报、专注会话和行动输出的研究工作台。
+Anti-FOMO 现在已经开源。它是一个面向解决方案架构师和行业咨询顾问的研究工作台，覆盖高信号信息分流、微信优先采集、有证据研报、架构蓝图、专注会话和行动输出。
 
 ## Reply templates
 

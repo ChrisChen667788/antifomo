@@ -638,6 +638,29 @@ export interface ApiResearchDeliveryQualityProfile {
   self_review: ApiResearchDeliverySelfReview;
 }
 
+export interface ApiResearchSolutionArchitectureBlueprintSection {
+  title: string;
+  purpose: string;
+  components: string[];
+  evidence: string[];
+  open_questions: string[];
+}
+
+export interface ApiResearchSolutionArchitectureReadiness {
+  framework: "solution_architecture_readiness_v1";
+  framework_label: string;
+  overall_score: number;
+  status: "ready" | "watch" | "blocked";
+  summary: string;
+  metrics: ApiResearchDeliveryQualityMetric[];
+  blueprint_sections: ApiResearchSolutionArchitectureBlueprintSection[];
+  non_functional_requirements: string[];
+  integration_risks: string[];
+  assumptions: string[];
+  validation_actions: string[];
+  stakeholder_questions: string[];
+}
+
 export interface ApiResearchSolutionDeliveryPack {
   scenario: string;
   target_customer: string;
@@ -653,6 +676,7 @@ export interface ApiResearchSolutionDeliveryPack {
   advisory_artifacts: ApiResearchAdvisoryArtifact[];
   solution_quality_profile?: ApiResearchDeliveryQualityProfile;
   project_proposal_quality_profile?: ApiResearchDeliveryQualityProfile;
+  architecture_readiness?: ApiResearchSolutionArchitectureReadiness;
   review_checklist: string[];
   next_steps: string[];
   export_markdown: string;

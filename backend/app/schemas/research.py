@@ -1401,6 +1401,29 @@ class ResearchDeliveryQualityProfileOut(BaseModel):
     self_review: ResearchDeliverySelfReviewOut = Field(default_factory=ResearchDeliverySelfReviewOut)
 
 
+class ResearchSolutionArchitectureBlueprintSectionOut(BaseModel):
+    title: str
+    purpose: str = ""
+    components: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionArchitectureReadinessOut(BaseModel):
+    framework: Literal["solution_architecture_readiness_v1"] = "solution_architecture_readiness_v1"
+    framework_label: str = "解决方案架构就绪度"
+    overall_score: int = 0
+    status: Literal["ready", "watch", "blocked"] = "watch"
+    summary: str = ""
+    metrics: list[ResearchDeliveryQualityMetricOut] = Field(default_factory=list)
+    blueprint_sections: list[ResearchSolutionArchitectureBlueprintSectionOut] = Field(default_factory=list)
+    non_functional_requirements: list[str] = Field(default_factory=list)
+    integration_risks: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+    stakeholder_questions: list[str] = Field(default_factory=list)
+
+
 class ResearchSolutionDeliveryPackOut(BaseModel):
     scenario: str = ""
     target_customer: str = ""
@@ -1417,6 +1440,9 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     solution_quality_profile: ResearchDeliveryQualityProfileOut = Field(default_factory=ResearchDeliveryQualityProfileOut)
     project_proposal_quality_profile: ResearchDeliveryQualityProfileOut = Field(
         default_factory=lambda: ResearchDeliveryQualityProfileOut(review_target="project_proposal")
+    )
+    architecture_readiness: ResearchSolutionArchitectureReadinessOut = Field(
+        default_factory=ResearchSolutionArchitectureReadinessOut
     )
     review_checklist: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)

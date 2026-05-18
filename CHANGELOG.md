@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0+20260518 - 2026-05-18
+
+- Added a solution-architecture readiness layer for generated solution delivery packs, scoring business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility.
+- Added an architecture blueprint to the solution pack: business/role layer, application capability layer, model-data-integration layer, and security/deployment/operations layer, each with evidence and open questions.
+- Extended solution delivery markdown exports and the research report card with architecture readiness, integration risks, non-functional requirements, stakeholder questions, and validation actions for solution architects and industry consultants.
+- Repositioned README, whitepaper, launch kit, growth copy, screenshot coverage, and release history around solution architects, industry consultants, pre-sales teams, and advisory-grade delivery work.
+
 ## 0.7.0+20260518 - 2026-05-18
 
 - Added a headless-source-first Focus collection path: starting or resuming Focus now brings up the source collector daemon first, with the WeChat PC agent kept as a supplementary URL harvester.

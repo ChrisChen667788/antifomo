@@ -9,6 +9,9 @@ from app.schemas.research import (
     ResearchMarketIntelligencePackOut,
     ResearchProductRequirementOut,
     ResearchReportDocument,
+    ResearchDeliveryQualityMetricOut,
+    ResearchSolutionArchitectureBlueprintSectionOut,
+    ResearchSolutionArchitectureReadinessOut,
     ResearchSolutionDeliveryPackOut,
     ResearchSolutionOutlineSectionOut,
     ResearchTenderProjectOut,
@@ -54,6 +57,9 @@ _BIDDER_RE = re.compile(
 _TENDER_PARAM_RE = re.compile(
     r"((?:资格|资质|证书|工期|服务期|交付期|质保|评分|评审|标段|包件|投标保证金|最高限价|采购需求|建设内容|技术规格|技术要求|招标参数)[^。；;，,\n]{0,90})"
 )
+_ARCHITECTURE_TERMS = ("架构", "接口", "API", "数据流", "系统边界", "集成", "中台", "私有化", "多租户", "运维")
+_SECURITY_TERMS = ("安全", "等保", "信创", "密码", "数据安全", "网络安全", "权限", "审计", "隐私")
+_AI_RUNTIME_TERMS = ("大模型", "RAG", "知识库", "数字人", "智能体", "GPU", "推理", "并发", "QPS", "时延")
 
 
 def _dedupe_strings(values: Iterable[object], limit: int = 10) -> list[str]:
@@ -527,6 +533,293 @@ def _build_advisory_artifacts(
     return artifacts
 
 
+def _metric_status(score: int, *, threshold: int = 75) -> str:
+    if score >= threshold:
+        return "pass"
+    if score >= max(0, threshold - 14):
+        return "watch"
+    return "fail"
+
+
+def _architecture_metric(
+    *,
+    key: str,
+    label: str,
+    score: int,
+    summary: str,
+    gaps: Iterable[object],
+    actions: Iterable[object],
+    threshold: int = 75,
+) -> ResearchDeliveryQualityMetricOut:
+    return ResearchDeliveryQualityMetricOut(
+        key=key,
+        label=label,
+        score=max(0, min(int(score), 100)),
+        threshold=threshold,
+        status=_metric_status(score, threshold=threshold),  # type: ignore[arg-type]
+        summary=summary,
+        gaps=_dedupe_strings(gaps, limit=5),
+        improvement_actions=_dedupe_strings(actions, limit=5),
+    )
+
+
+def _text_has_any(text: str, terms: Iterable[str]) -> bool:
+    lowered = text.lower()
+    return any(term.lower() in lowered for term in terms)
+
+
+def _architecture_status(score: int) -> str:
+    if score >= 84:
+        return "ready"
+    if score >= 68:
+        return "watch"
+    return "blocked"
+
+
+def _blueprint_section(
+    *,
+    title: str,
+    purpose: str,
+    components: Iterable[object],
+    evidence: Iterable[object],
+    open_questions: Iterable[object],
+) -> ResearchSolutionArchitectureBlueprintSectionOut:
+    return ResearchSolutionArchitectureBlueprintSectionOut(
+        title=title,
+        purpose=purpose,
+        components=_dedupe_strings(components, limit=8),
+        evidence=_dedupe_strings(evidence, limit=5),
+        open_questions=_dedupe_strings(open_questions, limit=5),
+    )
+
+
+def build_solution_architecture_readiness(
+    report: ResearchReportDocument,
+    *,
+    market_pack: ResearchMarketIntelligencePackOut,
+    pack: ResearchSolutionDeliveryPackOut,
+) -> ResearchSolutionArchitectureReadinessOut:
+    outline_text = normalize_text(
+        " ".join(
+            [
+                *[section.title for section in pack.feasibility_outline],
+                *[section.title for section in pack.project_proposal_outline],
+                *[section.title for section in pack.client_ppt_outline],
+                *[bullet for section in pack.feasibility_outline for bullet in section.bullets],
+                *[bullet for section in pack.project_proposal_outline for bullet in section.bullets],
+                *[bullet for section in pack.client_ppt_outline for bullet in section.bullets],
+            ]
+        )
+    )
+    technical_parameters = _dedupe_strings(
+        [
+            *(param for item in market_pack.technical_parameter_catalog for param in item.technical_parameters),
+            *(param for item in market_pack.product_catalog for param in item.technical_parameters),
+            *(param for item in market_pack.tender_projects for param in item.technical_parameters),
+        ],
+        limit=16,
+    )
+    product_names = _dedupe_strings(
+        [
+            *report.flagship_products,
+            *(item.name for item in market_pack.product_catalog),
+        ],
+        limit=10,
+    )
+    integration_terms = [value for value in technical_parameters if _text_has_any(value, ("接口", "API", "SDK", "数据", "并发", "私有化"))]
+    security_terms = [value for value in technical_parameters if _text_has_any(value, _SECURITY_TERMS)]
+    runtime_terms = [value for value in technical_parameters if _text_has_any(value, _AI_RUNTIME_TERMS)]
+    business_score = min(
+        100,
+        42
+        + (16 if pack.target_customer else 0)
+        + min(12, len(report.target_departments) * 3)
+        + min(16, len(market_pack.tender_projects) * 4)
+        + min(14, len(report.budget_signals) * 4),
+    )
+    architecture_score = min(
+        100,
+        40
+        + min(18, len(product_names) * 4)
+        + min(18, len(technical_parameters) * 3)
+        + (12 if _text_has_any(outline_text, _ARCHITECTURE_TERMS) else 0)
+        + (12 if len(pack.client_ppt_outline) >= 6 else 0),
+    )
+    integration_score = min(
+        100,
+        36
+        + min(18, len(integration_terms) * 5)
+        + min(12, len(report.target_departments) * 3)
+        + (12 if "接口" in outline_text or "API" in outline_text else 0)
+        + (10 if pack.next_steps else 0),
+    )
+    security_score = min(
+        100,
+        34
+        + min(24, len(security_terms) * 6)
+        + (18 if _text_has_any(outline_text, _SECURITY_TERMS) else 0)
+        + min(12, len(pack.review_checklist) * 2),
+    )
+    delivery_score = min(
+        100,
+        40
+        + min(14, len(report.tender_timeline) * 4)
+        + min(14, len(report.budget_signals) * 4)
+        + min(14, len(pack.advisory_artifacts) * 4)
+        + min(18, len(pack.project_proposal_outline)),
+    )
+    metrics = [
+        _architecture_metric(
+            key="business_alignment",
+            label="业务场景与客户约束",
+            score=business_score,
+            summary=f"目标客户：{pack.target_customer or '待确认'}；牵头部门 {len(report.target_departments)} 个；公开项目线索 {len(market_pack.tender_projects)} 条。",
+            gaps=["客户、部门或预算口径仍不够明确。"] if business_score < 75 else [],
+            actions=["补客户组织结构、牵头部门、预算边界和试点成功指标。"],
+        ),
+        _architecture_metric(
+            key="architecture_completeness",
+            label="架构拆解完整度",
+            score=architecture_score,
+            summary=f"产品/能力线索 {len(product_names)} 个，技术参数 {len(technical_parameters)} 条。",
+            gaps=["缺少足够清晰的能力分层、模块边界或技术参数。"] if architecture_score < 75 else [],
+            actions=["补业务层、应用层、模型/数据层、集成层、安全运维层的边界说明。"],
+        ),
+        _architecture_metric(
+            key="integration_readiness",
+            label="集成与数据接口准备",
+            score=integration_score,
+            summary=f"接口/API/数据相关线索 {len(integration_terms)} 条。",
+            gaps=["需明确既有系统、数据源、接口协议、调用频率和责任边界。"] if integration_score < 75 else [],
+            actions=["形成系统清单、接口清单、数据字段清单和集成依赖确认表。"],
+        ),
+        _architecture_metric(
+            key="security_and_compliance",
+            label="安全合规与非功能要求",
+            score=security_score,
+            summary=f"安全/信创/等保相关线索 {len(security_terms)} 条。",
+            gaps=["安全、等保、信创、密码应用或数据治理要求仍需客户确认。"] if security_score < 75 else [],
+            actions=["补等保等级、数据分类分级、部署形态、审计留痕和运维边界。"],
+        ),
+        _architecture_metric(
+            key="delivery_feasibility",
+            label="交付可落地性",
+            score=delivery_score,
+            summary=f"交付材料 {len(pack.advisory_artifacts)} 类，建议书章节 {len(pack.project_proposal_outline)} 个。",
+            gaps=["交付里程碑、验收指标或材料责任分工仍不够细。"] if delivery_score < 75 else [],
+            actions=["将试点、上线、验收、运维和培训拆成阶段目标与责任清单。"],
+        ),
+    ]
+    overall_score = round(
+        metrics[0].score * 0.2
+        + metrics[1].score * 0.24
+        + metrics[2].score * 0.2
+        + metrics[3].score * 0.18
+        + metrics[4].score * 0.18
+    )
+    status = _architecture_status(overall_score)
+    customer = pack.target_customer or (report.target_accounts[0] if report.target_accounts else "待确认客户")
+    scene = pack.vertical_scene or pack.scenario or report.keyword
+    blueprint_sections = [
+        _blueprint_section(
+            title="业务与角色层",
+            purpose="把客户场景、使用角色和试点边界固定下来，避免方案只停留在产品清单。",
+            components=[customer, scene, *report.target_departments[:4], *report.leadership_focus[:2]],
+            evidence=[report.executive_summary, *report.budget_signals[:2], *[item.project_name for item in market_pack.tender_projects[:2]]],
+            open_questions=["谁是业务牵头人和技术牵头人？", "试点成功指标和推广条件是什么？"],
+        ),
+        _blueprint_section(
+            title="应用能力层",
+            purpose="沉淀可演示、可投标、可交付的核心功能模块。",
+            components=[*product_names[:6], *report.strategic_directions[:3]],
+            evidence=[*[item.source_context for item in market_pack.product_catalog[:3]], *report.benchmark_cases[:2]],
+            open_questions=["哪些能力进入一期，哪些保留为二期？", "是否已有竞品或既有系统可复用？"],
+        ),
+        _blueprint_section(
+            title="模型、数据与集成层",
+            purpose="明确模型能力、知识库/数据源、接口边界和集成依赖。",
+            components=[*runtime_terms[:4], *integration_terms[:4], "知识库/RAG", "接口编排"],
+            evidence=[*technical_parameters[:4]],
+            open_questions=["数据源归属和更新频率是什么？", "既有系统接口、鉴权和日志标准是否已明确？"],
+        ),
+        _blueprint_section(
+            title="安全、部署与运维层",
+            purpose="把安全合规、部署形态、运维责任和非功能指标前置到方案阶段。",
+            components=[*security_terms[:5], "部署架构", "审计日志", "运维监控"],
+            evidence=[*security_terms[:3], pack.evidence_policy],
+            open_questions=["等保/信创/密码应用要求是否有硬性等级？", "运维、培训和故障响应由谁负责？"],
+        ),
+    ]
+    non_functional_requirements = _dedupe_strings(
+        [
+            *technical_parameters,
+            "明确并发、响应时延、可用性、扩展性、审计留痕、数据安全和运维 SLA。",
+            "若采用大模型或数字人能力，需要补充推理资源、内容安全、知识更新和人工兜底机制。",
+        ],
+        limit=10,
+    )
+    integration_risks = _dedupe_strings(
+        [
+            "既有系统接口、数据字段、鉴权方式和日志规范未确认，可能影响实施排期。"
+            if integration_score < 75
+            else "",
+            "安全合规要求未完全闭合，正式方案需客户或主管部门确认。"
+            if security_score < 75
+            else "",
+            "公开招采或预算证据不足，外发材料中的预算和时间承诺需降级。"
+            if market_pack.source_support_score < 70
+            else "",
+            *market_pack.intelligence_gaps[:3],
+        ],
+        limit=8,
+    )
+    assumptions = _dedupe_strings(
+        [
+            f"目标客户暂按 {customer} 处理。",
+            f"垂直场景暂按 {scene} 处理。",
+            "方案采用分期推进：需求确认、原型验证、试点上线、规模推广。",
+            "所有预算、采购方式、安全等级和接口开放范围以客户正式材料为准。",
+        ],
+        limit=8,
+    )
+    validation_actions = _dedupe_strings(
+        [
+            "与客户确认业务流程、使用角色、试点范围和成功指标。",
+            "拉取既有系统、数据源、接口、账号权限和日志审计清单。",
+            "确认部署形态、等保/信创/密码应用要求和数据出域边界。",
+            "把架构蓝图拆成一期 MVP、二期扩展和投标评分点响应矩阵。",
+            *[action for metric in metrics for action in metric.improvement_actions[:1]],
+        ],
+        limit=10,
+    )
+    stakeholder_questions = _dedupe_strings(
+        [
+            "业务部门最希望先解决哪一个流程或指标？",
+            "信息化部门能提供哪些系统接口、数据表和测试环境？",
+            "安全/合规负责人对部署形态、日志、审计和数据权限有什么硬约束？",
+            "采购或预算负责人希望以试点、平台建设还是服务采购方式推进？",
+        ],
+        limit=8,
+    )
+    summary = (
+        f"面向 {customer} 的 {scene} 方案架构就绪度为 {overall_score}/100。"
+        if status == "ready"
+        else f"面向 {customer} 的 {scene} 方案架构仍需补齐接口、安全或交付边界，当前就绪度 {overall_score}/100。"
+    )
+    return ResearchSolutionArchitectureReadinessOut(
+        overall_score=overall_score,
+        status=status,  # type: ignore[arg-type]
+        summary=summary,
+        metrics=metrics,
+        blueprint_sections=blueprint_sections,
+        non_functional_requirements=non_functional_requirements,
+        integration_risks=integration_risks,
+        assumptions=assumptions,
+        validation_actions=validation_actions,
+        stakeholder_questions=stakeholder_questions,
+    )
+
+
 def _scenario_from_report(report: ResearchReportDocument) -> str:
     text = normalize_text(" ".join([report.keyword, report.research_focus or "", report.report_title]))
     for value in ("电商数字人", "文旅AIGC平台", "AI营销平台", "政务AI解决方案", "政务AI", "数字人", "AIGC", "AI营销"):
@@ -651,6 +944,15 @@ def build_solution_delivery_pack(
         ),
     )
     pack = review_and_improve_solution_delivery_pack(pack)
+    pack = pack.model_copy(
+        update={
+            "architecture_readiness": build_solution_architecture_readiness(
+                report,
+                market_pack=market_pack,
+                pack=pack,
+            )
+        }
+    )
     pack.export_markdown = build_solution_delivery_markdown(pack, market_pack=market_pack)
     return pack
 
@@ -747,6 +1049,33 @@ def build_solution_delivery_markdown(
             )
     lines.extend(["", "## 审阅清单"])
     lines.extend([f"- {item}" for item in pack.review_checklist])
+    architecture = pack.architecture_readiness
+    lines.extend(
+        [
+            "",
+            "## 解决方案架构就绪度",
+            f"- 评估框架: {architecture.framework_label}",
+            f"- 综合评分: {architecture.overall_score}/100",
+            f"- 状态: {architecture.status}",
+            f"- 摘要: {architecture.summary or '待完成架构就绪度评估。'}",
+            "",
+            "### 架构蓝图",
+        ]
+    )
+    for section in architecture.blueprint_sections:
+        lines.extend(
+            [
+                f"#### {section.title}",
+                f"- 目标: {section.purpose}",
+                f"- 组件/对象: {'；'.join(section.components) if section.components else '待补'}",
+                f"- 证据: {'；'.join(section.evidence) if section.evidence else '待补'}",
+                f"- 待确认: {'；'.join(section.open_questions) if section.open_questions else '待补'}",
+            ]
+        )
+    if architecture.integration_risks:
+        lines.extend(["", "### 集成与落地风险", *[f"- {item}" for item in architecture.integration_risks]])
+    if architecture.validation_actions:
+        lines.extend(["", "### 架构核验动作", *[f"- {item}" for item in architecture.validation_actions]])
     lines.extend(["", "## 交付质量自审"])
     for profile in (pack.solution_quality_profile, pack.project_proposal_quality_profile):
         lines.extend(

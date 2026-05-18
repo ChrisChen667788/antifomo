@@ -9,9 +9,9 @@
 
 ![Anti-FOMO hero](./docs/assets/github-hero.svg)
 
-Turn noisy web and WeChat signals into evidence-backed research reports, focus sessions, and action-ready follow-up.
+Turn noisy web and WeChat signals into evidence-backed research reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Anti-FOMO is an open-source AI research workspace for consultants, founders, BD teams, strategy operators, and builders who need more than read-later apps and generic AI summaries. It closes the loop:
+Anti-FOMO is an open-source AI research workspace for solution architects, industry consultants, pre-sales teams, BD teams, strategy operators, and builders who need more than read-later apps and generic AI summaries. It closes the loop:
 
 `collect -> clean -> research -> compare -> focus -> action`
 
@@ -38,7 +38,7 @@ Anti-FOMO is built for the whole operating loop:
 
 - collect high-signal inputs from URLs, text, feeds, and WeChat-heavy workflows
 - clean noisy evidence and weak source dumps before they pollute downstream output
-- generate evidence-aware research reports, compare snapshots, and delivery artifacts
+- generate evidence-aware research reports, compare snapshots, solution architecture readiness checks, and delivery artifacts
 - run focused execution sessions and export follow-up actions
 - turn research into action cards, feasibility studies, project proposals, and client-facing outlines
 
@@ -46,6 +46,7 @@ Anti-FOMO is built for the whole operating loop:
 
 - `WeChat-first`: not just another generic web clipper; the collection pipeline is designed around WeChat-heavy information environments, with headless source collection and per-source health diagnostics.
 - `Evidence-aware`: report quality, source mix, target-account support, and section-level evidence diagnostics are first-class.
+- `Architecture-ready`: solution packs now include architecture readiness scoring, blueprint layers, integration risks, non-functional requirements, and validation actions for solution architects.
 - `Execution-oriented`: focus sessions, action cards, watchlists, briefs, and export tasks are part of the same workspace.
 - `Hackable`: local-first Next.js + FastAPI stack with browser extension, miniapp, collector scripts, and a testable backend.
 
@@ -67,7 +68,7 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
   <tr>
     <td width="50%">
       <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox research workspace screenshot" />
-      <p><strong>Inbox / research workspace</strong><br />Generate reports, refine scenario inputs, and export formal delivery documents from one surface.</p>
+      <p><strong>Inbox / research workspace</strong><br />Generate reports, refine scenario inputs, review architecture readiness, and export formal delivery documents.</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research compare workspace screenshot" />
@@ -111,6 +112,7 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 - follow-up / second-pass report generation with new evidence and new requirements
 - compare workspace, archive history, diff recap, and export chain
 - watchlists, daily brief, knowledge intelligence, and commercial-hub context
+- solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
 
 ### 3. Retrieval-backed quality layer
 
@@ -134,12 +136,14 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 - watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
 - feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
 - formal document review loop with scenario, target customer, vertical-scene overrides, and delivery-quality audit notes
+- architecture blueprint export with business/role, application capability, model/data/integration, and security/deployment/operations layers
 
 ## Best for
 
-- consulting and strategy teams
-- founders and product leads tracking fast-moving AI markets
+- solution architects turning noisy market signals into client-ready architecture narratives
+- industry consultants preparing evidence-backed opportunity studies and advisory deliverables
 - BD / pre-sales / solution teams preparing opportunity research and client materials
+- founders and product leads tracking fast-moving AI markets
 - operators who live in WeChat article flows but still need traceable evidence
 - developers who want a local-first, modifiable research workspace instead of a black box SaaS
 
@@ -215,7 +219,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.7.0+20260518`
+- current version: `0.8.0+20260518`
 - web build passes
 - backend test suite passes via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

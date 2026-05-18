@@ -1,6 +1,6 @@
 {
-  "version": "0.7.0+20260518",
-  "generated_at": "2026-05-17T23:02:16.296Z",
+  "version": "0.8.0+20260518",
+  "generated_at": "2026-05-18T07:37:50.805Z",
   "viewport": {
     "width": 1600,
     "height": 1100,
@@ -21,14 +21,14 @@
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 731925
+        "actual_file_size_bytes": 731748
       }
     },
     {
       "feature": "Inbox research workspace",
       "route": "/inbox",
       "file": "docs/assets/screenshots/inbox-research-workspace.png",
-      "description": "Intake, keyword research, report generation, and formal delivery export workspace.",
+      "description": "Intake, keyword research, report generation, architecture readiness review, and formal delivery export workspace.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
@@ -127,11 +127,11 @@
       "feature": "Research center dashboard",
       "route": "/research",
       "file": "docs/assets/screenshots/research-center-dashboard.png",
-      "description": "Research center overview for watchlists, archives, retrieval health, and delivery diagnostics.",
+      "description": "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 520015
+        "actual_file_size_bytes": 520349
       }
     },
     {
@@ -164,7 +164,7 @@
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 388814
+        "actual_file_size_bytes": 389555
       }
     },
     {

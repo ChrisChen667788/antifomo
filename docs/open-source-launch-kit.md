@@ -2,15 +2,15 @@
 
 ## One-line pitch
 
-Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current release: `0.7.0+20260518`, focused on reliable Focus-mode collection and source-level公众号 health diagnostics.
+Current release: `0.8.0+20260518`, focused on solution architecture readiness for solution architects, industry consultants, and pre-sales teams.
 
 ## GitHub About
 
 ### Description
 
-Open-source AI research workspace for turning noisy web + WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+Open-source AI research workspace for solution architects and consultants turning noisy web + WeChat signals into evidence-backed reports, architecture blueprints, and delivery actions.
 
 ### Homepage
 
@@ -32,12 +32,14 @@ Open-source AI research workspace for turning noisy web + WeChat signals into ev
 
 ## Short launch summary
 
-Anti-FOMO is an open-source workspace for people who need more than save-later and AI summaries. It combines collection, filtering, retrieval-backed research, focus sessions, and action outputs into one workflow, with a strong emphasis on WeChat-heavy information environments and evidence-aware delivery artifacts.
+Anti-FOMO is an open-source workspace for solution architects, industry consultants, and pre-sales teams who need more than save-later and AI summaries. It combines collection, filtering, retrieval-backed research, architecture readiness, focus sessions, and delivery outputs into one workflow, with a strong emphasis on WeChat-heavy information environments and evidence-aware client materials.
 
 ## Release callout for the current baseline
 
 Highlights:
 
+- solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
+- architecture blueprint exports for business/role, application capability, model/data/integration, and security/deployment/operations layers
 - Focus mode now starts with the headless source collector, while the WeChat PC agent works as a supplementary URL harvester.
 - Collector status now reports coverage rate, body success rate, poor/watch source counts, and per-source recommendations so failed公众号 sources are visible by name.
 - research center, compare workspace, archives, watchlists, and daily brief
@@ -51,8 +53,10 @@ Highlights:
 
 Open sourced Anti-FOMO today.
 
-It is an open-source AI research workspace for turning noisy web and WeChat signals into useful output:
+It is an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into useful output:
 
+- solution architecture readiness
+- client-ready architecture blueprints
 - headless-source-first WeChat collection
 - source-level公众号 health diagnostics
 - evidence-backed report drafts
@@ -69,8 +73,10 @@ I just open sourced Anti-FOMO.
 
 The project grew out of a simple frustration: a lot of information tools stop at saving links or generating summaries, but real work needs a full loop from collection to research to execution.
 
-Anti-FOMO is my attempt to bring those pieces together:
+Anti-FOMO is my attempt to bring those pieces together for solution architects and industry consultants:
 
+- architecture readiness scoring
+- integration risks and non-functional requirements
 - WeChat-first collection workflows
 - collector coverage and source-health diagnostics
 - evidence-backed report drafting
@@ -130,4 +136,4 @@ Upload:
 
 Recommended alt text:
 
-Anti-FOMO, an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, focus sessions, and action-ready follow-up.
+Anti-FOMO, an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into evidence-backed reports, architecture blueprints, and action-ready follow-up.

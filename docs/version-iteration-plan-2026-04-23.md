@@ -199,7 +199,7 @@ Acceptance:
 
 Goal: make quality improvement and retrieval/runtime optimization measurable, repeatable, and safe to iterate.
 
-Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. `0.6.4+20260513` closed the next control-plane tranche with query/routing/reranker diagnostics, follow-up delta offline evaluation, delivery export trend/version comparison, and runtime rebuild/cache/recovery visualization. `0.6.5+20260513` hardened that surface into a persisted experiment orchestration layer with configurable plans, frozen cohorts, locked version baselines, and rollout gate decisions. `0.6.6+20260513` added the rollout audit layer: bounded gate history, promoted/revoked rollout manifests, activation payloads, and UI actions for confirming or withdrawing allowed strategy rollouts. `0.6.7+20260513` added the active policy registry and same-lane supersede behavior so promoted manifests resolve to a single current strategy per experiment lane. `0.6.8+20260514` adds a runtime strategy snapshot that turns active policies into explicit query/routing/reranker config with provenance, version-drift warnings, and UI visibility. `0.6.9+20260514` adds an effective runtime config resolver and wires retrieval search / section retrieval packs to consume promoted routing and reranker policy parameters. `0.6.10+20260514` injects query-generation and source-reranker runtime config into the report-generation pipeline and records the applied strategy in source diagnostics. `0.6.11+20260514` formalizes the GitHub release layer with full primary-surface screenshot coverage, screenshot quality gates, a generated screenshot manifest, and a release-history / feature-map document for future industry-standard updates. `0.7.0+20260518` starts the next reliability line by making Focus use the headless source collector first, adding run-level coverage metrics, and exposing source-level公众号 health diagnostics in reports, Focus, miniapp startup, and Collector Ops.
+Status: first control-plane tranche delivered as `0.6.2+20260513` with solution-delivery and proposal-grade quality review, auto-repair, export audit notes, and UI surfacing. `0.6.3+20260513` then wired delivery pass rates and self-review gain rates into offline regressions, weak-sample surfacing, and compare-snapshot compatibility. `0.6.4+20260513` closed the next control-plane tranche with query/routing/reranker diagnostics, follow-up delta offline evaluation, delivery export trend/version comparison, and runtime rebuild/cache/recovery visualization. `0.6.5+20260513` hardened that surface into a persisted experiment orchestration layer with configurable plans, frozen cohorts, locked version baselines, and rollout gate decisions. `0.6.6+20260513` added the rollout audit layer: bounded gate history, promoted/revoked rollout manifests, activation payloads, and UI actions for confirming or withdrawing allowed strategy rollouts. `0.6.7+20260513` added the active policy registry and same-lane supersede behavior so promoted manifests resolve to a single current strategy per experiment lane. `0.6.8+20260514` adds a runtime strategy snapshot that turns active policies into explicit query/routing/reranker config with provenance, version-drift warnings, and UI visibility. `0.6.9+20260514` adds an effective runtime config resolver and wires retrieval search / section retrieval packs to consume promoted routing and reranker policy parameters. `0.6.10+20260514` injects query-generation and source-reranker runtime config into the report-generation pipeline and records the applied strategy in source diagnostics. `0.6.11+20260514` formalizes the GitHub release layer with full primary-surface screenshot coverage, screenshot quality gates, a generated screenshot manifest, and a release-history / feature-map document for future industry-standard updates. `0.7.0+20260518` starts the next reliability line by making Focus use the headless source collector first, adding run-level coverage metrics, and exposing source-level公众号 health diagnostics in reports, Focus, miniapp startup, and Collector Ops. `0.8.0+20260518` turns the solution delivery pack into a solution-architecture assistant with readiness scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions.
 
 Scope:
 
@@ -237,3 +237,25 @@ Acceptance:
 - A collector status response includes `source_health`, `poor_source_count`, `watch_source_count`, coverage rate, and body success rate.
 - Operators can identify which公众号 source is stale or failing instead of only seeing aggregate coverage.
 - Release documentation and screenshot manifest use `0.7.0+20260518`.
+
+## 0.8.0+20260518: Solution Architecture Readiness for Consultants
+
+Goal: make generated solution packs visibly more useful to solution architects and industry consultants by turning research evidence into architecture boundaries, integration risks, non-functional requirements, and client validation actions.
+
+Status: delivered as `0.8.0+20260518`.
+
+Scope:
+
+- Add `solution_architecture_readiness_v1` to every generated solution delivery pack.
+- Score business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility.
+- Generate architecture blueprint sections for business/role, application capability, model/data/integration, and security/deployment/operations layers.
+- Add non-functional requirements, integration risks, assumptions, stakeholder questions, and validation actions.
+- Surface architecture readiness in the research report card and solution delivery markdown export.
+- Reposition README, whitepaper, launch kit, growth copy, release history, and screenshot coverage around solution architects and industry consultants.
+
+Acceptance:
+
+- `build_solution_delivery_pack` returns architecture readiness with non-zero score, blueprint sections, risks, and validation actions.
+- Solution delivery markdown includes a dedicated `解决方案架构就绪度` chapter.
+- Research report card renders architecture readiness inside the delivery pack surface.
+- Version metadata and release docs use `0.8.0+20260518`.

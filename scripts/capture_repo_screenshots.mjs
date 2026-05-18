@@ -166,7 +166,7 @@ function buildCaptures(workspace, knowledgeEntries) {
       route: "/inbox",
       waitText: "添加内容",
       filename: "inbox-research-workspace.png",
-      description: "Intake, keyword research, report generation, and formal delivery export workspace.",
+      description: "Intake, keyword research, report generation, architecture readiness review, and formal delivery export workspace.",
     },
     {
       feature: "Saved read-later workspace",
@@ -229,7 +229,7 @@ function buildCaptures(workspace, knowledgeEntries) {
       route: "/research",
       waitText: "商机情报中心",
       filename: "research-center-dashboard.png",
-      description: "Research center overview for watchlists, archives, retrieval health, and delivery diagnostics.",
+      description: "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics.",
     },
     {
       feature: "Research topic workspace",

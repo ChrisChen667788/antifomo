@@ -1,6 +1,6 @@
 # Feature Screenshot Coverage
 
-Version: `0.7.0+20260518`
+Version: `0.8.0+20260518`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 
@@ -17,7 +17,7 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 | Surface | Screenshot | Release note |
 | --- | --- | --- |
 | Home signal dashboard | `docs/assets/screenshots/home-signal-dashboard.png` | First-screen signal triage and route switching. |
-| Inbox / research workspace | `docs/assets/screenshots/inbox-research-workspace.png` | Intake, report generation, scenario refinement, and formal export. |
+| Inbox / research workspace | `docs/assets/screenshots/inbox-research-workspace.png` | Intake, report generation, scenario refinement, architecture readiness review, and formal export. |
 | Saved / read-later workspace | `docs/assets/screenshots/saved-readlater-workspace.png` | Saved-item review with topic and score context. |
 | Focus session workspace | `docs/assets/screenshots/focus-session-workspace.png` | Bounded focus session with headless-source-first collection startup and WeChat PC supplementary URL harvesting. |
 | Session summary workspace | `docs/assets/screenshots/session-summary-workspace.png` | Session metrics, markdown summary, reading list, and follow-up drafts. |
@@ -26,7 +26,7 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 | Knowledge library workspace | `docs/assets/screenshots/knowledge-library-workspace.png` | Knowledge list, commercial dashboard, saved intelligence, and review signals. |
 | Knowledge commercial hub | `docs/assets/screenshots/knowledge-commercial-hub.png` | Account intelligence, opportunities, review queue, and follow-up actions. |
 | Knowledge merge workflow | `docs/assets/screenshots/knowledge-merge-workflow.png` | Merge preview, inherited state checks, and target-title workflow. |
-| Research center dashboard | `docs/assets/screenshots/research-center-dashboard.png` | Watchlists, archive entry points, retrieval health, and delivery diagnostics. |
+| Research center dashboard | `docs/assets/screenshots/research-center-dashboard.png` | Watchlists, archive entry points, retrieval health, solution architecture readiness, and delivery diagnostics. |
 | Research topic workspace | `docs/assets/screenshots/research-topic-workspace.png` | Topic versions, evidence density, follow-up impact, and change tracking. |
 | Research compare workspace | `docs/assets/screenshots/research-compare-workspace.png` | Version comparison, account signals, competitor deltas, and export context. |
 | Research experiment orchestration | `docs/assets/screenshots/research-experiment-control-plane.png` | Cohorts, baselines, rollout gates, manifests, and runtime policy diagnostics. |

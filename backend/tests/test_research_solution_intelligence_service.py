@@ -115,6 +115,11 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert "对客汇报 PPT 大纲" in pack.export_markdown
     assert pack.solution_quality_profile.overall_score > 0
     assert pack.project_proposal_quality_profile.overall_score > 0
+    assert pack.architecture_readiness.overall_score > 0
+    assert pack.architecture_readiness.blueprint_sections
+    assert any(section.title == "模型、数据与集成层" for section in pack.architecture_readiness.blueprint_sections)
+    assert any("接口" in item or "API" in item for item in pack.architecture_readiness.non_functional_requirements)
+    assert pack.architecture_readiness.validation_actions
     assert pack.project_proposal_quality_profile.self_review.triggered is True
     assert (
         pack.project_proposal_quality_profile.self_review.after_score
@@ -122,3 +127,5 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     )
     assert any("安全合规" in section.title for section in pack.project_proposal_outline)
     assert "交付质量自审" in pack.export_markdown
+    assert "解决方案架构就绪度" in pack.export_markdown
+    assert "架构蓝图" in pack.export_markdown
