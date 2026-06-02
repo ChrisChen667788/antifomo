@@ -4,7 +4,7 @@ import type {
   ApiResearchTrackingTopic,
   ApiResearchTrackingTopicTimelineEvent,
   ApiResearchTrackingTopicVersionDetail,
-} from "@/lib/api";
+} from "@/lib/api/types";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 
 type ResearchTopicRecapEvidenceLink = {

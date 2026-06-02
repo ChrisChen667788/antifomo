@@ -1,4 +1,4 @@
-import type { ApiResearchMarkdownArchive } from "@/lib/api";
+import type { ApiResearchMarkdownArchive } from "@/lib/api/types";
 
 type ArchiveMetadataRecord = Record<string, unknown>;
 
@@ -153,11 +153,11 @@ export function archiveLinkedDiffStatusLabel(status: string | null | undefined):
 }
 
 export function archiveDeliveryMetricToneClassName(tone: ArchiveDeliveryMetricTone): string {
-  if (tone === "sky") return "bg-sky-50 text-sky-700";
-  if (tone === "emerald") return "bg-emerald-50 text-emerald-700";
-  if (tone === "amber") return "bg-amber-50 text-amber-700";
-  if (tone === "rose") return "bg-rose-50 text-rose-700";
-  return "bg-slate-100 text-slate-600";
+  if (tone === "sky") return "af-chip af-chip-info";
+  if (tone === "emerald") return "af-chip af-chip-success";
+  if (tone === "amber") return "af-chip af-chip-warning";
+  if (tone === "rose") return "af-chip af-chip-danger";
+  return "af-chip";
 }
 
 export function getArchiveMetadata(archive: Pick<ApiResearchMarkdownArchive, "metadata_payload"> | null | undefined): ArchiveMetadataRecord {

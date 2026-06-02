@@ -1,4 +1,4 @@
-import type { ApiTask, FocusAssistantAction } from "@/lib/api";
+import type { ApiTask, FocusAssistantAction } from "@/lib/api/types";
 
 export const FOCUS_ASSISTANT_RESULT_KEY = "anti_fomo_focus_assistant_latest";
 export const FOCUS_ASSISTANT_HISTORY_KEY = "anti_fomo_focus_assistant_history";

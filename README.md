@@ -46,9 +46,28 @@ Anti-FOMO is built for the whole operating loop:
 
 - `WeChat-first`: not just another generic web clipper; the collection pipeline is designed around WeChat-heavy information environments, with headless source collection and per-source health diagnostics.
 - `Evidence-aware`: report quality, source mix, target-account support, and section-level evidence diagnostics are first-class.
-- `Architecture-ready`: solution packs now include architecture readiness scoring, blueprint layers, integration risks, non-functional requirements, and validation actions for solution architects.
+- `Architecture-ready`: solution packs now include architecture readiness scoring, blueprint layers, stakeholder question maps, decision criteria, ADR-style decisions, integration dependency diagnostics, non-functional requirements, and validation actions for solution architects.
 - `Execution-oriented`: focus sessions, action cards, watchlists, briefs, and export tasks are part of the same workspace.
 - `Hackable`: local-first Next.js + FastAPI stack with browser extension, miniapp, collector scripts, and a testable backend.
+
+## Major Version Highlights
+
+Each public version line below includes both an English product summary and a Chinese capability summary. The deeper release map is maintained in [Release History and Feature Map](./docs/release-history-and-feature-map.md).
+
+| Version line | English core capabilities | 中文核心功能 |
+| --- | --- | --- |
+| `0.3.x` | Research quality baseline with compare/export, archive snapshots, offline metrics, evidence gates, section evidence packs, and methodology playbooks. | 研究质量基线：稳定对比/导出、历史快照、离线评估、证据门槛、章节证据包和行业方法论。 |
+| `0.4.x` | Retrieval substrate and delivery packs with persistent retrieval index, section routing, golden evaluation, tender/product intelligence, and formal export paths. | 检索底座与交付包：持久化检索索引、章节路由、黄金样本评估、招投标/产品情报和正式文档导出。 |
+| `0.5.x` | RAG quality engineering with corrective retrieval, grounding review, schema-v2 chunks, source cleaning, entity cleanup, and reranker controls. | RAG 质量工程：纠偏检索、生成 grounding 审查、schema-v2 切块、信源清洗、实体清理和重排控制。 |
+| `0.6.0` - `0.6.4` | Reranking, delivery quality, and diagnostics control plane with CrossEncoder support, rebuild visualization, quality scoring, self-repair, A/B controls, and export trend comparison. | 重排、交付质控与诊断控制面：CrossEncoder、重建可视化、质量评分、自修订、A/B 控制和导出趋势对比。 |
+| `0.6.5` - `0.6.10` | Persistent experiment orchestration and runtime strategy activation with frozen cohorts, locked baselines, rollout gates, manifests, active policy registry, and effective runtime config. | 实验编排与运行时策略：cohort 固化、baseline 锁定、rollout gate、manifest、生效策略注册表和实际运行配置。 |
+| `0.6.11` | Release-grade documentation and screenshot coverage across all primary product surfaces. | 发布级文档与截图覆盖：主功能界面截图、截图质量门槛、manifest 和完整能力地图。 |
+| `0.7.0` | Collector reliability release with headless-source-first Focus collection and per-source WeChat health diagnostics. | 采集可靠性版本：Focus 优先启动无头源采集，并展示按公众号源的健康诊断。 |
+| `0.8.0` | Solution architecture readiness with scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions. | 解决方案架构就绪：架构评分、蓝图分层、集成风险、非功能要求、干系人问题和验证动作。 |
+| `0.8.1` | WeChat Favorites import with preview, dedupe, persistent batches, queue recovery, failed-item retry, and homepage swipe triage. | 微信收藏导入：预检、去重、批次持久化、队列恢复、失败重试和首页滑动处理。 |
+| `0.9.0` | Solution architect workbench with customer scenarios, stakeholder maps, decision criteria, validation actions, next-meeting agendas, and markdown export. | 解决方案架构师工作台：客户场景、干系人地图、决策标准、验证动作、下次会议议程和 Markdown 导出。 |
+| `1.0.0` | Local-first WeChat-to-solution baseline connecting intake, triage, evidence-backed research, architecture readiness, workbench outputs, migration coverage, and validation. | 本地优先微信到方案基线：打通采集、首页处理、证据研报、架构就绪、工作台产物、迁移覆盖和验证。 |
+| `1.1.0` | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 |
 
 ## Product screenshots
 
@@ -102,6 +121,8 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 ### 1. High-signal intake
 
 - URL, text, RSS, newsletter, file, and YouTube transcript intake
+- one-click WeChat Favorites preview and import from exported HTML/TXT, `.url` / `.webloc`, multi-file drops, clipboard text, or raw / escaped / encoded `mp.weixin.qq.com` link lists, with deduplication into the homepage triage deck
+- a persisted latest WeChat Favorites review queue on the homepage with ready / processing / failed / done counts, one-click retry for failed items, and automatic recovery after reload while background parsing finishes
 - browser extension quick-send pipeline
 - WeChat URL-first collection chain, headless source collector, collector ops, source-level health diagnostics, and WeChat PC agent supplementary harvesting
 - focused cleanup rules for screenshot OCR, markdown dumps, awards/forum noise, and weak vendor push pieces
@@ -113,6 +134,7 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 - compare workspace, archive history, diff recap, and export chain
 - watchlists, daily brief, knowledge intelligence, and commercial-hub context
 - solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
+- a solution architect workbench with customer scenarios, stakeholder concerns, capability-to-architecture mappings, ADR-style decisions, integration dependency diagnostics, validation actions, and next-meeting agendas
 
 ### 3. Retrieval-backed quality layer
 
@@ -133,6 +155,7 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 
 - focus sessions and session-summary exports with hybrid source collector startup during Focus mode
 - action cards, exec brief, sales brief, outreach draft, and watchlist digest
+- swipeable homepage cards with auto-advance after ignore/save, removing processed items from the active WeChat Favorites batch
 - watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
 - feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
 - formal document review loop with scenario, target customer, vertical-scene overrides, and delivery-quality audit notes
@@ -219,7 +242,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `0.8.0+20260518`
+- current version: `1.1.0+20260602`
 - web build passes
 - backend test suite passes via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

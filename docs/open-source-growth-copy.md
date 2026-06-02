@@ -45,6 +45,25 @@ Anti-FOMO 0.8.0 把产品重点转向解决方案架构师和行业咨询顾问�
 - Stakeholder questions and validation actions for client workshops
 - Research report UI and markdown exports updated for solution architects and consultants
 
+## 1.0.0 release highlight
+
+### English
+
+Anti-FOMO 1.0.0 connects the local-first WeChat-to-solution loop. Users can import WeChat Favorites into a recoverable homepage triage queue, process公众号 articles with the existing ignore/save card flow, and turn research output into architecture readiness plus a solution architect workbench with customer scenarios, stakeholder questions, decision criteria, validation actions, and next-meeting agendas.
+
+### 中文
+
+Anti-FOMO 1.0.0 打通本地优先的“微信收藏 -> 首页卡片筛选 -> 证据研报 -> 解决方案架构”闭环。用户可以一键导入微信收藏，恢复未完成批次，用左右滑动快速忽略或收藏，再把研报推进成架构就绪度和解决方案架构师工作台，包括客户场景、干系人问题、决策标准、验证动作和下一次客户会议议程。
+
+### Product launch bullets
+
+- One-click WeChat Favorites preview/import
+- Persistent homepage review queues with failed-item retry and done-count tracking
+- Swipe-based ignore/save triage for imported公众号 content
+- Solution architect workbench with customer scenarios and stakeholder question maps
+- Decision criteria, validation actions, and next-meeting agendas in API, UI, and markdown export
+- Alembic/SQLite compatibility coverage and release validation for the 1.0.0 local-first baseline
+
 ## Repository short description
 
 ### English

@@ -148,6 +148,39 @@ class ItemReprocessResponse(BaseModel):
     output_language: OutputLanguage = "zh-CN"
 
 
+class ItemBatchReprocessRequest(BaseModel):
+    item_ids: list[UUID] = Field(min_length=1, max_length=200)
+    output_language: OutputLanguage | None = None
+    failed_only: bool = True
+
+    @model_validator(mode="after")
+    def deduplicate_item_ids(self) -> "ItemBatchReprocessRequest":
+        seen: set[UUID] = set()
+        deduped: list[UUID] = []
+        for item_id in self.item_ids:
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            deduped.append(item_id)
+        self.item_ids = deduped
+        return self
+
+
+class ItemBatchReprocessResult(BaseModel):
+    item_id: UUID
+    status: Literal["accepted", "skipped", "missing"]
+    item_status: str | None = None
+    detail: str | None = None
+
+
+class ItemBatchReprocessResponse(BaseModel):
+    requested: int
+    accepted: int
+    skipped: int
+    missing: int
+    results: list[ItemBatchReprocessResult]
+
+
 class ItemFeedbackRequest(BaseModel):
     feedback_type: str = Field(pattern="^(ignore|like|save|open_detail|inaccurate)$")
 

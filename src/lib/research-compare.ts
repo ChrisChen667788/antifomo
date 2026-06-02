@@ -2,7 +2,7 @@ import type {
   ApiKnowledgeEntry,
   ApiResearchCompareSnapshotLinkedVersionDiff,
   ApiResearchOfflineEvaluation,
-} from "@/lib/api";
+} from "@/lib/api/types";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import { getResearchFacets } from "@/lib/research-facets";
 

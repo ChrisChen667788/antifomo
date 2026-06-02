@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.items import ItemOut
 
@@ -351,6 +351,109 @@ class CollectorYouTubeIngestRequest(BaseModel):
     transcript_text: str | None = None
     title: str | None = Field(default=None, max_length=200)
     output_language: OutputLanguage = "zh-CN"
+
+
+class CollectorWechatFavoriteImportRequest(BaseModel):
+    export_text: str | None = Field(default=None, max_length=2_000_000)
+    urls: list[str] = Field(default_factory=list, max_length=500)
+    output_language: OutputLanguage = "zh-CN"
+    limit: int = Field(default=200, ge=1, le=500)
+    include_text_blocks: bool = True
+    process_immediately: bool = False
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> "CollectorWechatFavoriteImportRequest":
+        text = (self.export_text or "").strip()
+        urls = [url.strip() for url in self.urls if url.strip()]
+        if not text and not urls:
+            raise ValueError("export_text or urls is required")
+        self.export_text = text or None
+        self.urls = urls
+        return self
+
+
+class CollectorWechatFavoritePreviewRequest(BaseModel):
+    export_text: str | None = Field(default=None, max_length=2_000_000)
+    urls: list[str] = Field(default_factory=list, max_length=500)
+    limit: int = Field(default=200, ge=1, le=500)
+    include_text_blocks: bool = True
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> "CollectorWechatFavoritePreviewRequest":
+        text = (self.export_text or "").strip()
+        urls = [url.strip() for url in self.urls if url.strip()]
+        if not text and not urls:
+            raise ValueError("export_text or urls is required")
+        self.export_text = text or None
+        self.urls = urls
+        return self
+
+
+class CollectorWechatFavoritePreviewCandidateResponse(BaseModel):
+    source_url: str | None = None
+    title: str | None = None
+    body_source: str
+
+
+class CollectorWechatFavoritePreviewResponse(BaseModel):
+    total_candidates: int
+    url_candidates: int
+    text_candidates: int
+    samples: list[CollectorWechatFavoritePreviewCandidateResponse] = Field(default_factory=list)
+
+
+class CollectorWechatFavoriteImportItemResponse(BaseModel):
+    source_url: str | None = None
+    title: str | None = None
+    item_id: UUID | None = None
+    status: Literal["created", "deduplicated", "invalid", "skipped"]
+    detail: str | None = None
+    body_source: str | None = None
+
+
+class CollectorWechatFavoriteImportBatchResponse(BaseModel):
+    id: UUID
+    import_type: Literal["wechat_favorites"] = "wechat_favorites"
+    source_label: str = "微信收藏"
+    status: str
+    output_language: OutputLanguage = "zh-CN"
+    processing_deferred: bool = True
+    total_candidates: int
+    created: int
+    deduplicated: int
+    invalid: int
+    skipped: int
+    item_ids: list[UUID] = Field(default_factory=list)
+    created_item_ids: list[UUID] = Field(default_factory=list)
+    review_item_ids: list[UUID] = Field(default_factory=list)
+    ready: int = 0
+    processing: int = 0
+    failed: int = 0
+    triaged: int = 0
+    failed_item_ids: list[UUID] = Field(default_factory=list)
+    results: list[CollectorWechatFavoriteImportItemResponse] = Field(default_factory=list)
+    source_summary: dict = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CollectorWechatFavoriteImportBatchListResponse(BaseModel):
+    total: int
+    items: list[CollectorWechatFavoriteImportBatchResponse] = Field(default_factory=list)
+
+
+class CollectorWechatFavoriteImportResponse(BaseModel):
+    ingest_route: Literal["wechat_favorites"] = "wechat_favorites"
+    batch_id: UUID | None = None
+    batch: CollectorWechatFavoriteImportBatchResponse | None = None
+    total_candidates: int
+    created: int
+    deduplicated: int
+    invalid: int
+    skipped: int
+    processing_deferred: bool = True
+    created_item_ids: list[UUID] = Field(default_factory=list)
+    results: list[CollectorWechatFavoriteImportItemResponse] = Field(default_factory=list)
 
 
 class CollectorExternalIngestResponse(BaseModel):

@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 *.db
+*.db.before-*
 *.db-shm
 *.db-wal
 .tmp/
@@ -45,6 +46,7 @@ backend/.venv311/
 backend/__pycache__/
 backend/**/*.pyc
 backend/*.db
+backend/*.db.before-*
 **/__pycache__/
 
 # vercel

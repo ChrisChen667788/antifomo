@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ApiKnowledgeAccountDetail } from "@/lib/api";
+import type { ApiKnowledgeAccountDetail } from "@/lib/api/types";
 import { sanitizeExternalDisplayList, sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { ExternalLinkActions, normalizeExternalUrl } from "@/components/ui/external-link-actions";

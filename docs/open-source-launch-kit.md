@@ -4,7 +4,7 @@
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current release: `0.8.0+20260518`, focused on solution architecture readiness for solution architects, industry consultants, and pre-sales teams.
+Current release: `1.1.0+20260602`, focused on the complete local-first WeChat-to-solution loop plus modular architecture and semantic day/night design-system hardening for solution architects, industry consultants, and pre-sales teams.
 
 ## GitHub About
 
@@ -32,13 +32,15 @@ Open-source AI research workspace for solution architects and consultants turnin
 
 ## Short launch summary
 
-Anti-FOMO is an open-source workspace for solution architects, industry consultants, and pre-sales teams who need more than save-later and AI summaries. It combines collection, filtering, retrieval-backed research, architecture readiness, focus sessions, and delivery outputs into one workflow, with a strong emphasis on WeChat-heavy information environments and evidence-aware client materials.
+Anti-FOMO is an open-source workspace for solution architects, industry consultants, and pre-sales teams who need more than save-later and AI summaries. It combines WeChat-heavy collection, homepage triage, retrieval-backed research, architecture readiness, architect workbench outputs, focus sessions, and delivery materials into one workflow.
 
 ## Release callout for the current baseline
 
 Highlights:
 
 - solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
+- one-click WeChat Favorites preview/import with persistent homepage review queues, failed-item retry, and swipe-based ignore/save triage
+- solution architect workbench output for customer scenarios, stakeholder questions, decision criteria, validation actions, and next-meeting agendas
 - architecture blueprint exports for business/role, application capability, model/data/integration, and security/deployment/operations layers
 - Focus mode now starts with the headless source collector, while the WeChat PC agent works as a supplementary URL harvester.
 - Collector status now reports coverage rate, body success rate, poor/watch source counts, and per-source recommendations so failed公众号 sources are visible by name.
@@ -56,6 +58,9 @@ Open sourced Anti-FOMO today.
 It is an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into useful output:
 
 - solution architecture readiness
+- one-click WeChat Favorites import
+- stakeholder question maps
+- solution architect workbench
 - client-ready architecture blueprints
 - headless-source-first WeChat collection
 - source-level公众号 health diagnostics
@@ -76,6 +81,8 @@ The project grew out of a simple frustration: a lot of information tools stop at
 Anti-FOMO is my attempt to bring those pieces together for solution architects and industry consultants:
 
 - architecture readiness scoring
+- WeChat Favorites import into a triage deck
+- solution architect workbench for stakeholder questions and meeting preparation
 - integration risks and non-functional requirements
 - WeChat-first collection workflows
 - collector coverage and source-health diagnostics

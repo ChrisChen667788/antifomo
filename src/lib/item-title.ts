@@ -1,4 +1,4 @@
-import type { ApiItem } from "@/lib/api";
+import type { ApiItem } from "@/lib/api/types";
 
 const WECHAT_HOME_HEADER_TITLE_RE =
   /^[\u4e00-\u9fffA-Za-z0-9·_-]{2,20}\s+[\u4e00-\u9fffA-Za-z0-9·_-]{2,30}\s+20[2-3]\d年\d{1,2}月\d{1,2}日(?:\s+\d{1,2}:\d{2})?$/;

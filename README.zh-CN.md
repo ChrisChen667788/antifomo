@@ -45,9 +45,28 @@ Anti-FOMO 关注的是整条工作链路：
 
 - `WeChat-first`：不是泛网页收藏器，而是把微信信息环境当一等输入面，并补上无头源采集和按公众号源的健康度诊断。
 - `Evidence-aware`：来源质量、章节证据配额、目标账户支撑率、官方源占比都被前台化。
-- `Architecture-ready`：方案包新增架构就绪度、架构分层、集成风险、非功能要求和核验动作，贴近解决方案架构师的交付工作。
+- `Architecture-ready`：方案包新增架构就绪度、架构分层、干系人问题地图、决策标准、ADR 决策记录、集成依赖诊断、非功能要求和核验动作，贴近解决方案架构师的交付工作。
 - `Execution-oriented`：研报不是终点，后面还有专注会话、行动卡、brief、可研、项目建议书和对客 PPT 大纲。
 - `Hackable`：本地优先的 Next.js + FastAPI 架构，附带浏览器扩展、小程序外壳、采集器和可跑的测试链路。
+
+## 大版本核心功能 / Major Version Highlights
+
+下面按公开大版本线同时给出中文和英文说明。更完整的版本能力地图维护在 [版本历史与功能地图](./docs/release-history-and-feature-map.md)。
+
+| 版本线 | 中文核心功能 | English core capabilities |
+| --- | --- | --- |
+| `0.3.x` | 研究质量基线：稳定对比/导出、历史快照、离线评估、证据门槛、章节证据包和行业方法论。 | Research quality baseline with compare/export, archive snapshots, offline metrics, evidence gates, section evidence packs, and methodology playbooks. |
+| `0.4.x` | 检索底座与交付包：持久化检索索引、章节路由、黄金样本评估、招投标/产品情报和正式文档导出。 | Retrieval substrate and delivery packs with persistent retrieval index, section routing, golden evaluation, tender/product intelligence, and formal export paths. |
+| `0.5.x` | RAG 质量工程：纠偏检索、生成 grounding 审查、schema-v2 切块、信源清洗、实体清理和重排控制。 | RAG quality engineering with corrective retrieval, grounding review, schema-v2 chunks, source cleaning, entity cleanup, and reranker controls. |
+| `0.6.0` - `0.6.4` | 重排、交付质控与诊断控制面：CrossEncoder、重建可视化、质量评分、自修订、A/B 控制和导出趋势对比。 | Reranking, delivery quality, and diagnostics control plane with CrossEncoder support, rebuild visualization, quality scoring, self-repair, A/B controls, and export trend comparison. |
+| `0.6.5` - `0.6.10` | 实验编排与运行时策略：cohort 固化、baseline 锁定、rollout gate、manifest、生效策略注册表和实际运行配置。 | Persistent experiment orchestration and runtime strategy activation with frozen cohorts, locked baselines, rollout gates, manifests, active policy registry, and effective runtime config. |
+| `0.6.11` | 发布级文档与截图覆盖：主功能界面截图、截图质量门槛、manifest 和完整能力地图。 | Release-grade documentation and screenshot coverage across all primary product surfaces. |
+| `0.7.0` | 采集可靠性版本：Focus 优先启动无头源采集，并展示按公众号源的健康诊断。 | Collector reliability release with headless-source-first Focus collection and per-source WeChat health diagnostics. |
+| `0.8.0` | 解决方案架构就绪：架构评分、蓝图分层、集成风险、非功能要求、干系人问题和验证动作。 | Solution architecture readiness with scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions. |
+| `0.8.1` | 微信收藏导入：预检、去重、批次持久化、队列恢复、失败重试和首页滑动处理。 | WeChat Favorites import with preview, dedupe, persistent batches, queue recovery, failed-item retry, and homepage swipe triage. |
+| `0.9.0` | 解决方案架构师工作台：客户场景、干系人地图、决策标准、验证动作、下次会议议程和 Markdown 导出。 | Solution architect workbench with customer scenarios, stakeholder maps, decision criteria, validation actions, next-meeting agendas, and markdown export. |
+| `1.0.0` | 本地优先微信到方案基线：打通采集、首页处理、证据研报、架构就绪、工作台产物、迁移覆盖和验证。 | Local-first WeChat-to-solution baseline connecting intake, triage, evidence-backed research, architecture readiness, workbench outputs, migration coverage, and validation. |
+| `1.1.0` | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. |
 
 ## 产品截图
 
@@ -101,6 +120,8 @@ Anti-FOMO 关注的是整条工作链路：
 ### 1. 高信号采集
 
 - URL、纯文本、RSS、Newsletter、文件、YouTube transcript 输入
+- 微信收藏导出包 / `.url` / `.webloc` / 多文件 / 剪贴板 / 原始、转义或编码后的 `mp.weixin.qq.com` 链接列表一键预检和导入，自动去重并转成首页卡片处理流
+- 首页持久保留“本次微信收藏导入队列”，显示 ready / processing / failed / done 计数，支持一键重试失败条目，刷新页面后也能恢复批次，后台解析完成后自动进入卡片堆
 - 浏览器扩展快速采集当前页面
 - 微信 URL-first 采集、无头源采集、Collector 运维、按公众号源的健康度诊断，以及作为补充 URL 发现通道的 WeChat PC Agent 工具链
 - 针对截图 OCR、markdown dump、论坛奖项噪声、弱 vendor 推进稿的清洗规则
@@ -112,6 +133,7 @@ Anti-FOMO 关注的是整条工作链路：
 - Compare Workspace、历史归档、字段 diff、导出链路
 - Watchlists、Daily Brief、Knowledge Intelligence、Commercial Hub
 - 面向解决方案架构师的架构就绪度评分，覆盖业务匹配、能力边界、接口依赖、安全合规和交付可行性
+- 解决方案架构师工作台，自动整理客户场景、干系人关注点、能力到架构矩阵、ADR 决策记录、集成依赖诊断、验证动作和下一次客户会议议程
 
 ### 3. 检索增强与质量层
 
@@ -132,6 +154,7 @@ Anti-FOMO 关注的是整条工作链路：
 
 - 专注会话和会话总结导出，进入 Focus 时自动拉起混合采集链路
 - 行动卡、老板简报、销售简报、外联草稿、watchlist digest
+- 首页卡片堆支持左右滑动和忽略 / 收藏后自动切到下一条，并会把已处理条目从本次微信收藏队列移除
 - Watchlist run history、失败重试说明、通知摘要和 Markdown digest 导出
 - 可行性研究报告、项目建议书、对客 PPT、客户 brief、投标准备 memo 和执行材料导出
 - 支持用“场景 / 目标客户 / 更垂直场景”重建情报包和正式文档，并保留交付质量审查记录
@@ -218,7 +241,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`0.8.0+20260518`
+- 当前版本：`1.1.0+20260602`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面

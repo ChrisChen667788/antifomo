@@ -1,6 +1,6 @@
 # Feature Screenshot Coverage
 
-Version: `0.8.0+20260518`
+Version: `1.1.0+20260602`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 
@@ -16,8 +16,8 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 
 | Surface | Screenshot | Release note |
 | --- | --- | --- |
-| Home signal dashboard | `docs/assets/screenshots/home-signal-dashboard.png` | First-screen signal triage and route switching. |
-| Inbox / research workspace | `docs/assets/screenshots/inbox-research-workspace.png` | Intake, report generation, scenario refinement, architecture readiness review, and formal export. |
+| Home signal dashboard | `docs/assets/screenshots/home-signal-dashboard.png` | First-screen signal triage, WeChat Favorites import entry, and route switching. |
+| Inbox / research workspace | `docs/assets/screenshots/inbox-research-workspace.png` | Intake, report generation, scenario refinement, architecture readiness, architect workbench review, and formal export. |
 | Saved / read-later workspace | `docs/assets/screenshots/saved-readlater-workspace.png` | Saved-item review with topic and score context. |
 | Focus session workspace | `docs/assets/screenshots/focus-session-workspace.png` | Bounded focus session with headless-source-first collection startup and WeChat PC supplementary URL harvesting. |
 | Session summary workspace | `docs/assets/screenshots/session-summary-workspace.png` | Session metrics, markdown summary, reading list, and follow-up drafts. |

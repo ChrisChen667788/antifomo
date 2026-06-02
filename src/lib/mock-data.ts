@@ -21,6 +21,8 @@ export interface FeedItem {
   url: string;
   createdAt?: string;
   recommendationScore?: number;
+  status?: string;
+  ingestRoute?: string | null;
 }
 
 export interface SessionMetrics {

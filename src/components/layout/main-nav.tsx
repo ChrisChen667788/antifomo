@@ -30,9 +30,9 @@ export function MainNav() {
 
   return (
     <header className="sticky top-0 z-40 px-3 pt-3 md:px-6 md:pt-4">
-      <div className="af-glass af-topbar-glass mx-auto flex w-full max-w-6xl items-center gap-3 rounded-[20px] px-3 py-2 md:px-4 md:py-2.5">
+      <div className="af-glass af-topbar-glass mx-auto flex w-full max-w-6xl items-center gap-3 rounded-lg px-3 py-2 md:px-4 md:py-2.5">
         <div className="shrink-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase text-[var(--af-text-tertiary)]">
             Anti-FOMO
           </p>
         </div>
@@ -56,7 +56,7 @@ export function MainNav() {
           <input
             type="search"
             placeholder={t("common.searchPlaceholder", "搜索")}
-            className="af-input ml-1 hidden w-36 bg-white/65 py-1.5 text-[13px] md:block"
+            className="af-input ml-1 hidden w-36 py-1.5 text-[13px] md:block"
           />
           <Link
             href="/settings"

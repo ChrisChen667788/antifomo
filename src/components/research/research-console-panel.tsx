@@ -22,18 +22,18 @@ type ResearchConsolePanelProps = {
 };
 
 function timelineTone(stageKey: string) {
-  if (stageKey === "failed") return "bg-rose-100 text-rose-700";
-  if (stageKey === "completed" || stageKey === "packaging") return "bg-emerald-100 text-emerald-700";
+  if (stageKey === "failed") return "af-chip af-chip-danger";
+  if (stageKey === "completed" || stageKey === "packaging") return "af-chip af-chip-success";
   if (stageKey === "search" || stageKey === "extracting" || stageKey === "synthesizing") {
-    return "bg-sky-100 text-sky-700";
+    return "af-chip af-chip-info";
   }
-  return "bg-slate-100 text-slate-500";
+  return "af-chip";
 }
 
 function messageTone(role: "user" | "assistant") {
   return role === "assistant"
-    ? "border-sky-100 bg-sky-50/70 text-slate-700"
-    : "border-slate-200 bg-white/75 text-slate-700";
+    ? "af-state-panel-info"
+    : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-secondary)]";
 }
 
 function parseSuggestedFollowups(conversation: ApiResearchConversation | null): string[] {
@@ -220,12 +220,12 @@ export function ResearchConsolePanel({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
           <p className="af-kicker">{title || t("research.consoleKicker", "研究对话")}</p>
-          <h3 className="mt-2 text-xl font-semibold text-slate-900">
+          <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">
             {topicName
               ? `${topicName}${t("research.consoleTopicTitleSuffix", " 研究追问")}`
               : t("research.consoleTitle", "继续追问研究问题")}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
             {description ||
               t(
                 "research.consoleDesc",
@@ -238,7 +238,7 @@ export function ResearchConsolePanel({
             <select
               value={topicFilterId}
               onChange={(event) => setTopicFilterId(event.target.value)}
-              className="af-input min-w-[180px] bg-white/75 text-sm"
+              className="af-input min-w-[180px] bg-[var(--af-surface-elevated)] text-sm"
             >
               <option value="all">{t("research.consoleAllTopics", "全部专题")}</option>
               {trackingTopics.map((item) => (
@@ -274,7 +274,7 @@ export function ResearchConsolePanel({
       </div>
 
       {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-3 text-sm text-rose-700">
+        <div className="mt-4 rounded-2xl af-state-panel-danger px-4 py-3 text-sm text-[var(--af-danger)]">
           {error}
         </div>
       ) : null}
@@ -282,7 +282,7 @@ export function ResearchConsolePanel({
       <div className="mt-5 grid gap-4 xl:grid-cols-[320px,minmax(0,1fr)]">
         <div className="space-y-3">
           {loading ? (
-            <div className="rounded-[24px] border border-white/70 bg-white/65 px-4 py-5 text-sm text-slate-500">
+            <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-5 text-sm text-[var(--af-text-tertiary)]">
               {t("common.loading", "加载中")}
             </div>
           ) : visibleConversations.length ? (
@@ -296,25 +296,25 @@ export function ResearchConsolePanel({
                   onClick={() => setSelectedConversationId(conversation.id)}
                   className={`block w-full rounded-[24px] border px-4 py-4 text-left transition ${
                     isActive
-                      ? "border-sky-200 bg-sky-50/75 shadow-[0_14px_35px_rgba(56,189,248,0.14)]"
-                      : "border-white/70 bg-white/68 hover:bg-white/80"
+                      ? "border-[var(--af-border-strong)] bg-[var(--af-surface-selected)] shadow-[var(--af-shadow-soft)]"
+                      : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] hover:bg-[var(--af-surface-hover)]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{conversation.title}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">
+                      <p className="truncate text-sm font-semibold text-[var(--af-text-primary)]">{conversation.title}</p>
+                      <p className="mt-1 truncate text-xs text-[var(--af-text-tertiary)]">
                         {formatTimestamp(conversation.updated_at)}
                       </p>
                     </div>
                     {conversation.job_id ? (
-                      <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-white">
+                      <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[10px] font-semibold">
                         任务
                       </span>
                     ) : null}
                   </div>
                   {latestMessage?.content ? (
-                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--af-text-secondary)]">
                       {latestMessage.content}
                     </p>
                   ) : null}
@@ -322,26 +322,26 @@ export function ResearchConsolePanel({
               );
             })
           ) : (
-            <div className="rounded-[24px] border border-dashed border-slate-200 bg-white/70 px-4 py-5 text-sm text-slate-500">
+            <div className="rounded-[24px] border border-dashed border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-5 text-sm text-[var(--af-text-tertiary)]">
               {t("research.consoleEmpty", "当前还没有研究对话，先创建一个专题追问窗口。")}
             </div>
           )}
         </div>
 
         <div className="space-y-4">
-          <article className="rounded-[26px] border border-white/70 bg-white/72 p-4">
+          <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
             {selectedConversation ? (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{selectedConversation.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">{selectedConversation.title}</p>
+                    <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">
                       {selectedConversation.topic_id
                         ? `${t("research.consoleTopicTag", "专题")} · ${topicName || selectedConversation.context_payload?.topic_name || "—"}`
                         : t("research.consoleUnboundTopic", "未绑定专题")}
                     </p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                  <span className="rounded-full af-chip px-2.5 py-1 text-[11px] font-semibold">
                     {selectedConversation.messages.length} {t("research.consoleMessageCount", "条消息")}
                   </span>
                 </div>
@@ -352,7 +352,7 @@ export function ResearchConsolePanel({
                       key={message.id}
                       className={`rounded-[20px] border px-4 py-3 ${messageTone(message.role)}`}
                     >
-                      <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                      <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                         <span>
                           {message.role === "assistant"
                             ? t("research.consoleAssistant", "助手")
@@ -360,7 +360,7 @@ export function ResearchConsolePanel({
                         </span>
                         <span>{formatTimestamp(message.created_at)}</span>
                       </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--af-text-secondary)]">
                         {message.content}
                       </div>
                     </div>
@@ -374,7 +374,7 @@ export function ResearchConsolePanel({
                         key={question}
                         type="button"
                         onClick={() => setDraft(question)}
-                        className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700"
+                        className="rounded-full af-chip af-chip-info px-3 py-1.5 text-xs font-medium"
                       >
                         {question}
                       </button>
@@ -388,7 +388,7 @@ export function ResearchConsolePanel({
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder={t("research.consoleInputPlaceholder", "继续追问预算节点、甲方、竞品、伙伴或执行动作...")}
                     rows={3}
-                    className="af-input min-h-[104px] flex-1 resize-y bg-white/85 leading-6"
+                    className="af-input min-h-[104px] flex-1 resize-y bg-[var(--af-surface-elevated)] leading-6"
                   />
                   <button
                     type="button"
@@ -403,19 +403,19 @@ export function ResearchConsolePanel({
                 </div>
               </>
             ) : (
-              <div className="rounded-[20px] border border-dashed border-slate-200 bg-white/70 px-4 py-8 text-sm text-slate-500">
+              <div className="rounded-[20px] border border-dashed border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-8 text-sm text-[var(--af-text-tertiary)]">
                 {t("research.consoleSelectHint", "左侧选择一个对话，或新建对话开始继续追问。")}
               </div>
             )}
           </article>
 
-          <article className="rounded-[26px] border border-white/70 bg-white/72 p-4">
+          <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-[var(--af-text-primary)]">
                   {t("research.consoleTimelineTitle", "研究进度")}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">
                   {selectedConversation?.job_id
                     ? t("research.consoleTimelineDesc", "展示这次研究的关键进展。")
                     : t("research.consoleTimelineNoJob", "当前对话未绑定研究任务，先基于专题版本继续追问。")}
@@ -425,22 +425,22 @@ export function ResearchConsolePanel({
             {timeline.length ? (
               <div className="mt-4 space-y-3">
                 {timeline.map((event) => (
-                  <div key={`${event.created_at}-${event.stage_key}`} className="rounded-[18px] border border-slate-200/80 bg-slate-50/85 px-4 py-3">
+                  <div key={`${event.created_at}-${event.stage_key}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-4 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900">{event.stage_label}</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">{event.message}</p>
+                        <p className="text-sm font-semibold text-[var(--af-text-primary)]">{event.stage_label}</p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">{event.message}</p>
                       </div>
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${timelineTone(event.stage_key)}`}>
                         {event.progress_percent}%
                       </span>
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-400">{formatTimestamp(event.created_at)}</p>
+                    <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">{formatTimestamp(event.created_at)}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="mt-4 rounded-[18px] border border-dashed border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-500">
+              <div className="mt-4 rounded-[18px] border border-dashed border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-4 text-sm text-[var(--af-text-tertiary)]">
                 {selectedConversation?.job_id
                   ? t("research.consoleTimelineEmpty", "当前任务还没有额外的进展记录。")
                   : t("research.consoleTimelineTopicHint", "继续追问时会直接使用当前专题的最新版本内容。")}

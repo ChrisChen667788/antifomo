@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { ApiKnowledgeEntry, ApiResearchActionCard } from "@/lib/api";
+import type { ApiKnowledgeEntry, ApiResearchActionCard } from "@/lib/api/types";
 import { updateKnowledgeEntry } from "@/lib/api";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { AppIcon } from "@/components/ui/app-icon";

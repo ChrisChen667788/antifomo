@@ -7,12 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 
 from fastapi import Depends
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models.entities import KnowledgeEntry
 from app.schemas.mobile import MobileDailyBriefResponse
 from app.schemas.research import (
     ResearchCompareSnapshotCreateRequest,
@@ -87,7 +85,8 @@ from app.schemas.research import (
     ResearchWatchlistUpdateRequest,
     ResearchWorkspaceOut,
 )
-from app.services.research_solution_intelligence_service import build_market_intelligence_pack, build_solution_delivery_pack
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
 from app.services.research_experiment_orchestration_service import (
     build_research_experiment_orchestration,
@@ -114,6 +113,7 @@ from app.services.research_retrieval_index_service import (
     search_persistent_research_retrieval_index,
 )
 from app.services.research_section_retrieval_service import build_section_retrieval_packs
+from app.services.research.report_persistence import upsert_research_knowledge_entry
 from app.services.daily_brief_service import build_daily_brief_snapshot, serialize_daily_brief
 from app.services.research_conversation_service import (
     add_research_conversation_message,
@@ -412,71 +412,6 @@ def _build_tracking_delta(
     return new_targets, new_competitors, new_budget_signals, " / ".join(summary_bits)
 
 
-def _find_existing_research_entry_by_keyword(db: Session, *, keyword: str) -> KnowledgeEntry | None:
-    normalized_keyword = (keyword or "").strip()
-    if not normalized_keyword:
-        return None
-    entries = db.scalars(
-        select(KnowledgeEntry)
-        .where(KnowledgeEntry.user_id == settings.single_user_id)
-        .where(KnowledgeEntry.source_domain == "research.report")
-        .order_by(KnowledgeEntry.updated_at.desc(), KnowledgeEntry.created_at.desc())
-    ).all()
-    for entry in entries:
-        payload = entry.metadata_payload if isinstance(entry.metadata_payload, dict) else {}
-        report_payload = payload.get("report") if isinstance(payload.get("report"), dict) else {}
-        if str(report_payload.get("keyword") or "").strip() == normalized_keyword:
-            return entry
-    return None
-
-
-def _upsert_research_knowledge_entry(
-    db: Session,
-    *,
-    keyword: str,
-    title: str,
-    content: str,
-    collection_name: str | None,
-    is_focus_reference: bool,
-    metadata_payload: dict,
-) -> KnowledgeEntry:
-    existing_entry = _find_existing_research_entry_by_keyword(db, keyword=keyword)
-    if existing_entry is not None:
-        existing_entry.title = title
-        existing_entry.content = content
-        existing_entry.source_domain = "research.report"
-        if collection_name:
-            existing_entry.collection_name = collection_name
-        if is_focus_reference:
-            existing_entry.is_focus_reference = True
-        existing_entry.metadata_payload = metadata_payload
-        db.add(existing_entry)
-        db.commit()
-        db.refresh(existing_entry)
-        return existing_entry
-
-    entry, created = create_or_get_standalone_knowledge_entry(
-        db,
-        user_id=settings.single_user_id,
-        title=title,
-        content=content,
-        source_domain="research.report",
-        collection_name=collection_name,
-        is_focus_reference=is_focus_reference,
-        metadata_payload=metadata_payload,
-    )
-    if not created:
-        if collection_name and not entry.collection_name:
-            entry.collection_name = collection_name
-        if is_focus_reference and not entry.is_focus_reference:
-            entry.is_focus_reference = True
-        entry.metadata_payload = metadata_payload
-    db.add(entry)
-    db.commit()
-    db.refresh(entry)
-    return entry
-
-
 def _build_source_settings_out() -> ResearchSourceSettingsOut:
     source_settings = read_research_source_settings()
     return ResearchSourceSettingsOut(
@@ -538,7 +473,7 @@ def _refresh_tracking_topic_core(
         if payload.save_to_knowledge:
             ensure_demo_user(db)
             _, content = build_research_report_markdown(report, output_language=payload.output_language)
-            entry = _upsert_research_knowledge_entry(
+            entry = upsert_research_knowledge_entry(
                 db,
                 keyword=report.keyword,
                 title=report.report_title,
@@ -1592,7 +1527,7 @@ def save_research_report(
     ensure_demo_user(db)
     _, content = build_research_report_markdown(payload.report, output_language=payload.report.output_language)
     action_cards = build_research_action_cards(payload.report)
-    entry = _upsert_research_knowledge_entry(
+    entry = upsert_research_knowledge_entry(
         db,
         keyword=payload.report.keyword,
         title=payload.report.report_title,

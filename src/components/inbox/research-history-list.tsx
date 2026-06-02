@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ApiKnowledgeEntry } from "@/lib/api";
+import type { ApiKnowledgeEntry } from "@/lib/api/types";
 import { dedupeTextList } from "@/lib/display-list";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 

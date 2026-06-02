@@ -159,14 +159,14 @@ function buildCaptures(workspace, knowledgeEntries) {
       route: "/",
       waitText: "Anti-FOMO",
       filename: "home-signal-dashboard.png",
-      description: "Feed triage homepage for high-signal intake and quick route switching.",
+      description: "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching.",
     },
     {
       feature: "Inbox research workspace",
       route: "/inbox",
       waitText: "添加内容",
       filename: "inbox-research-workspace.png",
-      description: "Intake, keyword research, report generation, architecture readiness review, and formal delivery export workspace.",
+      description: "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace.",
     },
     {
       feature: "Saved read-later workspace",

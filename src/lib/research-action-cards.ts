@@ -1,4 +1,4 @@
-import type { ApiResearchActionCard } from "@/lib/api";
+import type { ApiResearchActionCard } from "@/lib/api/types";
 
 export type ResearchActionPhase = {
   label: string;

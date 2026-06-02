@@ -6,7 +6,7 @@ import type {
   ApiKnowledgeAccountDigest,
   ApiKnowledgeDashboard,
   ApiKnowledgeOpportunity,
-} from "@/lib/api";
+} from "@/lib/api/types";
 import { createTask } from "@/lib/api";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import { triggerFileDownload } from "@/lib/research-delivery-export";

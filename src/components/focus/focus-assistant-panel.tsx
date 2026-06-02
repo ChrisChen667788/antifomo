@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ApiTask, FocusAssistantAction, FocusAssistantPlan } from "@/lib/api";
+import type { ApiTask, FocusAssistantAction, FocusAssistantPlan } from "@/lib/api/types";
 import { createFocusAssistantPlan, executeFocusAssistantAction } from "@/lib/api";
 import {
   buildStoredFocusAssistantResult,

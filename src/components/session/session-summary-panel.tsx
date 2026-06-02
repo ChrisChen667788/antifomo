@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createTask,
   getSessionArtifacts,
@@ -16,540 +16,58 @@ import {
   getWechatAgentBatchStatus,
 } from "@/lib/api";
 import type {
-  ApiKnowledgeEntry,
-  ApiResearchActionCard,
-  ApiResearchReport,
-  ApiResearchWatchlist,
   ApiSessionArtifact,
-  ApiSession,
   ApiSessionItem,
   ApiTask,
   ApiTaskBriefingContext,
   WechatAgentBatchStatus,
-} from "@/lib/api";
+} from "@/lib/api/types";
 import {
   readFocusAssistantHistory,
   readLatestFocusAssistantResult,
   type StoredFocusAssistantResult,
 } from "@/lib/focus-assistant-storage";
-import { dedupeTextList } from "@/lib/display-list";
 import type { SessionMetrics } from "@/lib/mock-data";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { AppIcon } from "@/components/ui/app-icon";
 import { WorkBuddyMark } from "@/components/ui/workbuddy-mark";
-
-const SESSION_ID_KEY = "anti_fomo_session_id";
+import {
+  MetricCard,
+  OutputBlock,
+  TaskBriefingContextCard,
+} from "@/components/session/session-summary-output-components";
+import {
+  SESSION_ID_KEY,
+  buildLatestSessionItems,
+  buildRecommendedDeepReads,
+  buildWatchlistHighlights,
+  extractSessionResearchItem,
+  fallbackExecBrief,
+  fallbackMarkdown,
+  fallbackOutreachDraft,
+  fallbackReadingList,
+  fallbackSalesBrief,
+  fallbackTodoDraft,
+  formatAssistantTime,
+  formatDuration,
+  getBatchProgress,
+  hasBatchSnapshot,
+  mapSessionToMetrics,
+  parseTaskBriefingContext,
+  taskNeedsSession,
+  taskSessionId,
+  wait,
+  watchlistDigestFromHighlights,
+  type RecommendedDeepReadItem,
+  type SessionResearchItem,
+  type SessionSource,
+  type SessionWatchlistHighlight,
+  type TaskChannel,
+  type TaskType,
+} from "@/components/session/session-summary-panel-model";
 
 interface SessionSummaryPanelProps {
   metrics: SessionMetrics;
-}
-
-type TaskType =
-  | "export_markdown_summary"
-  | "export_reading_list"
-  | "export_todo_draft"
-  | "export_exec_brief"
-  | "export_sales_brief"
-  | "export_outreach_draft"
-  | "export_watchlist_digest";
-type SessionSource = "local" | "api";
-type TaskChannel = "workbuddy" | "direct";
-
-interface RecommendedDeepReadItem {
-  id: string;
-  title: string;
-  source: string;
-  summary: string;
-  scoreLabel: string;
-}
-
-interface LatestSessionItem {
-  id: string;
-  title: string;
-  source: string;
-  sourceKey: string;
-  summary: string;
-  scoreLabel: string;
-  actionSuggestion: string | null;
-  actionLabel: string;
-}
-
-interface SessionResearchItem {
-  id: string;
-  title: string;
-  summary: string;
-  createdAt: string;
-  isFocusReference: boolean;
-  collectionName: string | null;
-  topTargets: string[];
-  topCompetitors: string[];
-  topPartners: string[];
-  scopeRegions: string[];
-  scopeIndustries: string[];
-  scopeClients: string[];
-  topicAnchors: string[];
-  matchedThemes: string[];
-  filteredOldSourceCount: number;
-  filteredRegionConflictCount: number;
-  retrievalQuality: string;
-  evidenceMode: string;
-  officialSourcePercent: number;
-  uniqueDomainCount: number;
-  normalizedEntityCount: number;
-  correctiveTriggered: boolean;
-  candidateProfileCompanies: string[];
-  candidateProfileHitCount: number;
-  candidateProfileOfficialHitCount: number;
-  candidateProfileSourceLabels: string[];
-  actionCards: Array<{
-    title: string;
-    targetPersona: string;
-    executionWindow: string;
-    deliverable: string;
-    phases: Array<{
-      label: string;
-      horizon: string;
-      content: string;
-    }>;
-  }>;
-}
-
-interface SessionWatchlistHighlight {
-  id: string;
-  watchlistId: string;
-  watchlistName: string;
-  severity: "low" | "medium" | "high";
-  summary: string;
-  createdAt: string;
-  accounts: string[];
-  whyNow: string[];
-  budgetProbability: number;
-}
-
-function normalizeStepList(values: unknown): string[] {
-  return Array.isArray(values)
-    ? values.map((value) => String(value || "").trim()).filter(Boolean)
-    : [];
-}
-
-function parseActionPhases(steps: string[] | undefined) {
-  return normalizeStepList(steps)
-    .map((step) => {
-      const match = step.match(/^(短期|中期|长期|Short term|Mid term|Long term)(?:（([^）]+)）|\(([^)]+)\))?[:：]\s*(.+)$/i);
-      if (!match) {
-        return {
-          label: "关键动作",
-          horizon: "",
-          content: step,
-        };
-      }
-      return {
-        label: match[1],
-        horizon: match[2] || match[3] || "",
-        content: match[4],
-      };
-    })
-    .slice(0, 3);
-}
-
-function conciseEntityName(value: unknown): string {
-  const normalized = String(value || "").trim();
-  if (!normalized) return "";
-  const primary = normalized.split(/[：:]/)[0]?.trim() || normalized;
-  return primary.split(/\s*[·•|｜]\s*/)[0]?.trim() || primary;
-}
-
-function normalizeEntityNames(values: unknown): string[] {
-  return dedupeTextList(values as Iterable<unknown>, {
-    limit: 3,
-    normalizer: conciseEntityName,
-  });
-}
-
-function hasBatchSnapshot(status: WechatAgentBatchStatus | null): boolean {
-  if (!status) return false;
-  return Boolean(
-    status.total_segments ||
-      status.finished_at ||
-      status.running ||
-      status.submitted ||
-      status.submitted_new ||
-      status.deduplicated_existing ||
-      status.skipped_seen ||
-      status.failed,
-  );
-}
-
-function getBatchProgress(status: WechatAgentBatchStatus | null): number {
-  if (!status || status.total_segments <= 0) {
-    return 0;
-  }
-  if (status.running) {
-    return Math.max(8, Math.min(96, Math.round((Math.max(status.current_segment_index, 1) / status.total_segments) * 100)));
-  }
-  return status.finished_at ? 100 : 0;
-}
-
-function formatDuration(minutes: number, t: (key: string, fallback?: string) => string): string {
-  const hours = Math.floor(minutes / 60);
-  const restMinutes = minutes % 60;
-  if (hours === 0) {
-    return `${restMinutes} ${t("common.minutes", "分钟")}`;
-  }
-  return `${hours} ${t("common.hours", "小时")} ${restMinutes} ${t("common.minutes", "分钟")}`;
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function taskNeedsSession(taskType: TaskType): boolean {
-  return taskType === "export_markdown_summary" || taskType === "export_todo_draft";
-}
-
-function taskSessionId(taskType: TaskType, sessionId?: string): string | undefined {
-  if (taskType === "export_watchlist_digest") {
-    return undefined;
-  }
-  return sessionId || (taskNeedsSession(taskType) ? undefined : sessionId);
-}
-
-function fallbackMarkdown(
-  metrics: SessionMetrics,
-  t: (key: string, fallback?: string) => string,
-  locale: string,
-): string {
-  const now = new Date().toLocaleString(locale, { hour12: false });
-  return `# ${t("summary.block.markdown", "Markdown 总结")}
-
-- ${t("summary.block.markdown", "Markdown 总结")}: ${now}
-- ${t("focus.goal", "本次目标")}: ${metrics.goalText || t("common.notSet", "未设置")}
-- ${t("summary.metric.duration", "专注时长")}: ${formatDuration(metrics.durationMinutes, t)}
-- ${t("summary.metric.newContent", "新增内容数")}: ${metrics.newContentCount}
-- ${t("summary.metric.deepRead", "推荐深读数")}: ${metrics.deepReadCount}
-- ${t("summary.metric.later", "稍后读数")}: ${metrics.laterCount}
-- ${t("summary.metric.skip", "可忽略数")}: ${metrics.ignorableCount}`;
-}
-
-function fallbackReadingList(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.readingList", "稍后读清单")}
-
-1. ${t("summary.sample.readA", "高价值内容 A（深读）")}
-2. ${t("summary.sample.readB", "行业趋势内容 B（深读）")}
-3. ${t("summary.sample.readC", "方法论内容 C（稍后读）")}
-4. ${t("summary.sample.readD", "工具更新内容 D（稍后读）")}`;
-}
-
-function fallbackTodoDraft(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.todoDraft", "待办草稿")}
-
-- [ ] ${t("summary.sample.todo1", "先深读 2 条高价值内容并记录要点")}
-- [ ] ${t("summary.sample.todo2", "将稍后读内容归入下一个专注时段")}
-- [ ] ${t("summary.sample.todo3", "把可忽略内容批量归档")}`;
-}
-
-function fallbackExecBrief(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.execBrief", "老板简报")}
-
-- ${t("summary.metric.deepRead", "推荐深读数")}：优先同步本轮高价值内容和风险变化
-- ${t("summary.block.execBriefHighlight", "建议重点")}：今天先看新增甲方、预算节点和 watchlist 变化`;
-}
-
-function fallbackSalesBrief(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.salesBrief", "销售 Brief")}
-
-- ${t("summary.block.salesBriefNext", "下一步")}：围绕深读条目整理拜访提纲
-- ${t("summary.block.salesBriefFocus", "跟进重点")}：甲方线索、竞品动作、预算时间窗`;
-}
-
-function fallbackOutreachDraft(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.outreachDraft", "外联草稿")}
-
-您好，结合最近的公开动态，我们整理了几条和您当前项目更相关的观察，适合继续约一个 20 分钟的沟通窗口。`;
-}
-
-function fallbackWatchlistDigest(t: (key: string, fallback?: string) => string): string {
-  return `# ${t("summary.block.watchlistDigest", "Watchlist Digest")}
-
-- ${t("summary.block.watchlistDigestHint", "当前可先汇总专题刷新和新增风险提示")}。`;
-}
-
-function buildWatchlistHighlights(watchlists: ApiResearchWatchlist[]): SessionWatchlistHighlight[] {
-  return watchlists
-    .flatMap((watchlist) =>
-      (watchlist.latest_changes || []).map((change) => {
-        const payload = change.payload || {};
-        const accounts = Array.isArray(payload.accounts)
-          ? payload.accounts.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 3)
-          : [];
-        const whyNow = Array.isArray(payload.why_now)
-          ? payload.why_now.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 2)
-          : [];
-        const budgetProbability = Number(payload.top_budget_probability || 0);
-        return {
-          id: change.id,
-          watchlistId: watchlist.id,
-          watchlistName: watchlist.name,
-          severity: change.severity,
-          summary: change.summary,
-          createdAt: change.created_at,
-          accounts,
-          whyNow,
-          budgetProbability,
-        };
-      }),
-    )
-    .sort((left, right) => {
-      const severityScore = (value: string) => (value === "high" ? 3 : value === "medium" ? 2 : 1);
-      const diff = severityScore(right.severity) - severityScore(left.severity);
-      if (diff !== 0) return diff;
-      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-    })
-    .slice(0, 6);
-}
-
-function watchlistDigestFromHighlights(
-  highlights: SessionWatchlistHighlight[],
-  t: (key: string, fallback?: string) => string,
-): string {
-  if (!highlights.length) {
-    return fallbackWatchlistDigest(t);
-  }
-  const lines = highlights.slice(0, 4).map((item) => {
-    const accountText = item.accounts.length ? ` · 账户：${item.accounts.join(" / ")}` : "";
-    const budgetText = item.budgetProbability > 0 ? ` · 预算概率 ${item.budgetProbability}%` : "";
-    return `- [${item.watchlistName}] ${item.summary}${accountText}${budgetText}`;
-  });
-  return `# ${t("summary.block.watchlistDigest", "Watchlist Digest")}\n\n${lines.join("\n")}`;
-}
-
-function parseTaskBriefingContext(outputPayload: ApiTask["output_payload"]): ApiTaskBriefingContext | null {
-  const raw =
-    outputPayload && typeof outputPayload === "object"
-      ? (outputPayload.briefing_context || outputPayload.watchlist_context)
-      : null;
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const typed = raw as Record<string, unknown>;
-  const accountRaw = typed.account && typeof typed.account === "object" ? (typed.account as Record<string, unknown>) : null;
-  const parseRows = (value: unknown) =>
-    Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : [];
-  return {
-    account: accountRaw
-      ? {
-          slug: String(accountRaw.slug || ""),
-          name: String(accountRaw.name || ""),
-          objective: String(accountRaw.objective || ""),
-          value_hypothesis: String(accountRaw.value_hypothesis || ""),
-          next_meeting_goal: String(accountRaw.next_meeting_goal || ""),
-          why_now: Array.isArray(accountRaw.why_now) ? accountRaw.why_now.map((value) => String(value || "")).filter(Boolean) : [],
-          stakeholders: parseRows(accountRaw.stakeholders).map((item) => ({
-            name: String(item.name || ""),
-            role: String(item.role || ""),
-            priority: String(item.priority || ""),
-            next_move: String(item.next_move || ""),
-          })),
-          close_plan: parseRows(accountRaw.close_plan).map((item) => ({
-            title: String(item.title || ""),
-            owner: String(item.owner || ""),
-            due_window: String(item.due_window || ""),
-            exit_criteria: String(item.exit_criteria || ""),
-          })),
-          pipeline_risks: parseRows(accountRaw.pipeline_risks).map((item) => ({
-            title: String(item.title || ""),
-            severity: String(item.severity || ""),
-            detail: String(item.detail || ""),
-            mitigation: String(item.mitigation || ""),
-          })),
-        }
-      : null,
-    top_accounts: parseRows(typed.top_accounts).map((item) => ({
-      slug: String(item.slug || ""),
-      name: String(item.name || ""),
-      budget_probability: Number(item.budget_probability || 0),
-      next_best_action: String(item.next_best_action || ""),
-    })),
-    top_opportunities: parseRows(typed.top_opportunities).map((item) => ({
-      title: String(item.title || ""),
-      account_name: String(item.account_name || ""),
-      budget_probability: Number(item.budget_probability || 0),
-      next_step: String(item.next_step || ""),
-    })),
-    top_alerts: parseRows(typed.top_alerts).map((item) => ({
-      title: String(item.title || ""),
-      severity: String(item.severity || ""),
-      summary: String(item.summary || ""),
-      account_name: String(item.account_name || ""),
-      recommended_action: String(item.recommended_action || ""),
-    })),
-    review_queue: parseRows(typed.review_queue).map((item) => ({
-      id: String(item.id || ""),
-      title: String(item.title || ""),
-      severity: String(item.severity || ""),
-      summary: String(item.summary || ""),
-      account_name: String(item.account_name || ""),
-      recommended_action: String(item.recommended_action || ""),
-      resolution_status: String(item.resolution_status || "open"),
-    })),
-  };
-}
-
-function mapSessionToMetrics(session: ApiSession): SessionMetrics {
-  return {
-    sessionId: session.id,
-    durationMinutes: session.duration_minutes,
-    goalText: session.goal_text || undefined,
-    newContentCount: session.metrics.new_content_count,
-    deepReadCount: session.metrics.deep_read_count,
-    laterCount: session.metrics.later_count,
-    ignorableCount: session.metrics.skip_count,
-  };
-}
-
-function scoreLabel(
-  score: number | null,
-  t: (key: string, fallback?: string) => string,
-): string {
-  if (score === null) return t("summary.score.pending", "评分待补充");
-  if (score >= 4.0) return t("summary.score.high", "高价值");
-  if (score >= 2.8) return t("summary.score.mid", "中价值");
-  return t("summary.score.low", "低价值");
-}
-
-function buildRecommendedDeepReads(
-  items: ApiSessionItem[],
-  t: (key: string, fallback?: string) => string,
-): RecommendedDeepReadItem[] {
-  const deepReadItems = items.filter((item) => item.action_suggestion === "deep_read");
-  return deepReadItems.slice(0, 6).map((item) => ({
-    id: item.id,
-    title: item.title || t("common.untitled", "未命名内容"),
-    source: item.source_domain || t("common.unknownSource", "未知来源"),
-    summary: item.short_summary || t("common.noSummary", "暂无摘要"),
-    scoreLabel: scoreLabel(item.score_value, t),
-  }));
-}
-
-function buildLatestSessionItems(
-  items: ApiSessionItem[],
-  batchStatus: WechatAgentBatchStatus | null,
-  t: (key: string, fallback?: string) => string,
-): LatestSessionItem[] {
-  if (!items.length) {
-    return [];
-  }
-  const itemMap = new Map(items.map((item) => [item.id, item]));
-  const matched = (batchStatus?.new_item_ids || [])
-    .map((id) => itemMap.get(id))
-    .filter((item): item is ApiSessionItem => Boolean(item));
-  const fallbackLimit = Math.min(
-    items.length,
-    Math.max(1, Math.min(4, batchStatus?.submitted_new || items.length)),
-  );
-  const selected = matched.length > 0 ? matched : items.slice(0, fallbackLimit);
-  return selected.slice(0, 4).map((item) => ({
-    id: item.id,
-    title: item.title || t("common.untitled", "未命名内容"),
-    source: item.source_domain || t("common.unknownSource", "未知来源"),
-    sourceKey: item.source_domain || "unknown",
-    summary: item.short_summary || t("common.noSummary", "暂无摘要"),
-    scoreLabel: scoreLabel(item.score_value, t),
-    actionSuggestion: item.action_suggestion,
-    actionLabel:
-      item.action_suggestion === "deep_read"
-        ? t("action.deep_read", "立即深读")
-        : item.action_suggestion === "skip"
-          ? t("action.skip", "可放心忽略")
-          : t("action.later", "稍后精读"),
-  }));
-}
-
-function formatAssistantTime(iso: string, locale: string): string {
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date(iso));
-  } catch {
-    return iso.slice(0, 16).replace("T", " ");
-  }
-}
-
-function extractSessionResearchItem(entry: ApiKnowledgeEntry): SessionResearchItem {
-  const payload = entry.metadata_payload;
-  const typedPayload =
-    payload && typeof payload === "object"
-      ? (payload as {
-          report?: ApiResearchReport;
-          action_cards?: ApiResearchActionCard[];
-        })
-      : null;
-  const report = typedPayload?.report;
-  const actionCards = Array.isArray(typedPayload?.action_cards) ? typedPayload?.action_cards || [] : [];
-  const topTargets = normalizeEntityNames(
-    report?.top_target_accounts?.length
-      ? report.top_target_accounts.map((item) => item.name)
-      : report?.pending_target_candidates?.map((item) => item.name) || [],
-  );
-  const topCompetitors = normalizeEntityNames(
-    report?.top_competitors?.length
-      ? report.top_competitors.map((item) => item.name)
-      : report?.pending_competitor_candidates?.map((item) => item.name) || [],
-  );
-  const topPartners = normalizeEntityNames(
-    report?.top_ecosystem_partners?.length
-      ? report.top_ecosystem_partners.map((item) => item.name)
-      : report?.pending_partner_candidates?.map((item) => item.name) || [],
-  );
-  const summary =
-    String(report?.executive_summary || "").trim() ||
-    String(entry.content || "")
-      .split("\n")
-      .map((line) => line.replace(/^#+\s*/, "").replace(/^- /, "").trim())
-      .filter(Boolean)[0] ||
-    "暂无摘要";
-  return {
-    id: entry.id,
-    title: entry.title,
-    summary,
-    createdAt: entry.created_at,
-    isFocusReference: !!entry.is_focus_reference,
-    collectionName: entry.collection_name || null,
-    topTargets,
-    topCompetitors,
-    topPartners,
-    scopeRegions: normalizeEntityNames((report?.source_diagnostics as { scope_regions?: string[] } | undefined)?.scope_regions || []),
-    scopeIndustries: normalizeEntityNames((report?.source_diagnostics as { scope_industries?: string[] } | undefined)?.scope_industries || []),
-    scopeClients: normalizeEntityNames((report?.source_diagnostics as { scope_clients?: string[] } | undefined)?.scope_clients || []),
-    topicAnchors: normalizeEntityNames(report?.source_diagnostics?.topic_anchor_terms || []),
-    matchedThemes: normalizeEntityNames(report?.source_diagnostics?.matched_theme_labels || []),
-    filteredOldSourceCount: Number(report?.source_diagnostics?.filtered_old_source_count || 0),
-    filteredRegionConflictCount: Number((report?.source_diagnostics as { filtered_region_conflict_count?: number } | undefined)?.filtered_region_conflict_count || 0),
-    retrievalQuality: String(report?.source_diagnostics?.retrieval_quality || "low"),
-    evidenceMode: String((report?.source_diagnostics as { evidence_mode?: string } | undefined)?.evidence_mode || "fallback"),
-    officialSourcePercent: Math.round(Number(report?.source_diagnostics?.official_source_ratio || 0) * 100),
-    uniqueDomainCount: Number(report?.source_diagnostics?.unique_domain_count || 0),
-    normalizedEntityCount: Number(report?.source_diagnostics?.normalized_entity_count || 0),
-    correctiveTriggered: Boolean((report?.source_diagnostics as { corrective_triggered?: boolean } | undefined)?.corrective_triggered),
-    candidateProfileCompanies: normalizeEntityNames((report?.source_diagnostics as { candidate_profile_companies?: string[] } | undefined)?.candidate_profile_companies || []),
-    candidateProfileHitCount: Number((report?.source_diagnostics as { candidate_profile_hit_count?: number } | undefined)?.candidate_profile_hit_count || 0),
-    candidateProfileOfficialHitCount: Number((report?.source_diagnostics as { candidate_profile_official_hit_count?: number } | undefined)?.candidate_profile_official_hit_count || 0),
-    candidateProfileSourceLabels: normalizeEntityNames((report?.source_diagnostics as { candidate_profile_source_labels?: string[] } | undefined)?.candidate_profile_source_labels || []),
-    actionCards: actionCards
-      .map((card) => ({
-        title: String(card.title || "").trim(),
-        targetPersona: String(card.target_persona || "").trim(),
-        executionWindow: String(card.execution_window || "").trim(),
-        deliverable: String(card.deliverable || "").trim(),
-        phases: parseActionPhases(card.recommended_steps),
-      }))
-      .filter((card) => card.title)
-      .slice(0, 2),
-  };
 }
 
 export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryPanelProps) {
@@ -988,22 +506,22 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="af-kicker">{t("focus.collectorKicker", "公众号采集")}</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">
+              <p className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
                 {wechatBatchStatus?.running
                   ? t("focus.collectorRunning", "正在静默扫描最新文章")
                   : t("focus.collectorLatest", "最近一轮采集结果")}
               </p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">
                 {t("focus.collectorSubmitted", "累计入队")} {wechatBatchStatus?.submitted || 0} {t("common.items", "条")}
               </p>
             </div>
-            <div className="rounded-full border border-sky-200/80 bg-sky-50/80 px-3 py-1 text-xs font-medium text-sky-700">
+            <div className="rounded-full border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-3 py-1 text-xs font-medium text-[var(--af-info)]">
               {getBatchProgress(wechatBatchStatus)}%
             </div>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/80">
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--af-surface-inset)]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-sky-400 via-blue-500 to-cyan-400 transition-all duration-500"
+              className="h-full rounded-full bg-[var(--af-info)] transition-all duration-500"
               style={{ width: `${getBatchProgress(wechatBatchStatus)}%` }}
             />
           </div>
@@ -1017,20 +535,20 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <div
               className={`mt-3 rounded-3xl border px-4 py-3 text-sm ${
                 wechatBatchStatus.route_quality.route_stability === "good"
-                  ? "border-emerald-200/90 bg-emerald-50/80 text-emerald-800"
+                  ? "af-state-panel-success"
                   : wechatBatchStatus.route_quality.route_stability === "poor"
-                    ? "border-amber-200/90 bg-amber-50/80 text-amber-800"
-                    : "border-slate-200/90 bg-slate-50/80 text-slate-700"
+                    ? "af-state-panel-warning"
+                    : "border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]"
               }`}
             >
               <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-full bg-white/84 px-2.5 py-1">
+                <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
                   URL-first {wechatBatchStatus.route_quality.url_first_share}%
                 </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1">
+                <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
                   OCR {wechatBatchStatus.route_quality.ocr_share}%
                 </span>
-                <span className="rounded-full bg-white/84 px-2.5 py-1">
+                <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
                   Accessibility {wechatBatchStatus.route_quality.accessibility_hit_rate}%
                 </span>
               </div>
@@ -1038,7 +556,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             </div>
           ) : null}
           {wechatBatchStatus?.last_message ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
               {t("focus.collectorLastMessage", "状态")}：{wechatBatchStatus.last_message}
             </p>
           ) : null}
@@ -1050,7 +568,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="af-kicker">{t("summary.section.latestNew", "本轮新增卡片")}</p>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                 {t(
                   "summary.latestNewHint",
                   "优先展示最近一轮采集命中的新卡片，可直接进入详情继续判断。",
@@ -1058,12 +576,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-info)]">
                 {filteredLatestSessionItems.length}/{latestSessionItems.length} {t("common.items", "条")}
               </span>
               <Link
                 href="/collector#latest-run"
-                className="inline-flex items-center gap-1 rounded-full border border-white/85 bg-white/75 px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-white/90"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1.5 text-[11px] font-semibold text-[var(--af-text-secondary)] transition hover:bg-[var(--af-surface-hover)]"
               >
                 <AppIcon name="collector" className="h-3.5 w-3.5" />
                 {t("summary.latestNewCollector", "查看采集器")}
@@ -1080,8 +598,8 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                   onClick={() => setLatestSourceFilter(source)}
                   className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
                     active
-                      ? "border border-sky-200/85 bg-sky-50 text-sky-700"
-                      : "border border-white/85 bg-white/70 text-slate-500 hover:bg-white/90"
+                      ? "border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] af-chip af-chip-info"
+                      : "border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-tertiary)] hover:bg-[var(--af-surface-hover)]"
                   }`}
                 >
                   {source === "all" ? t("summary.filter.allSources", "全部来源") : source}
@@ -1107,8 +625,8 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                   onClick={() => setLatestActionFilter(action)}
                   className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
                     active
-                      ? "border border-emerald-200/85 bg-emerald-50 text-emerald-700"
-                      : "border border-white/85 bg-white/70 text-slate-500 hover:bg-white/90"
+                      ? "border border-[color-mix(in_srgb,var(--af-success)_30%,var(--af-border-subtle))] af-chip af-chip-success"
+                      : "border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-tertiary)] hover:bg-[var(--af-surface-hover)]"
                   }`}
                 >
                   {label}
@@ -1121,23 +639,23 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               <Link
                 key={item.id}
                 href={`/items/${item.id}`}
-                className="group block rounded-2xl border border-white/85 bg-white/60 px-4 py-3 transition hover:-translate-y-0.5 hover:bg-white/75"
+                className="group block rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3 transition hover:-translate-y-0.5 hover:bg-[var(--af-surface-hover)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-sm font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{item.source}</p>
+                    <p className="line-clamp-1 text-sm font-semibold text-[var(--af-text-primary)]">{item.title}</p>
+                    <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">{item.source}</p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-sky-200/85 bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                  <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--af-info)]">
                     {item.scoreLabel}
                   </span>
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-700">{item.summary}</p>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--af-text-secondary)]">{item.summary}</p>
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="rounded-full border border-white/85 bg-white/75 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                  <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-text-tertiary)]">
                     {item.actionLabel}
                   </span>
-                  <div className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700">
+                  <div className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--af-info)]">
                     <AppIcon name="external" className="h-3.5 w-3.5" />
                     {t("summary.latestNewOpen", "打开详情")}
                   </div>
@@ -1146,7 +664,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             ))}
           </div>
           {filteredLatestSessionItems.length === 0 ? (
-            <p className="mt-3 rounded-2xl border border-white/85 bg-white/55 px-4 py-3 text-sm text-slate-500">
+            <p className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3 text-sm text-[var(--af-text-tertiary)]">
               {t("summary.latestNewEmpty", "当前筛选条件下没有匹配的新增卡片。")}
             </p>
           ) : null}
@@ -1158,7 +676,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="af-kicker">{t("summary.section.research", "推荐研报")}</p>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                 {t(
                   "summary.researchHint",
                   "把最近沉淀的行业研报和行动卡带回本次总结，便于继续推进销售、投标与生态动作。",
@@ -1167,7 +685,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             </div>
             <Link
               href="/research"
-              className="inline-flex items-center gap-1 rounded-full border border-white/85 bg-white/75 px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-white/90"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1.5 text-[11px] font-semibold text-[var(--af-text-secondary)] transition hover:bg-[var(--af-surface-hover)]"
             >
               <AppIcon name="spark" className="h-3.5 w-3.5" />
               {t("summary.researchOpen", "打开研报中心")}
@@ -1178,26 +696,26 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               <Link
                 key={entry.id}
                 href={`/knowledge/${entry.id}`}
-                className="group block rounded-2xl border border-white/85 bg-white/60 p-4 transition hover:-translate-y-0.5 hover:bg-white/75"
+                className="group block rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4 transition hover:-translate-y-0.5 hover:bg-[var(--af-surface-hover)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h4 className="min-w-0 flex-1 text-base font-semibold leading-7 text-slate-900">
+                  <h4 className="min-w-0 flex-1 text-base font-semibold leading-7 text-[var(--af-text-primary)]">
                     {entry.title}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {entry.isFocusReference ? (
-                      <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-info)]">
                         {t("inbox.researchHistoryFocus", "Focus 参考")}
                       </span>
                     ) : null}
                     {entry.collectionName ? (
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-text-secondary)]">
                         {entry.collectionName}
                       </span>
                     ) : null}
                   </div>
                 </div>
-                <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.summary}</p>
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--af-text-secondary)]">{entry.summary}</p>
 
                 {(entry.scopeRegions.length ||
                   entry.scopeIndustries.length ||
@@ -1214,92 +732,92 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     <span
                       className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
                         entry.evidenceMode === "strong"
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "af-chip af-chip-success"
                           : entry.evidenceMode === "provisional"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-slate-100 text-slate-600"
+                            ? "af-chip af-chip-warning"
+                            : "af-chip"
                       }`}
                     >
                       {entry.evidenceMode === "strong" ? "强证据" : entry.evidenceMode === "provisional" ? "可用初版" : "待核实"}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
                       检索质量 {entry.retrievalQuality === "high" ? "高价值" : entry.retrievalQuality === "medium" ? "普通价值" : "低价值"}
                     </span>
-                    <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                       官方源 {entry.officialSourcePercent}%
                     </span>
                     {entry.scopeRegions.map((value) => (
-                      <span key={`${entry.id}-scope-region-${value}`} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] text-cyan-700">
+                      <span key={`${entry.id}-scope-region-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         区域 · {value}
                       </span>
                     ))}
                     {entry.scopeIndustries.map((value) => (
-                      <span key={`${entry.id}-scope-industry-${value}`} className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] text-blue-700">
+                      <span key={`${entry.id}-scope-industry-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         领域 · {value}
                       </span>
                     ))}
                     {entry.scopeClients.map((value) => (
-                      <span key={`${entry.id}-scope-client-${value}`} className="rounded-full bg-fuchsia-50 px-2.5 py-1 text-[11px] text-fuchsia-700">
+                      <span key={`${entry.id}-scope-client-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         公司 · {value}
                       </span>
                     ))}
                     {entry.topicAnchors.map((value) => (
-                      <span key={`${entry.id}-anchor-${value}`} className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] text-violet-700">
+                      <span key={`${entry.id}-anchor-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         {value}
                       </span>
                     ))}
                     {entry.matchedThemes.map((value) => (
-                      <span key={`${entry.id}-theme-${value}`} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-700">
+                      <span key={`${entry.id}-theme-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-success)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-success)]">
                         {value}
                       </span>
                     ))}
                     {entry.filteredOldSourceCount > 0 ? (
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                      <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-tertiary)]">
                         剔除过旧来源 {entry.filteredOldSourceCount}
                       </span>
                     ) : null}
                     {entry.filteredRegionConflictCount > 0 ? (
-                      <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-danger)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-danger)]">
                         拦截越界区域 {entry.filteredRegionConflictCount}
                       </span>
                     ) : null}
                     {entry.uniqueDomainCount > 0 ? (
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                      <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-tertiary)]">
                         域名 {entry.uniqueDomainCount}
                       </span>
                     ) : null}
                     {entry.normalizedEntityCount > 0 ? (
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-success)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-success)]">
                         归一化实体 {entry.normalizedEntityCount}
                       </span>
                     ) : null}
                     {entry.correctiveTriggered ? (
-                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] text-orange-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-warning)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-warning)]">
                         已补充核验
                       </span>
                     ) : null}
                     {entry.candidateProfileCompanies.length ? (
-                      <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         建议核验公司 {entry.candidateProfileCompanies.length}
                       </span>
                     ) : null}
                     {entry.candidateProfileHitCount > 0 ? (
-                      <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         公开来源 {entry.candidateProfileHitCount}
                       </span>
                     ) : null}
                     {entry.candidateProfileOfficialHitCount > 0 ? (
-                      <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] text-cyan-700">
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         其中官方源 {entry.candidateProfileOfficialHitCount}
                       </span>
                     ) : null}
                     {entry.candidateProfileCompanies.map((value) => (
-                      <span key={`${entry.id}-candidate-profile-${value}`} className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
+                      <span key={`${entry.id}-candidate-profile-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         候选公司 · {value}
                       </span>
                     ))}
                     {entry.candidateProfileSourceLabels.map((value) => (
-                      <span key={`${entry.id}-candidate-profile-source-${value}`} className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] text-cyan-700">
+                      <span key={`${entry.id}-candidate-profile-source-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                         {value}
                       </span>
                     ))}
@@ -1309,48 +827,48 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                 {entry.actionCards.length ? (
                   <div className="mt-4 grid gap-2">
                     {entry.actionCards.map((card) => (
-                        <div key={`${entry.id}-${card.title}`} className="rounded-2xl border border-slate-200/80 bg-slate-50/85 p-3">
-                          <div className="break-words text-sm font-semibold leading-6 text-slate-900">{card.title}</div>
-                          <div className="mt-2 grid gap-1.5 break-words text-[11px] text-slate-500">
+                        <div key={`${entry.id}-${card.title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+                          <div className="break-words text-sm font-semibold leading-6 text-[var(--af-text-primary)]">{card.title}</div>
+                          <div className="mt-2 grid gap-1.5 break-words text-[11px] text-[var(--af-text-tertiary)]">
                           {card.targetPersona ? (
                             <div>
-                              <span className="font-semibold text-slate-700">{t("research.actionTarget", "优先对象")}：</span>
+                              <span className="font-semibold text-[var(--af-text-secondary)]">{t("research.actionTarget", "优先对象")}：</span>
                               {card.targetPersona}
                             </div>
                           ) : null}
                           {card.executionWindow ? (
                             <div>
-                              <span className="font-semibold text-slate-700">{t("research.actionWindow", "执行窗口")}：</span>
+                              <span className="font-semibold text-[var(--af-text-secondary)]">{t("research.actionWindow", "执行窗口")}：</span>
                               {card.executionWindow}
                             </div>
                           ) : null}
                           {card.deliverable ? (
                             <div>
-                              <span className="font-semibold text-slate-700">{t("research.actionDeliverable", "产出物")}：</span>
+                              <span className="font-semibold text-[var(--af-text-secondary)]">{t("research.actionDeliverable", "产出物")}：</span>
                               {card.deliverable}
                             </div>
                           ) : null}
                         </div>
                         {card.phases.length ? (
                           <div className="mt-3 grid gap-2">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                               {t("research.actionTimeline", "推进节奏")}
                             </div>
                             <div className="grid gap-2">
                               {card.phases.map((phase) => (
                                 <div
                                   key={`${entry.id}-${card.title}-${phase.label}-${phase.content}`}
-                                  className="min-w-0 overflow-hidden rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5"
+                                  className="min-w-0 overflow-hidden rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2.5"
                                 >
                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white">
+                                    <span className="rounded-full bg-[var(--af-text-primary)] px-2.5 py-1 text-[11px] font-medium text-[var(--af-text-inverse)]">
                                       {phase.label}
                                     </span>
                                     {phase.horizon ? (
-                                      <span className="text-[11px] font-medium text-slate-500">{phase.horizon}</span>
+                                      <span className="text-[11px] font-medium text-[var(--af-text-tertiary)]">{phase.horizon}</span>
                                     ) : null}
                                   </div>
-                                  <div className="mt-2 min-w-0 break-words whitespace-pre-wrap text-xs leading-5 text-slate-600 [overflow-wrap:anywhere]">
+                                  <div className="mt-2 min-w-0 break-words whitespace-pre-wrap text-xs leading-5 text-[var(--af-text-secondary)] [overflow-wrap:anywhere]">
                                     {phase.content}
                                   </div>
                                 </div>
@@ -1367,12 +885,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                   <div className="mt-4 space-y-2">
                     {entry.topTargets.length ? (
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">
                           {t("research.topTargets", "高价值甲方 Top 3")}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {entry.topTargets.map((value) => (
-                            <span key={`${entry.id}-buyer-${value}`} className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-800">
+                            <span key={`${entry.id}-buyer-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-info)]">
                               {value}
                             </span>
                           ))}
@@ -1381,12 +899,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     ) : null}
                     {entry.topCompetitors.length ? (
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">
                           {t("research.topCompetitors", "高威胁竞品 Top 3")}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {entry.topCompetitors.map((value) => (
-                            <span key={`${entry.id}-competitor-${value}`} className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] text-amber-800">
+                            <span key={`${entry.id}-competitor-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-warning)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-warning)]">
                               {value}
                             </span>
                           ))}
@@ -1395,12 +913,12 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     ) : null}
                     {entry.topPartners.length ? (
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-success)]">
                           {t("research.topPartners", "高影响力生态伙伴 Top 3")}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {entry.topPartners.map((value) => (
-                            <span key={`${entry.id}-partner-${value}`} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-800">
+                            <span key={`${entry.id}-partner-${value}`} className="rounded-full bg-[color-mix(in_srgb,var(--af-success)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-success)]">
                               {value}
                             </span>
                           ))}
@@ -1410,9 +928,9 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                   </div>
                 ) : null}
 
-                <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-[var(--af-text-tertiary)]">
                   <span>{new Date(entry.createdAt).toLocaleString()}</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-sky-700">
+                  <span className="inline-flex items-center gap-1 font-semibold text-[var(--af-info)]">
                     <AppIcon name="external" className="h-3.5 w-3.5" />
                     {t("summary.latestNewOpen", "打开详情")}
                   </span>
@@ -1426,7 +944,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
       <div className="af-glass rounded-[30px] p-5 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <p className="af-kicker">{t("summary.section.deepReads", "本次推荐深读")}</p>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[var(--af-text-tertiary)]">
             {t("summary.dataSource", "数据源")}：
             {sessionSource === "api"
               ? t("summary.dataSource.api", "实时记录")
@@ -1436,22 +954,22 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         {recommendedDeepReads.length > 0 ? (
           <div className="mt-3 space-y-2.5">
             {recommendedDeepReads.map((item, idx) => (
-              <div key={item.id} className="rounded-2xl border border-white/85 bg-white/60 px-4 py-3">
+              <div key={item.id} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="line-clamp-1 text-sm font-semibold text-slate-900">
+                  <p className="line-clamp-1 text-sm font-semibold text-[var(--af-text-primary)]">
                     {idx + 1}. {item.title}
                   </p>
-                  <span className="shrink-0 rounded-full border border-emerald-200/85 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--af-success)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-success)_14%,var(--af-surface-muted))] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--af-success)]">
                     {item.scoreLabel}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{item.source}</p>
-                <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-700">{item.summary}</p>
+                <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">{item.source}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--af-text-secondary)]">{item.summary}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-3 rounded-2xl border border-white/85 bg-white/55 px-4 py-3 text-sm text-slate-500">
+          <p className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3 text-sm text-[var(--af-text-tertiary)]">
             {t("summary.emptyDeepReads", "暂无深读推荐，结束一轮 Focus 后会在这里显示优先阅读项。")}
           </p>
         )}
@@ -1462,29 +980,29 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="af-kicker">{t("summary.assistant.title", "专注助手")}</p>
-              <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+              <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-[var(--af-text-primary)]">
                 {assistantResult.actionTitle}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-sky-200/85 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--af-info)]">
                 {assistantResult.channelUsed === "workbuddy"
                   ? t("summary.assistant.workbuddy", "已完成")
                   : t("summary.assistant.direct", "已完成")}
               </span>
-              <span className="rounded-full border border-white/85 bg-white/65 px-2.5 py-1 text-[11px] font-semibold tracking-[0.14em] text-slate-500">
+              <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold tracking-[0.14em] text-[var(--af-text-tertiary)]">
                 {formatAssistantTime(assistantResult.createdAt, preferences.language)}
               </span>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-500">
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-tertiary)]">
             {assistantResult.message ||
               t(
                 "summary.assistant.subtitle",
                 "最近一次助手结果已保存到本轮总结。",
               )}
           </p>
-          <div className="mt-3 rounded-2xl border border-white/85 bg-white/60 px-4 py-3">
+          <div className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <p className="af-kicker">{t("summary.assistant.output", "结果摘要")}</p>
               {assistantResult.content ? (
@@ -1493,20 +1011,20 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                   onClick={() => {
                     void copyText(assistantResult.content);
                   }}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/85 bg-white/75 px-2.5 py-1 text-[11px] font-semibold text-slate-500"
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-text-tertiary)]"
                 >
                   <AppIcon name="copy" className="h-3.5 w-3.5" />
                   {t("common.copy", "复制")}
                 </button>
               ) : null}
             </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--af-text-secondary)]">
               {assistantResult.content ||
                 t("summary.assistant.noOutput", "本次没有可展示的结果。")}
             </p>
           </div>
           {assistantHistory.length > 1 ? (
-            <div className="mt-3 border-t border-white/60 pt-3">
+            <div className="mt-3 border-t border-[var(--af-border-subtle)] pt-3">
               <p className="af-kicker">{t("summary.assistant.history", "最近执行")}</p>
               <div className="mt-2 space-y-2">
                 {assistantHistory.slice(1, 4).map((entry) => (
@@ -1516,17 +1034,17 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     onClick={() => {
                       setAssistantResult(entry);
                     }}
-                    className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/85 bg-white/55 px-4 py-3 text-left transition hover:bg-white/75"
+                    className="flex w-full items-start justify-between gap-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-3 text-left transition hover:bg-[var(--af-surface-hover)]"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{entry.actionTitle}</p>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                      <p className="truncate text-sm font-semibold text-[var(--af-text-primary)]">{entry.actionTitle}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                         {entry.message ||
                           entry.content ||
                           t("summary.assistant.noOutput", "本次没有可展示的结果。")}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium text-slate-400">
+                    <span className="shrink-0 text-[11px] font-medium text-[var(--af-text-tertiary)]">
                       {formatAssistantTime(entry.createdAt, preferences.language)}
                     </span>
                   </button>
@@ -1636,17 +1154,17 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           </button>
         </div>
         {loadingSession ? (
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
             {t("summary.syncing", "正在读取本轮记录...")}
           </p>
         ) : null}
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
           {t(
             "summary.task.routeHint",
             "结果会优先使用最新记录，失败时保留本地可用内容。",
           )}
         </p>
-        {taskMessage ? <p className="mt-3 text-xs text-slate-500">{taskMessage}</p> : null}
+        {taskMessage ? <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">{taskMessage}</p> : null}
 
         <OutputBlock
           title={t("summary.block.markdown", "Markdown 总结")}
@@ -1678,7 +1196,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                 void handleImportTodoToCalendar();
               }}
               disabled={calendarImporting || Boolean(runningTask) || !metrics.sessionId}
-              className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-info)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <AppIcon name="calendar" className="h-3.5 w-3.5" />
               {calendarImporting
@@ -1724,215 +1242,49 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           <div className="mt-3 space-y-3">
             {watchlistHighlights.length ? (
               watchlistHighlights.map((item) => (
-                <article key={item.id} className="rounded-3xl border border-white/80 bg-white/76 p-4">
+                <article key={item.id} className="rounded-3xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap gap-2 text-[11px]">
                         <span
                           className={`rounded-full px-2 py-0.5 ${
                             item.severity === "high"
-                              ? "bg-rose-100 text-rose-700"
+                              ? "af-chip af-chip-danger"
                               : item.severity === "medium"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-slate-100 text-slate-500"
+                                ? "af-chip af-chip-warning"
+                                : "af-chip"
                           }`}
                         >
                           {item.severity === "high" ? "高优先级" : item.severity === "medium" ? "中优先级" : "低优先级"}
                         </span>
-                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-700">{item.watchlistName}</span>
+                        <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_14%,var(--af-surface-muted))] px-2 py-0.5 text-[var(--af-info)]">{item.watchlistName}</span>
                         {item.budgetProbability > 0 ? (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-slate-600">预算概率 {item.budgetProbability}%</span>
+                          <span className="rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[var(--af-text-secondary)]">预算概率 {item.budgetProbability}%</span>
                         ) : null}
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">{item.summary}</p>
+                      <p className="mt-2 text-sm font-semibold text-[var(--af-text-primary)]">{item.summary}</p>
                       {item.accounts.length ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {item.accounts.map((value) => (
-                            <span key={`${item.id}-${value}`} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                            <span key={`${item.id}-${value}`} className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
                               {value}
                             </span>
                           ))}
                         </div>
                       ) : null}
                       {item.whyNow.length ? (
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{item.whyNow.join("；")}</p>
+                        <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{item.whyNow.join("；")}</p>
                       ) : null}
                     </div>
-                    <span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
+                    <span className="text-xs text-[var(--af-text-tertiary)]">{new Date(item.createdAt).toLocaleString()}</span>
                   </div>
                 </article>
               ))
             ) : (
-              <p className="text-sm text-slate-500">{t("summary.block.emptyWatchlistPriority", "当前还没有可消费的高优先级 Watchlist 变化。")}</p>
+              <p className="text-sm text-[var(--af-text-tertiary)]">{t("summary.block.emptyWatchlistPriority", "当前还没有可消费的高优先级 Watchlist 变化。")}</p>
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="af-glass rounded-3xl p-4">
-      <p className="af-kicker">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function TaskBriefingContextCard({
-  context,
-  title,
-  compact = false,
-}: {
-  context: ApiTaskBriefingContext | null;
-  title: string;
-  compact?: boolean;
-}) {
-  if (!context) {
-    return null;
-  }
-  const account = context.account;
-  const riskRows = compact ? (context.top_alerts.length ? context.top_alerts : context.review_queue).slice(0, 2) : [];
-  return (
-    <div className="mt-3 rounded-2xl border border-sky-100/80 bg-sky-50/70 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">{title}</p>
-      {account ? (
-        <div className="mt-2 space-y-2 text-sm text-slate-700">
-          <p className="font-semibold text-slate-900">{account.name || "核心账户"}</p>
-          {account.objective ? <p>推进目标：{account.objective}</p> : null}
-          {account.next_meeting_goal ? <p>下次会议目标：{account.next_meeting_goal}</p> : null}
-          {!compact && account.stakeholders.length ? (
-            <div className="flex flex-wrap gap-2">
-              {account.stakeholders.slice(0, 3).map((item) => (
-                <span key={`${item.name}-${item.role}`} className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] text-slate-600">
-                  {item.name || item.role}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-      {compact && riskRows.length ? (
-        <div className="mt-3 space-y-2 text-sm text-slate-700">
-          {riskRows.map((item) => (
-            <div key={`${item.title}-${item.account_name}`} className="rounded-2xl bg-white/85 px-3 py-2">
-              <p className="font-medium text-slate-900">{item.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{item.recommended_action || item.summary}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {!compact && context.review_queue.length ? (
-        <div className="mt-3 space-y-2">
-          {context.review_queue.slice(0, 2).map((item) => (
-            <div key={item.id} className="rounded-2xl bg-white/85 px-3 py-2 text-sm text-slate-700">
-              <p className="font-medium text-slate-900">{item.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{item.recommended_action || item.summary}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function OutputBlock({
-  title,
-  content,
-  emptyText,
-  onCopy,
-  copyLabel,
-  artifact,
-  extraActions,
-  contextBlock,
-}: {
-  title: string;
-  content: string;
-  emptyText: string;
-  onCopy: (content: string) => Promise<void>;
-  copyLabel: string;
-  artifact?: ApiSessionArtifact | null;
-  extraActions?: ReactNode;
-  contextBlock?: ReactNode;
-}) {
-  return (
-    <div className="mt-4">
-      <p className="af-kicker">{title}</p>
-      {content ? (
-        <div className="mt-2">
-          <div className="mb-2 flex flex-wrap justify-end gap-2">
-            {extraActions}
-            <button
-              type="button"
-              onClick={() => {
-                void onCopy(content);
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-white/85 bg-white/75 px-2.5 py-1 text-[11px] font-semibold text-slate-500"
-            >
-              <AppIcon name="copy" className="h-3.5 w-3.5" />
-              {copyLabel}
-            </button>
-          </div>
-          <textarea
-            readOnly
-            value={content}
-            rows={8}
-            className="w-full rounded-2xl border border-white/85 bg-white/70 px-4 py-3 font-mono text-xs leading-6 text-slate-700 outline-none md:text-sm"
-          />
-          {contextBlock}
-          {artifact?.items?.length ? <ArtifactSources artifact={artifact} /> : null}
-        </div>
-      ) : (
-        <div className="mt-2 space-y-2">
-          <p className="rounded-2xl border border-white/85 bg-white/55 px-4 py-3 text-sm text-slate-500">
-            {emptyText}
-          </p>
-          {extraActions ? <div className="flex justify-end">{extraActions}</div> : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ArtifactSources({ artifact }: { artifact: ApiSessionArtifact }) {
-  return (
-    <div className="mt-3 rounded-2xl border border-white/85 bg-white/55 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-        来源条目
-      </p>
-      <div className="mt-2 space-y-2">
-        {artifact.items.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-medium text-slate-800">{item.title_snapshot}</div>
-              <div className="truncate text-xs text-slate-500">
-                {item.included_reason || "artifact_reference"}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {item.source_url_snapshot ? (
-                <a
-                  href={item.source_url_snapshot}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700"
-                >
-                  原文
-                </a>
-              ) : null}
-              {item.item_id ? (
-                <Link
-                  href={`/items/${item.item_id}`}
-                  className="rounded-full border border-white/85 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
-                >
-                  详情
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

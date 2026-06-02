@@ -176,11 +176,11 @@ export function ResearchArchiveSectionLinkPopover({
         {buttonLabel}
       </button>
       {open ? (
-        <div className={`absolute top-full z-30 mt-2 w-80 rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.12)] ${panelAlignClass}`}>
+        <div className={`absolute top-full z-30 mt-2 w-80 rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4 shadow-[var(--af-shadow-card)] ${panelAlignClass}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Section Links</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">复制前 3 个变化 section</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">Section Links</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">复制前 3 个变化 section</p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               {!loading && !loadError && links?.length ? (
@@ -204,21 +204,21 @@ export function ResearchArchiveSectionLinkPopover({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                className="text-xs font-medium text-[var(--af-text-tertiary)] hover:text-[var(--af-text-secondary)]"
               >
                 关闭
               </button>
             </div>
           </div>
 
-          {loading ? <p className="mt-3 text-sm text-slate-500">读取中...</p> : null}
+          {loading ? <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">读取中...</p> : null}
           {!loading && loadError ? (
-            <div className="mt-3 rounded-[16px] border border-rose-100 bg-rose-50/80 p-3">
-              <p className="text-sm text-rose-700">{loadError}</p>
+            <div className="mt-3 rounded-[16px] af-state-panel-danger p-3">
+              <p className="text-sm text-[var(--af-danger)]">{loadError}</p>
               <button
                 type="button"
                 onClick={() => void loadSectionLinks()}
-                className="mt-2 text-xs font-medium text-rose-700 underline decoration-rose-200 underline-offset-4"
+                className="mt-2 text-xs font-medium text-[var(--af-danger)] underline decoration-[var(--af-danger)] underline-offset-4"
               >
                 重试
               </button>
@@ -227,9 +227,9 @@ export function ResearchArchiveSectionLinkPopover({
           {!loading && !loadError && links?.length ? (
             <div className="mt-3 space-y-2">
               {links.map((link, index) => (
-                <div key={`${link.anchorId}-${index}`} className="rounded-[16px] border border-slate-100 bg-slate-50/70 p-3">
-                  <p className="text-sm font-medium text-slate-800">{link.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">{link.label}</p>
+                <div key={`${link.anchorId}-${index}`} className="rounded-[16px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+                  <p className="text-sm font-medium text-[var(--af-text-primary)]">{link.title}</p>
+                  <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">{link.label}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -247,7 +247,7 @@ export function ResearchArchiveSectionLinkPopover({
             </div>
           ) : null}
           {!loading && !loadError && links?.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">当前归档没有可用的变化 section 深链。</p>
+            <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">当前归档没有可用的变化 section 深链。</p>
           ) : null}
         </div>
       ) : null}

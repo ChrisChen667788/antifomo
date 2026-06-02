@@ -12,15 +12,15 @@ export function CommonSettingsPanel() {
   const { preferences, updatePreferences, resetPreferences, t } = useAppPreferences();
 
   return (
-    <section className="af-glass rounded-[30px] p-5 md:p-6">
+    <section className="af-glass rounded-lg p-5 md:p-6">
       <p className="af-kicker">{t("settings.common.title", "常用设置")}</p>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-[var(--af-text-secondary)]">
         {t("settings.common.description", "设置会实时生效并保存在本机。")}
       </p>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="rounded-2xl border border-white/85 bg-white/55 p-4">
-          <span className="text-sm font-semibold text-slate-700">{t("settings.font", "字体")}</span>
+        <label className="af-field-panel p-4">
+          <span className="af-control-label">{t("settings.font", "字体")}</span>
           <select
             className="af-input mt-2"
             value={preferences.fontFamily}
@@ -36,8 +36,8 @@ export function CommonSettingsPanel() {
           </select>
         </label>
 
-        <label className="rounded-2xl border border-white/85 bg-white/55 p-4">
-          <span className="text-sm font-semibold text-slate-700">{t("settings.textSize", "文字大小")}</span>
+        <label className="af-field-panel p-4">
+          <span className="af-control-label">{t("settings.textSize", "文字大小")}</span>
           <select
             className="af-input mt-2"
             value={preferences.textSize}
@@ -53,8 +53,8 @@ export function CommonSettingsPanel() {
           </select>
         </label>
 
-        <label className="rounded-2xl border border-white/85 bg-white/55 p-4">
-          <span className="text-sm font-semibold text-slate-700">{t("settings.language", "语言")}</span>
+        <label className="af-field-panel p-4">
+          <span className="af-control-label">{t("settings.language", "语言")}</span>
           <select
             className="af-input mt-2"
             value={preferences.language}
@@ -70,8 +70,8 @@ export function CommonSettingsPanel() {
           </select>
         </label>
 
-        <div className="rounded-2xl border border-white/85 bg-white/55 p-4">
-          <span className="text-sm font-semibold text-slate-700">{t("settings.theme", "外观模式")}</span>
+        <div className="af-field-panel p-4">
+          <span className="af-control-label">{t("settings.theme", "外观模式")}</span>
           <div className="mt-2 flex flex-wrap gap-2">
             {THEME_OPTIONS.map((option) => (
               <button
@@ -93,9 +93,8 @@ export function CommonSettingsPanel() {
         <button type="button" onClick={resetPreferences} className="af-btn af-btn-secondary">
           {t("settings.reset", "恢复默认")}
         </button>
-        <p className="text-sm text-slate-500">{t("settings.preview")}</p>
+        <p className="text-sm text-[var(--af-text-secondary)]">{t("settings.preview")}</p>
       </div>
     </section>
   );
 }
-

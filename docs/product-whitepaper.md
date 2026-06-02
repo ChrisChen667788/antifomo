@@ -1,6 +1,6 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `0.8.0+20260518`
+Version: `1.1.0+20260602`
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
@@ -12,7 +12,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 0.8.0 release strengthens the solution-architecture layer. Generated solution packs now include architecture readiness scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions so solution architects and industry consultants can move from research to client-ready architecture discussion.
+The 1.1.0 line keeps the local-first loop intact while hardening the architecture: research generation, collector operations, delivery intelligence, feature clients, controller hooks, report panels, knowledge detail, and session summary surfaces are split into clearer modules, and major UI surfaces now consume semantic day/night theme tokens.
 
 ## Problem
 
@@ -32,6 +32,7 @@ Anti-FOMO treats collection reliability, evidence quality, and execution output 
 ### 1. Collection Layer
 
 - URL, text, RSS, newsletter, file, YouTube transcript, browser extension, miniapp, and WeChat-heavy intake paths.
+- One-click WeChat Favorites preview/import for exported HTML/TXT, clipboard text, shortcut files, and raw/escaped/encoded公众号 links, with persistent batches and homepage queue recovery.
 - Headless source collector for recurring公众号 source pages.
 - WeChat PC agent as supplementary URL discovery when desktop automation is available.
 - Collector daemon status with run-level coverage and per-source diagnostics.
@@ -60,7 +61,44 @@ Anti-FOMO treats collection reliability, evidence quality, and execution output 
 - Feasibility studies, project proposals, client PPT outlines, client briefs, bidding prep memos, and execution-material chains.
 - Solution architecture readiness with business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility scoring.
 - Architecture blueprint sections for business/role, application capability, model/data/integration, and security/deployment/operations layers.
+- Solution architect workbench output for customer scenarios, stakeholder concern maps, decision criteria, validation actions, and next-meeting agendas.
 - Commercial Hub surfaces that turn research output into account intelligence, opportunities, review queues, and next actions.
+
+## 1.1.0 Modular Architecture and Theme Baseline
+
+The 1.1.0 release hardens Anti-FOMO for the next product expansion cycle.
+
+New release capabilities:
+
+- Research generation now has a thinner service facade with workflow logic moved into dedicated research application modules.
+- Collector operations are split by route and operation domain instead of living behind one broad router/component surface.
+- Frontend feature clients, Research Center controllers, Collector Ops controllers, report cards, Knowledge Detail, and Session Summary panels are decomposed into smaller modules.
+- Major research, collector, knowledge, and session UI surfaces now use semantic surface/text/border/status tokens, giving light and dark modes a shared design-system contract.
+- README and release documentation now include bilingual major-version capability summaries for GitHub and ModelScope audiences.
+
+Commercial value:
+
+- Product changes are easier to isolate because intake, research, delivery, knowledge, and operations now have clearer ownership boundaries.
+- Dark-mode and light-mode polish can continue without editing every business component.
+- External readers can understand the historical product progression without reading internal planning documents.
+
+## 1.0.0 Local-First Baseline
+
+The 1.0.0 release is the first complete local-first baseline for the WeChat-to-solution workflow.
+
+New release capabilities:
+
+- WeChat Favorites preview/import with URL and text-block parsing, escaped-link normalization, deduplication, persistent import batches, failed-item retry, and reload-safe homepage queues.
+- Homepage card triage that lets imported公众号 content follow the existing ignore/save flow instead of living in a separate import silo.
+- Solution architect workbench inside delivery packs, covering customer scenarios, stakeholder questions, decision criteria, validation actions, and meeting agendas.
+- Alembic and SQLite compatibility coverage for the new import-batch persistence layer.
+- Release metadata and validation aligned around `1.0.0+20260520`.
+
+Commercial value:
+
+- Operators can take a personal WeChat Favorites backlog and convert it into a structured triage queue without manual URL cleanup.
+- Solution architects can move from imported public-account signals to customer-meeting preparation in the same workspace.
+- Teams get a clearer path from noisy signals to evidence-backed architecture discussion, proposal preparation, and follow-up action.
 
 ## 0.8.0 Solution Architecture Release
 

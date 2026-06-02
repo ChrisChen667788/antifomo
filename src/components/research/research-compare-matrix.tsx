@@ -40,11 +40,11 @@ function sourceTierLabel(tier: "official" | "media" | "aggregate", t: (key: stri
 }
 
 function diffStatusTone(status: string) {
-  if (status === "aligned") return "bg-emerald-100 text-emerald-700";
-  if (status === "expanded") return "bg-sky-100 text-sky-700";
-  if (status === "trimmed") return "bg-amber-100 text-amber-700";
-  if (status === "mixed") return "bg-rose-100 text-rose-700";
-  return "bg-slate-100 text-slate-500";
+  if (status === "aligned") return "af-chip af-chip-success";
+  if (status === "expanded") return "af-chip af-chip-info";
+  if (status === "trimmed") return "af-chip af-chip-warning";
+  if (status === "mixed") return "af-chip af-chip-danger";
+  return "af-chip";
 }
 
 function diffStatusLabel(status: string, t: (key: string, fallback: string) => string) {
@@ -56,9 +56,9 @@ function diffStatusLabel(status: string, t: (key: string, fallback: string) => s
 }
 
 function offlineStatusTone(status: string) {
-  if (status === "good") return "bg-emerald-100 text-emerald-700";
-  if (status === "watch") return "bg-amber-100 text-amber-700";
-  return "bg-rose-100 text-rose-700";
+  if (status === "good") return "af-chip af-chip-success";
+  if (status === "watch") return "af-chip af-chip-warning";
+  return "af-chip af-chip-danger";
 }
 
 function offlineStatusLabel(status: string) {
@@ -551,42 +551,42 @@ export function ResearchCompareMatrix({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <p className="af-kicker">{t("research.compareSnapshotKicker", "Saved Snapshot")}</p>
-              <h3 className="mt-2 text-xl font-semibold text-slate-900">{snapshotDetail.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">{snapshotDetail.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
                 {snapshotDetail.summary || t("research.compareSnapshotDesc", "当前正在查看已保存的对比结果快照，内容不会随实时研报刷新自动变化。")}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+                <span className="rounded-full af-chip px-2.5 py-1 ">
                   {t("research.compareSnapshotRows", "实体数")} · {snapshotDetail.row_count}
                 </span>
-                <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+                <span className="rounded-full af-chip px-2.5 py-1 ">
                   {t("research.compareSnapshotSources", "来源研报")} · {snapshotDetail.source_entry_count}
                 </span>
-                <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+                <span className="rounded-full af-chip px-2.5 py-1 ">
                   {t("research.compareUpdated", "更新")} · {new Date(snapshotDetail.updated_at).toLocaleString()}
                 </span>
                 {snapshotDetail.tracking_topic_name ? (
-                  <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
+                  <span className="rounded-full af-chip af-chip-info px-2.5 py-1 ">
                     {t("research.compareSnapshotTopic", "关联专题")} · {snapshotDetail.tracking_topic_name}
                   </span>
                 ) : null}
                 {snapshotDetail.report_version_title ? (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                  <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 ">
                     {t("research.compareSnapshotVersion", "关联版本")} · {snapshotDetail.report_version_title}
                   </span>
                 ) : null}
                 {isLegacyBackfilledSnapshot ? (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                  <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 ">
                     旧快照已补齐复核信息
                   </span>
                 ) : hasFrozenSnapshotMetadata ? (
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                  <span className="rounded-full af-chip af-chip-success px-2.5 py-1 ">
                     指标时点已冻结
                   </span>
                 ) : null}
               </div>
               {isLegacyBackfilledSnapshot ? (
-                <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-800">
+                <div className="mt-4 rounded-[22px] af-state-panel-warning px-4 py-3 text-sm leading-6 text-[var(--af-warning)]">
                   旧快照已补齐复核信息：该快照原始信息不完整，已
                   {snapshotMetadataBackfilledAtLabel ? `于 ${snapshotMetadataBackfilledAtLabel} ` : ""}
                   补充章节依据检查和质量复核；当前页面和导出文件都会固定使用这份复核结果。
@@ -613,15 +613,15 @@ export function ResearchCompareMatrix({
             <div className="max-w-3xl">
               <p className="af-kicker">{t("research.compareSnapshotDiffKicker", "Snapshot vs Version")}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-semibold text-slate-900">{snapshotDetail.linked_report_diff.headline}</h3>
+                <h3 className="text-xl font-semibold text-[var(--af-text-primary)]">{snapshotDetail.linked_report_diff.headline}</h3>
                 <span className={`rounded-full px-2.5 py-1 text-xs ${diffStatusTone(snapshotDetail.linked_report_diff.status)}`}>
                   {diffStatusLabel(snapshotDetail.linked_report_diff.status, t)}
                 </span>
               </div>
-              <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {snapshotDetail.linked_report_diff.summary_lines.map((line) => (
                   <li key={line} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-sky-300" />
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" />
                     <span>{line}</span>
                   </li>
                 ))}
@@ -631,14 +631,14 @@ export function ResearchCompareMatrix({
           {snapshotDetail.linked_report_diff.axes.length ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {snapshotDetail.linked_report_diff.axes.map((axis) => (
-                <article key={axis.key} className="rounded-[22px] border border-white/60 bg-white/70 p-4">
+                <article key={axis.key} className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-900">{axis.label}</p>
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">{axis.label}</p>
+                    <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
                       {axis.snapshot_count} vs {axis.linked_count}
                     </span>
                   </div>
-                  <div className="mt-3 space-y-2 text-xs leading-5 text-slate-500">
+                  <div className="mt-3 space-y-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                     <p>
                       快照独有: {axis.snapshot_only.length ? axis.snapshot_only.join(" / ") : "无"}
                     </p>
@@ -658,10 +658,10 @@ export function ResearchCompareMatrix({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <p className="af-kicker">{t("research.compareKicker", "Compare Matrix")}</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900 md:text-[2rem]">
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)] md:text-[2rem]">
               {t("research.compareTitle", "甲方 / 中标方 / 竞品 / 伙伴 对比矩阵")}
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500 md:text-[15px]">
+            <p className="mt-3 text-sm leading-6 text-[var(--af-text-tertiary)] md:text-[15px]">
               {t(
                 "research.compareDesc",
                 "把多份研报里的甲方、中标方、竞品和伙伴线索拉平对比，优先看预算、项目、战略和竞争压力。",
@@ -719,58 +719,58 @@ export function ResearchCompareMatrix({
           </div>
         </div>
         {isLegacyBackfilledSnapshot ? (
-          <div className="mt-5 rounded-[24px] border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-800">
+          <div className="mt-5 rounded-[24px] af-state-panel-warning p-4 text-sm leading-6 text-[var(--af-warning)]">
             导出说明：旧快照已补齐复核信息，导出文件会沿用当前展示的快照内容。
           </div>
         ) : null}
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {roleStats.map((item) => (
-            <div key={item.role} className="rounded-[24px] border border-white/60 bg-white/72 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
-              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">{item.role}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-900">{item.count}</p>
+            <div key={item.role} className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4 shadow-[var(--af-shadow-soft)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{item.role}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[var(--af-text-primary)]">{item.count}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
-          <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+          <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 shadow-[var(--af-shadow-soft)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">章节检查</p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-900">章节依据检查</h3>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">章节检查</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">章节依据检查</h3>
               </div>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
+              <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
                 来源研报 · {effectiveSectionDiagnosticsSummary.sourceReportCount}
               </span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[20px] border border-amber-100 bg-amber-50/80 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">待核验章节</p>
-                <p className="mt-2 text-2xl font-semibold text-amber-700">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
+              <div className="rounded-[20px] af-state-panel-warning p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-warning)]">待核验章节</p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--af-warning)]">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
               </div>
-              <div className="rounded-[20px] border border-rose-100 bg-rose-50/80 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-rose-600">配额风险</p>
-                <p className="mt-2 text-2xl font-semibold text-rose-700">{effectiveSectionDiagnosticsSummary.quotaRiskSectionCount}</p>
+              <div className="rounded-[20px] af-state-panel-danger p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-danger)]">配额风险</p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--af-danger)]">{effectiveSectionDiagnosticsSummary.quotaRiskSectionCount}</p>
               </div>
-              <div className="rounded-[20px] border border-slate-200 bg-slate-50/90 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">矛盾章节</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{effectiveSectionDiagnosticsSummary.contradictionSectionCount}</p>
+              <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">矛盾章节</p>
+                <p className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">{effectiveSectionDiagnosticsSummary.contradictionSectionCount}</p>
               </div>
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-600">
+            <p className="mt-4 text-sm leading-6 text-[var(--af-text-secondary)]">
               重点章节 · {effectiveSectionDiagnosticsSummary.highlightedSections.length ? effectiveSectionDiagnosticsSummary.highlightedSections.join(" / ") : "当前筛选下没有显著章节风险。"}
             </p>
           </article>
 
-          <article className="rounded-[26px] border border-white/70 bg-white/78 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+          <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 shadow-[var(--af-shadow-soft)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">质量复核</p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-900">
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">质量复核</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
                   {isLegacyBackfilledSnapshot ? "旧快照复核" : hasFrozenSnapshotMetadata ? "快照复核" : "当前复核"}
                 </h3>
               </div>
-              <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-slate-500">
+              <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
                 {effectiveOfflineEvaluation ? `已评估 ${effectiveOfflineEvaluation.evaluated_reports} 份` : "暂未加载"}
               </span>
             </div>
@@ -786,17 +786,17 @@ export function ResearchCompareMatrix({
                     </span>
                   ))}
                 </div>
-                <div className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+                <div className="mt-4 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   {effectiveOfflineEvaluation.summary_lines.slice(0, 2).map((line) => (
                     <p key={line}>{line}</p>
                   ))}
                 </div>
                 {effectiveOfflineEvaluation.weakest_reports.length ? (
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                  <p className="mt-4 text-sm leading-6 text-[var(--af-text-secondary)]">
                     弱样本 · {effectiveOfflineEvaluation.weakest_reports.slice(0, 3).map((item) => item.report_title || item.entry_title).join(" / ")}
                   </p>
                 ) : null}
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
                   {isLegacyBackfilledSnapshot
                     ? `旧快照已补齐复核信息；该面板展示当时的复核结果${
                         snapshotMetadataBackfilledAtLabel ? `（${snapshotMetadataBackfilledAtLabel}）` : ""
@@ -807,7 +807,7 @@ export function ResearchCompareMatrix({
                 </p>
               </>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">当前没有可展示的复核结果。</p>
+              <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前没有可展示的复核结果。</p>
             )}
           </article>
         </div>
@@ -815,23 +815,23 @@ export function ResearchCompareMatrix({
 
       <section className="af-glass rounded-[30px] p-5">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr),repeat(3,minmax(0,0.8fr))]">
-          <div className="flex items-center gap-2 rounded-[20px] border border-white/60 bg-white/70 px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-            <AppIcon name="search" className="h-4 w-4 text-slate-400" />
+          <div className="flex items-center gap-2 rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 shadow-[var(--af-shadow-soft)]">
+            <AppIcon name="search" className="h-4 w-4 text-[var(--af-text-tertiary)]" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t("research.compareSearchPlaceholder", "搜索公司名、甲方、竞品、伙伴...")}
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+              className="min-w-0 flex-1 bg-transparent text-sm text-[var(--af-text-secondary)] outline-none placeholder:text-[var(--af-text-tertiary)]"
             />
           </div>
-          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as CompareRoleFilter)} className="af-input bg-white/70">
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as CompareRoleFilter)} className="af-input bg-[var(--af-surface-elevated)]">
             <option value="all">{t("research.compareRoleAll", "全部角色")}</option>
             <option value="甲方">甲方</option>
             <option value="中标方">中标方</option>
             <option value="竞品">竞品</option>
             <option value="伙伴">伙伴</option>
           </select>
-          <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)} className="af-input bg-white/70">
+          <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)} className="af-input bg-[var(--af-surface-elevated)]">
             <option value="">{t("research.centerRegionAll", "全部区域")}</option>
             {regionOptions.filter(Boolean).map((option) => (
               <option key={option} value={option}>
@@ -839,7 +839,7 @@ export function ResearchCompareMatrix({
               </option>
             ))}
           </select>
-          <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} className="af-input bg-white/70">
+          <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} className="af-input bg-[var(--af-surface-elevated)]">
             <option value="">{t("research.centerIndustryAll", "全部行业")}</option>
             {industryOptions.filter(Boolean).map((option) => (
               <option key={option} value={option}>
@@ -849,19 +849,19 @@ export function ResearchCompareMatrix({
           </select>
         </div>
         {statusNotice ? (
-          <p className={`mt-3 text-sm ${statusTone === "error" ? "text-rose-600" : "text-emerald-700"}`}>{statusNotice}</p>
+          <p className={`mt-3 text-sm ${statusTone === "error" ? "text-[var(--af-danger)]" : "text-[var(--af-success)]"}`}>{statusNotice}</p>
         ) : null}
         {snapshotError ? (
-          <p className="mt-3 text-sm text-rose-600">{snapshotError}</p>
+          <p className="mt-3 text-sm text-[var(--af-danger)]">{snapshotError}</p>
         ) : null}
       </section>
 
       {loading ? (
-        <section className="af-glass rounded-[30px] p-5 text-sm text-slate-500">{t("common.loading", "加载中")}</section>
+        <section className="af-glass rounded-[30px] p-5 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</section>
       ) : null}
 
       {!loading && visibleRows.length === 0 ? (
-        <section className="af-glass rounded-[30px] p-5 text-sm text-slate-500">
+        <section className="af-glass rounded-[30px] p-5 text-sm text-[var(--af-text-tertiary)]">
           {t("research.compareEmpty", "当前没有可用于对比的实体线索。")}
         </section>
       ) : null}
@@ -871,170 +871,170 @@ export function ResearchCompareMatrix({
           {visibleRows.map((row) => (
             <article
               key={row.id}
-              className="af-glass rounded-[28px] p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_45px_rgba(15,23,42,0.08)]"
+              className="af-glass rounded-[28px] p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--af-shadow-card)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white/90">
+                    <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] font-semibold ">
                       {row.role}
                     </span>
-                    {row.region ? <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] text-slate-500">{row.region}</span> : null}
-                    {row.industry ? <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] text-slate-500">{row.industry}</span> : null}
+                    {row.region ? <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">{row.region}</span> : null}
+                    {row.industry ? <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">{row.industry}</span> : null}
                   </div>
-                  <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-slate-900">{row.name}</h3>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{row.clue}</p>
+                  <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-[var(--af-text-primary)]">{row.name}</h3>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--af-text-secondary)]">{row.clue}</p>
                 </div>
                 <Link href={`/knowledge/${row.sourceEntryId}`} className="af-btn af-btn-secondary border px-3 py-1.5 text-sm">
                   {t("research.compareOpenSource", "打开来源研报")}
                 </Link>
               </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-4">
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("research.compareBudget", "预算信号")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{row.budgetSignal}</p>
-                  <p className="mt-3 text-xs text-slate-500">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.compareBudget", "预算信号")}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.budgetSignal}</p>
+                  <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
                     {t("research.compareBudgetRange", "预算区间")} · {row.budgetRange}
                   </p>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("research.compareProject", "项目/招采")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{row.projectSignal}</p>
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.compareProject", "项目/招采")}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.projectSignal}</p>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("research.compareStrategy", "战略/讲话")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{row.strategySignal}</p>
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.compareStrategy", "战略/讲话")}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.strategySignal}</p>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t("research.compareCompetition", "竞合压力")}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{row.competitionSignal}</p>
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.compareCompetition", "竞合压力")}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.competitionSignal}</p>
                 </div>
               </div>
               <div className="mt-4 grid gap-3 xl:grid-cols-5">
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareDepartments", "高概率决策部门")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.targetDepartments.length ? (
                       row.targetDepartments.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoDepartments", "暂无明确部门线索")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoDepartments", "暂无明确部门线索")}</span>
                     )}
                   </div>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareContacts", "公开业务联系方式")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.publicContacts.length ? (
                       row.publicContacts.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoContacts", "暂无公开联系方式")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoContacts", "暂无公开联系方式")}</span>
                     )}
                   </div>
                   {row.candidateProfileCompanies.length || row.candidateProfileHitCount > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {row.candidateProfileCompanies.length ? (
-                        <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
+                        <span className="rounded-full af-chip af-chip-info px-3 py-1.5 text-xs ">
                           建议核验公司 {row.candidateProfileCompanies.length}
                         </span>
                       ) : null}
                       {row.candidateProfileHitCount > 0 ? (
-                        <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
+                        <span className="rounded-full af-chip af-chip-info px-3 py-1.5 text-xs ">
                           公开来源 {row.candidateProfileHitCount}
                         </span>
                       ) : null}
                       {row.candidateProfileOfficialHitCount > 0 ? (
-                        <span className="rounded-full bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700">
+                        <span className="rounded-full af-chip af-chip-info px-3 py-1.5 text-xs ">
                           其中官方源 {row.candidateProfileOfficialHitCount}
                         </span>
                       ) : null}
                       {row.candidateProfileCompanies.map((item) => (
-                        <span key={`candidate-${row.id}-${item}`} className="rounded-full bg-sky-50 px-3 py-1.5 text-xs text-sky-700">
+                        <span key={`candidate-${row.id}-${item}`} className="rounded-full af-chip af-chip-info px-3 py-1.5 text-xs ">
                           候选公司 · {item}
                         </span>
                       ))}
                     </div>
                   ) : null}
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareCompetitorSet", "竞品公司")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.competitorHighlights.length ? (
                       row.competitorHighlights.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoCompetitors", "暂无明确竞品线索")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoCompetitors", "暂无明确竞品线索")}</span>
                     )}
                   </div>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.comparePartnerSet", "生态伙伴")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.partnerHighlights.length ? (
                       row.partnerHighlights.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoPartners", "暂无明确伙伴线索")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoPartners", "暂无明确伙伴线索")}</span>
                     )}
                   </div>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareBenchmarks", "标杆案例")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.benchmarkCases.length ? (
                       row.benchmarkCases.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoBenchmarks", "暂无明确标杆案例")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoBenchmarks", "暂无明确标杆案例")}</span>
                     )}
                   </div>
                 </div>
               </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.1fr)]">
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareBenchmarks", "标杆案例证据摘要")}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {row.benchmarkCases.length ? (
                       row.benchmarkCases.map((item) => (
-                        <span key={item} className="rounded-full bg-white/75 px-3 py-1.5 text-xs text-slate-600">
+                        <span key={item} className="rounded-full af-chip px-3 py-1.5 text-xs ">
                           {item}
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoBenchmarks", "暂无明确标杆案例")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoBenchmarks", "暂无明确标杆案例")}</span>
                     )}
                   </div>
                 </div>
-                <div className="rounded-[20px] border border-white/60 bg-white/65 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareEvidence", "依据链接")}
                   </p>
                   <div className="mt-3 space-y-2">
@@ -1042,7 +1042,7 @@ export function ResearchCompareMatrix({
                       row.evidenceLinks.map((item) => (
                         <div
                           key={item.url}
-                          className="rounded-[16px] border border-white/60 bg-white/70 px-3 py-2 text-sm text-slate-700 transition hover:bg-white"
+                          className="rounded-[16px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 text-sm text-[var(--af-text-secondary)] transition hover:bg-[var(--af-surface-hover)]"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -1050,38 +1050,38 @@ export function ResearchCompareMatrix({
                                 href={normalizeExternalUrl(item.url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="line-clamp-1 block underline-offset-4 hover:text-sky-700 hover:underline"
+                                className="line-clamp-1 block underline-offset-4 hover:text-[var(--af-info)] hover:underline"
                               >
                                 {item.title}
                               </a>
                               <div className="mt-1 flex flex-wrap gap-2">
-                                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                                <span className="rounded-full af-chip af-chip-info px-2 py-0.5 text-[10px] font-medium ">
                                   {sourceTierLabel(item.sourceTier, t)}
                                 </span>
                                 {item.sourceLabel ? (
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                                  <span className="rounded-full af-chip px-2 py-0.5 text-[10px] ">
                                     {item.sourceLabel}
                                   </span>
                                 ) : null}
                                 {row.candidateProfileSourceLabels.map((label) => (
-                                  <span key={`${item.url}-${label}`} className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700">
+                                  <span key={`${item.url}-${label}`} className="rounded-full af-chip af-chip-info px-2 py-0.5 text-[10px] ">
                                     {label}
                                   </span>
                                 ))}
                               </div>
                             </div>
-                            <AppIcon name="external" className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                            <AppIcon name="external" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--af-text-tertiary)]" />
                           </div>
                           <ExternalLinkActions url={item.url} className="mt-2" openLabel={t("research.openEvidenceLink", "网页打开")} />
                         </div>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">{t("research.compareNoEvidence", "暂无可直接打开的依据链接")}</span>
+                      <span className="text-sm text-[var(--af-text-tertiary)]">{t("research.compareNoEvidence", "暂无可直接打开的依据链接")}</span>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+              <div className="mt-4 flex flex-wrap gap-3 text-xs text-[var(--af-text-tertiary)]">
                 <span>{t("research.compareKeyword", "关键词")} · {row.keyword || "—"}</span>
                 <span>{t("research.compareSourceCount", "来源数")} · {row.sourceCount || 0}</span>
                 <span>{t("research.compareUpdated", "更新")} · {new Date(row.updatedAt).toLocaleDateString()}</span>

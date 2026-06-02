@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type PointerEvent } from "react";
 import { submitFeedback } from "@/lib/api";
 import type { FeedItem } from "@/lib/mock-data";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 
 interface FeedDeckProps {
   items: FeedItem[];
+  onItemTriaged?: (
+    itemId: string,
+    feedbackType: "like" | "ignore" | "save",
+  ) => boolean | void;
 }
 
 interface ItemActionState {
@@ -19,26 +23,36 @@ interface ItemActionState {
 type ActionName = keyof ItemActionState;
 
 function scoreClass(score: number): string {
-  if (score >= 85) return "text-emerald-700 bg-emerald-50/80 border-emerald-200/80";
-  if (score >= 60) return "text-amber-700 bg-amber-50/80 border-amber-200/80";
-  return "text-slate-600 bg-slate-100/80 border-slate-200/80";
+  if (score >= 85) return "af-chip-success";
+  if (score >= 60) return "af-chip-warning";
+  return "af-chip";
 }
 
 function actionChipClass(action: FeedItem["suggestedActionType"] | undefined): string {
-  if (action === "deep_read") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (action === "later") return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-slate-200 bg-slate-100 text-slate-600";
+  if (action === "deep_read") return "af-chip-success";
+  if (action === "later") return "af-chip-warning";
+  return "af-chip";
 }
 
-export function FeedDeck({ items }: FeedDeckProps) {
+function shouldSkipSwipeTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest("a,button,input,label,select,textarea"));
+}
+
+function clampDragOffset(value: number): number {
+  return Math.max(-96, Math.min(96, value));
+}
+
+export function FeedDeck({ items, onItemTriaged }: FeedDeckProps) {
   const { preferences, t } = useAppPreferences();
   const [index, setIndex] = useState(0);
   const [apiMessage, setApiMessage] = useState("");
   const [states, setStates] = useState<Record<string, ItemActionState>>({});
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
 
   if (items.length === 0) {
     return (
-      <div className="af-glass rounded-3xl p-8 text-sm text-slate-600">
+      <div className="af-glass rounded-lg p-8 text-sm text-[var(--af-text-secondary)]">
         {t("feed.deck.noData", "暂无数据。")}
       </div>
     );
@@ -68,9 +82,13 @@ export function FeedDeck({ items }: FeedDeckProps) {
         ? t("action.later", "稍后精读")
         : t("action.skip", "可放心忽略");
 
-  const toggleAction = (action: ActionName) => {
+  const advanceToNext = () => {
+    setIndex((prev) => Math.min(items.length - 1, prev + 1));
+  };
+
+  const toggleAction = (action: ActionName, itemId = current.id) => {
     setStates((prev) => {
-      const prevState = prev[current.id] || {
+      const prevState = prev[itemId] || {
         liked: false,
         ignored: false,
         saved: false,
@@ -90,16 +108,17 @@ export function FeedDeck({ items }: FeedDeckProps) {
 
       return {
         ...prev,
-        [current.id]: nextState,
+        [itemId]: nextState,
       };
     });
   };
 
   const sendFeedback = async (
     feedbackType: "like" | "ignore" | "save" | "open_detail",
+    itemId = current.id,
   ) => {
     try {
-      await submitFeedback(current.id, feedbackType);
+      await submitFeedback(itemId, feedbackType);
       setApiMessage(`${t("action.feedbackSynced", "已同步反馈")}：${feedbackType}`);
     } catch {
       setApiMessage(
@@ -108,9 +127,55 @@ export function FeedDeck({ items }: FeedDeckProps) {
     }
   };
 
+  const runTriageAction = (
+    action: ActionName,
+    feedbackType: "like" | "ignore" | "save",
+    options: { advance: boolean },
+  ) => {
+    const itemId = current.id;
+    toggleAction(action, itemId);
+    void sendFeedback(feedbackType, itemId);
+    const parentRemovedItem = onItemTriaged?.(itemId, feedbackType) === true;
+    if (options.advance && !parentRemovedItem) {
+      advanceToNext();
+    }
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (shouldSkipSwipeTarget(event.target)) return;
+    setDragStartX(event.clientX);
+    setDragOffset(0);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (dragStartX === null) return;
+    const nextOffset = event.clientX - dragStartX;
+    if (Math.abs(nextOffset) > 8) {
+      event.preventDefault();
+    }
+    setDragOffset(clampDragOffset(nextOffset));
+  };
+
+  const finishPointerAction = (event: PointerEvent<HTMLElement>) => {
+    if (dragStartX === null) return;
+    const finalOffset = event.clientX - dragStartX;
+    setDragStartX(null);
+    setDragOffset(0);
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (Math.abs(finalOffset) < 90) return;
+    if (finalOffset < 0) {
+      runTriageAction("ignored", "ignore", { advance: true });
+    } else {
+      runTriageAction("saved", "save", { advance: true });
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="af-glass flex items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-500">
+      <div className="af-glass flex items-center justify-between rounded-lg px-4 py-3 text-sm text-[var(--af-text-secondary)]">
         <p>
           {t("feed.deck.cardProgress", "卡片")} {safeIndex + 1} / {items.length}
         </p>
@@ -119,7 +184,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
             type="button"
             onClick={() => setIndex((prev) => Math.max(0, prev - 1))}
             disabled={safeIndex === 0}
-            className="af-btn af-btn-secondary rounded-full px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="af-btn af-btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t("feed.deck.prev", "上一条")}
           </button>
@@ -129,33 +194,48 @@ export function FeedDeck({ items }: FeedDeckProps) {
               setIndex((prev) => Math.min(items.length - 1, prev + 1))
             }
             disabled={safeIndex === items.length - 1}
-            className="af-btn af-btn-secondary rounded-full px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="af-btn af-btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t("feed.deck.next", "下一条")}
           </button>
         </div>
       </div>
 
-      <article className="af-glass w-full rounded-[32px] p-6 md:p-8">
+      <article
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointerAction}
+        onPointerCancel={() => {
+          setDragStartX(null);
+          setDragOffset(0);
+        }}
+        style={{
+          transform: dragOffset
+            ? `translateX(${dragOffset}px) rotate(${dragOffset / 28}deg)`
+            : undefined,
+          transition: dragStartX === null ? "transform 160ms ease" : undefined,
+        }}
+        className="af-glass w-full touch-pan-y rounded-lg p-6 md:p-8"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--af-text-tertiary)]">
+            <span className="af-chip px-2.5 py-1">
               {t("feed.deck.source", "来源")}：{current.source}
             </span>
-            <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1">
+            <span className="af-chip px-2.5 py-1">
               {t("feed.deck.ingestedAt", "入库")}：{createdAtLabel}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`rounded-full border px-3 py-1 text-sm font-semibold ${scoreClass(
+              className={`af-chip border px-3 py-1 text-sm font-semibold ${scoreClass(
                 current.valueScore,
               )}`}
             >
               {t("feed.deck.value", "价值")} · {scoreLabel(current.valueScore)}
             </span>
             <span
-              className={`rounded-full border px-3 py-1 text-sm font-semibold ${actionChipClass(
+              className={`af-chip border px-3 py-1 text-sm font-semibold ${actionChipClass(
                 current.suggestedActionType,
               )}`}
             >
@@ -164,21 +244,21 @@ export function FeedDeck({ items }: FeedDeckProps) {
           </div>
         </div>
 
-        <h2 className="mt-4 break-words text-2xl font-semibold leading-tight tracking-normal text-slate-900 md:text-3xl">
+        <h2 className="mt-4 break-words text-2xl font-semibold leading-tight tracking-normal text-[var(--af-text-primary)] md:text-3xl">
           {current.title}
         </h2>
 
-        <section className="af-glass af-hero-surface mt-5 rounded-3xl border border-white/75 px-5 py-4 shadow-[0_24px_40px_-30px_rgba(67,108,184,0.22)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700/75">
+        <section className="af-hero-surface mt-5 rounded-lg px-5 py-4">
+          <p className="af-kicker">
             {t("feed.deck.oneLineSummary", "一句话概要")}
           </p>
-          <p className="mt-2 text-base font-medium leading-7 text-slate-800 md:text-lg">
+          <p className="mt-2 text-base font-medium leading-7 text-[var(--af-text-primary)] md:text-lg">
             {current.shortSummary}
           </p>
         </section>
 
         <section className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <p className="af-kicker">
             {t("feed.deck.keywords", "关键词")}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -193,20 +273,20 @@ export function FeedDeck({ items }: FeedDeckProps) {
         </section>
 
         <div className="mt-5 grid gap-4 md:grid-cols-[1.3fr_1fr]">
-          <section className="rounded-3xl border border-white/70 bg-white/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <section className="af-subpanel p-4">
+            <p className="af-kicker">
               {t("feed.deck.summary3line", "3 行摘要")}
             </p>
-            <p className="mt-2 text-sm leading-7 text-slate-700 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden md:text-[15px]">
+            <p className="mt-2 text-sm leading-7 text-[var(--af-text-secondary)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden md:text-[15px]">
               {current.summary}
             </p>
           </section>
 
-          <section className="rounded-3xl border border-white/70 bg-white/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <section className="af-subpanel p-4">
+            <p className="af-kicker">
               {t("feed.deck.reasons", "推荐理由")}
             </p>
-            <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+            <ul className="mt-2 space-y-1.5 text-sm text-[var(--af-text-secondary)]">
               {(current.whyRecommended?.length
                 ? current.whyRecommended.slice(0, 3)
                 : current.recommendationReasons?.length
@@ -222,7 +302,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
                 {current.matchedPreferences.slice(0, 4).map((reason) => (
                   <span
                     key={reason}
-                    className="rounded-full border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-[11px] font-medium text-sky-700"
+                    className="af-chip af-chip-info px-2.5 py-1 text-[11px] font-medium"
                   >
                     {reason}
                   </span>
@@ -230,7 +310,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
               </div>
             ) : null}
             {(current.topicMatchScore !== undefined || current.sourceMatchScore !== undefined) ? (
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
                 {t("feed.deck.preferenceScore", "偏好命中")} · Topic {Math.round(current.topicMatchScore ?? 0)} / Source{" "}
                 {Math.round(current.sourceMatchScore ?? 0)}
               </p>
@@ -238,7 +318,7 @@ export function FeedDeck({ items }: FeedDeckProps) {
           </section>
         </div>
 
-        <p className="mt-4 line-clamp-1 text-xs text-slate-500">
+        <p className="mt-4 line-clamp-1 text-xs text-[var(--af-text-tertiary)]">
           {t("feed.deck.originalLink", "原文链接")}：{current.url}
         </p>
 
@@ -246,12 +326,11 @@ export function FeedDeck({ items }: FeedDeckProps) {
           <button
             type="button"
             onClick={() => {
-              toggleAction("liked");
-              void sendFeedback("like");
+              runTriageAction("liked", "like", { advance: false });
             }}
-            className={`af-btn rounded-full px-4 py-2 text-sm ${
+            className={`af-btn px-4 py-2 text-sm ${
               currentState.liked
-                ? "bg-emerald-600 text-white shadow-[0_16px_24px_-18px_rgba(5,150,105,0.9)]"
+                ? "af-chip-success"
                 : "af-btn-primary"
             }`}
           >
@@ -262,12 +341,11 @@ export function FeedDeck({ items }: FeedDeckProps) {
           <button
             type="button"
             onClick={() => {
-              toggleAction("ignored");
-              void sendFeedback("ignore");
+              runTriageAction("ignored", "ignore", { advance: true });
             }}
-            className={`af-btn rounded-full px-4 py-2 text-sm ${
+            className={`af-btn px-4 py-2 text-sm ${
               currentState.ignored
-                ? "border border-slate-300 bg-slate-200 text-slate-700"
+                ? "af-chip"
                 : "af-btn-secondary"
             }`}
           >
@@ -278,12 +356,11 @@ export function FeedDeck({ items }: FeedDeckProps) {
           <button
             type="button"
             onClick={() => {
-              toggleAction("saved");
-              void sendFeedback("save");
+              runTriageAction("saved", "save", { advance: true });
             }}
-            className={`af-btn rounded-full border px-4 py-2 text-sm ${
+            className={`af-btn border px-4 py-2 text-sm ${
               currentState.saved
-                ? "border-blue-300 bg-blue-50 text-blue-700 shadow-[0_16px_24px_-18px_rgba(37,99,235,0.8)]"
+                ? "af-chip-info"
                 : "af-btn-secondary"
             }`}
           >
@@ -296,14 +373,14 @@ export function FeedDeck({ items }: FeedDeckProps) {
             onClick={() => {
               void sendFeedback("open_detail");
             }}
-            className="af-btn af-btn-primary rounded-full border px-4 py-2 text-sm"
+            className="af-btn af-btn-primary border px-4 py-2 text-sm"
           >
             {t("action.openDetail", "Open Detail")}
           </Link>
         </div>
 
         {apiMessage ? (
-          <p className="mt-3 text-xs text-slate-500">{apiMessage}</p>
+          <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">{apiMessage}</p>
         ) : null}
       </article>
     </div>

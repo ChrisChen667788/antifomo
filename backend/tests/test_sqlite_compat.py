@@ -11,6 +11,15 @@ def _columns_for(engine, table_name: str) -> set[str]:
     return {str(row[1]) for row in rows}
 
 
+def _table_exists(engine, table_name: str) -> bool:
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (table_name,),
+        ).fetchone()
+    return row is not None
+
+
 def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
 
@@ -129,6 +138,20 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
     assert {"user_id", "schema_version", "backend", "status", "next_offset"}.issubset(
         retrieval_checkpoint_columns
     )
+
+    assert _table_exists(engine, "collector_import_batches")
+    collector_import_batch_columns = _columns_for(engine, "collector_import_batches")
+    assert {
+        "user_id",
+        "import_type",
+        "source_label",
+        "status",
+        "output_language",
+        "item_ids",
+        "created_item_ids",
+        "result_payload",
+        "source_payload",
+    }.issubset(collector_import_batch_columns)
 
     watchlist_run_columns = _columns_for(engine, "research_watchlist_runs")
     assert {

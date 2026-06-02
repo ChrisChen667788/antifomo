@@ -1424,6 +1424,76 @@ class ResearchSolutionArchitectureReadinessOut(BaseModel):
     stakeholder_questions: list[str] = Field(default_factory=list)
 
 
+class ResearchCustomerScenarioOut(BaseModel):
+    name: str
+    target_customer: str = ""
+    primary_roles: list[str] = Field(default_factory=list)
+    pain_points: list[str] = Field(default_factory=list)
+    desired_outcomes: list[str] = Field(default_factory=list)
+    success_metrics: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionStakeholderOut(BaseModel):
+    role: str
+    influence: Literal["high", "medium", "low"] = "medium"
+    likely_concerns: list[str] = Field(default_factory=list)
+    decision_questions: list[str] = Field(default_factory=list)
+    required_materials: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionDecisionCriterionOut(BaseModel):
+    criterion: str
+    why_it_matters: str = ""
+    evidence: list[str] = Field(default_factory=list)
+    validation_action: str = ""
+
+
+class ResearchSolutionCapabilityArchitectureMappingOut(BaseModel):
+    business_capability: str
+    application_services: list[str] = Field(default_factory=list)
+    data_dependencies: list[str] = Field(default_factory=list)
+    model_dependencies: list[str] = Field(default_factory=list)
+    integration_surfaces: list[str] = Field(default_factory=list)
+    security_constraints: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionArchitectureDecisionRecordOut(BaseModel):
+    decision: str
+    context: str = ""
+    options: list[str] = Field(default_factory=list)
+    selected_direction: str = ""
+    tradeoffs: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    validation_evidence: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionIntegrationDependencyOut(BaseModel):
+    dependency: str
+    source_system: str = ""
+    api_or_data_contract: str = ""
+    auth_boundary: str = ""
+    deployment_assumption: str = ""
+    operational_owner: str = ""
+    risk_level: Literal["high", "medium", "low"] = "medium"
+    validation_action: str = ""
+    evidence: list[str] = Field(default_factory=list)
+
+
+class ResearchSolutionArchitectWorkbenchOut(BaseModel):
+    framework: Literal["solution_architect_workbench_v1"] = "solution_architect_workbench_v1"
+    framework_label: str = "解决方案架构师工作台"
+    customer_scenarios: list[ResearchCustomerScenarioOut] = Field(default_factory=list)
+    stakeholders: list[ResearchSolutionStakeholderOut] = Field(default_factory=list)
+    decision_criteria: list[ResearchSolutionDecisionCriterionOut] = Field(default_factory=list)
+    capability_architecture_matrix: list[ResearchSolutionCapabilityArchitectureMappingOut] = Field(default_factory=list)
+    architecture_decision_records: list[ResearchSolutionArchitectureDecisionRecordOut] = Field(default_factory=list)
+    integration_dependencies: list[ResearchSolutionIntegrationDependencyOut] = Field(default_factory=list)
+    next_meeting_agenda: list[str] = Field(default_factory=list)
+
+
 class ResearchSolutionDeliveryPackOut(BaseModel):
     scenario: str = ""
     target_customer: str = ""
@@ -1443,6 +1513,9 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     )
     architecture_readiness: ResearchSolutionArchitectureReadinessOut = Field(
         default_factory=ResearchSolutionArchitectureReadinessOut
+    )
+    architect_workbench: ResearchSolutionArchitectWorkbenchOut = Field(
+        default_factory=ResearchSolutionArchitectWorkbenchOut
     )
     review_checklist: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)

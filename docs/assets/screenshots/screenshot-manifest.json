@@ -1,6 +1,6 @@
 {
-  "version": "0.8.0+20260518",
-  "generated_at": "2026-05-18T07:37:50.805Z",
+  "version": "1.1.0+20260602",
+  "generated_at": "2026-05-20T08:22:44.353Z",
   "viewport": {
     "width": 1600,
     "height": 1100,
@@ -17,18 +17,18 @@
       "feature": "Home signal dashboard",
       "route": "/",
       "file": "docs/assets/screenshots/home-signal-dashboard.png",
-      "description": "Feed triage homepage for high-signal intake and quick route switching.",
+      "description": "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 731748
+        "actual_file_size_bytes": 669800
       }
     },
     {
       "feature": "Inbox research workspace",
       "route": "/inbox",
       "file": "docs/assets/screenshots/inbox-research-workspace.png",
-      "description": "Intake, keyword research, report generation, architecture readiness review, and formal delivery export workspace.",
+      "description": "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
@@ -131,7 +131,7 @@
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 520349
+        "actual_file_size_bytes": 520015
       }
     },
     {
@@ -164,7 +164,7 @@
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 389555
+        "actual_file_size_bytes": 382390
       }
     },
     {

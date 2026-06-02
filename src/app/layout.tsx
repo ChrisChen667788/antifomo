@@ -36,7 +36,6 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body className="min-h-screen antialiased">
         <AppPreferencesProvider>
-          <div className="af-bg-orb" />
           <MainNav />
           {children}
         </AppPreferencesProvider>

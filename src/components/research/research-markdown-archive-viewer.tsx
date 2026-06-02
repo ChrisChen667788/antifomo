@@ -69,9 +69,9 @@ function archiveKindLabel(kind: ApiResearchMarkdownArchive["archive_kind"]) {
 }
 
 function archiveKindTone(kind: ApiResearchMarkdownArchive["archive_kind"]) {
-  if (kind === "topic_version_recap") return "bg-amber-50 text-amber-700";
-  if (kind === "archive_diff_recap") return "bg-emerald-50 text-emerald-700";
-  return "bg-sky-50 text-sky-700";
+  if (kind === "topic_version_recap") return "af-chip af-chip-warning";
+  if (kind === "archive_diff_recap") return "af-chip af-chip-success";
+  return "af-chip af-chip-info";
 }
 
 function buildCompareSnapshotHref(snapshotId: string) {
@@ -110,9 +110,9 @@ function archiveSourceCompareHref(archive: ApiResearchMarkdownArchiveDetail) {
 }
 
 function offlineStatusTone(status: string) {
-  if (status === "good") return "bg-emerald-100 text-emerald-700";
-  if (status === "watch") return "bg-amber-100 text-amber-700";
-  return "bg-rose-100 text-rose-700";
+  if (status === "good") return "af-chip af-chip-success";
+  if (status === "watch") return "af-chip af-chip-warning";
+  return "af-chip af-chip-danger";
 }
 
 function offlineStatusLabel(status: string) {
@@ -140,7 +140,7 @@ function renderInlineMarkdown(text: string, keyPrefix: string): ReactNode[] {
         href={match[2]}
         target="_blank"
         rel="noreferrer"
-        className="font-medium text-sky-700 underline decoration-sky-200 underline-offset-4 hover:text-sky-800"
+        className="font-medium text-[var(--af-info)] underline decoration-[var(--af-info)] underline-offset-4 hover:text-[var(--af-info)]"
       >
         {match[1]}
       </a>,
@@ -403,21 +403,21 @@ function MarkdownPreview({ content }: { content: string }) {
       {blocks.map((block, index) => {
         if (block.type === "h1") {
           return (
-            <h1 key={`block-${index}`} className="text-2xl font-semibold tracking-[-0.04em] text-slate-900">
+            <h1 key={`block-${index}`} className="text-2xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">
               {block.text}
             </h1>
           );
         }
         if (block.type === "h2") {
           return (
-            <h2 key={`block-${index}`} className="pt-2 text-xl font-semibold text-slate-900">
+            <h2 key={`block-${index}`} className="pt-2 text-xl font-semibold text-[var(--af-text-primary)]">
               {block.text}
             </h2>
           );
         }
         if (block.type === "h3") {
           return (
-            <h3 key={`block-${index}`} className="pt-1 text-base font-semibold text-slate-800">
+            <h3 key={`block-${index}`} className="pt-1 text-base font-semibold text-[var(--af-text-primary)]">
               {block.text}
             </h3>
           );
@@ -426,7 +426,7 @@ function MarkdownPreview({ content }: { content: string }) {
           return (
             <pre
               key={`block-${index}`}
-              className="overflow-auto rounded-[20px] border border-slate-200 bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100"
+              className="overflow-auto rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-4 py-4 text-xs leading-6 text-[var(--af-text-primary)]"
             >
               {block.text}
             </pre>
@@ -437,7 +437,7 @@ function MarkdownPreview({ content }: { content: string }) {
           return (
             <ListTag
               key={`block-${index}`}
-              className={`space-y-2 text-sm leading-7 text-slate-700 ${block.type === "ol" ? "list-decimal pl-5" : "list-none"}`}
+              className={`space-y-2 text-sm leading-7 text-[var(--af-text-secondary)] ${block.type === "ol" ? "list-decimal pl-5" : "list-none"}`}
             >
               {block.items.map((item, itemIndex) => (
                 <li
@@ -445,7 +445,7 @@ function MarkdownPreview({ content }: { content: string }) {
                   className={block.type === "ul" ? "flex gap-2" : ""}
                   style={item.indent > 0 ? { marginLeft: `${item.indent * 18}px` } : undefined}
                 >
-                  {block.type === "ul" ? <span className="mt-[11px] h-1.5 w-1.5 rounded-full bg-sky-300" /> : null}
+                  {block.type === "ul" ? <span className="mt-[11px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" /> : null}
                   <span>{renderInlineMarkdown(item.text, `block-${index}-item-${itemIndex}`)}</span>
                 </li>
               ))}
@@ -454,7 +454,7 @@ function MarkdownPreview({ content }: { content: string }) {
         }
         if (block.type === "p") {
           return (
-            <p key={`block-${index}`} className="text-sm leading-7 text-slate-700">
+            <p key={`block-${index}`} className="text-sm leading-7 text-[var(--af-text-secondary)]">
               {renderInlineMarkdown(block.text, `block-${index}`)}
             </p>
           );
@@ -468,32 +468,32 @@ function MarkdownPreview({ content }: { content: string }) {
 function ArchiveMetaChips({ archive }: { archive: ApiResearchMarkdownArchive }) {
   return (
     <div className="mt-4 flex flex-wrap gap-2 text-xs">
-      <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+      <span className="rounded-full af-chip px-2.5 py-1 ">
         文件 · {archive.filename}
       </span>
-      <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+      <span className="rounded-full af-chip px-2.5 py-1 ">
         大小 · {Math.max(1, Math.round(archive.content_length / 1024))} KB
       </span>
-      <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-600">
+      <span className="rounded-full af-chip px-2.5 py-1 ">
         更新 · {new Date(archive.updated_at).toLocaleString()}
       </span>
       {archive.query ? (
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+        <span className="rounded-full af-chip px-2.5 py-1 ">
           关键词 · {archive.query}
         </span>
       ) : null}
       {archive.tracking_topic_name ? (
-        <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
+        <span className="rounded-full af-chip af-chip-info px-2.5 py-1 ">
           专题 · {archive.tracking_topic_name}
         </span>
       ) : null}
       {archive.report_version_title ? (
-        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+        <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 ">
           版本 · {archive.report_version_title}
         </span>
       ) : null}
       {archive.compare_snapshot_name ? (
-        <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700">
+        <span className="rounded-full af-chip af-chip-info px-2.5 py-1 ">
           快照 · {archive.compare_snapshot_name}
         </span>
       ) : null}
@@ -515,8 +515,8 @@ function ArchiveDeliveryDigestCard({
     return null;
   }
   return (
-    <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">
+    <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">
         {title || digest.title}
       </p>
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -530,17 +530,17 @@ function ArchiveDeliveryDigestCard({
         ))}
       </div>
       {digest.notes.length ? (
-        <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+        <ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
           {digest.notes.map((note) => (
             <li key={`${title || digest.title}-${note}`} className="flex gap-2">
-              <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-sky-300" />
+              <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" />
               <span>{note}</span>
             </li>
           ))}
         </ul>
       ) : null}
       {digest.outstandingItems.length ? (
-        <p className="mt-4 text-sm leading-6 text-rose-600">
+        <p className="mt-4 text-sm leading-6 text-[var(--af-danger)]">
           {digest.outstandingLabel} · {digest.outstandingItems.slice(0, 5).join(" / ")}
         </p>
       ) : null}
@@ -559,11 +559,11 @@ function ArchiveFollowupImpactCard({
     return null;
   }
   return (
-    <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+    <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">Follow-up Routing</p>
-          <h4 className="mt-2 text-base font-semibold text-slate-900">追问影响章节对照</h4>
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">Follow-up Routing</p>
+          <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">追问影响章节对照</h4>
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -573,32 +573,32 @@ function ArchiveFollowupImpactCard({
         ].map((item) => (
           <div
             key={item.key}
-            className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-sky-100 bg-sky-50/70" : "border-amber-100 bg-amber-50/70"}`}
+            className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-[var(--af-border-subtle)] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))]" : "border-[var(--af-border-subtle)] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))]"}`}
           >
-            <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-sky-600" : "text-amber-600"}`}>
+            <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-[var(--af-info)]" : "text-[var(--af-warning)]"}`}>
               {item.label}
             </p>
             {item.value ? (
               <>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full af-chip px-2.5 py-1 ">
                     标题 · {followupResolutionLabel(item.value.currentTitleResolution)}
                   </span>
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full af-chip px-2.5 py-1 ">
                     摘要 · {followupResolutionLabel(item.value.currentSummaryResolution)}
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-700">
+                <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
                   重点影响章节 · {item.value.currentImpactedSections.length ? item.value.currentImpactedSections.slice(0, 4).join(" / ") : "无"}
                 </p>
                 {(item.value.baselineTitleResolution || item.value.baselineSummaryResolution || item.value.baselineImpactedSections.length) ? (
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                  <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                     基线参考 · 标题 {followupResolutionLabel(item.value.baselineTitleResolution)} / 摘要 {followupResolutionLabel(item.value.baselineSummaryResolution)} / 章节 {item.value.baselineImpactedSections.length ? item.value.baselineImpactedSections.slice(0, 3).join(" / ") : "无"}
                   </p>
                 ) : null}
               </>
             ) : (
-              <p className="mt-3 text-sm text-slate-500">没有可用追问路由摘要。</p>
+              <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">没有可用追问路由摘要。</p>
             )}
           </div>
         ))}
@@ -618,27 +618,27 @@ function ArchiveCandidateCard({
 }) {
   const isActive = activeCompareId === archive.id;
   return (
-    <article className="rounded-[24px] border border-white/70 bg-white/80 p-4">
+    <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2.5 py-1 text-[11px] ${archiveKindTone(archive.archive_kind)}`}>
           {archiveKindLabel(archive.archive_kind)}
         </span>
         {archive.tracking_topic_name ? (
-          <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
+          <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] ">
             {archive.tracking_topic_name}
           </span>
         ) : null}
       </div>
-      <h3 className="mt-3 text-sm font-semibold text-slate-900">{archive.name}</h3>
-      <p className="mt-2 text-xs leading-6 text-slate-500">
+      <h3 className="mt-3 text-sm font-semibold text-[var(--af-text-primary)]">{archive.name}</h3>
+      <p className="mt-2 text-xs leading-6 text-[var(--af-text-tertiary)]">
         {archive.summary || archive.preview_text || "归档已保存，可作为当前文档的对照基线。"}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
-        <span className="rounded-full bg-slate-100 px-2 py-1">
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-tertiary)]">
+        <span className="rounded-full bg-[var(--af-surface-muted)] px-2 py-1">
           {new Date(archive.updated_at).toLocaleDateString()}
         </span>
         {archive.report_version_title ? (
-          <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+          <span className="rounded-full af-chip af-chip-warning px-2 py-1 ">
             {archive.report_version_title}
           </span>
         ) : null}
@@ -646,7 +646,7 @@ function ArchiveCandidateCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={buildMarkdownArchiveHref(baseArchiveId, archive.id)}
-          className={`af-btn border px-3 py-1.5 text-xs ${isActive ? "border-sky-200 bg-sky-50 text-sky-700" : "af-btn-secondary"}`}
+          className={`af-btn border px-3 py-1.5 text-xs ${isActive ? "border-[var(--af-border-strong)] bg-[var(--af-surface-selected)] text-[var(--af-info)]" : "af-btn-secondary"}`}
         >
           {isActive ? "当前对照" : "设为对照"}
         </Link>
@@ -701,16 +701,16 @@ function ArchiveComparisonSummary({
     <section
       id={RESEARCH_MARKDOWN_ARCHIVE_COMPARE_SUMMARY_ANCHOR}
       className={`af-glass rounded-[30px] p-6 transition-all duration-300 ${
-        highlightAnchor ? "border border-sky-200 bg-sky-50/65 shadow-[0_0_0_4px_rgba(125,211,252,0.25)]" : ""
+        highlightAnchor ? "border border-[var(--af-border-strong)] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] shadow-[var(--af-shadow-soft)]" : ""
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="af-kicker">Archive Compare</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-900">
+          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">
             当前归档 vs 对照归档
           </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
             用统一的 section 和要点切片对照两个 Markdown 版本，优先展示结构变化和新增结论。
           </p>
         </div>
@@ -742,12 +742,12 @@ function ArchiveComparisonSummary({
       </div>
 
       {summaryLines.length ? (
-        <div className="mt-5 rounded-[24px] border border-white/70 bg-white/85 p-5">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Diff Summary</p>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+        <div className="mt-5 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">Diff Summary</p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
             {summaryLines.map((line, index) => (
               <li key={`summary-line-${index}`} className="flex gap-2">
-                <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-sky-300" />
+                <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" />
                 <span>{line}</span>
               </li>
             ))}
@@ -763,8 +763,8 @@ function ArchiveComparisonSummary({
                     href={`#${anchorId}`}
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                       isActive
-                        ? "border-sky-200 bg-sky-50 text-sky-700"
-                        : "border-white/70 bg-white/85 text-slate-500 hover:border-sky-100 hover:text-sky-700"
+                        ? "border-[var(--af-border-strong)] bg-[var(--af-surface-selected)] text-[var(--af-info)]"
+                        : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-tertiary)] hover:border-[var(--af-border-subtle)] hover:text-[var(--af-info)]"
                     }`}
                   >
                     {section.title}
@@ -777,25 +777,25 @@ function ArchiveComparisonSummary({
       ) : null}
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-[22px] border border-white/70 bg-white/85 p-4">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Shared Sections</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{comparison.sharedSectionCount}</p>
+        <div className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-text-tertiary)]">Shared Sections</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">{comparison.sharedSectionCount}</p>
         </div>
-        <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/80 p-4">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-500">Current Added</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-700">{comparison.addedSections.length}</p>
+        <div className="rounded-[22px] af-state-panel-success p-4">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-success)]">Current Added</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--af-success)]">{comparison.addedSections.length}</p>
         </div>
-        <div className="rounded-[22px] border border-rose-100 bg-rose-50/80 p-4">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-rose-500">Baseline Only</p>
-          <p className="mt-2 text-2xl font-semibold text-rose-700">{comparison.removedSections.length}</p>
+        <div className="rounded-[22px] af-state-panel-danger p-4">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-danger)]">Baseline Only</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--af-danger)]">{comparison.removedSections.length}</p>
         </div>
-        <div className="rounded-[22px] border border-amber-100 bg-amber-50/80 p-4">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-amber-500">Changed Sections</p>
-          <p className="mt-2 text-2xl font-semibold text-amber-700">{comparison.changedSections.length}</p>
+        <div className="rounded-[22px] af-state-panel-warning p-4">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-warning)]">Changed Sections</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--af-warning)]">{comparison.changedSections.length}</p>
         </div>
-        <div className="rounded-[22px] border border-slate-200 bg-slate-50/90 p-4">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Coverage</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
+        <div className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-4">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-text-tertiary)]">Coverage</p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">
             {comparison.currentSectionCount}/{comparison.compareSectionCount}
           </p>
         </div>
@@ -803,33 +803,33 @@ function ArchiveComparisonSummary({
 
       {(currentSectionSummary || compareSectionSummary || currentFollowupSummary || compareFollowupSummary || currentOfflineSnapshot || compareOfflineSnapshot) ? (
         <div className="mt-5 grid gap-4 xl:grid-cols-3">
-          <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+          <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">章节检查</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">章节风险对照</h4>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">章节检查</p>
+                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">章节风险对照</h4>
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-[20px] border border-sky-100 bg-sky-50/70 p-4">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-sky-600">当前归档</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">
+              <div className="rounded-[20px] af-state-panel-info p-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-info)]">当前归档</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   待核验 {currentSectionSummary?.mode === "compare" ? currentSectionSummary.weakSectionCount : currentSectionSummary?.currentWeakSectionCount || 0}
                   {" / "}配额风险 {currentSectionSummary?.quotaRiskSectionCount || 0}
                   {" / "}矛盾 {currentSectionSummary?.contradictionSectionCount || 0}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   重点章节 · {currentSectionSummary?.highlightedSections?.length ? currentSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
                 </p>
               </div>
-              <div className="rounded-[20px] border border-amber-100 bg-amber-50/70 p-4">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-amber-600">对照归档</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">
+              <div className="rounded-[20px] af-state-panel-warning p-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-warning)]">对照归档</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   待核验 {compareSectionSummary?.mode === "compare" ? compareSectionSummary.weakSectionCount : compareSectionSummary?.currentWeakSectionCount || 0}
                   {" / "}配额风险 {compareSectionSummary?.quotaRiskSectionCount || 0}
                   {" / "}矛盾 {compareSectionSummary?.contradictionSectionCount || 0}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   重点章节 · {compareSectionSummary?.highlightedSections?.length ? compareSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
                 </p>
               </div>
@@ -841,11 +841,11 @@ function ArchiveComparisonSummary({
             compareSummary={compareFollowupSummary}
           />
 
-          <article className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+          <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">质量复核</p>
-                <h4 className="mt-2 text-base font-semibold text-slate-900">质量复核快照对照</h4>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">质量复核</p>
+                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">质量复核快照对照</h4>
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -860,9 +860,9 @@ function ArchiveComparisonSummary({
               }].map((item) => (
                 <div
                   key={item.label}
-                  className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-sky-100 bg-sky-50/70" : "border-amber-100 bg-amber-50/70"}`}
+                  className={`rounded-[20px] border p-4 ${item.tone === "sky" ? "border-[var(--af-border-subtle)] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))]" : "border-[var(--af-border-subtle)] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))]"}`}
                 >
-                  <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-sky-600" : "text-amber-600"}`}>
+                  <p className={`text-[11px] uppercase tracking-[0.16em] ${item.tone === "sky" ? "text-[var(--af-info)]" : "text-[var(--af-warning)]"}`}>
                     {item.label}
                   </p>
                   {item.value?.metrics?.length ? (
@@ -875,13 +875,13 @@ function ArchiveComparisonSummary({
                         ))}
                       </div>
                       {item.value.summaryLines.length ? (
-                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                        <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
                           {item.value.summaryLines[0]}
                         </p>
                       ) : null}
                     </>
                   ) : (
-                    <p className="mt-3 text-sm text-slate-500">没有可用回归快照。</p>
+                    <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">没有可用回归快照。</p>
                   )}
                 </div>
               ))}
@@ -891,18 +891,18 @@ function ArchiveComparisonSummary({
       ) : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+        <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">当前</span>
-            <p className="text-sm font-semibold text-slate-900">{archive.name}</p>
+            <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] ">当前</span>
+            <p className="text-sm font-semibold text-[var(--af-text-primary)]">{archive.name}</p>
           </div>
           <ArchiveMetaChips archive={archive} />
           {comparison.addedSections.length ? (
             <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-500">新增 Section</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-success)]">新增 Section</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {comparison.addedSections.slice(0, 5).map((section) => (
-                  <span key={`current-added-${section.key}`} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
+                  <span key={`current-added-${section.key}`} className="rounded-full af-chip af-chip-success px-2.5 py-1 text-xs ">
                     {section.title}
                   </span>
                 ))}
@@ -911,10 +911,10 @@ function ArchiveComparisonSummary({
           ) : null}
           {currentFollowupSummary?.currentImpactedSections.length ? (
             <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-sky-500">追问影响章节</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-info)]">追问影响章节</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {currentFollowupSummary.currentImpactedSections.slice(0, 4).map((section) => (
-                  <span key={`current-followup-${section}`} className="rounded-full bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
+                  <span key={`current-followup-${section}`} className="rounded-full af-chip af-chip-info px-2.5 py-1 text-xs ">
                     {section}
                   </span>
                 ))}
@@ -923,18 +923,18 @@ function ArchiveComparisonSummary({
           ) : null}
         </div>
 
-        <div className="rounded-[24px] border border-white/70 bg-white/85 p-5">
+        <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">对照</span>
-            <p className="text-sm font-semibold text-slate-900">{compareArchive.name}</p>
+            <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 text-[11px] ">对照</span>
+            <p className="text-sm font-semibold text-[var(--af-text-primary)]">{compareArchive.name}</p>
           </div>
           <ArchiveMetaChips archive={compareArchive} />
           {comparison.removedSections.length ? (
             <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-rose-500">仅对照中存在</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-danger)]">仅对照中存在</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {comparison.removedSections.slice(0, 5).map((section) => (
-                  <span key={`compare-removed-${section.key}`} className="rounded-full bg-rose-50 px-2.5 py-1 text-xs text-rose-700">
+                  <span key={`compare-removed-${section.key}`} className="rounded-full af-chip af-chip-danger px-2.5 py-1 text-xs ">
                     {section.title}
                   </span>
                 ))}
@@ -943,10 +943,10 @@ function ArchiveComparisonSummary({
           ) : null}
           {compareFollowupSummary?.currentImpactedSections.length ? (
             <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-amber-500">追问影响章节</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-warning)]">追问影响章节</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {compareFollowupSummary.currentImpactedSections.slice(0, 4).map((section) => (
-                  <span key={`compare-followup-${section}`} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700">
+                  <span key={`compare-followup-${section}`} className="rounded-full af-chip af-chip-warning px-2.5 py-1 text-xs ">
                     {section}
                   </span>
                 ))}
@@ -967,17 +967,17 @@ function ArchiveComparisonSummary({
               id={anchorId}
               className={`scroll-mt-24 rounded-[24px] border p-5 transition-all duration-300 ${
                 isSectionFocused
-                  ? "border-sky-200 bg-sky-50/70 shadow-[0_0_0_4px_rgba(125,211,252,0.22)]"
-                  : "border-white/70 bg-white/80"
+                  ? "border-[var(--af-border-strong)] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] shadow-[var(--af-shadow-soft)]"
+                  : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)]"
               }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
                   H{section.level}
                 </span>
-                <h4 className="text-sm font-semibold text-slate-900">{section.title}</h4>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
+                <h4 className="text-sm font-semibold text-[var(--af-text-primary)]">{section.title}</h4>
+                <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
                   重合要点 {section.sharedCount}
                 </span>
                 </div>
@@ -995,34 +995,34 @@ function ArchiveComparisonSummary({
                 </div>
               </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-[20px] border border-emerald-100 bg-emerald-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-600">当前新增</p>
+                <div className="rounded-[20px] af-state-panel-success p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-success)]">当前新增</p>
                   {section.currentOnly.length ? (
-                    <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-900">
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-success)]">
                       {section.currentOnly.slice(0, 4).map((item, index) => (
                         <li key={`${section.key}-current-${index}`} className="flex gap-2">
-                          <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-[var(--af-success)]" />
                           <span>{shortenText(item, 160)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-emerald-800">没有额外新增要点。</p>
+                    <p className="mt-3 text-sm text-[var(--af-success)]">没有额外新增要点。</p>
                   )}
                 </div>
-                <div className="rounded-[20px] border border-rose-100 bg-rose-50/70 p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-rose-600">对照独有</p>
+                <div className="rounded-[20px] af-state-panel-danger p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-danger)]">对照独有</p>
                   {section.compareOnly.length ? (
-                    <ul className="mt-3 space-y-2 text-sm leading-6 text-rose-900">
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-danger)]">
                       {section.compareOnly.slice(0, 4).map((item, index) => (
                         <li key={`${section.key}-compare-${index}`} className="flex gap-2">
-                          <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-rose-400" />
+                          <span className="mt-[10px] h-1.5 w-1.5 rounded-full bg-[var(--af-danger)]" />
                           <span>{shortenText(item, 160)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-3 text-sm text-rose-800">该 section 在当前版本里已完全覆盖。</p>
+                    <p className="mt-3 text-sm text-[var(--af-danger)]">该 section 在当前版本里已完全覆盖。</p>
                   )}
                 </div>
               </div>
@@ -1030,7 +1030,7 @@ function ArchiveComparisonSummary({
           );
           })
         ) : (
-          <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/80 p-5 text-sm text-emerald-800">
+          <div className="rounded-[24px] af-state-panel-success p-5 text-sm text-[var(--af-success)]">
             两份归档的结构和主要要点基本一致，没有检测到显著差异。
           </div>
         )}
@@ -1249,13 +1249,13 @@ export function ResearchMarkdownArchiveViewer({
                 {archiveKindLabel(archive.archive_kind)}
               </span>
               {compareArchive ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
                   对照中
                 </span>
               ) : null}
             </div>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900">{archive.name}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">{archive.name}</h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
               {archive.summary || archive.preview_text || "当前归档已保存到历史中心，可在线查看、下载或作为版本对照基线。"}
             </p>
             <ArchiveMetaChips archive={archive} />
@@ -1302,7 +1302,7 @@ export function ResearchMarkdownArchiveViewer({
             </Link>
           ) : null}
         </div>
-        {message ? <p className="mt-3 text-sm text-slate-500">{message}</p> : null}
+        {message ? <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">{message}</p> : null}
       </section>
 
       {archiveDigest || compareArchiveDigest ? (
@@ -1343,7 +1343,7 @@ export function ResearchMarkdownArchiveViewer({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="af-kicker">Related Archives</p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
               优先按同专题、同归档类型和相近版本排序，可快速切换对照基线。
             </p>
           </div>
@@ -1360,7 +1360,7 @@ export function ResearchMarkdownArchiveViewer({
             ))}
           </div>
         ) : (
-          <div className="mt-5 rounded-[24px] border border-white/70 bg-white/80 p-5 text-sm text-slate-500">
+          <div className="mt-5 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 text-sm text-[var(--af-text-tertiary)]">
             当前还没有足够接近的历史归档可供对照。先从 compare 导出或专题复盘报告继续沉淀版本。
           </div>
         )}
@@ -1370,7 +1370,7 @@ export function ResearchMarkdownArchiveViewer({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="af-kicker">{compareArchive ? "Side-by-Side Preview" : "Archive Preview"}</p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
               {compareArchive
                 ? "左右并排查看当前归档和对照归档的正文结构，适合做快速复盘。"
                 : "当前为应用内轻量预览，保留标题、列表和链接结构，适合快速复盘。"}
@@ -1379,23 +1379,23 @@ export function ResearchMarkdownArchiveViewer({
         </div>
         {compareArchive ? (
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            <div className="rounded-[24px] border border-white/70 bg-white/80 p-5">
+            <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">当前归档</span>
-                <p className="text-sm font-semibold text-slate-900">{archive.name}</p>
+                <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] ">当前归档</span>
+                <p className="text-sm font-semibold text-[var(--af-text-primary)]">{archive.name}</p>
               </div>
               <MarkdownPreview content={archive.content} />
             </div>
-            <div className="rounded-[24px] border border-white/70 bg-white/80 p-5">
+            <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">对照归档</span>
-                <p className="text-sm font-semibold text-slate-900">{compareArchive.name}</p>
+                <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 text-[11px] ">对照归档</span>
+                <p className="text-sm font-semibold text-[var(--af-text-primary)]">{compareArchive.name}</p>
               </div>
               <MarkdownPreview content={compareArchive.content} />
             </div>
           </div>
         ) : (
-          <div className="mt-5 rounded-[24px] border border-white/70 bg-white/80 p-5">
+          <div className="mt-5 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
             <MarkdownPreview content={archive.content} />
           </div>
         )}
@@ -1405,12 +1405,12 @@ export function ResearchMarkdownArchiveViewer({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="af-kicker">Raw Markdown</p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
               保留原始内容，方便复制到外部文档或继续交给别的系统处理。
             </p>
           </div>
         </div>
-        <pre className="mt-5 overflow-auto rounded-[24px] border border-slate-200 bg-slate-950 px-5 py-5 text-xs leading-6 text-slate-100">
+        <pre className="mt-5 overflow-auto rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-5 py-5 text-xs leading-6 text-[var(--af-text-primary)]">
           {archive.content}
         </pre>
       </section>

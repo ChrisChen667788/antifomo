@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from app.api import collector as collector_api
+from app.api import collector_ocr_routes as collector_ocr_api
 from app.schemas.collector import CollectorOCRPreviewResponse
 
 
 def test_evaluate_ocr_quality_rejects_wechat_history_feed_preview() -> None:
-    ok, reason = collector_api._evaluate_ocr_quality(
+    ok, reason = collector_ocr_api._evaluate_ocr_quality(
         (
             "00:39 01:53 昨天 23:35 00:08 00:03 昨天 22:41 凶 昨天 21:05 凶 昨天 20:57 凶 "
             "昨天 19:33 3点必看！ 昨天 19:12 昨天 18:29 3人小班课... 1小时前 白鲸出海 "
@@ -19,7 +19,7 @@ def test_evaluate_ocr_quality_rejects_wechat_history_feed_preview() -> None:
 
 
 def test_evaluate_ocr_quality_rejects_dense_timestamp_preview() -> None:
-    ok, reason = collector_api._evaluate_ocr_quality(
+    ok, reason = collector_ocr_api._evaluate_ocr_quality(
         (
             "01:13 01:53 昨天 23:35 00:08 00:03 昨天 22:41 昨天 21:05 昨天 20:57 "
             "昨天 19:33 3点必看 昨天 19:12 昨天 18:29 3人小班课 昨天 15:21"
@@ -32,7 +32,7 @@ def test_evaluate_ocr_quality_rejects_dense_timestamp_preview() -> None:
 
 
 def test_evaluate_ocr_quality_rejects_public_account_hub_text() -> None:
-    ok, reason = collector_api._evaluate_ocr_quality(
+    ok, reason = collector_ocr_api._evaluate_ocr_quality(
         (
             "查看历史消息 全部消息 进入公众号 最近更新 相关文章 公众号主页 推荐阅读 "
             "更多文章 查看历史消息 全部消息 推荐阅读"
@@ -45,7 +45,7 @@ def test_evaluate_ocr_quality_rejects_public_account_hub_text() -> None:
 
 
 def test_evaluate_ocr_quality_rejects_chat_list_preview() -> None:
-    ok, reason = collector_api._evaluate_ocr_quality(
+    ok, reason = collector_ocr_api._evaluate_ocr_quality(
         (
             "Q 搜索 十 陈皓锐 陈皓锐 ［图片 02:03 • My Wife 后面照着这个抄作业 01:13 "
             "Al影视创作者群 ［8条］ 大公家电 这里 01:53 一米七八的女猎头Selina ［草稿］ "
@@ -59,7 +59,7 @@ def test_evaluate_ocr_quality_rejects_chat_list_preview() -> None:
 
 
 def test_evaluate_ocr_quality_accepts_real_article_like_text() -> None:
-    ok, reason = collector_api._evaluate_ocr_quality(
+    ok, reason = collector_ocr_api._evaluate_ocr_quality(
         (
             "作者：研究团队 发布于 2026年4月8日。本文围绕模型推理优化展开，先说明推理成本变化，"
             "再拆解长程任务中的调度策略与部署建议。文章给出多个段落的完整结论，并附带实施建议。"
@@ -100,14 +100,14 @@ def test_run_ocr_preview_with_variants_retries_right_focus(monkeypatch) -> None:
             quality_reason=None,
         )
 
-    monkeypatch.setattr(collector_api, "_run_ocr_preview", fake_run_ocr_preview)
+    monkeypatch.setattr(collector_ocr_api, "_run_ocr_preview", fake_run_ocr_preview)
     monkeypatch.setattr(
-        collector_api,
+        collector_ocr_api,
         "_crop_preview_image_base64",
         lambda image_base64, *, variant_name: f"{image_base64}:{variant_name}",
     )
 
-    preview = collector_api._run_ocr_preview_with_variants(
+    preview = collector_ocr_api._run_ocr_preview_with_variants(
         image_base64="base-image",
         mime_type="image/png",
         source_url=None,

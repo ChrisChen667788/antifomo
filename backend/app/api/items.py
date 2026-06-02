@@ -18,6 +18,9 @@ from app.models.entities import (
     TopicPreference,
 )
 from app.schemas.items import (
+    ItemBatchReprocessRequest,
+    ItemBatchReprocessResponse,
+    ItemBatchReprocessResult,
     ItemBatchCreateRequest,
     ItemBatchCreateResponse,
     ItemBatchCreateResult,
@@ -274,6 +277,24 @@ def _resolve_focus_goal_text(db: Session, goal_text: str | None) -> str | None:
     return running_goal.strip() or None
 
 
+def _parse_item_ids(value: str | None) -> list[UUID]:
+    item_ids: list[UUID] = []
+    seen: set[UUID] = set()
+    for raw in (value or "").split(","):
+        text = raw.strip()
+        if not text:
+            continue
+        try:
+            item_id = UUID(text)
+        except ValueError:
+            continue
+        if item_id in seen:
+            continue
+        seen.add(item_id)
+        item_ids.append(item_id)
+    return item_ids[:500]
+
+
 def _to_item_out(
     db: Session,
     item: Item,
@@ -371,14 +392,19 @@ def _list_items_impl(
     mode: str = "normal",
     goal_text: str | None = None,
     include_pending: bool = True,
+    item_ids: list[UUID] | None = None,
 ) -> ItemListResponse:
+    max_limit = 500 if item_ids else 100
     query = (
         select(Item)
         .where(Item.user_id == settings.single_user_id)
         .options(selectinload(Item.tags))
         .order_by(desc(Item.created_at))
-        .limit(max(1, min(limit, 100)))
+        .limit(max(1, min(limit, max_limit)))
     )
+
+    if item_ids:
+        query = query.where(Item.id.in_(item_ids))
 
     if not include_pending:
         query = query.where(Item.status == "ready")
@@ -551,18 +577,21 @@ def list_items(
     mode: str = "normal",
     goal_text: str | None = None,
     include_pending: bool = True,
+    item_ids: str | None = None,
     db: Session = Depends(get_db),
 ) -> ItemListResponse:
     ensure_demo_user(db)
     safe_mode = mode if mode in {"normal", "focus"} else "normal"
     resolved_goal_text = _resolve_focus_goal_text(db, goal_text) if safe_mode == "focus" else None
+    parsed_item_ids = _parse_item_ids(item_ids)
     return _list_items_impl(
         db,
-        limit=limit,
+        limit=max(limit, len(parsed_item_ids)) if parsed_item_ids else limit,
         saved_only=False,
         mode=safe_mode,
         goal_text=resolved_goal_text,
         include_pending=include_pending,
+        item_ids=parsed_item_ids or None,
     )
 
 
@@ -570,6 +599,73 @@ def list_items(
 def list_saved_items(limit: int = 30, db: Session = Depends(get_db)) -> ItemListResponse:
     ensure_demo_user(db)
     return _list_items_impl(db, limit=limit, saved_only=True)
+
+
+@router.post("/reprocess-batch", response_model=ItemBatchReprocessResponse)
+def reprocess_items_batch(
+    payload: ItemBatchReprocessRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> ItemBatchReprocessResponse:
+    ensure_demo_user(db)
+    items_by_id = {
+        item.id: item
+        for item in db.scalars(
+            select(Item)
+            .where(Item.user_id == settings.single_user_id)
+            .where(Item.id.in_(payload.item_ids))
+        )
+    }
+    results: list[ItemBatchReprocessResult] = []
+    accepted_item_ids: list[UUID] = []
+
+    for item_id in payload.item_ids:
+        item = items_by_id.get(item_id)
+        if item is None:
+            results.append(
+                ItemBatchReprocessResult(
+                    item_id=item_id,
+                    status="missing",
+                    detail="item not found",
+                )
+            )
+            continue
+        if payload.failed_only and item.status != "failed":
+            results.append(
+                ItemBatchReprocessResult(
+                    item_id=item_id,
+                    status="skipped",
+                    item_status=item.status,
+                    detail="item is not failed",
+                )
+            )
+            continue
+
+        resolved_language = normalize_output_language(payload.output_language or item.output_language)
+        item.status = "processing"
+        item.processing_error = None
+        item.output_language = resolved_language
+        db.add(item)
+        accepted_item_ids.append(item.id)
+        results.append(
+            ItemBatchReprocessResult(
+                item_id=item.id,
+                status="accepted",
+                item_status="processing",
+            )
+        )
+
+    db.commit()
+    for item_id in accepted_item_ids:
+        background_tasks.add_task(_process_item_task, item_id, payload.output_language)
+
+    return ItemBatchReprocessResponse(
+        requested=len(payload.item_ids),
+        accepted=sum(1 for row in results if row.status == "accepted"),
+        skipped=sum(1 for row in results if row.status == "skipped"),
+        missing=sum(1 for row in results if row.status == "missing"),
+        results=results,
+    )
 
 
 @router.get("/{item_id}", response_model=ItemOut)

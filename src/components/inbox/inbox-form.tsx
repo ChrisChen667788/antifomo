@@ -845,17 +845,17 @@ export function InboxForm() {
       <section className="af-glass rounded-[30px] p-5 md:p-7">
         <div className="mb-5">
           <p className="af-kicker">{t("inbox.intakeKicker", "Content Intake")}</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+          <h2 className="mt-1 text-2xl font-semibold text-[var(--af-text-primary)]">
             {t("inbox.intakeTitle", "添加新内容")}
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
             {t("inbox.intakeDesc", "粘贴链接或文本，整理成摘要、标签和建议动作。")}
           </p>
         </div>
 
         <div className="space-y-4">
-          <section className="rounded-2xl border border-white/80 bg-white/55 p-4">
-            <label className="block text-sm font-semibold text-slate-700">
+          <section className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+            <label className="block text-sm font-semibold text-[var(--af-text-secondary)]">
               {t("inbox.urlInput", "URL 输入")}
             </label>
             <input
@@ -877,8 +877,8 @@ export function InboxForm() {
             </button>
           </section>
 
-          <section className="rounded-2xl border border-white/80 bg-white/55 p-4">
-            <label className="block text-sm font-semibold text-slate-700">
+          <section className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+            <label className="block text-sm font-semibold text-[var(--af-text-secondary)]">
               {t("inbox.batchInput", "批量 URL 输入（每行一个，适合 30 篇公众号测试）")}
             </label>
             <textarea
@@ -892,7 +892,7 @@ export function InboxForm() {
               className="af-input mt-2 resize-y leading-6"
             />
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[var(--af-text-tertiary)]">
                 {t("inbox.batchRecognized", "已识别 URL")}：
                 {
                   batchUrls
@@ -915,8 +915,8 @@ export function InboxForm() {
             {batchMessage ? <p className="mt-2 text-xs text-emerald-700">{batchMessage}</p> : null}
           </section>
 
-          <section className="rounded-2xl border border-white/80 bg-white/55 p-4">
-            <label className="block text-sm font-semibold text-slate-700">
+          <section className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+            <label className="block text-sm font-semibold text-[var(--af-text-secondary)]">
               {t("inbox.textInput", "纯文本输入")}
             </label>
             <textarea
@@ -927,7 +927,7 @@ export function InboxForm() {
               className="af-input mt-2 resize-none leading-6"
             />
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[var(--af-text-tertiary)]">
                 {t("inbox.charCount", "字数")}：{rawText.trim().length}
               </p>
               <button
@@ -949,13 +949,13 @@ export function InboxForm() {
         {error ? <p className="mt-4 text-sm text-rose-600">{error}</p> : null}
       </section>
 
-      <section className="mt-5 rounded-[24px] border border-sky-100/90 bg-[linear-gradient(180deg,rgba(245,250,255,0.98),rgba(239,246,255,0.94))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] md:px-5 md:py-5">
+      <section className="mt-5 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-4 shadow-[var(--af-shadow-soft)] md:px-5 md:py-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <label className="block text-[13px] font-semibold tracking-[-0.01em] text-slate-700">
+            <label className="block text-[13px] font-semibold text-[var(--af-text-secondary)]">
               {t("inbox.keywordInput", "关键词研究")}
             </label>
-            <p className="mt-1.5 max-w-[560px] text-[10px] leading-[1.7] text-slate-500">
+            <p className="mt-1.5 max-w-[560px] text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">
               {t(
                 "inbox.keywordDesc",
                 "围绕公开网页和公众号内容，整理预算、招标、生态与客户线索。",
@@ -963,7 +963,7 @@ export function InboxForm() {
             </p>
           </div>
           <span
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white/92 text-[10px] font-semibold leading-none text-sky-600 shadow-[0_6px_14px_-12px_rgba(59,130,246,0.45)]"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-accent-soft)] text-[10px] font-semibold leading-none text-[var(--af-accent)]"
             style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
           >
             {t("inbox.keywordBadgeCn", "研究")}
@@ -978,7 +978,7 @@ export function InboxForm() {
             "inbox.keywordPlaceholderDetailed",
             "例如：长三角地区政企行业和医疗行业 AI 大模型及应用落地",
           )}
-          className="mt-3 h-[42px] w-full rounded-[14px] border border-slate-200/85 bg-white/96 px-4 text-[13px] text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none transition placeholder:text-slate-400 focus:border-sky-200 focus:ring-2 focus:ring-sky-100/70"
+          className="af-input mt-3 h-[42px] px-4 text-[13px]"
         />
 
         <textarea
@@ -989,7 +989,7 @@ export function InboxForm() {
             "inbox.keywordPromptPlaceholder",
             "例如：围绕某行业/区域/项目方向，研究甲方需求、预算口径、竞品厂商、已落地案例、行业名单和可能招投标时间。",
           )}
-          className="mt-3 min-h-[104px] w-full resize-none rounded-[16px] border border-slate-200/90 bg-white/96 px-4 py-3 text-[13px] leading-6 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] outline-none transition placeholder:text-slate-400 focus:border-sky-200 focus:ring-2 focus:ring-sky-100/60"
+          className="af-input mt-3 min-h-[104px] resize-none px-4 py-3 text-[13px] leading-6"
         />
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -999,8 +999,8 @@ export function InboxForm() {
             disabled={researching}
             className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
               researchMode === "fast"
-                ? "border-sky-200 bg-[linear-gradient(180deg,#3c91ff,#1f73f0)] text-white shadow-[0_12px_20px_-16px_rgba(31,115,240,0.72)]"
-                : "border-slate-200 bg-white/94 text-slate-700 shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
+                ? "border-[var(--af-accent)] bg-[var(--af-accent)] text-[var(--af-text-inverse)] shadow-[var(--af-shadow-soft)]"
+                : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-secondary)] shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
             }`}
           >
             {t("inbox.mode.fast", "极速调研")}
@@ -1011,8 +1011,8 @@ export function InboxForm() {
             disabled={researching}
             className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
               researchMode === "deep"
-                ? "border-sky-200 bg-[linear-gradient(180deg,#3c91ff,#1f73f0)] text-white shadow-[0_12px_20px_-16px_rgba(31,115,240,0.72)]"
-                : "border-slate-200 bg-white/94 text-slate-700 shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
+                ? "border-[var(--af-accent)] bg-[var(--af-accent)] text-[var(--af-text-inverse)] shadow-[var(--af-shadow-soft)]"
+                : "border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] text-[var(--af-text-secondary)] shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
             }`}
           >
             {t("inbox.mode.deep", "深度调研")}
@@ -1020,13 +1020,13 @@ export function InboxForm() {
         </div>
 
         <div className="mt-3 space-y-1">
-          <p className="text-[10px] leading-[1.7] text-slate-500">
+          <p className="text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">
             {t(
               "inbox.keywordHelper",
               "建议输入“行业 + 场景 + 项目阶段/预算/中标/招标”等组合关键词，结果会更聚焦可推进的业务线索。",
             )}
           </p>
-          <p className="text-[10px] leading-[1.7] text-slate-400">{researchModeHint}</p>
+          <p className="text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">{researchModeHint}</p>
         </div>
 
         <div className="mt-3">
@@ -1036,7 +1036,7 @@ export function InboxForm() {
               void submitResearch();
             }}
             disabled={researching}
-            className="inline-flex min-w-[98px] items-center justify-center rounded-full bg-[linear-gradient(180deg,#3c91ff,#1f73f0)] px-5 py-2 text-[12px] font-semibold text-white shadow-[0_14px_24px_-18px_rgba(31,115,240,0.72)] transition hover:brightness-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+            className="af-btn af-btn-primary min-w-[98px] px-5 py-2 text-[12px] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {researching ? t("inbox.generatingResearch", "生成中...") : t("inbox.submitKeywordResearch", "开始研究")}
           </button>
@@ -1124,21 +1124,21 @@ export function InboxForm() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="af-kicker">补充与导出</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                <h3 className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">
                   补充信息并更新研报
                 </h3>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                   在当前研报基础上补充新信息、新证据和新需求，可继续生成新版研报，或直接导出可行性研究报告与项目建议书。
                 </p>
               </div>
-              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-500">
+              <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs text-[var(--af-text-tertiary)]">
                 当前研报 · {researchReport.report_title}
               </span>
             </div>
             <div className="mt-4 grid gap-4">
-              <div className="rounded-[24px] border border-white/80 bg-white/68 p-4">
-                <p className="text-sm font-semibold text-slate-900">补充后重新整理</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
+              <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                <p className="text-sm font-semibold text-[var(--af-text-primary)]">补充后重新整理</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
                   把补充信息加入当前研报后，重新整理公开信息并输出新版研报。
                 </p>
                 {followupDiagnostics?.enabled ? (
@@ -1146,18 +1146,18 @@ export function InboxForm() {
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
                       补充信息状态
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                    <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                       {followupDiagnostics.summary || "补充信息已纳入本次更新。"}
                     </p>
                     {followupDiagnostics.planning_focus ? (
-                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                      <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                         关注重点：{followupDiagnostics.planning_focus}
                       </p>
                     ) : null}
                     {followupDiagnostics.input_sections?.length ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {followupDiagnostics.input_sections.map((label) => (
-                          <span key={`followup-input-${label}`} className="rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                          <span key={`followup-input-${label}`} className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
                             {label}
                           </span>
                         ))}
@@ -1168,7 +1168,7 @@ export function InboxForm() {
                         {followupFilters.map((label) => (
                           <span
                             key={`followup-filter-${label}`}
-                            className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] text-amber-700"
+                            className="rounded-full border border-amber-200 bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-amber-700"
                           >
                             {label}
                           </span>
@@ -1177,10 +1177,10 @@ export function InboxForm() {
                     ) : null}
                     {followupDiagnostics.decomposition_queries?.length ? (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">优先补证子查询</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">优先补证子查询</p>
                         <div className="space-y-2">
                           {followupDiagnostics.decomposition_queries.slice(0, 4).map((query) => (
-                            <div key={`followup-query-${query}`} className="rounded-2xl border border-white/90 bg-white/75 px-3 py-2 text-xs leading-5 text-slate-600">
+                            <div key={`followup-query-${query}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 text-xs leading-5 text-[var(--af-text-secondary)]">
                               {query}
                             </div>
                           ))}
@@ -1190,7 +1190,7 @@ export function InboxForm() {
                     {(followupDiagnostics.title_resolution || followupDiagnostics.summary_resolution) &&
                     followupDiagnostics.enabled ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-white/90 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                        <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
                           标题：
                           {followupDiagnostics.title_resolution === "corrected"
                             ? "已按追问纠偏"
@@ -1198,7 +1198,7 @@ export function InboxForm() {
                               ? "沿用基线"
                               : "基线生成"}
                         </span>
-                        <span className="rounded-full border border-white/90 bg-white px-2.5 py-1 text-[11px] text-slate-600">
+                        <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
                           摘要：
                           {followupDiagnostics.summary_resolution === "corrected"
                             ? "已按追问纠偏"
@@ -1210,19 +1210,19 @@ export function InboxForm() {
                     ) : null}
                     {followupDiagnostics.impacted_sections?.length ? (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">重点影响章节</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">重点影响章节</p>
                         <div className="grid gap-2">
                           {followupDiagnostics.impacted_sections.slice(0, 4).map((section) => (
-                            <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-white/90 bg-white/75 px-3 py-3 text-xs leading-5 text-slate-600">
+                            <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3 text-xs leading-5 text-[var(--af-text-secondary)]">
                               <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="font-semibold text-slate-900">{section.section_title}</span>
+                                <span className="font-semibold text-[var(--af-text-primary)]">{section.section_title}</span>
                                 <span
                                   className={`rounded-full px-2.5 py-1 ${
                                     section.impact_label === "high"
                                       ? "bg-emerald-100 text-emerald-700"
                                       : section.impact_label === "medium"
                                         ? "bg-amber-100 text-amber-700"
-                                        : "bg-slate-100 text-slate-600"
+                                        : "bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]"
                                   }`}
                                 >
                                   影响度 {section.impact_score}
@@ -1238,7 +1238,7 @@ export function InboxForm() {
                                   ))}
                                 </div>
                               ) : null}
-                              <p className="mt-2 text-[11px] text-slate-500">{section.next_action}</p>
+                              <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">{section.next_action}</p>
                             </div>
                           ))}
                         </div>
@@ -1246,7 +1246,7 @@ export function InboxForm() {
                     ) : null}
                   </div>
                 ) : null}
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   追问重点
                 </label>
                 <textarea
@@ -1256,7 +1256,7 @@ export function InboxForm() {
                   placeholder="例如：补甲方组织入口、预算来源、二期节奏和竞品中标情况"
                   className="af-input mt-2 resize-none leading-6"
                 />
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   新信息 / 新背景
                 </label>
                 <textarea
@@ -1266,7 +1266,7 @@ export function InboxForm() {
                   placeholder="补充你人工掌握的新背景、新约束、新判断，作为待交叉验证输入。"
                   className="af-input mt-2 resize-none leading-6"
                 />
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   新证据 / 待核验线索
                 </label>
                 <textarea
@@ -1276,7 +1276,7 @@ export function InboxForm() {
                   placeholder="可粘贴新来源摘要、口径说明、会议纪要片段或待核验线索。"
                   className="af-input mt-2 resize-none leading-6"
                 />
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   新需求 / 输出要求
                 </label>
                 <textarea
@@ -1287,7 +1287,7 @@ export function InboxForm() {
                   className="af-input mt-2 resize-none leading-6"
                 />
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[var(--af-text-tertiary)]">
                     当前会带入上一版标题、执行摘要，以及上面三块补充信息后重新生成。
                   </p>
                   <button
@@ -1315,14 +1315,14 @@ export function InboxForm() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-white/80 bg-white/68 p-4">
-                <p className="text-sm font-semibold text-slate-900">正式文档与方案交付输出</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
+              <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                <p className="text-sm font-semibold text-[var(--af-text-primary)]">正式文档与方案交付输出</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
                   先确认具体场景、目标客户和垂直场景，再导出近三年情报包、方案/PPT 大纲、可研和项目建议书。
                 </p>
                 <div className="mt-4 grid gap-3">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       解决方案场景
                     </label>
                     <input
@@ -1334,7 +1334,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       目标客户
                     </label>
                     <input
@@ -1346,7 +1346,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       更垂直的场景
                     </label>
                     <input
@@ -1358,7 +1358,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       项目名称
                     </label>
                     <input
@@ -1370,7 +1370,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       建设单位 / 业主
                     </label>
                     <input
@@ -1382,7 +1382,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       区域 / 范围
                     </label>
                     <input
@@ -1394,7 +1394,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       实施窗口
                     </label>
                     <input
@@ -1406,7 +1406,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       投资估算 / 预算口径
                     </label>
                     <input
@@ -1450,7 +1450,7 @@ export function InboxForm() {
                     {exportingSolutionArtifact === "solution_delivery_markdown" ? "导出中..." : "导出方案交付包 / PPT 大纲 Markdown"}
                   </button>
                 </div>
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   建设依据 / 报告引用口径
                 </label>
                 <textarea
@@ -1460,7 +1460,7 @@ export function InboxForm() {
                   placeholder="补充立项依据、政策依据、会议纪要或内部口径。"
                   className="af-input mt-2 resize-none leading-6"
                 />
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   建设范围 / 建议方案边界
                 </label>
                 <textarea
@@ -1472,7 +1472,7 @@ export function InboxForm() {
                 />
                 <div className="mt-4 grid gap-3">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       预期效益
                     </label>
                     <textarea
@@ -1484,7 +1484,7 @@ export function InboxForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       交叉验证说明
                     </label>
                     <textarea
@@ -1545,20 +1545,20 @@ export function InboxForm() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="af-kicker">{t("inbox.researchSources", "来源样本")}</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+                <h3 className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">
                   {t("inbox.researchSourceTitle", "参考来源与来源检查")}
                 </h3>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                   {t("inbox.researchSourceHint", "仅保留近 7 年内可验证来源；优先显示官方、招采与高信号聚合源。")}
                 </p>
               </div>
-              <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-500">
+              <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs text-[var(--af-text-tertiary)]">
                 {t("inbox.researchSourceCount", "来源数")} · {researchReport.source_count}
               </span>
             </div>
             {researchReport.source_diagnostics ? (
-              <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white/70 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                   {t("inbox.researchDiagnostics", "来源检查")}
                 </p>
                 {isGuardedBacklog(researchReport.source_diagnostics) ? (
@@ -1574,20 +1574,20 @@ export function InboxForm() {
                   </div>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     {t("inbox.researchDiagnosticsEnabled", "启用源")} {enabledSourceLabels.length}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     {t("inbox.researchDiagnosticsAdapters", "命中公开源")} {researchReport.source_diagnostics.adapter_hit_count}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     {t("inbox.researchDiagnosticsSearch", "命中搜索源")} {researchReport.source_diagnostics.search_hit_count}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     近 {researchReport.source_diagnostics.recency_window_years} 年窗口
                   </span>
                   {researchReport.source_diagnostics.filtered_old_source_count ? (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                       剔除过旧来源 {researchReport.source_diagnostics.filtered_old_source_count}
                     </span>
                   ) : null}
@@ -1597,21 +1597,21 @@ export function InboxForm() {
                     </span>
                   ) : null}
                   {researchReport.source_diagnostics.strict_topic_source_count ? (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                       严格主题保留 {researchReport.source_diagnostics.strict_topic_source_count}
                     </span>
                   ) : null}
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     检索质量 {qualityLabel(researchReport.source_diagnostics.retrieval_quality)}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     严格命中 {Math.round(researchReport.source_diagnostics.strict_match_ratio * 100)}%
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                     官方源 {Math.round(researchReport.source_diagnostics.official_source_ratio * 100)}%
                   </span>
                   {researchReport.source_diagnostics.unique_domain_count ? (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                       覆盖域名 {researchReport.source_diagnostics.unique_domain_count}
                     </span>
                   ) : null}
@@ -1666,7 +1666,7 @@ export function InboxForm() {
                 {enabledSourceLabels.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {enabledSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
+                      <span key={label} className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-xs text-[var(--af-text-secondary)]">
                         {label}
                       </span>
                     ))}
@@ -1721,10 +1721,10 @@ export function InboxForm() {
               ]
                 .filter((group) => group.items.length)
                 .map((group) => (
-                  <div key={group.key} className="rounded-2xl border border-white/80 bg-white/60 p-4">
+                  <div key={group.key} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{group.title}</p>
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{group.title}</p>
+                      <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[11px] text-[var(--af-text-tertiary)]">
                         {group.items.length}
                       </span>
                     </div>
@@ -1737,24 +1737,24 @@ export function InboxForm() {
                             href={source.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="block rounded-2xl border border-slate-200/80 bg-slate-50/70 px-3 py-3 transition hover:border-slate-300 hover:bg-white"
+                            className="block rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-3 transition hover:border-[var(--af-border-strong)] hover:bg-[var(--af-surface-hover)]"
                           >
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--af-text-tertiary)]">
+                              <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2 py-0.5">
                                 {sourceTierLabel(tier)}
                               </span>
                               {source.source_label ? (
-                                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                                <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2 py-0.5">
                                   {source.source_label}
                                 </span>
                               ) : null}
-                              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                              <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2 py-0.5">
                                 {source.domain || "web"}
                               </span>
                               <span>{source.search_query}</span>
                             </div>
-                            <p className="mt-2 text-sm font-semibold leading-6 text-slate-900">{source.title}</p>
-                            <p className="mt-1 text-sm leading-6 text-slate-600">{source.snippet}</p>
+                            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--af-text-primary)]">{source.title}</p>
+                            <p className="mt-1 text-sm leading-6 text-[var(--af-text-secondary)]">{source.snippet}</p>
                           </a>
                         );
                       })}
@@ -1762,7 +1762,7 @@ export function InboxForm() {
                   </div>
                 ))}
               {!researchReport.sources.length ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4 text-sm text-slate-500">
+                <div className="rounded-2xl border border-dashed border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4 text-sm text-[var(--af-text-tertiary)]">
                   {t("inbox.researchSourceEmpty", "当前未获取到可展示来源，显示的是本地演示研报结构。")}
                 </div>
               ) : null}

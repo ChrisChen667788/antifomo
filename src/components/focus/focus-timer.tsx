@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { ApiSession, CollectorDaemonStatus, WechatAgentBatchStatus } from "@/lib/api";
+import type { ApiSession, CollectorDaemonStatus, WechatAgentBatchStatus } from "@/lib/api/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   finishSession,

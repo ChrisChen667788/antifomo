@@ -1,6 +1,7 @@
 from app.models.collector_entities import (
     CollectorFeedEntry,
     CollectorFeedSource,
+    CollectorImportBatch,
     UploadedDocument,
 )
 from app.models.entities import (
@@ -49,6 +50,7 @@ __all__ = [
     "CollectorIngestAttempt",
     "CollectorFeedEntry",
     "CollectorFeedSource",
+    "CollectorImportBatch",
     "Feedback",
     "FocusSession",
     "Item",

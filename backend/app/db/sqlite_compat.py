@@ -169,6 +169,36 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
                 "CREATE INDEX IF NOT EXISTS idx_research_retrieval_checkpoint_user_updated ON research_retrieval_index_checkpoints (user_id, updated_at)",
             ]
         )
+    if not _table_exists(engine, "collector_import_batches"):
+        statements.extend(
+            [
+                """
+                CREATE TABLE collector_import_batches (
+                    id CHAR(32) NOT NULL PRIMARY KEY,
+                    user_id CHAR(32) NOT NULL,
+                    import_type VARCHAR(40) NOT NULL DEFAULT 'wechat_favorites',
+                    source_label VARCHAR(120) NOT NULL DEFAULT '微信收藏',
+                    status VARCHAR(30) NOT NULL DEFAULT 'queued',
+                    output_language VARCHAR(10) NOT NULL DEFAULT 'zh-CN',
+                    processing_deferred BOOLEAN NOT NULL DEFAULT 1,
+                    total_candidates INTEGER NOT NULL DEFAULT 0,
+                    created_count INTEGER NOT NULL DEFAULT 0,
+                    deduplicated_count INTEGER NOT NULL DEFAULT 0,
+                    invalid_count INTEGER NOT NULL DEFAULT 0,
+                    skipped_count INTEGER NOT NULL DEFAULT 0,
+                    item_ids JSON NOT NULL DEFAULT '[]',
+                    created_item_ids JSON NOT NULL DEFAULT '[]',
+                    result_payload JSON NOT NULL DEFAULT '[]',
+                    source_payload JSON NOT NULL DEFAULT '{}',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_collector_import_batches_user_created ON collector_import_batches (user_id, created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_collector_import_batches_type_status ON collector_import_batches (import_type, status)",
+            ]
+        )
     if not _table_exists(engine, "research_watchlist_runs"):
         statements.extend(
             [

@@ -3,10 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.schemas.research import ResearchReportResponse, ResearchSourceOut
-from app.services.research_solution_intelligence_service import (
-    build_market_intelligence_pack,
-    build_solution_delivery_pack,
-)
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 
 
 def _report() -> ResearchReportResponse:
@@ -120,6 +118,23 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert any(section.title == "模型、数据与集成层" for section in pack.architecture_readiness.blueprint_sections)
     assert any("接口" in item or "API" in item for item in pack.architecture_readiness.non_functional_requirements)
     assert pack.architecture_readiness.validation_actions
+    assert pack.architect_workbench.customer_scenarios
+    assert any("信息化" in stakeholder.role for stakeholder in pack.architect_workbench.stakeholders)
+    assert any("系统集成" in criterion.criterion for criterion in pack.architect_workbench.decision_criteria)
+    assert pack.architect_workbench.capability_architecture_matrix
+    assert any(
+        "接口" in " ".join(mapping.integration_surfaces)
+        or "API" in " ".join(mapping.integration_surfaces)
+        for mapping in pack.architect_workbench.capability_architecture_matrix
+    )
+    assert pack.architect_workbench.architecture_decision_records
+    assert any("API-first" in record.selected_direction for record in pack.architect_workbench.architecture_decision_records)
+    assert pack.architect_workbench.integration_dependencies
+    assert any(
+        dependency.operational_owner == "安全合规负责人"
+        for dependency in pack.architect_workbench.integration_dependencies
+    )
+    assert pack.architect_workbench.next_meeting_agenda
     assert pack.project_proposal_quality_profile.self_review.triggered is True
     assert (
         pack.project_proposal_quality_profile.self_review.after_score
@@ -129,3 +144,8 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert "交付质量自审" in pack.export_markdown
     assert "解决方案架构就绪度" in pack.export_markdown
     assert "架构蓝图" in pack.export_markdown
+    assert "解决方案架构师工作台" in pack.export_markdown
+    assert "干系人问题地图" in pack.export_markdown
+    assert "能力到架构矩阵" in pack.export_markdown
+    assert "ADR 架构决策记录" in pack.export_markdown
+    assert "集成依赖诊断" in pack.export_markdown

@@ -17,10 +17,19 @@ import xml.etree.ElementTree as ET
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from app.models.collector_entities import CollectorFeedEntry, CollectorFeedSource, UploadedDocument
+from app.models.collector_entities import (
+    CollectorFeedEntry,
+    CollectorFeedSource,
+    UploadedDocument,
+)
 from app.models.entities import Item
 from app.services.collector_diagnostics import create_ingest_attempt, update_item_ingest_state
 from app.services.content_extractor import extract_domain, normalize_text
+from app.services.collector_imports.wechat_favorites import (
+    WechatFavoriteCandidate,
+    import_wechat_favorites as _import_wechat_favorites,
+    parse_wechat_favorites_export,
+)
 from app.services.item_processing_runtime import process_item_in_session
 from app.services.language import normalize_output_language
 
@@ -386,6 +395,7 @@ def _persist_item(
     content_note: str,
     resolver: str,
     body_source: str,
+    process_immediately: bool = True,
 ) -> dict[str, Any]:
     normalized_url = _normalize_url(source_url)
     if normalized_url:
@@ -428,7 +438,8 @@ def _persist_item(
     )
     db.add(item)
     db.flush()
-    process_item_in_session(db, item, output_language=item.output_language, auto_archive=True)
+    if process_immediately:
+        process_item_in_session(db, item, output_language=item.output_language, auto_archive=True)
     update_item_ingest_state(
         item,
         ingest_route=ingest_route,
@@ -441,13 +452,37 @@ def _persist_item(
         source_url=normalized_url,
         route_type=ingest_route,
         resolver=resolver,
-        attempt_status="ready" if item.status == "ready" else "failed",
+        attempt_status="ready" if item.status == "ready" else "queued" if not process_immediately else "failed",
         body_source=body_source,
         error_detail=item.processing_error,
     )
     db.commit()
     db.refresh(item)
     return {"item": item, "attempt": attempt, "deduplicated": False}
+
+
+def import_wechat_favorites(
+    db: Session,
+    *,
+    user_id: UUID,
+    export_text: str | None = None,
+    urls: list[str] | None = None,
+    output_language: str = "zh-CN",
+    limit: int = 200,
+    include_text_blocks: bool = True,
+    process_immediately: bool = False,
+) -> dict[str, Any]:
+    return _import_wechat_favorites(
+        db,
+        user_id=user_id,
+        persist_item=_persist_item,
+        export_text=export_text,
+        urls=urls,
+        output_language=output_language,
+        limit=limit,
+        include_text_blocks=include_text_blocks,
+        process_immediately=process_immediately,
+    )
 
 
 def sync_rss_feeds(

@@ -1,4 +1,4 @@
-import type { ApiResearchMarkdownArchive, ApiResearchMarkdownArchiveDetail } from "@/lib/api";
+import type { ApiResearchMarkdownArchive, ApiResearchMarkdownArchiveDetail } from "@/lib/api/types";
 import { sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import {
   buildArchiveDeliveryDigest,

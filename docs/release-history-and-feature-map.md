@@ -1,8 +1,10 @@
 # Release History and Feature Map
 
-Current version: `0.8.0+20260518`
+Current version: `1.1.0+20260602`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
+
+For the upcoming modular architecture refactor and day/night design-system refresh, use `docs/current-version-and-refactor-roadmap-2026-05-20.md` as the working baseline.
 
 ## Major Version History
 
@@ -19,12 +21,17 @@ This file is the compact product map for release notes, GitHub updates, and futu
 | `0.6.11` | Release-grade GitHub documentation and screenshot coverage | Expanded automated screenshot capture to all primary product surfaces, added screenshot quality gates and a manifest, refreshed README links, and documented historical version progress plus the current complete capability map. |
 | `0.7.0` | Focus collection reliability and source-health operations | Shifted Focus mode to a headless-source-first collector path, kept the WeChat PC agent as supplementary URL harvesting, and added run-level plus source-level health diagnostics so failed公众号 sources are visible by name instead of hidden inside aggregate coverage. |
 | `0.8.0` | Solution architecture readiness for consultants | Added architecture readiness scoring, architecture blueprint sections, non-functional requirements, integration risks, assumptions, stakeholder questions, and validation actions to solution delivery packs and research report UI. |
+| `0.8.1` | WeChat Favorites import and review queue | Added one-click WeChat Favorites preview/import for exported text, HTML, clipboard, shortcut files, raw/escaped/encoded公众号 links, persistent import batches, queue recovery, failed-item retry, and homepage swipe triage. |
+| `0.9.0` | Solution architect workbench | Added customer scenarios, stakeholder question maps, decision criteria, validation actions, next-meeting agendas, markdown export, and research-report-card surfacing inside solution delivery packs. |
+| `1.0.0` | Local-first WeChat-to-solution baseline | Connected WeChat-heavy intake, homepage triage, evidence-backed research, solution architecture readiness, architect workbench output, migration coverage, release metadata, and validation into one complete local-first baseline. |
+| `1.1.0` | Modular architecture and semantic theme baseline | Refactored research generation, collector operations, delivery intelligence, feature clients, controller hooks, report panels, knowledge detail, and session summary surfaces into smaller modules while moving major UI surfaces to semantic day/night theme tokens. |
 
 ## Current Capability Inventory
 
 ### 1. Intake and Cleaning
 
-- URL, text, RSS, newsletter, file, YouTube transcript, browser-extension, WeChat URL-first, headless source collector, collector daemon, and WeChat PC agent supplementary intake paths.
+- URL, text, RSS, newsletter, file, YouTube transcript, browser-extension, WeChat Favorites import, WeChat URL-first, headless source collector, collector daemon, and WeChat PC agent supplementary intake paths.
+- WeChat Favorites import supports exported HTML/TXT, clipboard text, shortcut files, raw/escaped/encoded `mp.weixin.qq.com` links, preview before import, persistent batches, failed-item retry, and homepage queue recovery.
 - Cleaning rules for OCR fragments, markdown/source dumps, weak vendor promotion, forum/award noise, and low-signal placeholder content.
 - Entity-quality controls that prevent non-entity technical phrases and field labels from leaking into account, competitor, partner, and ranked-entity outputs.
 - Collector coverage diagnostics now expose handled count, coverage rate, body success rate, per-source health state, poor/watch source counts, and operator recommendations.
@@ -57,6 +64,7 @@ This file is the compact product map for release notes, GitHub updates, and futu
 - Feasibility study, project proposal, client-facing PPT outline, client brief, bidding prep memo, and execution-material chains.
 - Solution architecture readiness for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility.
 - Architecture blueprint export covering business/role, application capability, model/data/integration, and security/deployment/operations layers.
+- Solution architect workbench output for customer scenarios, stakeholder concerns, decision questions, required materials, decision criteria, capability-to-architecture mappings, ADR-style decisions, integration dependency diagnostics, validation actions, and next-meeting agendas.
 - China-tech delivery self-review and self-repair across demand, architecture, security/compliance, procurement/implementation, budget/performance, risks, acceptance, and evidence grounding.
 
 ### 6. Execution and Operations

@@ -1,4 +1,4 @@
-import type { ApiResearchSourceDiagnostics } from "@/lib/api";
+import type { ApiResearchSourceDiagnostics } from "@/lib/api/types";
 
 const GUARDED_REWRITE_REASON_LABELS: Record<string, string> = {
   single_source_nonready: "来源过少，当前报告还没达到可推进门槛",

@@ -2,10 +2,25 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ApiResearchReport } from "@/lib/api";
-import { dedupeByKey, dedupeTextList } from "@/lib/display-list";
-import { getGuardedRewriteReasonLabels, isGuardedBacklog } from "@/lib/research-diagnostics";
-import { ExternalLinkActions, normalizeExternalUrl } from "@/components/ui/external-link-actions";
+import type { ApiResearchReport } from "@/lib/api/types";
+import { ResearchReportAppendixSection } from "@/components/inbox/research-report-appendix-section";
+import { ResearchReportDeliverySection } from "@/components/inbox/research-report-delivery-section";
+import { ResearchReportInsightsSection } from "@/components/inbox/research-report-insights-section";
+import { ResearchReportReadinessSection } from "@/components/inbox/research-report-readiness-section";
+import { ResearchReportReviewQueueSection } from "@/components/inbox/research-report-review-queue-section";
+import { ResearchReportSourceListSection } from "@/components/inbox/research-report-source-list-section";
+import { ResearchReportStrategicSection } from "@/components/inbox/research-report-strategic-section";
+import { ResearchReportSourcesDiagnosticsSection } from "@/components/inbox/research-report-sources-diagnostics-section";
+import {
+  buildResearchReportCardViewModel,
+  classifySourceTier,
+  confidenceToneMeta,
+  qualityLabel,
+  qualityTone,
+  sectionStatusMeta,
+  sourceTierLabel,
+  valueBucket,
+} from "@/components/inbox/research-report-card-view-model";
 
 type ResearchReportCardProps = {
   report: ApiResearchReport;
@@ -38,6 +53,7 @@ type ResearchReportCardProps = {
   actionCardSlot?: ReactNode;
 };
 
+
 export function ResearchReportCard({
   report,
   titleLabel,
@@ -68,466 +84,66 @@ export function ResearchReportCard({
   hideSources = false,
   actionCardSlot,
 }: ResearchReportCardProps) {
-  const pendingRankedEntities = (role: "target" | "competitor" | "partner") => {
-    const sourceMap = {
-      target: report.pending_target_candidates || [],
-      competitor: report.pending_competitor_candidates || [],
-      partner: report.pending_partner_candidates || [],
-    };
-    return dedupeByKey(sourceMap[role], (item) => String(item?.name || "").trim(), 3);
-  };
-
-  const classifySourceTier = (source: ApiResearchReport["sources"][number]) => {
-    const domain = String(source.domain || "").toLowerCase();
-    const sourceType = String(source.source_type || "").toLowerCase();
-    const sourceTier = String(source.source_tier || "").toLowerCase();
-    if (sourceTier === "official" || sourceTier === "media" || sourceTier === "aggregate") {
-      return sourceTier;
-    }
-    if (
-      sourceType === "policy" ||
-      sourceType === "procurement" ||
-      sourceType === "filing" ||
-      domain.endsWith(".gov.cn") ||
-      domain.includes("gov.cn") ||
-      domain.includes("ggzy.gov.cn") ||
-      domain.includes("cninfo.com.cn") ||
-      domain.includes("sec.gov") ||
-      domain.includes("hkexnews.hk")
-    ) {
-      return "official";
-    }
-    if (
-      sourceType === "tender_feed" ||
-      domain.includes("jianyu") ||
-      domain.includes("cecbid") ||
-      domain.includes("cebpubservice") ||
-      domain.includes("china-cpp") ||
-      domain.includes("chinabidding")
-    ) {
-      return "aggregate";
-    }
-    return "media";
-  };
-  const qualityTone = (value: string) => {
-    if (value === "high") return "bg-emerald-100 text-emerald-700";
-    if (value === "medium") return "bg-amber-100 text-amber-700";
-    return "bg-slate-100 text-slate-500";
-  };
-  const qualityLabel = (value: string) => {
-    if (value === "high") return "高";
-    if (value === "medium") return "中";
-    return "低";
-  };
-  const evidenceModeMeta = (value: string) => {
-    if (value === "strong") {
-      return {
-        label: "强证据",
-        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-        note: "当前结果有较稳定的主题命中、官方源和多域名交叉支撑。",
-      };
-    }
-    if (value === "provisional") {
-      return {
-        label: "可用初版",
-        className: "border-amber-200/90 bg-amber-50 text-amber-800",
-        note: "当前已有可用线索，但仍建议继续补官方源或专项交叉验证。",
-      };
-    }
-    return {
-      label: "待核实",
-      className: "border-slate-200/90 bg-slate-100 text-slate-700",
-      note: "当前线索有价值，但还需要更多公开来源确认。",
-    };
-  };
-  const readinessMeta = (value: string) => {
-    if (value === "ready") {
-      return {
-        label: "可直接推进",
-        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-        note: "当前已经满足账户、预算窗口和证据门槛，可直接进入销售/咨询推进。",
-      };
-    }
-    if (value === "degraded") {
-      return {
-        label: "候选推进",
-        className: "border-amber-200/90 bg-amber-50 text-amber-800",
-        note: "当前可用于初轮判断和内部讨论，但仍建议先复核再做强结论。",
-      };
-    }
-    return {
-      label: "待核验",
-      className: "border-slate-200/90 bg-slate-100 text-slate-700",
-      note: "当前更适合作为候选名单与待核验清单，不宜直接当作最终商业判断。",
-    };
-  };
-  const confidenceToneMeta = (value?: string) => {
-    if (value === "high") {
-      return {
-        badge: "bg-emerald-100 text-emerald-700",
-        panel: "border-emerald-200/90 bg-[linear-gradient(180deg,rgba(240,253,244,0.98),rgba(220,252,231,0.78))]",
-        item: "bg-emerald-50/78",
-        excerpt: "bg-emerald-50/90 text-emerald-950",
-      };
-    }
-    if (value === "conflict") {
-      return {
-        badge: "bg-rose-100 text-rose-700",
-        panel: "border-rose-200/90 bg-[linear-gradient(180deg,rgba(255,241,242,0.98),rgba(255,228,230,0.78))]",
-        item: "bg-rose-50/78",
-        excerpt: "bg-rose-50/90 text-rose-950",
-      };
-    }
-    return {
-      badge: "bg-amber-100 text-amber-700",
-      panel: "border-amber-200/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(254,243,199,0.72))]",
-      item: "bg-amber-50/76",
-      excerpt: "bg-amber-50/90 text-amber-950",
-    };
-  };
-  const sectionStatusMeta = (value?: string) => {
-    if (value === "ready") {
-      return {
-        label: "章节已通过",
-        className: "bg-emerald-100 text-emerald-700",
-      };
-    }
-    if (value === "degraded") {
-      return {
-        label: "章节待收紧",
-        className: "bg-amber-100 text-amber-700",
-      };
-    }
-    return {
-      label: "章节待核验",
-      className: "bg-rose-100 text-rose-700",
-    };
-  };
-  const sourceTierLabel = (value: string) => {
-    if (value === "official") return "官方源";
-    if (value === "aggregate") return "聚合源";
-    return "媒体源";
-  };
-  const valueBucket = (score: number) => {
-    if (score >= 75) return { label: "高价值", className: "bg-emerald-100 text-emerald-700" };
-    if (score >= 55) return { label: "普通价值", className: "bg-amber-100 text-amber-700" };
-    return { label: "低价值", className: "bg-slate-100 text-slate-500" };
-  };
-  const qualityProfileMeta = (value?: string) => {
-    if (value === "high_value") {
-      return {
-        label: "高情报价值",
-        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-      };
-    }
-    if (value === "usable") {
-      return {
-        label: "可用待补强",
-        className: "border-amber-200/90 bg-amber-50 text-amber-800",
-      };
-    }
-    return {
-      label: "质量待核验",
-      className: "border-slate-200/90 bg-slate-100 text-slate-700",
-    };
-  };
-  const deliveryQualityMeta = (value?: string) => {
-    if (value === "pass") {
-      return {
-        label: "交付自审通过",
-        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-      };
-    }
-    if (value === "watch") {
-      return {
-        label: "交付待补强",
-        className: "border-amber-200/90 bg-amber-50 text-amber-800",
-      };
-    }
-    return {
-      label: "交付待重审",
-      className: "border-rose-200/90 bg-rose-50 text-rose-800",
-    };
-  };
-  const architectureReadinessMeta = (value?: string) => {
-    if (value === "ready") {
-      return {
-        label: "架构可进入方案评审",
-        className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-      };
-    }
-    if (value === "watch") {
-      return {
-        label: "架构需补齐边界",
-        className: "border-amber-200/90 bg-amber-50 text-amber-800",
-      };
-    }
-    return {
-      label: "架构暂不宜外发",
-      className: "border-rose-200/90 bg-rose-50 text-rose-800",
-    };
-  };
-  const followupResolutionMeta = (value?: string) => {
-    if (value === "corrected") {
-      return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
-    }
-    if (value === "reused") {
-      return { label: "沿用基线", className: "border-sky-200/90 bg-sky-50 text-sky-800" };
-    }
-    return { label: "基线生成", className: "border-slate-200/90 bg-slate-100 text-slate-700" };
-  };
-  const factorBucket = (score: number) => {
-    if (score >= 14) return { label: "强支撑", className: "bg-emerald-100 text-emerald-700" };
-    if (score >= 6) return { label: "中支撑", className: "bg-amber-100 text-amber-700" };
-    if (score > 0) return { label: "弱支撑", className: "bg-sky-100 text-sky-700" };
-    if (score < 0) return { label: "风险提示", className: "bg-rose-100 text-rose-700" };
-    return { label: "待补依据", className: "bg-slate-100 text-slate-500" };
-  };
-  const hasStrategicPanels =
-    report.target_accounts.length ||
-    report.target_departments.length ||
-    report.public_contact_channels.length ||
-    report.account_team_signals.length ||
-    report.budget_signals.length ||
-    report.project_distribution.length ||
-    report.strategic_directions.length ||
-    report.tender_timeline.length ||
-    report.leadership_focus.length ||
-    report.ecosystem_partners.length ||
-    report.competitor_profiles.length ||
-    report.benchmark_cases.length ||
-    report.flagship_products.length ||
-    report.key_people.length ||
-    report.five_year_outlook.length ||
-    report.client_peer_moves.length ||
-    report.winner_peer_moves.length ||
-    report.competition_analysis.length;
-
-  const highlightPanels = [
-    { title: "重点甲方", items: report.target_accounts, tone: "sky" },
-    { title: "高概率决策部门", items: report.target_departments, tone: "slate" },
-    { title: "公开业务联系方式", items: report.public_contact_channels, tone: "slate" },
-    { title: "目标区域活跃团队", items: report.account_team_signals, tone: "sky" },
-    { title: "预算与投资信号", items: report.budget_signals, tone: "emerald" },
-    { title: "项目分布与期次", items: report.project_distribution, tone: "emerald" },
-    { title: "战略方向", items: report.strategic_directions, tone: "violet" },
-    { title: "招标时间预测", items: report.tender_timeline, tone: "violet" },
-    { title: "领导关注点", items: report.leadership_focus, tone: "slate" },
-    { title: "活跃生态伙伴", items: report.ecosystem_partners, tone: "sky" },
-    { title: "竞品公司概况", items: report.competitor_profiles, tone: "amber" },
-    { title: "标杆案例", items: report.benchmark_cases, tone: "emerald" },
-    { title: "明星产品/方案", items: report.flagship_products, tone: "violet" },
-    { title: "关键人物", items: report.key_people, tone: "slate" },
-  ].filter((panel) => panel.items.length);
-
-  const toneClasses: Record<string, string> = {
-    sky: "border-sky-100/90 bg-sky-50/80 text-sky-950 [&_.af-panel-kicker]:text-sky-500 [&_.af-bullet]:bg-sky-300",
-    amber:
-      "border-amber-100/90 bg-amber-50/80 text-amber-950 [&_.af-panel-kicker]:text-amber-600 [&_.af-bullet]:bg-amber-300",
-    emerald:
-      "border-emerald-100/90 bg-emerald-50/80 text-emerald-950 [&_.af-panel-kicker]:text-emerald-600 [&_.af-bullet]:bg-emerald-300",
-    violet:
-      "border-violet-100/90 bg-violet-50/80 text-violet-950 [&_.af-panel-kicker]:text-violet-600 [&_.af-bullet]:bg-violet-300",
-    slate:
-      "border-white/80 bg-[linear-gradient(180deg,rgba(248,251,255,0.9),rgba(241,245,249,0.68))] text-slate-700 [&_.af-panel-kicker]:text-slate-400 [&_.af-bullet]:bg-slate-300",
-  };
-  const groupedSources = {
-    official: report.sources.filter((source) => classifySourceTier(source) === "official"),
-    media: report.sources.filter((source) => classifySourceTier(source) === "media"),
-    aggregate: report.sources.filter((source) => classifySourceTier(source) === "aggregate"),
-  };
-  const diagnostics = report.source_diagnostics;
-  const followupDiagnostics = report.followup_diagnostics;
-  const guardedBacklog = isGuardedBacklog(diagnostics);
-  const guardedReasonLabels = dedupeTextList(getGuardedRewriteReasonLabels(diagnostics));
-  const evidenceMode = evidenceModeMeta(diagnostics?.evidence_mode || "fallback");
-  const supportedTargetAccounts = dedupeTextList(diagnostics?.supported_target_accounts || []);
-  const unsupportedTargetAccounts = dedupeTextList(diagnostics?.unsupported_target_accounts || []);
-  const enabledSourceLabels = dedupeTextList(diagnostics?.enabled_source_labels || []);
-  const scopeRegions = dedupeTextList(diagnostics?.scope_regions || []);
-  const scopeIndustries = dedupeTextList(diagnostics?.scope_industries || []);
-  const scopeClients = dedupeTextList(diagnostics?.scope_clients || []);
-  const matchedSourceLabels = dedupeTextList(diagnostics?.matched_source_labels || []);
-  const topicAnchorTerms = dedupeTextList(diagnostics?.topic_anchor_terms || []);
-  const matchedThemeLabels = dedupeTextList(diagnostics?.matched_theme_labels || []);
-  const followupFilters = dedupeTextList([
-    ...(followupDiagnostics?.rebuilt_regions || []),
-    ...(followupDiagnostics?.rebuilt_industries || []),
-    ...(followupDiagnostics?.rebuilt_clients || []),
-  ]);
-  const followupImpactedSections = (followupDiagnostics?.impacted_sections || []).slice(0, 4);
-  const followupTitleResolution = followupResolutionMeta(followupDiagnostics?.title_resolution);
-  const followupSummaryResolution = followupResolutionMeta(followupDiagnostics?.summary_resolution);
-  const candidateProfileCompanies = dedupeTextList(diagnostics?.candidate_profile_companies || []);
-  const candidateProfileSourceLabels = dedupeTextList(diagnostics?.candidate_profile_source_labels || []);
-  const qualityExpansionQueries = dedupeTextList(diagnostics?.quality_expansion_query_plan || []);
-  const qualityExpansionNotes = dedupeTextList(diagnostics?.quality_expansion_notes || []);
-  const coreEntities = dedupeByKey(report.entity_graph?.entities || [], (entity) => String(entity?.canonical_name || "").trim(), 6);
-  const readiness = report.report_readiness;
-  const readinessState = readinessMeta(readiness?.status || "needs_evidence");
-  const commercialSummary = report.commercial_summary;
-  const technicalAppendix = report.technical_appendix;
-  const reviewQueue = report.review_queue || [];
-  const qualityProfile = report.quality_profile;
-  const qualityProfileState = qualityProfileMeta(qualityProfile?.status);
-  const marketIntelligence = report.market_intelligence;
-  const solutionDeliveryPack = report.solution_delivery_pack;
-  const solutionDeliveryQuality = solutionDeliveryPack?.solution_quality_profile;
-  const projectProposalQuality = solutionDeliveryPack?.project_proposal_quality_profile;
-  const architectureReadiness = solutionDeliveryPack?.architecture_readiness;
-  const solutionDeliveryQualityMeta = deliveryQualityMeta(solutionDeliveryQuality?.status);
-  const projectProposalQualityMeta = deliveryQualityMeta(projectProposalQuality?.status);
-  const architectureReadinessState = architectureReadinessMeta(architectureReadiness?.status);
-  const weakSections = (report.sections || [])
-    .filter((section) => {
-      const status = String(section.status || "").trim();
-      return status === "needs_evidence" || status === "degraded" || Boolean(section.insufficiency_reasons?.length);
-    })
-    .slice(0, 3);
-  const targetSupportTone = unsupportedTargetAccounts.length
-    ? "border-rose-200/90 bg-rose-50 text-rose-700"
-    : supportedTargetAccounts.length
-      ? "border-emerald-200/90 bg-emerald-50 text-emerald-700"
-      : "border-slate-200/90 bg-slate-100 text-slate-600";
-  const targetSupportValue = unsupportedTargetAccounts.length
-    ? "目标账户待核验"
-    : supportedTargetAccounts.length
-      ? `已支撑 ${supportedTargetAccounts.length} 个目标账户`
-      : "未识别明确目标账户";
-  const targetSupportDetail = unsupportedTargetAccounts.length
-    ? unsupportedTargetAccounts.slice(0, 2).join(" / ")
-    : supportedTargetAccounts.length
-      ? supportedTargetAccounts.slice(0, 2).join(" / ")
-      : "当前结果更偏主题线索，仍待收敛到账户。";
-  const verificationTone =
-    guardedBacklog || !readiness?.evidence_gate_passed
-      ? "border-amber-200/90 bg-amber-50 text-amber-800"
-      : "border-emerald-200/90 bg-emerald-50 text-emerald-800";
-  const verificationValue = guardedBacklog
-    ? "已降级为 guarded backlog"
-    : readiness?.evidence_gate_passed
-      ? "证据门槛已通过"
-      : reviewQueue.length
-        ? `待核验 ${reviewQueue.length} 项`
-        : "证据门槛待补";
-  const verificationDetail =
-    guardedReasonLabels.slice(0, 2).join(" / ") ||
-    weakSections[0]?.insufficiency_summary ||
-    readiness?.next_verification_steps?.[0] ||
-    reviewQueue[0]?.summary ||
-    reviewQueue[0]?.recommended_action ||
-    "优先补官方源、账户支撑和关键章节的交叉验证。";
-  const retrievalRoutingCards = [
-    {
-      title: "范围锁定",
-      value: scopeClients.length
-        ? `账户 ${scopeClients.length} 个`
-        : scopeRegions.length || scopeIndustries.length
-          ? "已限定范围"
-          : "范围仍偏泛",
-      detail:
-        followupFilters.slice(0, 3).join(" / ") ||
-        dedupeTextList([...scopeRegions, ...scopeIndustries, ...scopeClients]).slice(0, 3).join(" / ") ||
-        "当前仍待继续收敛到区域、行业或目标账户。",
-      tone: "border-sky-100/90 bg-sky-50/78 text-sky-900",
-    },
-    {
-      title: "查询策略",
-      value: diagnostics?.quality_expansion_triggered
-        ? `质量扩源 ${diagnostics.quality_expansion_rounds || 1} 轮`
-        : diagnostics?.strategy_query_expansion_count
-        ? `扩展 ${diagnostics.strategy_query_expansion_count} 条`
-        : followupDiagnostics?.decomposition_queries?.length
-          ? `追问拆出 ${followupDiagnostics.decomposition_queries.length} 条`
-          : "基础来源整理",
-      detail:
-        qualityExpansionNotes[0] ||
-        (diagnostics?.quality_expansion_triggered
-          ? `新增 ${diagnostics.quality_expansion_added_source_count || 0} 条公开来源，综合所有来源后再生成材料。`
-          : "") ||
-        followupDiagnostics?.summary ||
-        diagnostics?.strategy_scope_summary ||
-        "已结合多个公开来源整理报告，并突出关键章节和依据。",
-      tone: "border-violet-100/90 bg-violet-50/78 text-violet-900",
-    },
-    {
-      title: "账户支撑",
-      value: unsupportedTargetAccounts.length
-        ? `待核验 ${unsupportedTargetAccounts.length} 个`
-        : supportedTargetAccounts.length
-          ? `已支撑 ${supportedTargetAccounts.length} 个`
-          : "未锁定账户",
-      detail: targetSupportDetail,
-      tone: unsupportedTargetAccounts.length
-        ? "border-rose-100/90 bg-rose-50/82 text-rose-900"
-        : "border-emerald-100/90 bg-emerald-50/78 text-emerald-900",
-    },
-    {
-      title: "证据门槛",
-      value: verificationValue,
-      detail: verificationDetail,
-      tone: guardedBacklog || !readiness?.evidence_gate_passed
-        ? "border-amber-100/90 bg-amber-50/82 text-amber-900"
-        : "border-emerald-100/90 bg-emerald-50/78 text-emerald-900",
-    },
-  ];
-  const reportSurfaceCopy = {
-    readinessTitle: "推进就绪度",
-    playbookTitle: "推进要点",
-    appendixTitle: "方法与边界",
-    reviewQueueTitle: "待核验结论",
-    reviewQueueDesc: "集中列出冲突结论、依据不足的章节和关键缺口，方便优先复核。",
-    insightsTitle: "深度洞察",
-    insightsDesc: "按主题继续展开关键判断、依据和复核建议。",
-    sourcePathTitle: "情报路径",
-    sourceDiagTitle: "依据检查",
-  };
-  const pipelineStages = diagnostics?.pipeline_stages || [];
-  const rankedPanels = [
-    {
-      title: (report.top_target_accounts && report.top_target_accounts.length) ? "高价值甲方 Top 3" : "待核验甲方候选",
-      items: dedupeByKey(
-        (report.top_target_accounts && report.top_target_accounts.length)
-          ? report.top_target_accounts
-          : pendingRankedEntities("target"),
-        (entity) => String(entity?.name || "").trim(),
-        3,
-      ),
-      tone: "sky",
-    },
-    {
-      title: (report.top_competitors && report.top_competitors.length) ? "高威胁竞品 Top 3" : "待核验竞品候选",
-      items: dedupeByKey(
-        (report.top_competitors && report.top_competitors.length)
-          ? report.top_competitors
-          : pendingRankedEntities("competitor"),
-        (entity) => String(entity?.name || "").trim(),
-        3,
-      ),
-      tone: "amber",
-    },
-    {
-      title: (report.top_ecosystem_partners && report.top_ecosystem_partners.length) ? "高影响力生态伙伴 Top 3" : "待核验伙伴候选",
-      items: dedupeByKey(
-        (report.top_ecosystem_partners && report.top_ecosystem_partners.length)
-          ? report.top_ecosystem_partners
-          : pendingRankedEntities("partner"),
-        (entity) => String(entity?.name || "").trim(),
-        3,
-      ),
-      tone: "emerald",
-    },
-  ].filter((panel) => panel.items.length);
-
+  const {
+    architectureReadiness,
+    architectureReadinessState,
+    architectWorkbench,
+    candidateProfileCompanies,
+    candidateProfileSourceLabels,
+    commercialSummary,
+    coreEntities,
+    diagnostics,
+    enabledSourceLabels,
+    evidenceMode,
+    followupDiagnostics,
+    followupImpactedSections,
+    followupSummaryResolution,
+    followupTitleResolution,
+    groupedSources,
+    guardedBacklog,
+    guardedReasonLabels,
+    marketIntelligence,
+    matchedSourceLabels,
+    matchedThemeLabels,
+    pipelineStages,
+    primaryCustomerScenario,
+    projectProposalQuality,
+    projectProposalQualityMeta,
+    qualityExpansionQueries,
+    qualityProfile,
+    qualityProfileState,
+    readiness,
+    readinessState,
+    reportSurfaceCopy,
+    retrievalRoutingCards,
+    reviewQueue,
+    scopeClients,
+    scopeIndustries,
+    scopeRegions,
+    solutionDeliveryPack,
+    solutionDeliveryQuality,
+    solutionDeliveryQualityMeta,
+    supportedTargetAccounts,
+    targetSupportDetail,
+    targetSupportTone,
+    targetSupportValue,
+    technicalAppendix,
+    topicAnchorTerms,
+    unsupportedTargetAccounts,
+    verificationDetail,
+    verificationTone,
+    verificationValue,
+    weakSections,
+  } = buildResearchReportCardViewModel(report);
   return (
     <section data-testid="research-report-card" className="af-report-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="af-kicker">{titleLabel}</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
+          <h3 className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">
             {report.report_title}
           </h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
             {sourceCountLabel} {report.source_count}
             {report.generated_at ? ` · ${generatedAtLabel} ${new Date(report.generated_at).toLocaleString()}` : ""}
           </p>
@@ -539,7 +155,7 @@ export function ResearchReportCard({
               来源质量 · {qualityLabel(report.source_quality)}
             </span>
             {guardedBacklog ? (
-              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-rose-700">
+              <span className="af-chip af-chip-warning rounded-full px-2.5 py-1">
                 待复核
               </span>
             ) : null}
@@ -603,12 +219,13 @@ export function ResearchReportCard({
             </Link>
           ) : null}
         </div>
-        {actionMessage ? <p className="w-full text-sm text-slate-500">{actionMessage}</p> : null}
       </div>
 
+      {actionMessage ? <p className="mt-3 text-sm text-[var(--af-accent)]">{actionMessage}</p> : null}
+
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">证据档位</p>
+        <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">证据档位</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${evidenceMode.className}`}>
               {diagnostics?.evidence_mode_label || evidenceMode.label}
@@ -617,74 +234,74 @@ export function ResearchReportCard({
               证据密度 · {qualityLabel(report.evidence_density)}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{evidenceMode.note}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{evidenceMode.note}</p>
         </article>
-        <article className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">目标账户支撑</p>
+        <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">目标账户支撑</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${targetSupportTone}`}>
               {targetSupportValue}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{targetSupportDetail}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{targetSupportDetail}</p>
         </article>
-        <article className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">交叉验证</p>
+        <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">交叉验证</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
+            <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
               官方源 {Math.round((diagnostics?.official_source_ratio || 0) * 100)}%
             </span>
-            <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
+            <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
               严格命中 {Math.round((diagnostics?.strict_match_ratio || 0) * 100)}%
             </span>
             {diagnostics?.unique_domain_count ? (
-              <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
+              <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                 域名 {diagnostics.unique_domain_count}
               </span>
             ) : null}
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
             {diagnostics?.candidate_profile_official_hit_count
               ? `建议核验对象命中 ${diagnostics.candidate_profile_official_hit_count} 条官方资料。`
               : "当前以公开网页和主题交叉命中为主，仍可继续补官方资料。"}
           </p>
         </article>
-        <article className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">待核验 / 门槛</p>
+        <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">待核验 / 门槛</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${verificationTone}`}>
               {verificationValue}
             </span>
             {readiness ? (
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600">
+              <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-xs text-[var(--af-text-secondary)]">
                 就绪度 {readiness.score}
               </span>
             ) : null}
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{verificationDetail}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{verificationDetail}</p>
         </article>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="af-report-surface rounded-2xl border border-sky-100/80 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{summaryLabel}</p>
-          <p className="mt-3 text-[15px] leading-7 text-slate-700">{report.executive_summary}</p>
+        <div className="af-report-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{summaryLabel}</p>
+          <p className="mt-3 text-[15px] leading-7 text-[var(--af-text-secondary)]">{report.executive_summary}</p>
         </div>
-        <div className="af-report-surface rounded-2xl border border-cyan-100/90 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-500">{angleLabel}</p>
-          <p className="mt-3 text-sm leading-6 text-sky-900">{report.consulting_angle}</p>
+        <div className="af-report-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-info)]">{angleLabel}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{report.consulting_angle}</p>
         </div>
       </div>
 
       {followupDiagnostics?.enabled ? (
-        <article className="mt-5 af-report-surface rounded-2xl border border-amber-100/90 p-4">
+        <article className="mt-5 af-report-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">补充信息影响</p>
-              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-warning)]">补充信息影响</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
                 只更新受影响的章节
               </h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {followupDiagnostics.summary || "补充信息已用于更新相关章节。"}
               </p>
             </div>
@@ -700,55 +317,55 @@ export function ResearchReportCard({
           {followupImpactedSections.length ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {followupImpactedSections.map((section) => (
-                <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-white/80 bg-white/88 p-3">
+                <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-900">{section.section_title}</p>
+                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">{section.section_title}</p>
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] ${
+                      className={`rounded-full border px-2.5 py-1 text-[11px] ${
                         section.impact_label === "high"
-                          ? "bg-emerald-100 text-emerald-700"
+                          ? "af-chip-success"
                           : section.impact_label === "medium"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-slate-100 text-slate-600"
+                            ? "af-chip-warning"
+                            : "bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]"
                       }`}
                     >
                       影响度 {section.impact_score}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-600">{section.reason}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1">状态 · {sectionStatusMeta(section.status).label}</span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1">命中 {section.retrieval_hit_count}</span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1">官方 {section.official_hit_count}</span>
+                  <p className="mt-2 text-xs leading-5 text-[var(--af-text-secondary)]">{section.reason}</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-tertiary)]">
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">状态 · {sectionStatusMeta(section.status).label}</span>
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">命中 {section.retrieval_hit_count}</span>
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">官方 {section.official_hit_count}</span>
                   </div>
                   {section.matched_inputs?.length ? (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {section.matched_inputs.slice(0, 3).map((value) => (
-                        <span key={`${section.section_title}-${value}`} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
+                        <span key={`${section.section_title}-${value}`} className="af-chip af-chip-warning rounded-full px-2.5 py-1 text-[11px]">
                           {value}
                         </span>
                       ))}
                     </div>
                   ) : null}
-                  <p className="mt-2 text-xs leading-5 text-slate-500">{section.next_action}</p>
+                  <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">{section.next_action}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm leading-6 text-slate-500">当前追问还没有形成明确的章节级改写焦点，建议继续补充更具体的客户、预算或场景约束。</p>
+            <p className="mt-4 text-sm leading-6 text-[var(--af-text-tertiary)]">当前追问还没有形成明确的章节级改写焦点，建议继续补充更具体的客户、预算或场景约束。</p>
           )}
         </article>
       ) : null}
 
       {qualityProfile ? (
-        <article className="mt-5 af-report-surface rounded-2xl border border-emerald-100/90 p-4">
+        <article className="mt-5 af-report-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">研报质量画像</p>
-              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-success)]">研报质量画像</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
                 {qualityProfile.methodology?.industry_label || "通用 B2B 解决方案研究"} · {qualityProfile.methodology?.framework_name || "方法论校验"}
               </h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {qualityProfile.headline || qualityProfile.methodology?.summary || "当前报告已生成基础质量画像。"}
               </p>
             </div>
@@ -756,7 +373,7 @@ export function ResearchReportCard({
               <span className={`rounded-full border px-2.5 py-1 font-semibold ${qualityProfileState.className}`}>
                 {qualityProfileState.label}
               </span>
-              <span className="rounded-full bg-slate-900 px-2.5 py-1 font-semibold text-white">
+              <span className="rounded-full bg-[var(--af-text-primary)] px-2.5 py-1 font-semibold text-[var(--af-text-inverse)]">
                 总分 {qualityProfile.overall_score}
               </span>
             </div>
@@ -770,10 +387,10 @@ export function ResearchReportCard({
             ].map((item) => {
               const bucket = valueBucket(item.value);
               return (
-                <div key={`quality-score-${item.label}`} className="rounded-2xl border border-white/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                <div key={`quality-score-${item.label}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{item.label}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">{item.value}</span>
+                    <span className="text-2xl font-semibold text-[var(--af-text-primary)]">{item.value}</span>
                     <span className={`rounded-full px-2.5 py-1 text-[11px] ${bucket.className}`}>{bucket.label}</span>
                   </div>
                 </div>
@@ -783,12 +400,12 @@ export function ResearchReportCard({
           {(qualityProfile.gaps?.length || qualityProfile.next_actions?.length) ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {qualityProfile.gaps?.length ? (
-                <div className="rounded-2xl border border-amber-100/90 bg-amber-50/80 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">质量缺口</p>
-                  <ul className="mt-2 space-y-2 text-sm leading-6 text-amber-900">
+                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">质量缺口</p>
+                  <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                     {qualityProfile.gaps.slice(0, 4).map((value) => (
                       <li key={`quality-gap-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-amber-300" />
+                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-warning)]" />
                         <span>{value}</span>
                       </li>
                     ))}
@@ -796,12 +413,12 @@ export function ResearchReportCard({
                 </div>
               ) : null}
               {qualityProfile.next_actions?.length ? (
-                <div className="rounded-2xl border border-emerald-100/90 bg-emerald-50/76 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">下一轮提质动作</p>
-                  <ul className="mt-2 space-y-2 text-sm leading-6 text-emerald-950">
+                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-success)]">下一轮提质动作</p>
+                  <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                     {qualityProfile.next_actions.slice(0, 4).map((value) => (
                       <li key={`quality-action-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-success)]" />
                         <span>{value}</span>
                       </li>
                     ))}
@@ -811,22 +428,22 @@ export function ResearchReportCard({
             </div>
           ) : null}
           {qualityProfile.section_evidence_packs?.length ? (
-            <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">章节证据包</p>
+            <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">章节证据包</p>
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {qualityProfile.section_evidence_packs.slice(0, 4).map((pack) => (
-                  <div key={`section-pack-${pack.section_title}`} className="rounded-2xl border border-white/80 bg-white/88 p-3">
+                  <div key={`section-pack-${pack.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-900">{pack.section_title}</p>
+                      <p className="text-sm font-semibold text-[var(--af-text-primary)]">{pack.section_title}</p>
                       <span className={`rounded-full px-2.5 py-1 text-[11px] ${qualityTone(pack.status === "ready" ? "high" : pack.status === "degraded" ? "medium" : "low")}`}>
                         {pack.support_score}
                       </span>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                    <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                       证据 {pack.evidence_count} 条，官方 {pack.official_evidence_count} 条{pack.quota_gap ? `，缺口 ${pack.quota_gap}` : ""}
                     </p>
                     {pack.risks?.length ? (
-                      <p className="mt-2 text-xs leading-5 text-amber-700">{pack.risks.slice(0, 2).join(" / ")}</p>
+                      <p className="mt-2 text-xs leading-5 text-[var(--af-warning)]">{pack.risks.slice(0, 2).join(" / ")}</p>
                     ) : null}
                   </div>
                 ))}
@@ -836,1255 +453,120 @@ export function ResearchReportCard({
         </article>
       ) : null}
 
-      {(marketIntelligence?.tender_projects?.length ||
-        marketIntelligence?.product_catalog?.length ||
-        solutionDeliveryPack?.client_ppt_outline?.length) ? (
-        <article className="mt-5 af-report-surface rounded-2xl border border-blue-100/90 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">近三年公开情报与交付包</p>
-              <h4 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-900">
-                招投标明细、产品清单、技术参数和方案材料大纲
-              </h4>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {marketIntelligence?.source_scope_summary ||
-                  "基于公开网页、政府采购、公共资源交易、招投标公开平台、企业官网/产品页和行业媒体整理。"}
-              </p>
-            </div>
-            {marketIntelligence?.window_start && marketIntelligence?.window_end ? (
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                {marketIntelligence.window_start} - {marketIntelligence.window_end}
-              </span>
-            ) : null}
-          </div>
+      <ResearchReportDeliverySection
+        report={report}
+        marketIntelligence={marketIntelligence}
+        solutionDeliveryPack={solutionDeliveryPack}
+        solutionDeliveryQuality={solutionDeliveryQuality}
+        projectProposalQuality={projectProposalQuality}
+        architectureReadiness={architectureReadiness}
+        architectWorkbench={architectWorkbench}
+        primaryCustomerScenario={primaryCustomerScenario}
+        solutionDeliveryQualityMeta={solutionDeliveryQualityMeta}
+        projectProposalQualityMeta={projectProposalQualityMeta}
+        architectureReadinessState={architectureReadinessState}
+        valueBucket={valueBucket}
+      />
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">招投标项目明细</p>
-              <div className="mt-3 space-y-2">
-                {(marketIntelligence?.tender_projects || []).slice(0, 4).map((item) => (
-                  <div key={`${item.project_name}-${item.source_url}`} className="rounded-xl bg-blue-50/70 px-3 py-2">
-                    <p className="text-sm font-semibold text-slate-900">{item.project_name}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      {item.notice_type || "公开线索"} · {item.publish_date || "日期待核验"} · {item.amount || "金额待核验"}
-                    </p>
-                    {item.source_url ? (
-                      <a className="mt-1 block truncate text-xs text-blue-600 hover:text-blue-700" href={item.source_url} target="_blank" rel="noreferrer">
-                        {item.source_title || item.source_url}
-                      </a>
-                    ) : null}
-                  </div>
-                ))}
-                {!(marketIntelligence?.tender_projects || []).length ? (
-                  <p className="text-sm leading-6 text-slate-500">当前未形成可引用项目明细，需继续补公开招采来源。</p>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">产品清单与技术参数</p>
-              <div className="mt-3 space-y-2">
-                {(marketIntelligence?.product_catalog || []).slice(0, 5).map((item) => (
-                  <div key={`product-${item.name}`} className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-sm font-semibold text-slate-900">{item.name}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">
-                      {(item.technical_parameters || []).slice(0, 2).join(" / ") || item.source_context || "参数待补"}
-                    </p>
-                  </div>
-                ))}
-                {marketIntelligence?.intelligence_gaps?.length ? (
-                  <p className="text-xs leading-5 text-amber-700">{marketIntelligence.intelligence_gaps[0]}</p>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/80 bg-white/86 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">交付材料大纲</p>
-              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                <p>场景：{solutionDeliveryPack?.scenario || report.keyword}</p>
-                <p>目标客户：{solutionDeliveryPack?.target_customer || report.target_accounts[0] || "待确认"}</p>
-                <p>可研章节：{solutionDeliveryPack?.feasibility_outline?.length || 0} 个</p>
-                <p>建议书章节：{solutionDeliveryPack?.project_proposal_outline?.length || 0} 个</p>
-                <p>PPT 页纲：{solutionDeliveryPack?.client_ppt_outline?.length || 0} 页</p>
-                <p>Advisory 产物：{solutionDeliveryPack?.advisory_artifacts?.length || 0} 份</p>
-              </div>
-              {solutionDeliveryPack?.review_checklist?.length ? (
-                <p className="mt-2 text-xs leading-5 text-blue-700">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
-              ) : null}
-              {(solutionDeliveryQuality || projectProposalQuality) ? (
-                <div className="mt-3 grid gap-2">
-                  {solutionDeliveryQuality ? (
-                    <div className={`rounded-xl border px-3 py-2 ${solutionDeliveryQualityMeta.className}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold">解决方案质量</p>
-                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
-                          {solutionDeliveryQuality.overall_score}/100 · {solutionDeliveryQualityMeta.label}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs leading-5">
-                        {solutionDeliveryQuality.gaps?.[0] || solutionDeliveryQuality.strengths?.[0] || "已按交付质量口径完成结构化自审。"}
-                      </p>
-                    </div>
-                  ) : null}
-                  {projectProposalQuality ? (
-                    <div className={`rounded-xl border px-3 py-2 ${projectProposalQualityMeta.className}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold">项目建议书质量</p>
-                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
-                          {projectProposalQuality.overall_score}/100 · {projectProposalQualityMeta.label}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs leading-5">
-                        {projectProposalQuality.self_review?.triggered
-                          ? `已自修订：${projectProposalQuality.self_review.before_score}→${projectProposalQuality.self_review.after_score}`
-                          : projectProposalQuality.gaps?.[0] || projectProposalQuality.strengths?.[0] || "已完成项目建议书质量自审。"}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              {solutionDeliveryPack?.advisory_artifacts?.length ? (
-                <div className="mt-3 space-y-2">
-                  {solutionDeliveryPack.advisory_artifacts.slice(0, 3).map((artifact) => (
-                    <div key={artifact.artifact_type} className="rounded-xl bg-blue-50/70 px-3 py-2">
-                      <p className="text-sm font-semibold text-slate-900">{artifact.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">{artifact.purpose}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          {architectureReadiness ? (
-            <div className="mt-4 rounded-2xl border border-indigo-100/90 bg-indigo-50/70 p-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-600">解决方案架构就绪度</p>
-                  <h5 className="mt-2 text-base font-semibold tracking-[-0.02em] text-slate-900">
-                    架构蓝图、接口风险和核验动作
-                  </h5>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {architectureReadiness.summary || "已为解决方案架构师沉淀架构评估框架，需补充客户和接口约束后形成外发版。"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full border px-2.5 py-1 font-semibold ${architectureReadinessState.className}`}>
-                    {architectureReadinessState.label}
-                  </span>
-                  <span className="rounded-full bg-slate-900 px-2.5 py-1 font-semibold text-white">
-                    {architectureReadiness.overall_score || 0}/100
-                  </span>
-                </div>
-              </div>
-              {architectureReadiness.metrics?.length ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-5">
-                  {architectureReadiness.metrics.slice(0, 5).map((metric) => {
-                    const bucket = valueBucket(metric.score);
-                    return (
-                      <div key={`architecture-metric-${metric.key}`} className="rounded-xl border border-white/80 bg-white/88 px-3 py-2">
-                        <p className="text-[11px] font-semibold text-slate-500">{metric.label}</p>
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="text-lg font-semibold tracking-[-0.03em] text-slate-900">{metric.score}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] ${bucket.className}`}>{bucket.label}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              {architectureReadiness.blueprint_sections?.length ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
-                  {architectureReadiness.blueprint_sections.slice(0, 4).map((section) => (
-                    <div key={`architecture-section-${section.title}`} className="rounded-xl border border-white/80 bg-white/88 px-3 py-2">
-                      <p className="text-sm font-semibold text-slate-900">{section.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">{section.purpose}</p>
-                      {section.components?.length ? (
-                        <p className="mt-1 text-xs leading-5 text-indigo-700">
-                          {section.components.slice(0, 4).join(" / ")}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {(architectureReadiness.integration_risks?.length || architectureReadiness.validation_actions?.length) ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
-                  {architectureReadiness.integration_risks?.length ? (
-                    <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">集成 / 落地风险</p>
-                      <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900">
-                        {architectureReadiness.integration_risks.slice(0, 3).map((risk) => (
-                          <li key={`architecture-risk-${risk}`}>{risk}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {architectureReadiness.validation_actions?.length ? (
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/76 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">架构核验动作</p>
-                      <ul className="mt-2 space-y-1 text-xs leading-5 text-emerald-950">
-                        {architectureReadiness.validation_actions.slice(0, 3).map((action) => (
-                          <li key={`architecture-action-${action}`}>{action}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {marketIntelligence?.external_source_queries?.length ? (
-            <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">后续全网公开源检索清单</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {marketIntelligence.external_source_queries.slice(0, 6).map((query) => (
-                  <span key={`external-query-${query}`} className="rounded-full bg-white px-2.5 py-1 text-[11px] text-slate-600">
-                    {query}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </article>
-      ) : null}
-
-      {(readiness || commercialSummary) ? (
-        <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-          {readiness ? (
-            <article className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{reportSurfaceCopy.readinessTitle}</p>
-                  <p className="mt-2 text-sm text-slate-500">{readinessState.note}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className={`rounded-full border px-2.5 py-1 ${readinessState.className}`}>
-                    {readinessState.label}
-                  </span>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-slate-700">
-                    评分 {readiness.score}
-                  </span>
-                  <span className={`rounded-full px-2.5 py-1 ${readiness.evidence_gate_passed ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {readiness.evidence_gate_passed ? "证据门槛已通过" : "证据门槛待补"}
-                  </span>
-                </div>
-              </div>
-              {readiness.reasons?.length ? (
-                <div className="mt-4 space-y-2">
-                  {readiness.reasons.map((reason) => (
-                    <div key={`readiness-reason-${reason}`} className="rounded-2xl border border-slate-200/80 bg-white/86 px-3 py-2 text-sm leading-6 text-slate-700">
-                      {reason}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {(readiness.missing_axes?.length || readiness.next_verification_steps?.length) ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {readiness.missing_axes?.length ? (
-                    <div className="rounded-2xl border border-amber-100/90 bg-amber-50/80 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">仍缺关键维度</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {readiness.missing_axes.map((value) => (
-                          <span key={`readiness-axis-${value}`} className="rounded-full bg-white/88 px-2.5 py-1 text-[11px] text-amber-800">
-                            {value}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {readiness.next_verification_steps?.length ? (
-                    <div className="rounded-2xl border border-slate-200/80 bg-white/84 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">下一步核验</p>
-                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
-                        {readiness.next_verification_steps.slice(0, 3).map((value) => (
-                          <li key={`readiness-step-${value}`} className="flex gap-2">
-                            <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                            <span>{value}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </article>
-          ) : null}
-
-          {commercialSummary ? (
-            <article className="af-report-surface rounded-2xl border border-cyan-100/90 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-500">{reportSurfaceCopy.playbookTitle}</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">重点账户</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(commercialSummary.account_focus || []).length ? (
-                      commercialSummary.account_focus.map((value) => (
-                        <span key={`commercial-account-${value}`} className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] text-sky-700">
-                          {value}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-500">仍待收敛到账户对象</span>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">预算与信号</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{commercialSummary.budget_signal || "当前仍缺直接预算或采购信号"}</p>
-                </div>
-                <div className="rounded-2xl border border-white/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">推进窗口</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{commercialSummary.entry_window || "当前仍缺明确进入窗口"}</p>
-                </div>
-                <div className="rounded-2xl border border-white/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">竞合与伙伴</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{commercialSummary.competition_or_partner || "当前仍需补竞品或伙伴格局"}</p>
-                </div>
-              </div>
-              <div className="mt-3 rounded-2xl border border-sky-100/90 bg-white/84 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">下一步推进</p>
-                <p className="mt-2 text-sm leading-6 text-sky-900">{commercialSummary.next_action || "继续补组织入口、预算和进入窗口后再生成行动卡。"}</p>
-              </div>
-            </article>
-          ) : null}
-        </div>
-      ) : null}
-
-      {weakSections.length ? (
-        <div className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50/78 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">关键待核验章节</p>
-              <p className="mt-1 text-sm text-amber-900">
-                先处理最弱章节，再决定是否进入正式推进和导出。
-              </p>
-            </div>
-            <span className="rounded-full bg-white/90 px-2.5 py-1 text-xs text-amber-800">
-              {weakSections.length} 个章节待收紧
-            </span>
-          </div>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            {weakSections.map((section) => {
-              const statusMeta = sectionStatusMeta(section.status);
-              return (
-                <div key={`weak-section-${section.title}`} className="rounded-2xl border border-white/90 bg-white/84 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-900">{section.title}</p>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusMeta.className}`}>
-                      {statusMeta.label}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-600">
-                    {section.insufficiency_summary || section.quota_note || section.confidence_reason || "当前章节仍需继续核验。"}
-                  </p>
-                  {section.next_verification_steps?.length ? (
-                    <p className="mt-2 text-xs leading-5 text-amber-800">
-                      下一步：{section.next_verification_steps[0]}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
+      <ResearchReportReadinessSection
+        readiness={readiness}
+        commercialSummary={commercialSummary}
+        weakSections={weakSections}
+        readinessState={readinessState}
+        readinessTitle={reportSurfaceCopy.readinessTitle}
+        playbookTitle={reportSurfaceCopy.playbookTitle}
+        sectionStatusMeta={sectionStatusMeta}
+      />
 
       {actionCardSlot ? <div className="mt-5">{actionCardSlot}</div> : null}
 
-      {hasStrategicPanels ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {report.five_year_outlook.length ? (
-            <article className="rounded-2xl border border-sky-100/90 bg-sky-50/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-500">
-                未来五年演化判断
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-sky-950">
-                {report.five_year_outlook.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-sky-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ) : null}
-          {report.competition_analysis.length ? (
-            <article className="rounded-2xl border border-amber-100/90 bg-amber-50/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">
-                竞争分析
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-950">
-                {report.competition_analysis.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-amber-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ) : null}
-        </div>
-      ) : null}
+      <ResearchReportStrategicSection
+        report={report}
+        valueBucket={valueBucket}
+        sourceTierLabel={sourceTierLabel}
+      />
 
-      {rankedPanels.length ? (
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
-          {rankedPanels.map((panel) => (
-            <article
-              key={panel.title}
-              className={`rounded-2xl border p-4 ${toneClasses[panel.tone] || toneClasses.slate}`}
-            >
-              <p className="af-panel-kicker text-xs font-semibold uppercase tracking-[0.22em]">
-                {panel.title}
-              </p>
-              <div className="mt-3 space-y-3">
-                {panel.items.map((entity) => (
-                  <div
-                    key={`${panel.title}-${entity.name}`}
-                    className="rounded-2xl border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(246,249,252,0.72))] p-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <h4 className="text-sm font-semibold text-slate-900">{entity.name}</h4>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${valueBucket(entity.score).className}`}>
-                        {valueBucket(entity.score).label}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{entity.reasoning}</p>
-                    {entity.score_breakdown?.length ? (
-                      <div className="mt-3 grid gap-2">
-                        {entity.score_breakdown.slice(0, 3).map((factor) => (
-                          <div
-                            key={`${entity.name}-${factor.label}`}
-                            className="rounded-2xl border border-slate-200/80 bg-slate-50/82 px-3 py-2"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs font-medium text-slate-700">{factor.label}</span>
-                                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${factorBucket(factor.score).className}`}>
-                                      {factorBucket(factor.score).label}
-                                    </span>
-                                  </div>
-                                  {factor.note ? <p className="mt-1 text-[11px] leading-5 text-slate-500">{factor.note}</p> : null}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    {entity.evidence_links?.length ? (
-                      <div className="mt-3 space-y-2">
-                        {entity.evidence_links.map((link) => (
-                          <div
-                            key={`${entity.name}-${link.url}`}
-                            className="block rounded-2xl border border-slate-200/80 bg-slate-50/76 px-3 py-2 transition hover:border-slate-300 hover:bg-white/82"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <a
-                                href={normalizeExternalUrl(link.url)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-medium text-slate-900 underline-offset-4 hover:text-sky-800 hover:underline"
-                              >
-                                {link.title}
-                              </a>
-                              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700">
-                                {sourceTierLabel(link.source_tier || "media")}
-                              </span>
-                              {link.source_label ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
-                                  {link.source_label}
-                                </span>
-                              ) : null}
-                            </div>
-                            <ExternalLinkActions
-                              url={link.url}
-                              className="mt-2"
-                              openLabel="网页打开"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <ResearchReportSourcesDiagnosticsSection
+        report={report}
+        queryPlanLabel={queryPlanLabel}
+        sourcesLabel={sourcesLabel}
+        hideSources={hideSources}
+        diagnostics={diagnostics}
+        evidenceMode={evidenceMode}
+        retrievalRoutingCards={retrievalRoutingCards}
+        pipelineStages={pipelineStages}
+        enabledSourceLabels={enabledSourceLabels}
+        candidateProfileCompanies={candidateProfileCompanies}
+        guardedBacklog={guardedBacklog}
+        guardedReasonLabels={guardedReasonLabels}
+        supportedTargetAccounts={supportedTargetAccounts}
+        unsupportedTargetAccounts={unsupportedTargetAccounts}
+        qualityExpansionQueries={qualityExpansionQueries}
+        coreEntities={coreEntities}
+        scopeRegions={scopeRegions}
+        scopeIndustries={scopeIndustries}
+        scopeClients={scopeClients}
+        matchedSourceLabels={matchedSourceLabels}
+        topicAnchorTerms={topicAnchorTerms}
+        matchedThemeLabels={matchedThemeLabels}
+        candidateProfileSourceLabels={candidateProfileSourceLabels}
+        groupedSources={groupedSources}
+        sourcePathTitle={reportSurfaceCopy.sourcePathTitle}
+        sourceDiagTitle={reportSurfaceCopy.sourceDiagTitle}
+        qualityLabel={qualityLabel}
+        sourceTierLabel={sourceTierLabel}
+        classifySourceTier={classifySourceTier}
+      />
 
-      {(report.client_peer_moves.length || report.winner_peer_moves.length) ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {report.client_peer_moves.length ? (
-            <article className="rounded-2xl border border-white/80 bg-[linear-gradient(180deg,rgba(248,251,255,0.88),rgba(240,245,249,0.7))] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                甲方同行 Top 3 动态
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {report.client_peer_moves.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ) : null}
-          {report.winner_peer_moves.length ? (
-            <article className="rounded-2xl border border-white/80 bg-[linear-gradient(180deg,rgba(248,251,255,0.88),rgba(240,245,249,0.7))] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                中标方同行 Top 3 动态
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {report.winner_peer_moves.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ) : null}
-        </div>
-      ) : null}
+      <ResearchReportInsightsSection
+        sections={report.sections}
+        insightsTitle={reportSurfaceCopy.insightsTitle}
+        insightsDesc={reportSurfaceCopy.insightsDesc}
+        confidenceToneMeta={confidenceToneMeta}
+        sectionStatusMeta={sectionStatusMeta}
+        qualityTone={qualityTone}
+        qualityLabel={qualityLabel}
+        sourceTierLabel={sourceTierLabel}
+      />
 
-      {highlightPanels.length ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {highlightPanels.map((panel) => (
-            <article
-              key={panel.title}
-              className={`rounded-2xl border p-4 ${toneClasses[panel.tone] || toneClasses.slate}`}
-            >
-              <p className="af-panel-kicker text-xs font-semibold uppercase tracking-[0.22em]">{panel.title}</p>
-              <ul className="mt-3 space-y-2 text-sm leading-6">
-                {panel.items.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="af-bullet mt-[7px] h-1.5 w-1.5 rounded-full" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      <ResearchReportReviewQueueSection
+        reviewQueue={reviewQueue}
+        reviewQueueTitle={reportSurfaceCopy.reviewQueueTitle}
+        reviewQueueDesc={reportSurfaceCopy.reviewQueueDesc}
+      />
 
-      <div className={`mt-6 grid gap-4 ${hideSources ? "md:grid-cols-1" : "md:grid-cols-[1.15fr_0.85fr]"}`}>
-        <div className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{reportSurfaceCopy.sourcePathTitle}</p>
-          <div className="mt-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-              {queryPlanLabel}
-            </p>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-              {report.query_plan.map((query) => (
-                <li key={query} className="rounded-2xl border border-slate-200/70 bg-slate-50/70 px-3 py-2">
-                  {query}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+      <ResearchReportAppendixSection
+        technicalAppendix={technicalAppendix}
+        appendixTitle={reportSurfaceCopy.appendixTitle}
+      />
 
-        {!hideSources ? (
-        <div className="af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{sourcesLabel}</p>
-          {diagnostics ? (
-            <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{reportSurfaceCopy.sourceDiagTitle}</p>
-              <div className={`mt-3 rounded-2xl border px-3.5 py-3 ${evidenceMode.className}`}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold">
-                    {diagnostics.evidence_mode_label || evidenceMode.label}
-                  </span>
-                  {diagnostics.corrective_triggered ? (
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                      已补充核验
-                    </span>
-                  ) : null}
-                  {diagnostics.expansion_triggered ? (
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                      已扩展来源
-                    </span>
-                  ) : null}
-                  {diagnostics.quality_expansion_triggered ? (
-                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px]">
-                      质量扩源 {diagnostics.quality_expansion_rounds || 1} 轮
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-2 text-xs leading-5">
-                  {evidenceMode.note}
-                </p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {retrievalRoutingCards.map((card) => (
-                    <div key={card.title} className={`rounded-[18px] border px-3 py-3 ${card.tone}`}>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">
-                        {card.title}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold leading-6">
-                        {card.value}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 opacity-80">
-                        {card.detail}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                {pipelineStages.length ? (
-                  <div className="af-report-stage-grid mt-3">
-                    {pipelineStages.map((stage) => (
-                      <div key={stage.key} className="af-report-stage-card">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                          {stage.label}
-                        </p>
-                        <p className="af-report-stage-value">{stage.value}</p>
-                        <p className="af-report-stage-summary">{stage.summary}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  启用源 {enabledSourceLabels.length}
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  命中公开源 {diagnostics.adapter_hit_count}
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  命中搜索源 {diagnostics.search_hit_count}
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  近 {diagnostics.recency_window_years} 年窗口
-                </span>
-                {diagnostics.filtered_old_source_count > 0 ? (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                    剔除过旧来源 {diagnostics.filtered_old_source_count}
-                  </span>
-                ) : null}
-                {diagnostics.filtered_region_conflict_count > 0 ? (
-                  <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
-                    拦截越界区域 {diagnostics.filtered_region_conflict_count}
-                  </span>
-                ) : null}
-                {diagnostics.strict_topic_source_count > 0 ? (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                    严格主题保留 {diagnostics.strict_topic_source_count}
-                  </span>
-                ) : null}
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  来源质量 {qualityLabel(diagnostics.retrieval_quality)}
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  严格命中 {Math.round(diagnostics.strict_match_ratio * 100)}%
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                  官方源 {Math.round(diagnostics.official_source_ratio * 100)}%
-                </span>
-                {diagnostics.unique_domain_count > 0 ? (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-slate-600">
-                    覆盖域名 {diagnostics.unique_domain_count}
-                  </span>
-                ) : null}
-                {candidateProfileCompanies.length ? (
-                  <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                    建议核验公司 {candidateProfileCompanies.length}
-                  </span>
-                ) : null}
-                {diagnostics.candidate_profile_hit_count > 0 ? (
-                  <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                    公开来源 {diagnostics.candidate_profile_hit_count}
-                  </span>
-                ) : null}
-                {diagnostics.candidate_profile_official_hit_count > 0 ? (
-                  <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700">
-                    其中官方源 {diagnostics.candidate_profile_official_hit_count}
-                  </span>
-                ) : null}
-                {diagnostics.quality_expansion_triggered ? (
-                  <>
-                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">
-                      质量扩源新增 {diagnostics.quality_expansion_added_source_count || 0}
-                    </span>
-                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">
-                      自评分 {diagnostics.quality_expansion_before_score || 0}→{diagnostics.quality_expansion_after_score || 0}
-                    </span>
-                  </>
-                ) : null}
-                {guardedBacklog ? (
-                  <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
-                    已降级为 guarded backlog
-                  </span>
-                ) : null}
-              </div>
-              {guardedReasonLabels.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">降级原因</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {guardedReasonLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs text-rose-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {supportedTargetAccounts.length || unsupportedTargetAccounts.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">目标账户支撑</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {supportedTargetAccounts.map((label) => (
-                      <span key={`supported-${label}`} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
-                        已支撑 · {label}
-                      </span>
-                    ))}
-                    {unsupportedTargetAccounts.map((label) => (
-                      <span key={`unsupported-${label}`} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs text-rose-700">
-                        未支撑 · {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {qualityExpansionQueries.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">质量扩源查询</p>
-                  <div className="mt-2 space-y-2">
-                    {qualityExpansionQueries.slice(0, 3).map((query) => (
-                      <p
-                        key={`quality-expansion-${query}`}
-                        className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs leading-5 text-indigo-900"
-                      >
-                        {query}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {diagnostics.normalized_entity_count > 0 ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">实体归一化</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                      总实体 {diagnostics.normalized_entity_count}
-                    </span>
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                      甲方 {diagnostics.normalized_target_count}
-                    </span>
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                      竞品 {diagnostics.normalized_competitor_count}
-                    </span>
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                      伙伴 {diagnostics.normalized_partner_count}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-              {report.entity_graph?.entities?.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">核心实体候选</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {coreEntities.map((entity) => (
-                      <span
-                        key={`entity-${entity.canonical_name}`}
-                        className="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-xs text-fuchsia-700"
-                      >
-                        {entity.canonical_name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {enabledSourceLabels.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">当前启用</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {enabledSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {scopeRegions.length || scopeIndustries.length || scopeClients.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">范围锁定</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {scopeRegions.map((label) => (
-                      <span key={`scope-region-${label}`} className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700">
-                        区域 · {label}
-                      </span>
-                    ))}
-                    {scopeIndustries.map((label) => (
-                      <span key={`scope-industry-${label}`} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs text-blue-700">
-                        领域 · {label}
-                      </span>
-                    ))}
-                    {scopeClients.map((label) => (
-                      <span key={`scope-client-${label}`} className="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2.5 py-1 text-xs text-fuchsia-700">
-                        公司 · {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {matchedSourceLabels.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">本次命中</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {matchedSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {topicAnchorTerms.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">主题锚点</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {topicAnchorTerms.map((label) => (
-                      <span key={label} className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {matchedThemeLabels.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">命中主题</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {matchedThemeLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {candidateProfileCompanies.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">建议核验公司</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {candidateProfileCompanies.map((label) => (
-                      <span key={label} className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {candidateProfileSourceLabels.length ? (
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">公开来源</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {candidateProfileSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="mt-3 space-y-3">
-            {report.sources.length === 0 ? (
-              <p className="text-sm leading-6 text-slate-500">当前未获取到可展示来源，显示的是本地演示框架。</p>
-            ) : null}
-            {[
-              { key: "official", title: "官方源", items: groupedSources.official },
-              { key: "media", title: "媒体源", items: groupedSources.media },
-              { key: "aggregate", title: "聚合源", items: groupedSources.aggregate },
-            ]
-              .filter((group) => group.items.length)
-              .map((group) => (
-                <div key={group.key} className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{group.title}</p>
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
-                      {group.items.length}
-                    </span>
-                  </div>
-                  <div className="mt-3 space-y-3">
-                    {group.items.map((source) => (
-                      <div
-                        key={`${group.key}-${source.url}-${source.search_query}`}
-                        className="block rounded-2xl border border-slate-200/80 bg-white/85 p-3 transition hover:border-slate-300 hover:bg-white"
-                      >
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                            {sourceTierLabel(source.source_tier || classifySourceTier(source))}
-                          </span>
-                          {source.source_label ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                              {source.source_label}
-                            </span>
-                          ) : null}
-                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                            {source.domain || "web"}
-                          </span>
-                          <span>{source.search_query}</span>
-                        </div>
-                        <a
-                          href={normalizeExternalUrl(source.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 block text-sm font-semibold leading-6 text-slate-900 underline-offset-4 hover:text-sky-800 hover:underline"
-                        >
-                          {source.title}
-                        </a>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{source.snippet}</p>
-                        <ExternalLinkActions
-                          url={source.url}
-                          className="mt-3"
-                          openLabel="网页打开"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-        ) : null}
-      </div>
+      <ResearchReportSourceListSection
+        sources={report.sources}
+        hideSources={hideSources}
+        sourcesLabel={sourcesLabel}
+        sourceTierLabel={sourceTierLabel}
+        classifySourceTier={classifySourceTier}
+      />
 
-      {report.sections.length > 0 ? (
-        <div className="mt-5">
-          <div className="mb-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{reportSurfaceCopy.insightsTitle}</p>
-            <p className="mt-1 text-sm text-slate-500">{reportSurfaceCopy.insightsDesc}</p>
-          </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {report.sections.map((section) => {
-            const tone = confidenceToneMeta(section.confidence_tone);
-            const statusMeta = sectionStatusMeta(section.status);
-            return (
-            <article
-              key={section.title}
-              className={`rounded-2xl border p-4 ${tone.panel}`}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold text-slate-900">{section.title}</h4>
-                <div className="flex flex-wrap gap-2 text-[11px]">
-                  {section.confidence_label ? (
-                    <span className={`rounded-full px-2 py-0.5 ${tone.badge}`}>
-                      {section.confidence_label}
-                    </span>
-                  ) : null}
-                  <span className={`rounded-full px-2 py-0.5 ${statusMeta.className}`}>
-                    {statusMeta.label}
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 ${qualityTone(section.evidence_density || "low")}`}>
-                    证据密度·{qualityLabel(section.evidence_density || "low")}
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 ${qualityTone(section.source_quality || "low")}`}>
-                    来源质量·{qualityLabel(section.source_quality || "low")}
-                  </span>
-                  {section.official_source_ratio ? (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                      官方源·{Math.round(section.official_source_ratio * 100)}%
-                    </span>
-                  ) : null}
-                  {typeof section.evidence_quota === "number" && section.evidence_quota > 0 ? (
-                    <span
-                      className={`rounded-full px-2 py-0.5 ${
-                        section.meets_evidence_quota
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      配额 {section.evidence_count || 0}/{section.evidence_quota}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-                {section.items.map((item) => (
-                  <li key={item} className={`flex gap-2 rounded-xl px-2 py-1.5 ${tone.item}`}>
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              {section.insufficiency_reasons?.length ? (
-                <div className="mt-3 rounded-2xl border border-rose-200/80 bg-white/84 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700">
-                    为什么还不够
-                  </p>
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-600">
-                    {section.insufficiency_reasons.slice(0, 3).map((reason) => (
-                      <li key={`${section.title}-${reason}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-rose-300" />
-                        <span>{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {section.confidence_reason ? (
-                <p className="mt-3 text-xs leading-5 text-slate-600">{section.confidence_reason}</p>
-              ) : null}
-              {section.evidence_note ? (
-                <p className="mt-3 text-xs leading-5 text-slate-500">{section.evidence_note}</p>
-              ) : null}
-              {section.quota_note ? (
-                <p
-                  className={`mt-2 text-xs leading-5 ${
-                    section.meets_evidence_quota ? "text-emerald-700" : "text-amber-700"
-                  }`}
-                >
-                  {section.quota_note}
-                </p>
-              ) : null}
-              {section.next_verification_steps?.length ? (
-                <div className="mt-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                    下一步核验
-                  </p>
-                  <ul className="mt-2 space-y-1.5 text-xs leading-5 text-amber-900">
-                    {section.next_verification_steps.slice(0, 3).map((step) => (
-                      <li key={`${section.title}-${step}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-amber-400" />
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {section.evidence_links?.length ? (
-                <div className="mt-3 rounded-2xl border border-slate-200/80 bg-slate-50/85 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">证据锚点</p>
-                  <div className="mt-2 space-y-2">
-                    {section.evidence_links.slice(0, 3).map((link) => (
-                      <div
-                        key={`${section.title}-${link.url}`}
-                        className={`block rounded-xl border border-white/80 px-3 py-2 text-xs text-slate-600 transition hover:border-slate-200 hover:bg-white ${tone.excerpt}`}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <a
-                            href={normalizeExternalUrl(link.url)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-slate-900 underline-offset-4 hover:text-sky-800 hover:underline"
-                          >
-                            {link.anchor_text || link.title}
-                          </a>
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
-                            {sourceTierLabel(link.source_tier || "media")}
-                          </span>
-                          {link.source_label ? (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
-                              {link.source_label}
-                            </span>
-                          ) : null}
-                        </div>
-                        {link.excerpt ? (
-                          <p className="mt-2 rounded-lg bg-white/66 px-2 py-1.5 text-[11px] leading-5 text-slate-700">
-                            {link.excerpt}
-                          </p>
-                        ) : (
-                          <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{link.title}</p>
-                        )}
-                        <ExternalLinkActions
-                          url={link.url}
-                          className="mt-2"
-                          openLabel="网页打开"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </article>
-            );
-          })}
-          </div>
-        </div>
-      ) : null}
-
-      {reviewQueue.length ? (
-        <article className="mt-5 rounded-2xl border border-rose-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.88))] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{reportSurfaceCopy.reviewQueueTitle}</p>
-              <p className="mt-2 text-sm text-slate-500">{reportSurfaceCopy.reviewQueueDesc}</p>
-            </div>
-            <span className="rounded-full bg-white/86 px-2.5 py-1 text-xs text-slate-600">{reviewQueue.length} 条</span>
-          </div>
-          <div className="mt-4 space-y-3">
-            {reviewQueue.map((item) => (
-              <div key={`review-${item.id}`} className="rounded-2xl border border-white/90 bg-white/88 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">{item.section_title}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] ${item.severity === "high" ? "bg-rose-100 text-rose-700" : item.severity === "medium" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}>
-                    {item.severity === "high" ? "高优先级" : item.severity === "medium" ? "中优先级" : "低优先级"}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{item.summary}</p>
-                {item.recommended_action ? (
-                  <p className="mt-2 text-sm font-medium leading-6 text-rose-800">建议：{item.recommended_action}</p>
-                ) : null}
-                {item.evidence_links?.length ? (
-                  <div className="mt-3 space-y-2">
-                    {item.evidence_links.slice(0, 2).map((link) => (
-                      <div key={`review-evidence-${item.id}-${link.url}`} className="rounded-xl border border-rose-100/90 bg-rose-50/72 px-3 py-2">
-                        <a
-                          href={normalizeExternalUrl(link.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium text-slate-900 underline-offset-4 hover:text-rose-800 hover:underline"
-                        >
-                          {link.anchor_text || link.title}
-                        </a>
-                        <ExternalLinkActions
-                          url={link.url}
-                          className="mt-2"
-                          openLabel="网页打开"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </article>
-      ) : null}
-
-      {technicalAppendix ? (
-        <article className="mt-5 af-report-muted-surface rounded-2xl border border-white/80 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{reportSurfaceCopy.appendixTitle}</p>
-          <div className="mt-4 grid gap-3">
-            {technicalAppendix.key_assumptions?.length ? (
-              <div className="rounded-2xl border border-slate-200/80 bg-white/86 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">关键假设</p>
-                <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-                  {technicalAppendix.key_assumptions.map((value) => (
-                    <li key={`appendix-assumption-${value}`} className="flex gap-2">
-                      <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                      <span>{value}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {technicalAppendix.scenario_comparison?.length ? (
-              <div className="rounded-2xl border border-slate-200/80 bg-white/86 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">情景对比</p>
-                <div className="mt-3 grid gap-3">
-                  {technicalAppendix.scenario_comparison.map((scenario) => (
-                    <div key={`scenario-${scenario.name}`} className="rounded-2xl border border-slate-200/80 bg-slate-50/82 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{scenario.name}</p>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">{scenario.summary}</p>
-                      {scenario.implication ? (
-                        <p className="mt-2 text-sm font-medium leading-6 text-sky-800">影响：{scenario.implication}</p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {(technicalAppendix.limitations?.length || technicalAppendix.technical_appendix?.length) ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-amber-100/90 bg-amber-50/80 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">限制条件</p>
-                  <ul className="mt-2 space-y-2 text-sm leading-6 text-amber-900">
-                    {(technicalAppendix.limitations || []).map((value) => (
-                      <li key={`appendix-limit-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-amber-300" />
-                        <span>{value}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-white/86 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">方法说明</p>
-                  <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-                    {(technicalAppendix.technical_appendix || []).map((value) => (
-                      <li key={`appendix-note-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-slate-300" />
-                        <span>{value}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </article>
-      ) : null}
-
-      {!hideSources && report.sources.length > 0 ? (
-        <div className="mt-6 rounded-2xl border border-white/80 bg-white/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{sourcesLabel}</p>
-          <ol className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
-            {report.sources.map((source, index) => (
-              <li key={`${source.url}-${index}`} className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-semibold text-slate-600">
-                    [{index + 1}]
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                    {sourceTierLabel(source.source_tier || classifySourceTier(source))}
-                  </span>
-                  {source.source_label ? (
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                      {source.source_label}
-                    </span>
-                  ) : null}
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                    {source.domain || "web"}
-                  </span>
-                  <span>{source.source_type}</span>
-                </div>
-                <a
-                  href={normalizeExternalUrl(source.url)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 block text-sm font-semibold leading-6 text-slate-900 underline-offset-4 hover:underline"
-                >
-                  {source.title}
-                </a>
-                <p className="mt-1 text-sm leading-6 text-slate-600">{source.snippet}</p>
-                <p className="mt-1 text-xs text-slate-500">{source.url}</p>
-                <ExternalLinkActions
-                  url={source.url}
-                  className="mt-3"
-                  openLabel="网页打开"
-                />
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-
-      <style jsx>{`
+      <style jsx global>{`
         .af-report-card {
-          border-radius: 30px;
-          border: 1px solid rgba(255, 255, 255, 0.82);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 253, 255, 0.92));
-          box-shadow:
-            0 28px 70px -44px rgba(15, 23, 42, 0.24),
-            inset 0 1px 0 rgba(255, 255, 255, 0.72);
+          border-radius: 8px;
+          border: 1px solid var(--af-border-subtle);
+          background: var(--af-surface);
+          box-shadow: var(--af-shadow-card);
           padding: 1.25rem;
         }
 
         .af-report-surface {
-          background:
-            radial-gradient(circle at 16% 0%, rgba(233, 245, 255, 0.62), transparent 34%),
-            linear-gradient(180deg, rgba(248, 251, 255, 0.94), rgba(240, 247, 255, 0.82));
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+          background: var(--af-surface-elevated);
+          border-color: var(--af-border-subtle);
+          box-shadow: var(--af-shadow-soft);
         }
 
         .af-report-muted-surface {
-          background: linear-gradient(180deg, rgba(250, 252, 255, 0.94), rgba(244, 248, 252, 0.82));
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+          background: var(--af-surface-muted);
+          border-color: var(--af-border-subtle);
+          box-shadow: none;
         }
 
         .af-report-stage-grid {
@@ -2094,26 +576,26 @@ export function ResearchReportCard({
         }
 
         .af-report-stage-card {
-          border-radius: 18px;
-          border: 1px solid rgba(255, 255, 255, 0.82);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.76));
+          border-radius: 8px;
+          border: 1px solid var(--af-border-subtle);
+          background: var(--af-surface-elevated);
           padding: 0.7rem 0.75rem;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          box-shadow: none;
         }
 
         .af-report-stage-value {
           margin-top: 0.2rem;
           font-size: 1.15rem;
           font-weight: 600;
-          letter-spacing: -0.04em;
-          color: rgb(15 23 42);
+          letter-spacing: 0;
+          color: var(--af-text-primary);
         }
 
         .af-report-stage-summary {
           margin-top: 0.18rem;
           font-size: 0.7rem;
           line-height: 1.4;
-          color: rgb(100 116 139);
+          color: var(--af-text-tertiary);
         }
 
         @media (min-width: 768px) {

@@ -1,6 +1,6 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-05-18
+Updated: 2026-05-20
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
 
@@ -259,3 +259,134 @@ Acceptance:
 - Solution delivery markdown includes a dedicated `解决方案架构就绪度` chapter.
 - Research report card renders architecture readiness inside the delivery pack surface.
 - Version metadata and release docs use `0.8.0+20260518`.
+
+## 0.8.1: WeChat Favorites Import and Review Queue
+
+Goal: make personal WeChat Favorites a first-class intake path that can turn public-account favorites into recoverable homepage triage cards.
+
+Status: delivered as part of `1.0.0+20260520`.
+
+Scope:
+
+- Add one-click WeChat Favorites preview and import for exported HTML/TXT, clipboard text, multi-file shortcut drops, `.url` / `.webloc`, and raw / escaped / encoded `mp.weixin.qq.com` links.
+- Normalize WeChat article URLs, remove tracking query parameters, deduplicate existing items, and route public-account URLs through URL-first extraction.
+- Convert imported candidates into homepage cards that follow the existing swipe / ignore / save flow.
+- Persist import batches with item IDs, result payload, source summary, counts, and processing state so the latest unfinished queue can recover after reload.
+- Add batch list/detail APIs, item-id filtered feed refresh, failed-item retry, and done-count tracking based on ignore/save feedback.
+- Document the import path, limitations, and release validation.
+
+Acceptance:
+
+- A user can paste or select WeChat Favorites exports, preview recognized candidates, import them, and immediately see the latest batch on the homepage.
+- Refreshing the page restores the latest unfinished batch from the backend even if local item IDs were lost.
+- Failed imported items can be retried as a batch.
+- Ignored or saved imported cards disappear from the active queue and count toward done.
+
+## 0.9.0: Solution Architect Workbench
+
+Goal: move the solution delivery pack from architecture readiness assessment into customer-meeting preparation, so architects and consultants can see the scenario, stakeholders, decision criteria, and validation path in one place.
+
+Status: delivered as part of `1.0.0+20260520`.
+
+Scope:
+
+- Add `solution_architect_workbench_v1` to generated solution delivery packs.
+- Generate customer scenarios with target customer, primary roles, pain points, desired outcomes, success metrics, and evidence.
+- Map likely stakeholders such as business owners, information/technology teams, security/compliance reviewers, and procurement/budget owners to concerns, decision questions, and required materials.
+- Generate decision criteria for business value, system integration/data availability, security/compliance/deployment shape, and procurement/delivery rhythm.
+- Add next-meeting agendas and export the workbench into solution delivery markdown.
+- Surface the workbench inside the research report card next to architecture readiness.
+
+Acceptance:
+
+- `build_solution_delivery_pack` returns `architect_workbench` with customer scenarios, stakeholders, decision criteria, and next-meeting agenda.
+- Solution delivery markdown includes `解决方案架构师工作台`, `干系人问题地图`, and decision validation actions.
+- The research report card renders the workbench inside the delivery pack surface without hiding the existing architecture readiness panel.
+
+## 1.0.0+20260520: Local-First WeChat-to-Solution Baseline
+
+Goal: mark the first complete local-first baseline where WeChat-heavy intake, homepage triage, evidence-backed research, solution architecture readiness, architect workbench output, and release validation are connected end to end.
+
+Status: delivered as `1.0.0+20260520`.
+
+Scope:
+
+- Ship WeChat Favorites one-click preview/import with URL/text parsing, escaped-link normalization, deduplication, persistent batches, queue recovery, failed-item retry, and swipe-based ignore/save triage.
+- Ship the solution architect workbench with customer scenarios, stakeholder question maps, decision criteria, validation actions, and next-meeting agendas.
+- Add the Alembic migration and SQLite compatibility path for `collector_import_batches`.
+- Cover parser, service, API restoration, SQLite compatibility, solution-intelligence, markdown export, frontend lint, production build, demo smoke, and diff hygiene in release validation.
+- Align package metadata, changelog, README, release history, whitepaper, launch copy, screenshot coverage docs, and screenshot manifest to `1.0.0+20260520`.
+
+Acceptance:
+
+- A fresh database can be migrated with the collector import batch table available.
+- A legacy SQLite database can auto-create the same table through compatibility setup.
+- A user can import WeChat Favorites, reload the homepage, recover the latest unfinished batch, retry failures, and process cards through ignore/save.
+- Generated solution delivery packs include architecture readiness plus the architect workbench in API responses, UI, and markdown export.
+- Release validation commands pass before the user is told 1.0 is complete.
+
+## 1.1.0: Architecture Decisions and Dependency Diagnostics
+
+Goal: move the solution architect workbench from meeting-prep checklists into architecture-review artifacts that can drive customer technical workshops and internal solution reviews.
+
+Status: in progress.
+
+Scope:
+
+- Add capability-to-architecture mappings that connect business capabilities to application services, data dependencies, model dependencies, integration surfaces, security constraints, evidence, and validation actions.
+- Add ADR-style architecture decision records with context, options, selected direction, tradeoffs, risks, and validation evidence.
+- Add integration dependency diagnostics for source systems, API/data contracts, auth boundaries, deployment assumptions, operational owners, risk level, and validation actions.
+- Surface these workbench artifacts in solution delivery markdown and the research report card without hiding existing customer scenarios, stakeholder maps, and decision criteria.
+
+Acceptance:
+
+- `build_solution_delivery_pack` returns `architect_workbench.capability_architecture_matrix`, `architecture_decision_records`, and `integration_dependencies`.
+- Solution delivery markdown includes `能力到架构矩阵`, `ADR 架构决策记录`, and `集成依赖诊断`.
+- The research report card renders the new architecture-review artifacts inside the existing delivery-pack surface.
+
+## 1.2.0: Modular Architecture Refactor
+
+Goal: reduce coupling before the next feature expansion by separating orchestration, domain logic, persistence, external adapters, and UI features into clearer modules.
+
+Status: planned. Detailed baseline: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
+
+Principles:
+
+- Preserve conceptual integrity and avoid broad rewrites.
+- Keep public behavior and API response shape stable unless a route is explicitly versioned.
+- Move logic by workflow slices, backed by tests before and after each slice.
+- Favor high-cohesion feature modules over generic utility piles.
+
+Scope:
+
+- Produce a dependency and ownership map for backend services, API routers, frontend routes/components, and API clients.
+- Split backend service hubs into `api`, `application`, `domain`, `persistence`, and `infrastructure` concerns where the current file size/coupling justifies it.
+- Move collector import parsing/batch persistence, item processing, research delivery generation, architecture workbench, experiments, knowledge, and execution workflows behind explicit entrypoints.
+- Split frontend API clients and feature state into feature modules while keeping compatibility exports during migration.
+- Extract shared UI primitives and reduce route-level business logic.
+
+Acceptance:
+
+- Core workflows still pass: WeChat Favorites import, item triage/reprocess, research generation, solution delivery export, focus/session operations, knowledge operations.
+- `npm run lint`, `npm run build`, `npm run test:backend`, and `git diff --check` pass after each migration tranche.
+- New module boundaries are documented and cross-module dependency violations are either prevented or explicitly listed as debt.
+
+## 1.3.0: Day/Night Design System Refresh
+
+Goal: make light mode and dark mode distinct, polished visual systems instead of a shared glass UI with variable swaps.
+
+Status: planned. Detailed baseline: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
+
+Scope:
+
+- Introduce semantic theme tokens for page, shell, surfaces, elevation, text, borders, focus rings, status colors, and accents.
+- Replace hard-coded light Tailwind color classes in shared components and primary product surfaces.
+- Rebuild dark mode around a deep neutral base, lower glare, clearer hierarchy, purposeful accents, and stronger panel separation.
+- Migrate layout/nav, feed, inbox/research report card, collector, settings, knowledge, and research center in controlled slices.
+- Add dark-mode screenshot capture or verification coverage for primary surfaces.
+
+Acceptance:
+
+- Night mode has a visibly distinct design language with readable hierarchy and no major light-surface leakage.
+- Text, badges, buttons, panels, forms, and selected/hover/disabled/focus states remain readable in both modes.
+- Production build, lint, and screenshot checks pass before release.

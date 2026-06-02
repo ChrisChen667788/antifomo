@@ -1,7 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.collector import router as collector_router
+from app.api.collector_external_ingest import router as collector_external_ingest_router
+from app.api.collector_ingest import router as collector_ingest_router
+from app.api.collector_ocr_routes import router as collector_ocr_router
+from app.api.collector_operations import router as collector_operations_router
+from app.api.collector_sources import router as collector_sources_router
+from app.api.collector_url_resolve import router as collector_url_resolve_router
+from app.api.collector_wechat_agent import router as collector_wechat_agent_router
+from app.api.collector_wechat_favorites import router as collector_wechat_favorites_router
 from app.api.feedback import router as feedback_router
 from app.api.focus_assistant import router as focus_assistant_router
 from app.api.items import router as items_router
@@ -68,7 +75,14 @@ app.include_router(items_router)
 app.include_router(knowledge_router)
 app.include_router(preferences_router)
 app.include_router(research_router)
-app.include_router(collector_router)
+app.include_router(collector_ingest_router)
+app.include_router(collector_ocr_router)
+app.include_router(collector_operations_router)
+app.include_router(collector_wechat_agent_router)
+app.include_router(collector_wechat_favorites_router)
+app.include_router(collector_url_resolve_router)
+app.include_router(collector_external_ingest_router)
+app.include_router(collector_sources_router)
 app.include_router(feedback_router)
 app.include_router(sessions_router)
 app.include_router(focus_assistant_router)

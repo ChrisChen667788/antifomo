@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { ApiKnowledgeEntry } from "@/lib/api";
+import type { ApiKnowledgeEntry } from "@/lib/api/types";
 import { updateKnowledgeEntry } from "@/lib/api";
 import { KnowledgeRuleCard } from "@/components/knowledge/knowledge-rule-card";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";

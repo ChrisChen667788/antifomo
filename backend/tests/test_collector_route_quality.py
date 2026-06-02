@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.api import collector as collector_api
+from app.api.collector_ops_serializers import _to_wechat_agent_route_quality_response
 from app.services.wechat_pc_agent_daemon import WechatAgentBatchStatus
 
 
@@ -77,7 +77,7 @@ def _status(**overrides) -> WechatAgentBatchStatus:
 
 
 def test_route_quality_reports_good_when_url_first_dominates() -> None:
-    quality = collector_api._to_wechat_agent_route_quality_response(_status())
+    quality = _to_wechat_agent_route_quality_response(_status())
 
     assert quality.route_stability == "good"
     assert quality.url_first_share >= 80
@@ -85,7 +85,7 @@ def test_route_quality_reports_good_when_url_first_dominates() -> None:
 
 
 def test_route_quality_reports_poor_when_ocr_and_backoff_dominate() -> None:
-    quality = collector_api._to_wechat_agent_route_quality_response(
+    quality = _to_wechat_agent_route_quality_response(
         _status(
             submitted_url_direct=1,
             submitted_url_share_copy=0,

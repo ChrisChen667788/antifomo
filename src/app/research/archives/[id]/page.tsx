@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { ResearchMarkdownArchiveViewer } from "@/components/research/research-markdown-archive-viewer";
-import type { ApiResearchMarkdownArchive } from "@/lib/api";
+import type { ApiResearchMarkdownArchive } from "@/lib/api/types";
 import { getResearchMarkdownArchive, getResearchWorkspace } from "@/lib/api";
 
 interface ResearchMarkdownArchivePageProps {

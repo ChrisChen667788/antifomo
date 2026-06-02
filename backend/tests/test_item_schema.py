@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.items import ItemBatchCreateRequest, ItemCreateRequest
+from app.api.items import _parse_item_ids
+from app.schemas.items import ItemBatchCreateRequest, ItemBatchReprocessRequest, ItemCreateRequest
 
 
 def test_plugin_item_create_request_accepts_source_url() -> None:
@@ -36,3 +37,25 @@ def test_item_batch_create_request_normalizes_urls() -> None:
 def test_item_batch_create_request_rejects_empty_urls() -> None:
     with pytest.raises(ValidationError):
         ItemBatchCreateRequest(urls=[" ", "\n", ""])
+
+
+def test_parse_item_ids_deduplicates_and_ignores_invalid_values() -> None:
+    value = "9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa,invalid,9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa"
+    item_ids = _parse_item_ids(value)
+
+    assert [str(item_id) for item_id in item_ids] == [
+        "9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa"
+    ]
+
+
+def test_item_batch_reprocess_request_deduplicates_ids() -> None:
+    payload = ItemBatchReprocessRequest(
+        item_ids=[
+            "9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa",
+            "9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa",
+        ]
+    )
+
+    assert [str(item_id) for item_id in payload.item_ids] == [
+        "9fdcb277-96dd-4b0c-b1a8-e09aba6a13aa"
+    ]

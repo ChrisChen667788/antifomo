@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+## 1.1.0+20260602 - 2026-06-02
+
+- Expanded the solution architect workbench with capability-to-architecture mappings, ADR-style architecture decision records, and integration dependency diagnostics.
+- Extended solution delivery markdown and the research report card to surface architecture decisions, source systems, API/data contracts, auth boundaries, deployment assumptions, owners, risks, and validation actions.
+- Refactored the backend research and collector surfaces toward thinner workflow/application modules, including generation workflow, delivery materials, market intelligence, source enrichment, corrective expansion, and collector route domains.
+- Split Research Center, Collector Ops, Topic Workspace, Knowledge Detail, Research Report Card, and Session Summary presentation/controller logic into smaller feature modules.
+- Continued semantic theme-token migration across report cards, research panels, collector operations, knowledge detail, and session surfaces so light and dark modes share a stable design-system contract.
+- Added bilingual README major-version highlights for GitHub and ModelScope distribution.
+
+## 1.0.0+20260520 - 2026-05-20
+
+- Added WeChat Favorites import for exported HTML/TXT, clipboard text, and `mp.weixin.qq.com` link lists, turning public-account favorites into normal homepage triage cards.
+- Added backend parsing, URL normalization, deduplication, deferred processing, and import result reporting for WeChat Favorites batches.
+- Switched WeChat Favorites URL imports onto the URL-first extraction route and added swipe/auto-advance triage for quick ignore/save handling in the homepage card deck.
+- Added a latest-import review queue on the homepage with ready/processing/failed counts and item-id filtered feed refresh so WeChat Favorites batches become visible while background parsing is still running.
+- Added batch retry for failed imported items, allowing the latest WeChat Favorites queue to reprocess failures without opening each item detail page.
+- Made the latest WeChat Favorites queue shrink as users ignore or save cards, so processed items no longer return after the next automatic refresh.
+- Added a WeChat Favorites preflight preview API and homepage preview button so users can verify recognized public-account links and text blocks before starting a batch import.
+- Expanded WeChat Favorites parsing to keep mixed URL and text-block exports in one batch, and added multi-file `.url` / `.webloc` import support on the homepage panel.
+- Hardened WeChat Favorites URL discovery for HTML entities, JSON-escaped links, and percent-encoded `.url` / browser shortcut exports while avoiding shortcut metadata as fake text cards.
+- Kept the homepage refresh action scoped to the active WeChat Favorites review queue and added clearer all-failed parsing feedback with a compact queue progress bar.
+- Persisted WeChat Favorites import batches in the backend, added batch list/detail APIs, and restored the latest unfinished homepage review queue after reload with done-count tracking.
+- Added a solution architect workbench to delivery packs with customer scenarios, stakeholder question maps, decision criteria, validation actions, next-meeting agendas, markdown export, and research-report-card surfacing.
+- Added the Alembic migration, SQLite compatibility coverage, API-level import/batch restoration tests, and release metadata for the 1.0.0 local-first baseline.
+
 ## 0.8.0+20260518 - 2026-05-18
 
 - Added a solution-architecture readiness layer for generated solution delivery packs, scoring business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility.

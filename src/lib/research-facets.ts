@@ -1,4 +1,4 @@
-import type { ApiKnowledgeEntry } from "@/lib/api";
+import type { ApiKnowledgeEntry } from "@/lib/api/types";
 
 type FacetRule = {
   label: string;

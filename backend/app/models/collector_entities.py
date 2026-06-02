@@ -80,6 +80,46 @@ class CollectorFeedEntry(Base):
     feed: Mapped["CollectorFeedSource"] = relationship(back_populates="entries")
 
 
+class CollectorImportBatch(Base):
+    __tablename__ = "collector_import_batches"
+    __table_args__ = (
+        Index("idx_collector_import_batches_user_created", "user_id", "created_at"),
+        Index("idx_collector_import_batches_type_status", "import_type", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    import_type: Mapped[str] = mapped_column(String(40), nullable=False, default="wechat_favorites", server_default="wechat_favorites")
+    source_label: Mapped[str] = mapped_column(String(120), nullable=False, default="微信收藏", server_default="微信收藏")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued", server_default="queued")
+    output_language: Mapped[str] = mapped_column(String(10), nullable=False, default="zh-CN", server_default="zh-CN")
+    processing_deferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    total_candidates: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    deduplicated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    invalid_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    item_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_item_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    result_payload: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    source_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class UploadedDocument(Base):
     __tablename__ = "uploaded_documents"
     __table_args__ = (
