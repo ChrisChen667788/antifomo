@@ -1,26 +1,34 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 
 from app.schemas.research import (
+    ResearchCommercialSummaryOut,
     ResearchFollowupContextOut,
     ResearchFollowupDiagnosticsOut,
     ResearchReportResponse,
+    ResearchReportReadinessOut,
     ResearchReportSectionOut,
     ResearchSourceOut,
+    ResearchTechnicalAppendixOut,
 )
-from app.services import research_service
 from app.services.content_extractor import normalize_text
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
 from app.services.research.delivery_enrichment import (
     DeliveryEnrichmentDependencies,
     enrich_report_for_delivery,
 )
-from app.services.research.followup_diagnostics import render_followup_section_focus_prompt_context
+from app.services.research.followup_diagnostics import (
+    FollowupDiagnosticsDependencies,
+    enrich_followup_diagnostics,
+    render_followup_section_focus_prompt_context,
+)
 from app.services.research.report_storage import report_sources_to_source_documents
 from app.services.research.source_documents import (
     SourceDocument,
     clean_source_text_for_analysis,
+    looks_like_source_noise_segment,
 )
 from app.services.research_quality_service import build_research_quality_profile
 from app.services.research_retrieval_index_service import ResearchRetrievalIndex, ResearchRetrievalIndexChunk
@@ -45,22 +53,63 @@ def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> lis
     )
 
 
+def _dedupe_strings(values, limit: int) -> list[str]:
+    seen: set[str] = set()
+    rows: list[str] = []
+    for value in values:
+        normalized = normalize_text(str(value or ""))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _followup_dependencies() -> FollowupDiagnosticsDependencies:
+    return FollowupDiagnosticsDependencies(
+        truncate_text=lambda value, limit: normalize_text(value)[:limit],
+        sanitize_research_focus_text=lambda value: normalize_text(value or ""),
+        looks_like_source_noise_segment=looks_like_source_noise_segment,
+        merge_scope_hints=lambda base, followup: {**base, **followup},
+        dedupe_strings=_dedupe_strings,
+        prune_industry_hints=lambda values: _dedupe_strings(values, 6),
+        infer_input_scope_hints=lambda *_args, **_kwargs: {},
+        theme_labels_from_scope=lambda *_args, **_kwargs: [],
+        clean_scope_entity_names=lambda values, limit=6, **_kwargs: _dedupe_strings(values, limit),
+        build_query_plan=lambda *_args, **_kwargs: [],
+        extract_topic_anchor_terms=lambda _keyword, _focus: [],
+        tokenize_for_match=lambda value, **_kwargs: re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z0-9_]{2,}", normalize_text(value)),
+        generic_focus_tokens={"项目", "方案", "预算", "采购"},
+        org_pattern=re.compile(r"[\u4e00-\u9fffA-Za-z0-9]+(?:集团|公司|中心|办公室|数据局)"),
+    )
+
+
 def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchReportResponse:
     return enrich_report_for_delivery(
         report,
         deps=DeliveryEnrichmentDependencies(
-            build_report_readiness=research_service._build_report_readiness,
-            build_commercial_summary=research_service._build_commercial_summary,
-            build_technical_appendix=research_service._build_technical_appendix,
-            build_review_queue=research_service._build_review_queue,
+            build_report_readiness=lambda _report: ResearchReportReadinessOut(
+                status="ready",
+                score=90,
+                actionable=True,
+                evidence_gate_passed=True,
+            ),
+            build_commercial_summary=lambda _report: ResearchCommercialSummaryOut(next_action="继续补充官方证据"),
+            build_technical_appendix=lambda _report: ResearchTechnicalAppendixOut(),
+            build_review_queue=lambda _report: [],
             build_research_quality_profile=build_research_quality_profile,
             report_sources_to_source_documents=_report_sources_to_source_documents,
-            load_runtime_research_retrieval_index=research_service._load_runtime_research_retrieval_index,
+            load_runtime_research_retrieval_index=lambda **_kwargs: _index(),
             attach_section_retrieval_packs=attach_section_retrieval_packs,
             build_market_intelligence_pack=build_market_intelligence_pack,
             build_solution_delivery_pack=build_solution_delivery_pack,
-            enrich_followup_diagnostics=research_service._enrich_followup_diagnostics,
-            apply_report_readiness_guardrails=research_service._apply_report_readiness_guardrails,
+            enrich_followup_diagnostics=lambda enriched: enrich_followup_diagnostics(
+                enriched,
+                deps=_followup_dependencies(),
+            ),
+            apply_report_readiness_guardrails=lambda enriched: enriched,
         ),
     )
 
@@ -247,7 +296,7 @@ def test_render_followup_section_focus_prompt_context_lists_impacted_sections() 
     enriched = attach_section_retrieval_packs(_followup_report(), _index(), limit_per_section=2)
     context = render_followup_section_focus_prompt_context(
         enriched,
-        deps=research_service._followup_diagnostics_dependencies(),
+        deps=_followup_dependencies(),
     )
 
     assert "项目与商机判断" in context

@@ -4,6 +4,7 @@
 
 - Retired the first zero-call legacy wrapper batch from `research_service.py`, moved tender-detail and source-query-plan regression coverage, including archive-context query assertions, to owned research submodules, and reduced the research facade from 8,528 to 8,102 lines without API behavior changes.
 - Moved source-document text cleaning, section retrieval prompt rendering, and source-document/section-delivery regression coverage to owner modules, reducing the research facade from 8,102 to 7,913 lines while preserving compatibility wrappers.
+- Replaced section-delivery regression test facade dependency providers with deterministic owner-module test dependencies, removing `research_service._*` private seam usage from `test_research_section_retrieval_service.py`.
 - Removed the real WeChat Mini Program AppID from tracked miniapp config and docs, stopped tracking the private DevTools config, and added a masked repository secret scanner with npm commands for current-tree, local ignored-file, and Git-history checks.
 
 ## 1.1.0+20260602 - 2026-06-02

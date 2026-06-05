@@ -38,7 +38,7 @@ Current completion status:
 Latest verified checks from the current work line:
 
 - Backend collector/research modularization regression set passed.
-- Research facade wrapper-retirement and source-document/section-delivery regression subsets passed.
+- Research facade wrapper-retirement, source-document/section-delivery, and section-delivery dependency-seam regression subsets passed.
 - Current-tree secret scan passed.
 - Frontend lint for the current modularization line passed.
 - Production build passed.
@@ -1124,6 +1124,24 @@ Verified:
 - Backend smoke: `/healthz` and `/api/research/source-settings` on `localhost:8000` returned 200.
 - Research job smoke: `POST /api/research/jobs` returned a queued job and progressed without immediate error.
 - `git diff --check`
+
+### 2026-06-05: Section Delivery Dependency Seam Migration Slice 50
+
+Scope:
+
+- Replaced `test_research_section_retrieval_service.py` facade private dependency providers with deterministic test-local `DeliveryEnrichmentDependencies` and `FollowupDiagnosticsDependencies`.
+- Removed all `research_service._*` private seam usage from `backend/tests/test_research_section_retrieval_service.py`.
+- Kept quality expansion dependency seam migration for a later slice because it spans public search, source refinement, report rebuild, entity ranking, diagnostics, evaluation, and delivery regeneration.
+
+Module boundary decision:
+
+- Section delivery tests should validate owner modules with explicit dependencies instead of using the facade as a dependency factory.
+- Broad quality-expansion dependency seams should be migrated only after narrower owner-level dependency builders or smaller test doubles exist; replacing the whole pipeline with ad-hoc stubs would reduce test value.
+
+Verified:
+
+- `python3 -m py_compile backend/tests/test_research_section_retrieval_service.py`
+- `backend/.venv311/bin/pytest -q backend/tests/test_research_section_retrieval_service.py` (`7 passed`)
 
 ### 2026-06-05: Research Source Document and Section Delivery Wrapper Migration Slice 49
 
