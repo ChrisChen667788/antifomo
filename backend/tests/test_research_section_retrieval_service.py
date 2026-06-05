@@ -10,12 +10,59 @@ from app.schemas.research import (
     ResearchSourceOut,
 )
 from app.services import research_service
+from app.services.content_extractor import normalize_text
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.research.delivery_enrichment import (
+    DeliveryEnrichmentDependencies,
+    enrich_report_for_delivery,
+)
+from app.services.research.followup_diagnostics import render_followup_section_focus_prompt_context
+from app.services.research.report_storage import report_sources_to_source_documents
+from app.services.research.source_documents import (
+    SourceDocument,
+    clean_source_text_for_analysis,
+)
+from app.services.research_quality_service import build_research_quality_profile
 from app.services.research_retrieval_index_service import ResearchRetrievalIndex, ResearchRetrievalIndexChunk
 from app.services.research_section_retrieval_service import (
     attach_section_retrieval_packs,
     build_section_retrieval_packs,
     build_section_retrieval_targets,
+    render_section_retrieval_prompt_context,
 )
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
+
+
+def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> list[SourceDocument]:
+    return report_sources_to_source_documents(
+        sources,
+        classify_source_type=lambda _url: "web",
+        classify_source_tier=lambda **_kwargs: "media",
+        derive_source_label=lambda *, fallback=None, **_kwargs: fallback,
+        clean_source_text_for_analysis=clean_source_text_for_analysis,
+        truncate_text=lambda value, limit: normalize_text(value)[:limit],
+        dedupe_sources=lambda documents: list(documents),
+    )
+
+
+def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchReportResponse:
+    return enrich_report_for_delivery(
+        report,
+        deps=DeliveryEnrichmentDependencies(
+            build_report_readiness=research_service._build_report_readiness,
+            build_commercial_summary=research_service._build_commercial_summary,
+            build_technical_appendix=research_service._build_technical_appendix,
+            build_review_queue=research_service._build_review_queue,
+            build_research_quality_profile=build_research_quality_profile,
+            report_sources_to_source_documents=_report_sources_to_source_documents,
+            load_runtime_research_retrieval_index=research_service._load_runtime_research_retrieval_index,
+            attach_section_retrieval_packs=attach_section_retrieval_packs,
+            build_market_intelligence_pack=build_market_intelligence_pack,
+            build_solution_delivery_pack=build_solution_delivery_pack,
+            enrich_followup_diagnostics=research_service._enrich_followup_diagnostics,
+            apply_report_readiness_guardrails=research_service._apply_report_readiness_guardrails,
+        ),
+    )
 
 
 def _report() -> ResearchReportResponse:
@@ -161,7 +208,7 @@ def test_attach_section_retrieval_packs_updates_quality_profile_without_mutating
 
 
 def test_render_section_retrieval_prompt_context_includes_ranked_evidence() -> None:
-    context = research_service._render_section_retrieval_prompt_context(
+    context = render_section_retrieval_prompt_context(
         _report(),
         index=_index(),
         limit_per_section=2,
@@ -174,7 +221,7 @@ def test_render_section_retrieval_prompt_context_includes_ranked_evidence() -> N
 
 
 def test_enrich_report_for_delivery_attaches_runtime_section_retrieval_packs() -> None:
-    enriched = research_service._enrich_report_for_delivery(_report())
+    enriched = _enrich_report_for_delivery(_report())
 
     assert enriched.quality_profile.section_retrieval_packs
     assert any(pack.hit_count >= 1 for pack in enriched.quality_profile.section_retrieval_packs)
@@ -186,7 +233,7 @@ def test_enrich_report_for_delivery_attaches_runtime_section_retrieval_packs() -
 
 
 def test_followup_diagnostics_enrichment_builds_impacted_sections_and_resolution_flags() -> None:
-    enriched = research_service._enrich_report_for_delivery(_followup_report())
+    enriched = _enrich_report_for_delivery(_followup_report())
 
     assert enriched.followup_diagnostics.enabled is True
     assert enriched.followup_diagnostics.title_resolution == "reused"
@@ -197,8 +244,11 @@ def test_followup_diagnostics_enrichment_builds_impacted_sections_and_resolution
 
 
 def test_render_followup_section_focus_prompt_context_lists_impacted_sections() -> None:
-    enriched = research_service.attach_section_retrieval_packs(_followup_report(), _index(), limit_per_section=2)
-    context = research_service._render_followup_section_focus_prompt_context(enriched)
+    enriched = attach_section_retrieval_packs(_followup_report(), _index(), limit_per_section=2)
+    context = render_followup_section_focus_prompt_context(
+        enriched,
+        deps=research_service._followup_diagnostics_dependencies(),
+    )
 
     assert "项目与商机判断" in context
     assert "impact=" in context

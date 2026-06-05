@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 from app.services import research_service
+from app.services.research.source_query_plans import (
+    build_company_profile_query_plan,
+    build_corrective_query_plan,
+    build_expanded_query_plan,
+    build_query_plan,
+)
+from app.services.research.tender_detail_enrichment import build_tender_detail_query_plan
 from app.schemas.research import (
     ResearchEntityGraphOut,
     ResearchRankedEntityOut,
@@ -8,6 +15,10 @@ from app.schemas.research import (
     ResearchReportRequest,
     ResearchReportSectionOut,
 )
+
+
+def _source_query_plan_dependencies():
+    return research_service._source_query_plan_dependencies()
 
 
 def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
@@ -394,11 +405,12 @@ def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
 
 
 def test_company_profile_query_plan_adds_official_profile_queries() -> None:
-    queries = research_service._build_company_profile_query_plan(
+    queries = build_company_profile_query_plan(
         ["阅文集团"],
         keyword="AI漫剧头部公司",
         research_focus="分析商业化路径与合作窗口",
         limit=12,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any("关于我们" in query for query in queries)
@@ -413,12 +425,14 @@ def test_query_plan_adds_scoped_official_queries_for_narrow_buyer_scope() -> Non
         "clients": ["南京市数据局"],
     }
 
-    queries = research_service._build_query_plan(
+    queries = build_query_plan(
         "政务云预算窗口",
         "梳理重点甲方、预算窗口和采购路径",
         False,
         scope_hints=scope_hints,
+        preferred_wechat_accounts=None,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any('site:gov.cn 江苏 政务云 政务云预算窗口 规划 预算 战略' == query for query in queries)
@@ -433,19 +447,23 @@ def test_expanded_and_corrective_query_plans_add_scoped_official_queries() -> No
         "clients": ["南京市数据局"],
     }
 
-    expanded_queries = research_service._build_expanded_query_plan(
+    expanded_queries = build_expanded_query_plan(
         "政务云预算窗口",
         "梳理重点甲方、预算窗口和采购路径",
         scope_hints=scope_hints,
         include_wechat=False,
+        preferred_wechat_accounts=None,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
-    corrective_queries = research_service._build_corrective_query_plan(
+    corrective_queries = build_corrective_query_plan(
         keyword="政务云预算窗口",
         research_focus="梳理重点甲方、预算窗口和采购路径",
         scope_hints=scope_hints,
         include_wechat=False,
+        preferred_wechat_accounts=None,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any('site:gov.cn 江苏 "南京市数据局" 规划 战略' == query for query in expanded_queries)
@@ -468,12 +486,13 @@ def test_tender_detail_query_plan_targets_confirmed_project_fields() -> None:
         source_tier="official",
     )
 
-    queries = research_service._build_tender_detail_query_plan(
+    queries = build_tender_detail_query_plan(
         [source],
         keyword="文旅AIGC平台",
         research_focus="景区数字人导览",
         scope_hints={"regions": ["华东"], "industries": ["文旅"], "clients": ["某文旅集团"]},
         limit=8,
+        deps=research_service._tender_detail_dependencies(),
     )
 
     assert queries
@@ -484,29 +503,32 @@ def test_tender_detail_query_plan_targets_confirmed_project_fields() -> None:
 def test_query_plans_include_curated_wechat_accounts_when_enabled() -> None:
     preferred_accounts = ("云技术", "智能超参数")
 
-    queries = research_service._build_query_plan(
+    queries = build_query_plan(
         "算力大模型商机",
         "关注采购路径和生态伙伴",
         True,
         scope_hints={},
         preferred_wechat_accounts=preferred_accounts,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
-    expanded_queries = research_service._build_expanded_query_plan(
+    expanded_queries = build_expanded_query_plan(
         "算力大模型商机",
         "关注采购路径和生态伙伴",
         scope_hints={},
         include_wechat=True,
         preferred_wechat_accounts=preferred_accounts,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
-    corrective_queries = research_service._build_corrective_query_plan(
+    corrective_queries = build_corrective_query_plan(
         keyword="算力大模型商机",
         research_focus="关注采购路径和生态伙伴",
         scope_hints={},
         include_wechat=True,
         preferred_wechat_accounts=preferred_accounts,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any('site:mp.weixin.qq.com "云技术"' in query and "算力大模型" in query for query in queries)
@@ -532,12 +554,14 @@ def test_query_plan_prioritizes_industry_methodology_expansions() -> None:
         "关注三甲医院信息科、医务处、预算批次和试点扩面",
     )
 
-    queries = research_service._build_query_plan(
+    queries = build_query_plan(
         "上海医疗 AI 影像商机",
         "关注三甲医院信息科、医务处、预算批次和试点扩面",
         False,
         scope_hints=scope_hints,
         limit=12,
+        preferred_wechat_accounts=None,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any("医院" in query and "采购" in query for query in queries[:8])

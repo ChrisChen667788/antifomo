@@ -33,7 +33,7 @@
   "compileType": "miniprogram",
   "miniprogramRoot": "./",
   "libVersion": "3.5.8",
-  "appid": "REDACTED_WECHAT_APP_ID",
+  "appid": "touristappid",
   "projectname": "anti-fomo-miniapp",
   "condition": {},
   "simulatorPluginLibVersion": {},

@@ -2,6 +2,25 @@ from datetime import datetime, timezone
 
 from app.schemas.research import ResearchCommercialSummaryOut, ResearchReportResponse, ResearchSourceDiagnosticsOut, ResearchSourceOut
 from app.services import research_service
+from app.services.content_extractor import normalize_text
+from app.services.research.report_storage import report_sources_to_source_documents
+from app.services.research.source_documents import (
+    SourceDocument,
+    clean_source_text_for_analysis,
+    source_document_text,
+)
+
+
+def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> list[SourceDocument]:
+    return report_sources_to_source_documents(
+        sources,
+        classify_source_type=lambda _url: "web",
+        classify_source_tier=lambda **_kwargs: "media",
+        derive_source_label=lambda *, fallback=None, **_kwargs: fallback,
+        clean_source_text_for_analysis=clean_source_text_for_analysis,
+        truncate_text=lambda value, limit: normalize_text(value)[:limit],
+        dedupe_sources=lambda documents: list(documents),
+    )
 
 
 def test_rewrite_stored_research_report_uses_guarded_mode_for_low_signal_reports() -> None:
@@ -403,7 +422,7 @@ def test_rewrite_stored_research_report_drops_generic_placeholder_clients_from_g
 
 
 def test_source_text_cleaning_drops_award_forum_and_markdown_source_dump_noise() -> None:
-    documents = research_service._report_sources_to_source_documents(
+    documents = _report_sources_to_source_documents(
         [
             ResearchSourceOut(
                 title="AI漫剧论坛主论坛嘉宾发言",
@@ -425,7 +444,7 @@ def test_source_text_cleaning_drops_award_forum_and_markdown_source_dump_noise()
         ]
     )
 
-    cleaned_text = research_service._source_text(documents[0])
+    cleaned_text = source_document_text(documents[0])
 
     assert "嘉宾发言" not in cleaned_text
     assert "分享观点" not in cleaned_text

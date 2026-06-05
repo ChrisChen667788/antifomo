@@ -5,7 +5,8 @@
 - WeChat DevTools is opening this exact project path:
   - `/Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo/miniapp`
 - Current miniapp identifiers:
-  - `appid: REDACTED_WECHAT_APP_ID`
+  - `appid: touristappid` in tracked config
+  - Local real AppID belongs in ignored `miniapp/project.private.config.json`
   - `projectname: anti-fomo-miniapp`
 
 ## What This Means
@@ -18,8 +19,10 @@
 
 - `miniapp/project.config.json`
   - `miniprogramRoot: "./"`
-- `miniapp/project.private.config.json`
+- `miniapp/project.private.config.example.json`
   - `compileHotReLoad: true`
+- `miniapp/project.private.config.json`
+  - Ignored local-only DevTools binding file. Copy the example file and fill a real AppID locally when you need preview/upload.
 
 This means the current project is configured for in-place editing with hot reload enabled.
 

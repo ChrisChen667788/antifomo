@@ -15,7 +15,7 @@ npm run demo:backend
 
 2. 打开微信开发者工具，选择 **导入项目**。
 3. 项目目录选择上面的 `miniapp` 目录。
-4. 项目已配置可用 AppID（`REDACTED_WECHAT_APP_ID`），也可以替换为你自己的。
+4. 仓库默认使用 `touristappid` 占位；如需真机预览或上传，复制 `project.private.config.example.json` 为 `project.private.config.json`，并在本地填入你自己的微信小程序 AppID。不要提交真实 AppID。
 5. 在开发者工具中勾选：
    - `详情 -> 本地设置 -> 不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书`
 6. 编译后即可看到小程序版 Demo（Feed / Inbox / Saved / Focus / Session Summary）。

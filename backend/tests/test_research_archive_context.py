@@ -16,12 +16,17 @@ from app.schemas.research import (
     ResearchReportResponse,
 )
 from app.services import research_service
+from app.services.research.source_query_plans import build_query_plan
 
 
 def _new_session_factory():
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(bind=engine)
     return sessionmaker(bind=engine, future=True, autoflush=False, autocommit=False)
+
+
+def _source_query_plan_dependencies():
+    return research_service._source_query_plan_dependencies()
 
 
 def _seed_demo_user(db: Session) -> User:
@@ -176,12 +181,14 @@ def test_merge_scope_hints_with_archive_context_pushes_archive_targets_into_quer
     assert merged_scope_hints["archive_targets"] == ["上海数据集团"]
     assert "采购中心" in merged_scope_hints["archive_target_departments"]
     assert "7 月预算复核" in merged_scope_hints["archive_budget_signals"]
-    queries = research_service._build_query_plan(
+    queries = build_query_plan(
         "上海政务云预算窗口",
         "优先锁定具体账户和采购中心",
         False,
         scope_hints=merged_scope_hints,
+        preferred_wechat_accounts=None,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert any("上海数据集团" in query and "采购中心" in query for query in queries)
@@ -216,12 +223,14 @@ def test_merge_scope_hints_with_archive_context_ignores_stale_low_support_archiv
     )
 
     assert "archive_targets" not in merged_scope_hints
-    queries = research_service._build_query_plan(
+    queries = build_query_plan(
         "上海政务云预算窗口",
         "优先锁定具体账户和采购中心",
         False,
         scope_hints=merged_scope_hints,
+        preferred_wechat_accounts=None,
         limit=24,
+        deps=_source_query_plan_dependencies(),
     )
 
     assert not any("上海数据集团" in query and "采购中心" in query for query in queries)

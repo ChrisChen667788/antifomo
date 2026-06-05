@@ -11,10 +11,27 @@ from app.schemas.research import (
     ResearchSourceOut,
 )
 from app.services import research_service
+from app.services.content_extractor import normalize_text
+from app.services.research.quality_expansion import expand_report_public_sources_until_quality_improves
+from app.services.research.report_storage import report_sources_to_source_documents
+from app.services.research.source_documents import SourceDocument, clean_source_text_for_analysis
+from app.services.research.web_search import SearchHit
 from app.services.research_report_evaluation_service import (
     evaluate_and_improve_research_report,
     evaluate_research_report,
 )
+
+
+def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> list[SourceDocument]:
+    return report_sources_to_source_documents(
+        sources,
+        classify_source_type=lambda _url: "web",
+        classify_source_tier=lambda **_kwargs: "media",
+        derive_source_label=lambda *, fallback=None, **_kwargs: fallback,
+        clean_source_text_for_analysis=clean_source_text_for_analysis,
+        truncate_text=lambda value, limit: normalize_text(value)[:limit],
+        dedupe_sources=lambda documents: list(documents),
+    )
 
 
 def _source(snippet: str) -> ResearchSourceOut:
@@ -153,12 +170,12 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypa
 
     calls: list[str] = []
 
-    def _fake_search(query: str, *, timeout_seconds: int, limit: int) -> list[research_service.SearchHit]:
+    def _fake_search(query: str, *, timeout_seconds: int, limit: int) -> list[SearchHit]:
         calls.append(query)
         if "采购" not in query and "招标" not in query and "公共资源" not in query:
             return []
         return [
-            research_service.SearchHit(
+            SearchHit(
                 title="南京市数据局政务云采购意向公告",
                 url="https://ccgp.gov.cn/cggg/nanjing-data-cloud",
                 snippet=(
@@ -172,12 +189,12 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypa
         ]
 
     def _fake_extract(
-        hit: research_service.SearchHit,
+        hit: SearchHit,
         *,
         timeout_seconds: int,
         excerpt_chars: int,
-    ) -> research_service.SourceDocument:
-        return research_service.SourceDocument(
+    ) -> SourceDocument:
+        return SourceDocument(
             title=hit.title,
             url=hit.url,
             domain="ccgp.gov.cn",
@@ -199,15 +216,16 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypa
     monkeypatch.setattr(local_settings, "research_quality_expansion_query_limit", 16)
     monkeypatch.setattr(research_service, "get_settings", lambda: local_settings)
 
-    expanded = research_service._expand_report_public_sources_until_quality_improves(
+    expanded = expand_report_public_sources_until_quality_improves(
         evaluated,
-        source_documents=research_service._report_sources_to_source_documents(evaluated.sources),
+        source_documents=_report_sources_to_source_documents(evaluated.sources),
         runtime={
             "search_timeout_seconds": 1,
             "search_result_limit": 3,
             "url_timeout_seconds": 1,
             "expanded_selected_limit": 6,
         },
+        deps=research_service._quality_expansion_dependencies(),
     )
 
     diagnostics = expanded.source_diagnostics

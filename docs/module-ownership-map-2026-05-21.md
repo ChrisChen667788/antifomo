@@ -1,6 +1,6 @@
 # Module Ownership Map
 
-Updated: 2026-06-01
+Updated: 2026-06-05
 
 This map records the current ownership boundaries after the first modular refactor slices. It is intended to keep future development from drifting back into broad orchestration files.
 
@@ -36,7 +36,7 @@ Current owners:
 | Solution delivery orchestration | `backend/app/services/research_solution_intelligence_service.py` | Scenario resolution, evidence policy, pack assembly, quality review, architecture enrichment, export assignment. |
 | Research report markdown | `backend/app/services/research/report_markdown.py` | Full research report markdown serialization and report filename derivation. |
 | Research report storage mapping | `backend/app/services/research/report_storage.py` | Stored report section aliases, stored-report-to-result mapping, and persisted source reconstruction. |
-| Research source documents | `backend/app/services/research/source_documents.py` | Source document DTO and conversion to research source outputs. |
+| Research source documents | `backend/app/services/research/source_documents.py` | Source document DTO, source text noise cleanup, source-document text assembly, and conversion to research source outputs. |
 | Research archive context | `backend/app/services/research/archive_context.py` | Historical research/knowledge prompt rendering, archive query expansion, and archive scope-hint merge policy. |
 | Research archive loader | `backend/app/services/research/archive_loader.py` | Historical research/knowledge candidate loading, stored report payload parsing, archive item construction, and retrieval-match materialization. |
 | Research runtime config | `backend/app/services/research/runtime_config.py` | Research mode runtime limits, query recovery overrides, and generation/search timeout budget calculation. |
@@ -67,7 +67,8 @@ Current owners:
 | Research delivery materials | `backend/app/services/research/delivery_materials.py` | Commercial summary, technical appendix, scenario comparison, and review queue construction for research reports. |
 | Research entity ranking | `backend/app/services/research/entity_ranking.py` | Target account, competitor, and ecosystem-partner ranking set construction, entity ranking heuristics, candidate-profile support scoring, and candidate-profile promotion. |
 | Research generation artifacts | `backend/app/services/research/generation_artifacts.py` | Outline fallback generation and partial report response materialization before final synthesis. |
-| Research retrieval orchestration | `backend/app/services/research/retrieval_orchestration.py` | Runtime section retrieval index orchestration, section prompt context, and follow-up section-focus context. |
+| Research section retrieval | `backend/app/services/research_section_retrieval_service.py` | Section retrieval targets, section evidence packs, section-pack prompt rendering, and runtime pack attachment. |
+| Research retrieval orchestration | `backend/app/services/research/retrieval_orchestration.py` | Runtime section retrieval index orchestration and generation-time section/follow-up context injection. |
 | Research final report assembly | `backend/app/services/research/report_assembly.py` | Final research-report DTO assembly from parsed result, ranked entities, diagnostics, and source outputs. |
 | Research report persistence | `backend/app/services/research/report_persistence.py` | Saved research report lookup and knowledge-entry upsert persistence. |
 | Research section quality | `backend/app/services/research/section_quality.py` | Section evidence links, evidence quotas, confidence tone, insufficiency reasons, and verification-step scoring. |
@@ -84,7 +85,7 @@ Current backend hotspots still requiring future slices:
 
 | File | Approx. size | Risk |
 | --- | ---: | --- |
-| `backend/app/services/research_service.py` | 8,528 lines | Primary research service is now a compatibility facade plus setup and stage-port dependency wiring after stored-report rewrite orchestration, report readiness, action cards, entity ranking heuristics, source query plans, scope terms, report field sanitization, entity graph builder, source intelligence, source diagnostics, source scoping policy, ranking/source utility, strategy refinement, generation setup, generation workflow, general evidence expansion, tender-detail enrichment, generation execution, source enrichment, corrective expansion, candidate-profile enrichment, quality expansion, delivery enrichment/materials, stored entity canonicalization, follow-up diagnostics, section quality, markdown, web-search, source-document, storage-mapping, archive-context, archive-loader, runtime-config, source-collection, entity-ranking, generation-artifact, retrieval-orchestration, report-assembly, and report-persistence extraction; remaining risk is residual entity/theme policy wrappers and compatibility wrapper retirement. |
+| `backend/app/services/research_service.py` | 7,913 lines | Primary research service is now a compatibility facade plus setup and stage-port dependency wiring after stored-report rewrite orchestration, report readiness, action cards, entity ranking heuristics, source query plans, scope terms, report field sanitization, entity graph builder, source intelligence, source diagnostics, source scoping policy, ranking/source utility, strategy refinement, generation setup, generation workflow, general evidence expansion, tender-detail enrichment, generation execution, source enrichment, corrective expansion, candidate-profile enrichment, quality expansion, delivery enrichment/materials, stored entity canonicalization, follow-up diagnostics, section quality, markdown, web-search, source-document, storage-mapping, archive-context, archive-loader, runtime-config, source-collection, entity-ranking, generation-artifact, retrieval-orchestration, report-assembly, and report-persistence extraction. Wrapper-retirement slices removed zero-call legacy helpers, moved tender-detail/source-query/source-document/section-delivery tests to owner modules, and extracted source text cleanup plus section prompt rendering; remaining risk is residual entity/theme policy wrappers, direct test monkeypatch seams, and compatibility wrapper retirement. |
 | `backend/app/services/research/generation_workflow.py` | 804 lines | Workflow spine is isolated and its public dependency surface is grouped into progress/source-collection/scope/enrichment/generation/ranking/assembly/quality ports; remaining risk is internal workflow length rather than a flat injection list. |
 | `backend/app/services/knowledge_intelligence_service.py` | 2,709 lines | Knowledge intelligence rules, scoring, and rendering concerns should be checked before new features. |
 | `backend/app/services/work_task_service.py` | 2,058 lines | Task execution and export generation need clearer task-handler boundaries. |
@@ -184,17 +185,17 @@ Current frontend hotspots still requiring future slices:
 | --- | ---: | --- |
 | `src/components/settings/collector-ops-panel-copy.ts` | 954 lines | Large localization map is isolated from rendering and initialized as a module-level constant; future risk is translation breadth, not behavior coupling. |
 | `src/components/settings/use-collector-ops-wechat-agent-actions.ts` | 251 lines | WeChat agent command controller is focused, but may split into status/config/batch/OCR action hooks if command breadth grows. |
-| `src/components/knowledge/knowledge-detail-card.tsx` | 1,896 lines | Knowledge detail is now tokenized for the current theme scan, but still combines edit form, embedded research report, commercial intelligence, review queue, and related-entry presentation; future slices should split by section before adding more behavior. |
-| `src/components/session/session-summary-panel.tsx` | 1,939 lines | Session summary is now tokenized for the current theme scan, but still combines collector snapshots, digest cards, research recommendations, exports, and watchlist priority rendering; future slices should extract section components/controllers if it grows. |
+| `src/components/knowledge/knowledge-detail-card.tsx` | 490 lines | Knowledge detail is no longer a 1,800+ line hotspot after prior section extraction, but it still combines edit form, embedded research report, commercial intelligence, review queue, and related-entry presentation; future slices should split by section before adding more behavior. |
+| `src/components/session/session-summary-panel.tsx` | 1,291 lines | Session summary is now tokenized for the current theme scan, but still combines collector snapshots, digest cards, research recommendations, exports, and watchlist priority rendering; future slices should extract section components/controllers if it grows. |
 | `src/components/research/use-research-topic-workspace-controller.ts` | 482 lines | Topic workspace data loading and derived compare/entity/timeline state is separated from rendering; future risk is only controller growth as more timeline actions are added. |
-| `src/components/research/research-topic-workspace.tsx` | 302 lines | Topic workspace page shell is now mostly hero, latest-version summary, and section composition. |
+| `src/components/research/research-topic-workspace.tsx` | 279 lines | Topic workspace page shell is now mostly hero, latest-version summary, and section composition. |
 | `src/components/research/use-research-center-controller.ts` | 282 lines | Research center controller is now a thin aggregation hook; remaining risk is cross-section prop bundle growth if new domains are added without a controller boundary. |
 | `src/lib/api/type-contracts/research-report.ts` | 524 lines | Report DTOs are now separated from delivery/workspace/watchlist/evaluation/experiment/retrieval contracts; future slices can split report quality/readiness if this file grows. |
 | `src/components/inbox/research-report-card.tsx` | 615 lines | Parent card now owns top-level report presentation composition and uses semantic theme tokens for its primary shell/summary surfaces; downstream report sections have moved state tones to semantic tokens, leaving presentation density as the main risk. |
 
 ## Next Slices
 
-- Continue shrinking `research_service.py` compatibility wrappers only after endpoint callers and monkeypatch seams are stabilized. `generation_workflow.py` now uses stage-level dependency ports; the next backend step should retire wrappers, not add more helper-level splitting.
+- Continue shrinking `research_service.py` compatibility wrappers after each caller or monkeypatch seam is moved to its owner module. `generation_workflow.py` now uses stage-level dependency ports; the next backend step should retire more direct-test wrappers, not add more helper-level splitting.
 - Keep collector routes in owned modules only; `backend/app/api/collector.py` has been deleted.
 - Keep the research DTO facade stable; future DTO work should only split the report contract further if quality/readiness or follow-up diagnostics grow again.
 - Research Center section surface/text token migration is complete across sidebar controls, source settings, experiment control, low-quality review, results, watchlist, workspace, archives, and centralized tone helpers.

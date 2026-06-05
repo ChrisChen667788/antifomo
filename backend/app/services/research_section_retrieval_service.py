@@ -307,6 +307,45 @@ def build_section_retrieval_packs(
     return packs
 
 
+def render_section_retrieval_prompt_context(
+    report: ResearchReportDocument,
+    *,
+    index: ResearchRetrievalIndex,
+    limit_per_section: int = 3,
+) -> str:
+    packs = build_section_retrieval_packs(report, index, limit_per_section=limit_per_section)
+    if not packs:
+        return ""
+
+    blocks: list[str] = []
+    for pack in packs[:8]:
+        hit_rows: list[str] = []
+        for hit in pack.hits[:2]:
+            snippet = normalize_text(hit.snippet)
+            if len(snippet) > 180:
+                snippet = f"{snippet[:180]}..."
+            hit_rows.append(
+                f"- [{hit.source_tier}] {hit.title} | {hit.label or hit.field_key} | score={hit.score} | {snippet} | {hit.source_url or 'no-url'}"
+            )
+        if not hit_rows:
+            hit_rows.append("- 当前未命中可直接注入的章节证据，需要按 next_steps 补证。")
+        blocks.append(
+            "\n".join(
+                [
+                    f"[Section] {pack.section_title}",
+                    f"Status: {pack.status} | Support Score: {pack.support_score} | Official Hits: {pack.official_hit_count}",
+                    f"Target Axes: {' / '.join(pack.target_axes) if pack.target_axes else 'n/a'}",
+                    f"Query: {pack.query}",
+                    "Evidence Hits:",
+                    *hit_rows,
+                    f"Missing Terms: {' / '.join(pack.missing_terms) if pack.missing_terms else 'none'}",
+                    f"Next Steps: {'；'.join(pack.next_steps) if pack.next_steps else 'none'}",
+                ]
+            )
+        )
+    return "\n\n".join(blocks)
+
+
 def attach_section_retrieval_packs(
     report: ResearchReportDocument,
     index: ResearchRetrievalIndex,

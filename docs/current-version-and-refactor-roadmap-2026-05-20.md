@@ -1,6 +1,6 @@
 # Current Version, History, and Refactor Roadmap
 
-Updated: 2026-06-02
+Updated: 2026-06-05
 
 This document is the working baseline for the next large change. It consolidates the current product state, historical version lines, completed development content, and the upcoming architecture refactor plus dark-mode redesign plan.
 
@@ -30,12 +30,16 @@ Current completion status:
 - `research_service.py` now exposes `generate_research_report` as a thin setup/dependency facade; the generation workflow spine lives in `backend/app/services/research/generation_workflow.py` and consumes stage-scoped dependency ports.
 - Report card, its downstream report sections, Collector Ops primary shells/daemon/batch surfaces, Research Center presentation sections, research archive/console surfaces, research compare/topic-version surfaces, knowledge detail, and session summary panels now consume semantic theme tokens instead of hard-coded day-mode white/slate/status surfaces.
 - Global theme tokens are realigned with the earlier `v0.8.0+20260518` translucent day UI: light mode returns to the pale blue Apple-style glass baseline, while dark mode now mirrors the same glass language with low-saturation deep surfaces.
+- The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 7,913 lines.
+- Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
 - Release screenshots are currently aligned to `1.1.0+20260602` with `15/15` accepted screenshots.
 
 Latest verified checks from the current work line:
 
 - Backend collector/research modularization regression set passed.
+- Research facade wrapper-retirement and source-document/section-delivery regression subsets passed.
+- Current-tree secret scan passed.
 - Frontend lint for the current modularization line passed.
 - Production build passed.
 - `git diff --check` passed.
@@ -1120,6 +1124,69 @@ Verified:
 - Backend smoke: `/healthz` and `/api/research/source-settings` on `localhost:8000` returned 200.
 - Research job smoke: `POST /api/research/jobs` returned a queued job and progressed without immediate error.
 - `git diff --check`
+
+### 2026-06-05: Research Source Document and Section Delivery Wrapper Migration Slice 49
+
+Scope:
+
+- Moved source text noise filtering, source text analysis cleanup, and `SourceDocument` text assembly from `backend/app/services/research_service.py` to `backend/app/services/research/source_documents.py`.
+- Added `render_section_retrieval_prompt_context` to `backend/app/services/research_section_retrieval_service.py`, leaving `research_service.py` as a compatibility wrapper.
+- Migrated source-document and section-delivery regression tests from direct `research_service._report_sources_to_source_documents`, `_source_text`, `_render_section_retrieval_prompt_context`, `_enrich_report_for_delivery`, `_render_followup_section_focus_prompt_context`, and `_expand_report_public_sources_until_quality_improves` calls to owner modules.
+- Reduced `backend/app/services/research_service.py` from 8,102 to 7,913 lines while preserving API and generation workflow compatibility seams.
+
+Module boundary decision:
+
+- Source document text cleanup belongs with `SourceDocument` conversion and DTO utilities, not the generation facade.
+- Section retrieval prompt rendering belongs with section retrieval packs because it is a deterministic projection of retrieval-pack evidence.
+- Delivery enrichment and quality expansion tests can call owner modules directly while still using existing dependency providers for monkeypatch-compatible seams.
+
+Verified:
+
+- `python3 -m py_compile backend/app/services/research_service.py backend/app/services/research/source_documents.py backend/app/services/research_section_retrieval_service.py backend/tests/test_research_report_storage_rewrite.py backend/tests/test_research_report_evaluation_service.py backend/tests/test_research_section_retrieval_service.py`
+- `backend/.venv311/bin/pytest -q backend/tests/test_research_report_storage_rewrite.py backend/tests/test_research_report_evaluation_service.py backend/tests/test_research_section_retrieval_service.py` (`23 passed`)
+- No remaining direct test calls to the migrated source-document and section-delivery wrapper set.
+
+### 2026-06-05: Miniapp Secret Exposure Remediation Slice 48
+
+Scope:
+
+- Replaced the tracked WeChat Mini Program AppID in `miniapp/project.config.json` with `touristappid`.
+- Stopped tracking `miniapp/project.private.config.json` and added `miniapp/project.private.config.example.json` for local DevTools setup.
+- Updated miniapp docs to require real AppID values only in ignored local config.
+- Added `scripts/secret_scan.py` plus `npm run security:scan`, `npm run security:scan:history`, and `npm run security:scan:local`.
+
+Security decision:
+
+- Current syncable files must not contain real AppIDs, API keys, tokens, passwords, private-key blocks, or common cloud credentials.
+- Ignored local files may still contain operational credentials, but `npm run security:scan:local` reports them with masked values so they can be rotated or scrubbed before packaging a public artifact.
+- Existing public GitHub/ModelScope history still contains the old WeChat AppID references. Fully removing those from remote history requires an explicit history-rewrite and force-push decision across both remotes.
+
+Verified:
+
+- `npm run security:scan` (`No likely secrets found.`)
+- `npm run security:scan:local` reported only ignored local credentials in `backend/.env` and local `miniapp/project.private.config.json`, with masked values.
+- `npm run security:scan:history` reported historical masked WeChat AppID references, confirming why GitHub still has an open secret scanning alert.
+
+### 2026-06-05: Research Facade Wrapper Retirement Slice 47
+
+Scope:
+
+- Retired the first zero-call legacy private wrapper batch from `backend/app/services/research_service.py`, covering unused query/scope, tender-detail, entity graph, field sanitization, section-quality, runtime-config, follow-up, archive-context, stored-entity, and guarded-rewrite facade helpers.
+- Moved tender-detail query-plan regression coverage from `research_service._build_tender_detail_query_plan` to `backend/app/services/research/tender_detail_enrichment.py`'s owned `build_tender_detail_query_plan` entrypoint.
+- Moved source query-plan regression coverage in `backend/tests/test_research_hybrid_retrieval.py` and `backend/tests/test_research_archive_context.py` from `research_service._build_query_plan`, `_build_expanded_query_plan`, `_build_corrective_query_plan`, and `_build_company_profile_query_plan` to `backend/app/services/research/source_query_plans.py` owner functions.
+- Reduced `backend/app/services/research_service.py` from 8,528 to 8,102 lines without changing API route behavior or the public `generate_research_report` entrypoint.
+
+Module boundary decision:
+
+- This slice deletes only wrappers with no production or test callers, plus migrates test-facing wrapper assertions whose owner modules already expose stable entrypoints.
+- Stage-port dependency wiring remains in `research_service.py` for now; direct monkeypatch seams should be retired incrementally by moving tests to owner modules before deleting more wrappers.
+
+Verified:
+
+- `python3 -m py_compile backend/app/services/research_service.py backend/tests/test_research_hybrid_retrieval.py backend/tests/test_research_archive_context.py`
+- `backend/.venv311/bin/pytest -q backend/tests/test_research_hybrid_retrieval.py` (`17 passed`)
+- `backend/.venv311/bin/pytest -q backend/tests/test_research_archive_context.py` (`5 passed`)
+- `backend/.venv311/bin/pytest -q backend/tests/test_research_hybrid_retrieval.py backend/tests/test_research_report_storage_rewrite.py backend/tests/test_research_section_retrieval_service.py backend/tests/test_research_report_evaluation_service.py backend/tests/test_research_archive_context.py backend/tests/test_architecture_boundaries.py` (`47 passed`)
 
 ### 2026-05-25: Research Stored Rewrite, Ranking, and Action Delivery Slice 23
 

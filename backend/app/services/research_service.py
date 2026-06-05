@@ -19,7 +19,6 @@ from app.schemas.research import (
     ResearchEntityEvidenceOut,
     ResearchFollowupContextOut,
     ResearchFollowupDiagnosticsOut,
-    ResearchFollowupSectionImpactOut,
     ResearchNormalizedEntityOut,
     ResearchReportDocument,
     ResearchReportRequest,
@@ -73,14 +72,12 @@ from app.services.research.report_storage import (
     stored_report_to_result as _storage_stored_report_to_result,
 )
 from app.services.research.runtime_config import (
-    apply_runtime_query_config as _runtime_config_apply_query_config,
     build_research_runtime as _runtime_config_build_research_runtime,
 )
 from app.services.research.scope_terms import (
     ScopeTermDependencies,
     build_strict_theme_terms as _scope_terms_build_strict_theme_terms,
     build_theme_terms as _scope_terms_build_theme_terms,
-    clean_company_anchor_candidate as _scope_terms_clean_company_anchor_candidate,
     extract_company_anchor_terms as _scope_terms_extract_company_anchor_terms,
     extract_explicit_exclusion_terms as _scope_terms_extract_explicit_exclusion_terms,
     extract_topic_anchor_terms as _scope_terms_extract_topic_anchor_terms,
@@ -97,18 +94,13 @@ from app.services.research.action_cards import (
     entity_names_from_ranked as _action_cards_entity_names_from_ranked,
 )
 from app.services.research.archive_context import (
-    archive_budget_query_term as _archive_context_budget_query_term,
-    archive_item_is_queryworthy as _archive_context_item_is_queryworthy,
-    build_archive_query_expansions as _archive_context_build_query_expansions,
     merge_scope_hints_with_archive_context as _archive_context_merge_scope_hints,
-    parse_archive_context_datetime as _archive_context_parse_datetime,
     render_archive_prompt_context as _archive_context_render_prompt,
     research_archive_query_text as _archive_context_query_text,
 )
 from app.services.research.archive_loader import (
     build_archive_context_item as _archive_loader_build_context_item,
     build_archive_report_scope_hints as _archive_loader_build_report_scope_hints,
-    entry_report_payload as _archive_loader_entry_report_payload,
     load_research_archive_context as _archive_loader_load_context,
 )
 from app.services.research.candidate_profile_enrichment import (
@@ -128,7 +120,6 @@ from app.services.research.delivery_materials import (
     build_commercial_summary as _delivery_materials_build_commercial_summary,
     build_review_queue as _delivery_materials_build_review_queue,
     build_technical_appendix as _delivery_materials_build_technical_appendix,
-    review_queue_severity as _delivery_materials_review_queue_severity,
 )
 from app.services.research.delivery_enrichment import (
     DeliveryEnrichmentDependencies,
@@ -151,24 +142,17 @@ from app.services.research.entity_graph_builder import (
     EntityGraphBuilderDependencies,
     build_entity_graph as _entity_graph_builder_build,
     entity_graph_lookup as _entity_graph_builder_lookup,
-    infer_entity_graph_type as _entity_graph_builder_infer_type,
-    pick_entity_graph_type as _entity_graph_builder_pick_type,
 )
 from app.services.research.followup_diagnostics import (
     FollowupDiagnosticsDependencies,
     build_followup_context as _followup_diagnostics_build_context,
-    build_followup_impact_terms as _followup_diagnostics_build_impact_terms,
     build_followup_planning_focus as _followup_diagnostics_build_planning_focus,
     build_followup_research_diagnostics as _followup_diagnostics_build_research,
-    build_followup_section_impacts as _followup_diagnostics_build_section_impacts,
     enrich_followup_diagnostics as _followup_diagnostics_enrich,
-    followup_context_sections as _followup_diagnostics_context_sections,
-    followup_resolution_status as _followup_diagnostics_resolution_status,
     merge_scope_hints_with_followup_context as _followup_diagnostics_merge_scope_hints,
     render_followup_diagnostics_prompt_context as _followup_diagnostics_render_diagnostics_prompt,
     render_followup_prompt_context as _followup_diagnostics_render_prompt,
     render_followup_section_focus_prompt_context as _followup_diagnostics_render_section_focus_prompt,
-    split_followup_research_segments as _followup_diagnostics_split_segments,
 )
 from app.services.research.generation_artifacts import (
     build_partial_report_response as _generation_artifacts_build_partial_report_response,
@@ -197,7 +181,6 @@ from app.services.research.generation_workflow import (
 from app.services.research.quality_expansion import (
     QualityExpansionDependencies,
     expand_report_public_sources_until_quality_improves as _quality_expansion_expand_report,
-    quality_expansion_score as _quality_expansion_score_impl,
 )
 from app.services.research.ranking_source_utility import (
     RankingSourceUtilityDependencies,
@@ -208,10 +191,8 @@ from app.services.research.ranking_source_utility import (
 )
 from app.services.research.report_field_sanitization import (
     ReportFieldSanitizationDependencies,
-    is_useful_department_row as _report_field_sanitization_is_department,
     is_useful_public_contact_row as _report_field_sanitization_is_public_contact,
     sanitize_entity_row as _report_field_sanitization_entity_row,
-    sanitize_generic_row as _report_field_sanitization_generic_row,
     sanitize_report_field_rows as _report_field_sanitization_rows,
 )
 from app.services.research.report_assembly import assemble_final_research_report as _report_assembly_assemble_final_report
@@ -221,8 +202,6 @@ from app.services.research.retrieval_orchestration import (
 from app.services.research.section_quality import (
     SectionQualityDependencies,
     build_section_evidence_links as _section_quality_build_evidence_links,
-    excerpt_for_evidence as _section_quality_excerpt_for_evidence,
-    extract_section_anchor_terms as _section_quality_extract_anchor_terms,
     section_confidence_profile as _section_quality_confidence_profile,
     section_evidence_quota as _section_quality_evidence_quota,
     section_insufficiency_profile as _section_quality_insufficiency_profile,
@@ -241,6 +220,10 @@ from app.services.research.source_diagnostics import (
 )
 from app.services.research.source_documents import (
     SourceDocument,
+    clean_source_text_for_analysis as _source_documents_clean_source_text,
+    looks_like_source_artifact_text as _source_documents_looks_like_artifact,
+    looks_like_source_noise_segment as _source_documents_looks_like_noise_segment,
+    source_document_text as _source_documents_text,
     source_documents_to_research_source_outputs as _to_research_source_outputs,
 )
 from app.services.research.source_intelligence import (
@@ -255,7 +238,6 @@ from app.services.research.source_query_plans import (
     build_corrective_query_plan as _source_query_plans_build_corrective,
     build_expanded_query_plan as _source_query_plans_build_expanded,
     build_query_plan as _source_query_plans_build_query,
-    build_scoped_official_query_expansions as _source_query_plans_build_scoped_official,
 )
 from app.services.research.source_scope_policy import (
     SourceScopePolicyDependencies,
@@ -275,10 +257,7 @@ from app.services.research.strategy_refinement import (
 )
 from app.services.research.stored_entity_canonicalization import (
     StoredEntityCanonicalizationDependencies,
-    canonical_org_name_from_evidence_links as _stored_entity_canonicalization_org_from_evidence_links,
     canonicalize_stored_entity_name as _stored_entity_canonicalization_entity_name,
-    canonicalize_stored_entity_rows as _stored_entity_canonicalization_entity_rows,
-    canonicalize_stored_ranked_entities as _stored_entity_canonicalization_ranked_entities,
     canonicalize_stored_report_entities as _stored_entity_canonicalization_report_entities,
     canonicalize_stored_result_entities as _stored_entity_canonicalization_result_entities,
     clean_candidate_profile_company_names as _stored_entity_canonicalization_clean_candidate_names,
@@ -289,8 +268,6 @@ from app.services.research.stored_report_rewrite import (
     apply_guarded_rewrite_diagnostics as _stored_report_rewrite_apply_guarded_diagnostics,
     assess_stored_report_rewrite_mode as _stored_report_rewrite_assess_mode,
     build_guarded_rewrite_title as _stored_report_rewrite_build_guarded_title,
-    build_guarded_stored_research_report as _stored_report_rewrite_build_guarded_report,
-    guarded_rewrite_reason_label as _stored_report_rewrite_reason_label,
     resolve_stored_report_target_support as _stored_report_rewrite_resolve_target_support,
     rewrite_stored_research_report as _stored_report_rewrite_rewrite_report,
     stored_report_concrete_targets as _stored_report_rewrite_concrete_targets,
@@ -299,10 +276,6 @@ from app.services.research.stored_report_rewrite import (
 from app.services.research.tender_detail_enrichment import (
     TenderDetailDependencies,
     apply_tender_detail_enrichment as _tender_detail_enrichment_apply,
-    build_tender_detail_query_plan as _tender_detail_build_query_plan,
-    collect_tender_detail_sources as _tender_detail_collect_sources,
-    confirmed_tender_sources as _tender_detail_confirmed_sources,
-    source_confirmed_tender_score as _tender_detail_source_score,
 )
 from app.services.research.web_search import SearchHit, _search_public_web
 from app.services.research_report_evaluation_service import evaluate_and_improve_research_report
@@ -315,6 +288,7 @@ from app.services.research_retrieval_index_service import (
 from app.services.research_section_retrieval_service import (
     attach_section_retrieval_packs,
     build_section_retrieval_packs,
+    render_section_retrieval_prompt_context as _section_retrieval_render_prompt_context,
 )
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
 from app.services.research_solution_intelligence_service import build_solution_delivery_pack
@@ -1119,24 +1093,6 @@ def _source_query_plan_dependencies() -> SourceQueryPlanDependencies:
     )
 
 
-def _build_scoped_official_query_expansions(
-    keyword: str,
-    research_focus: str | None,
-    *,
-    scope_hints: dict[str, object] | None = None,
-    include_wechat: bool = False,
-    limit: int = 8,
-) -> list[str]:
-    return _source_query_plans_build_scoped_official(
-        keyword,
-        research_focus,
-        scope_hints=scope_hints,
-        include_wechat=include_wechat,
-        limit=limit,
-        deps=_source_query_plan_dependencies(),
-    )
-
-
 def _build_query_plan(
     keyword: str,
     research_focus: str | None,
@@ -1210,10 +1166,6 @@ def _extract_company_anchor_terms(keyword: str, research_focus: str | None) -> l
     return _scope_terms_extract_company_anchor_terms(keyword, research_focus, deps=_scope_term_dependencies())
 
 
-def _clean_company_anchor_candidate(value: str) -> str:
-    return _scope_terms_clean_company_anchor_candidate(value, deps=_scope_term_dependencies())
-
-
 def _resolved_company_anchor_terms(
     keyword: str,
     research_focus: str | None,
@@ -1250,85 +1202,6 @@ def _source_matches_company_anchor(source: SearchHit | SourceDocument, company_a
         )
     ).lower()
     return any(normalize_text(term).lower() in haystack for term in company_anchor_terms if normalize_text(term))
-
-
-def _score_hit(hit: SearchHit, *, keyword: str, research_focus: str | None) -> tuple[int, SearchHit]:
-    haystack = normalize_text(
-        " ".join(
-            [
-                hit.title,
-                hit.snippet,
-                hit.search_query,
-                hit.source_label or "",
-                hit.url,
-                extract_domain(hit.url) or "",
-            ]
-        )
-    ).lower()
-    domain = (extract_domain(hit.url) or "").lower()
-    keyword_tokens = [token for token in _tokenize_for_match(keyword) if token not in GENERIC_FOCUS_TOKENS]
-    focus_tokens = [token for token in _tokenize_for_match(research_focus or "") if token not in GENERIC_FOCUS_TOKENS]
-    topic_anchor_terms = [
-        term.lower()
-        for term in _extract_topic_anchor_terms(keyword, research_focus)
-        if term and term.lower() not in {token.lower() for token in GENERIC_FOCUS_TOKENS}
-    ]
-    company_anchor_terms = [
-        term.lower()
-        for term in _resolved_company_anchor_terms(keyword, research_focus)
-        if normalize_text(term)
-    ]
-    scope_seed = normalize_text(f"{keyword} {research_focus or ''}")
-    region_tokens = [region for region in REGION_TOKENS if region in scope_seed]
-    industry_tokens = [
-        label
-        for label, aliases in INDUSTRY_SCOPE_ALIASES.items()
-        if any(alias in scope_seed for alias in aliases)
-    ]
-    sensitive_tokens = _tokenize_for_match("政策 领导 发言 中标 商机 预算 战略 规划 项目 二期 三期 四期 未来五年 刚需 招标 采购 生态伙伴 甲方 同行 厂商 集成商 竞争 区域")
-
-    score = 0
-    if "mp.weixin.qq.com" in domain:
-        score += 10
-    if domain in PROCUREMENT_DOMAINS or "ccgp.gov.cn" in domain or "ggzy.gov.cn" in domain:
-        score += 16
-    if domain in POLICY_DOMAINS or ".gov." in domain or domain.endswith(".gov.cn"):
-        score += 12
-    if domain in EXCHANGE_DOMAINS:
-        score += 10
-    if "annual report" in haystack or "年报" in haystack or "公告" in haystack:
-        score += 4
-    if "招标" in haystack or "中标" in haystack or "采购" in haystack:
-        score += 5
-    keyword_match_count = sum(1 for token in keyword_tokens if token.lower() in haystack)
-    focus_match_count = sum(1 for token in focus_tokens if token.lower() in haystack)
-    anchor_match_count = sum(1 for token in topic_anchor_terms if token in haystack)
-    company_match_count = sum(1 for token in company_anchor_terms if token in haystack or token in domain)
-    region_match = any(region.lower() in haystack for region in region_tokens)
-    industry_match = any(industry.lower() in haystack for industry in industry_tokens)
-    if keyword_match_count:
-        score += 6 + min(keyword_match_count, 3) * 3
-    if focus_match_count:
-        score += 4 + min(focus_match_count, 3) * 2
-    if anchor_match_count:
-        score += 8 + min(anchor_match_count, 3) * 3
-    if company_match_count:
-        score += 14 + min(company_match_count, 2) * 5
-    if region_match:
-        score += 6
-    if industry_match:
-        score += 6
-    if company_anchor_terms and company_match_count == 0:
-        return 0, hit
-    if topic_anchor_terms and anchor_match_count == 0 and not region_match and not industry_match:
-        return 0, hit
-    if keyword_match_count + focus_match_count == 0 and not region_match and not industry_match:
-        return 0, hit
-    if any(token.lower() in haystack for token in sensitive_tokens):
-        score += 5
-    if hit.snippet:
-        score += 2
-    return score, hit
 
 
 def _semantic_score_hit(
@@ -2009,14 +1882,6 @@ def _build_corrective_query_plan(
     )
 
 
-def _source_confirmed_tender_score(source: SourceDocument) -> int:
-    return _tender_detail_source_score(source)
-
-
-def _confirmed_tender_sources(sources: list[SourceDocument], *, limit: int = 4) -> list[SourceDocument]:
-    return _tender_detail_confirmed_sources(sources, limit=limit)
-
-
 def _tender_detail_dependencies() -> TenderDetailDependencies:
     return TenderDetailDependencies(
         dedupe_strings=_dedupe_strings,
@@ -2034,48 +1899,6 @@ def _tender_detail_dependencies() -> TenderDetailDependencies:
         build_theme_terms=_build_theme_terms,
         resolved_company_anchor_terms=_resolved_company_anchor_terms,
         build_source_intelligence=_build_source_intelligence,
-    )
-
-
-def _build_tender_detail_query_plan(
-    sources: list[SourceDocument],
-    *,
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object],
-    limit: int = 10,
-) -> list[str]:
-    return _tender_detail_build_query_plan(
-        sources,
-        keyword=keyword,
-        research_focus=research_focus,
-        scope_hints=scope_hints,
-        limit=limit,
-        deps=_tender_detail_dependencies(),
-    )
-
-
-def _collect_tender_detail_sources(
-    sources: list[SourceDocument],
-    *,
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object],
-    timeout_seconds: int,
-    result_limit: int,
-    selected_limit: int,
-    excerpt_chars: int,
-) -> tuple[list[SourceDocument], list[str]]:
-    return _tender_detail_collect_sources(
-        sources,
-        keyword=keyword,
-        research_focus=research_focus,
-        scope_hints=scope_hints,
-        timeout_seconds=timeout_seconds,
-        result_limit=result_limit,
-        selected_limit=selected_limit,
-        excerpt_chars=excerpt_chars,
-        deps=_tender_detail_dependencies(),
     )
 
 
@@ -2366,20 +2189,7 @@ def _filter_recent_sources(
 
 
 def _source_text(source: SourceDocument) -> str:
-    return _source_text_cached(source.title, source.snippet, source.excerpt)
-
-
-@lru_cache(maxsize=4096)
-def _source_text_cached(title: str, snippet: str, excerpt: str) -> str:
-    return normalize_text(
-        " ".join(
-            [
-                _clean_source_text_for_analysis(title),
-                _clean_source_text_for_analysis(snippet),
-                _clean_source_text_for_analysis(excerpt),
-            ]
-        )
-    )
+    return _source_documents_text(source)
 
 
 def _source_theme_match_score(
@@ -2570,10 +2380,6 @@ def _scope_org_names_key_cached(
     return tuple(_dedupe_strings([*company_anchors, *clients, *seed_companies], 24))
 
 
-def _collect_scope_org_names(scope_hints: dict[str, object] | None) -> list[str]:
-    return list(_scope_org_names_key(scope_hints))
-
-
 def _register_org_alias(
     alias_map: dict[str, str],
     canonical_name: str,
@@ -2612,10 +2418,6 @@ def _org_alias_lookup_map_cached(scope_org_names: tuple[str, ...]) -> dict[str, 
         for alias in _org_surface_variants(canonical):
             _register_org_alias(alias_map, canonical, alias, replace=True)
     return alias_map
-
-
-def _org_alias_lookup_map(scope_hints: dict[str, object] | None = None) -> dict[str, str]:
-    return _org_alias_lookup_map_cached(_scope_org_names_key(scope_hints))
 
 
 def _canonical_org_name_from_domain(domain: str | None) -> str:
@@ -2681,14 +2483,6 @@ def _org_entity_variants_cached(value: str, scope_org_names: tuple[str, ...]) ->
     return tuple(_dedupe_strings(variants, 10))
 
 
-def _known_org_alias_candidates_from_text(
-    value: str,
-    *,
-    scope_hints: dict[str, object] | None = None,
-) -> list[str]:
-    return list(_known_org_alias_candidates_from_text_cached(value, _scope_org_names_key(scope_hints)))
-
-
 @lru_cache(maxsize=4096)
 def _known_org_alias_candidates_from_text_cached(value: str, scope_org_names: tuple[str, ...]) -> tuple[str, ...]:
     text = normalize_text(value)
@@ -2714,19 +2508,6 @@ def _entity_canonical_key(name: str) -> str:
 def _entity_canonical_key_cached(name: str) -> str:
     normalized = normalize_text(_resolve_known_org_name(name))
     return _entity_alias_lookup_key(normalized)
-
-
-def _infer_entity_graph_type(
-    name: str,
-    text: str,
-    *,
-    scope_hints: dict[str, object],
-) -> str:
-    return _entity_graph_builder_infer_type(name, text, scope_hints=scope_hints)
-
-
-def _pick_entity_graph_type(existing: str, incoming: str) -> str:
-    return _entity_graph_builder_pick_type(existing, incoming)
 
 
 def _entity_graph_builder_dependencies() -> EntityGraphBuilderDependencies:
@@ -2935,98 +2716,6 @@ ENTITY_ACTION_PHRASE_TOKENS = (
     "聚焦",
 )
 
-SOURCE_ARTIFACT_TOKENS = (
-    "header_",
-    "deal/deallist.html",
-    "交易公开-全国公共资源交易平台",
-    "全国公共资源交易平台 ·",
-    "[政府采购](",
-    "* [政府采购](",
-    "返回顶部",
-    "跳转到主要内容区域",
-    "首页 关于我们 价值定位 组织架构",
-    "报告共计：",
-    "报告共计:",
-    "发布于：",
-    "发布于:",
-    "文章标签：",
-    "文章标签:",
-    "csdn博客",
-    "互联网公开网页",
-    "公开线索 1 条，代表样本",
-    "中国政府网政策/讲话",
-    "豆瓣 ",
-    "关注民生周刊",
-    "微信 微博",
-    "民生网首页",
-    "首页 云头条",
-    "ai头条 联系我们",
-    "微信公众号 扫码",
-    "中国招标投标网 主站",
-    "欢迎您来到中国招标投标网",
-    "客服中心 隐私声明 登录 注册",
-    "公司简介 愿景及使命 发展历程 业务架构",
-    "工作环境 员工活动 esg 环境 社会",
-)
-
-SOURCE_AWARD_NOISE_TOKENS = (
-    "奖项",
-    "获奖",
-    "颁奖",
-    "热力榜",
-    "作品奖",
-    "企业奖",
-    "创新奖",
-    "荣誉奖",
-    "入围名单",
-    "获奖名单",
-    "评选结果",
-)
-
-SOURCE_FORUM_NOISE_TOKENS = (
-    "论坛",
-    "峰会",
-    "大会",
-    "年会",
-    "沙龙",
-    "闭门会",
-    "圆桌",
-)
-
-SOURCE_FORUM_SPEECH_TOKENS = (
-    "发言",
-    "致辞",
-    "演讲",
-    "分享",
-    "主持",
-    "对话",
-    "观点",
-)
-
-SOURCE_MARKDOWN_DUMP_TOKENS = (
-    "markdown content",
-    "source dump",
-    "图片来源",
-    "图源",
-    "原图",
-    "封面图",
-    "点击查看原图",
-    "查看原图",
-    "source:",
-    "sources:",
-    "source url:",
-    "source link:",
-)
-
-MARKDOWN_IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\([^)]*\)")
-MARKDOWN_LINK_PATTERN = re.compile(r"(?<!\!)\[([^\]]+)\]\(([^)]+)\)")
-RAW_MEDIA_URL_PATTERN = re.compile(r"https?://\S+\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?\S*)?", re.IGNORECASE)
-SOURCE_TEXT_SPLIT_PATTERN = re.compile(r"[。！？!?；;\n]+|\s+[|｜]\s+|\s+-\s+|(?<=\S)\s+·\s+(?=\S)")
-SOURCE_DUMP_PREFIX_PATTERN = re.compile(
-    r"^(?:source|sources|source url|source link|来源|圖片來源|图片来源|图源|原图|封面图|image source)[:：-]",
-    re.IGNORECASE,
-)
-
 CONTACT_PLACEHOLDER_TOKENS = (
     "当前已收敛到具体公司，但公开联系方式仍不足",
     "优先收集公开业务入口",
@@ -3158,79 +2847,16 @@ def _looks_like_sentence_fragment_entity(value: str) -> bool:
     return False
 
 
-@lru_cache(maxsize=8192)
 def _looks_like_source_artifact_text(value: str) -> bool:
-    normalized = normalize_text(value)
-    lowered = normalized.lower()
-    if not normalized:
-        return False
-    if any(token in lowered for token in SOURCE_ARTIFACT_TOKENS):
-        return True
-    if "http://" in lowered or "https://" in lowered:
-        if any(token in lowered for token in ("[", "](", "javascript:", "deal/deallist", "ggzy.gov.cn/deal")):
-            return True
-    if normalized.count("全国公共资源交易平台") >= 2:
-        return True
-    if normalized.count("·") >= 2 and any(token in normalized for token in ("公示", "公告", "交易公开")):
-        return True
-    if normalized.count("：") >= 2 and any(
-            token in normalized for token in ("报告共计", "发布于", "文章标签", "CSDN博客", "腾讯新闻")
-    ):
-        return True
-    return False
+    return _source_documents_looks_like_artifact(value)
 
 
 def _looks_like_source_noise_segment(value: str, *, raw_value: str | None = None) -> bool:
-    normalized = normalize_text(value)
-    lowered = normalized.lower()
-    raw_lower = str(raw_value or value).lower()
-    if not normalized:
-        return False
-    if _looks_like_source_artifact_text(normalized):
-        return True
-    if SOURCE_DUMP_PREFIX_PATTERN.match(normalized):
-        return True
-    if any(token in normalized for token in SOURCE_AWARD_NOISE_TOKENS):
-        return True
-    if any(token in normalized for token in SOURCE_FORUM_NOISE_TOKENS) and any(
-        token in normalized for token in SOURCE_FORUM_SPEECH_TOKENS
-    ):
-        return True
-    if any(token in lowered for token in SOURCE_MARKDOWN_DUMP_TOKENS):
-        return True
-    if any(token in raw_lower for token in ("![", "](http", "](https")):
-        return True
-    if raw_lower.count("](") >= 2:
-        return True
-    if RAW_MEDIA_URL_PATTERN.search(raw_lower):
-        return True
-    return False
+    return _source_documents_looks_like_noise_segment(value, raw_value=raw_value)
 
 
 def _clean_source_text_for_analysis(value: str) -> str:
-    return _clean_source_text_for_analysis_cached(str(value or ""))
-
-
-@lru_cache(maxsize=8192)
-def _clean_source_text_for_analysis_cached(raw: str) -> str:
-    normalized_raw = normalize_text(raw)
-    if not normalized_raw:
-        return ""
-    without_images = MARKDOWN_IMAGE_PATTERN.sub(" ", raw)
-    without_links = MARKDOWN_LINK_PATTERN.sub(lambda match: match.group(1), without_images)
-    without_media_urls = RAW_MEDIA_URL_PATTERN.sub(" ", without_links)
-    cleaned_segments: list[str] = []
-    for raw_segment in SOURCE_TEXT_SPLIT_PATTERN.split(without_media_urls):
-        normalized = normalize_text(raw_segment)
-        if not normalized or _looks_like_source_noise_segment(normalized, raw_value=raw_segment):
-            continue
-        cleaned_segments.append(normalized)
-    if cleaned_segments:
-        return normalize_text("。".join(cleaned_segments))
-    normalized = normalize_text(without_media_urls)
-    if _looks_like_source_noise_segment(normalized, raw_value=without_media_urls):
-        return ""
-    return normalized
+    return _source_documents_clean_source_text(value)
 
 
 @lru_cache(maxsize=8192)
@@ -3728,25 +3354,9 @@ def _is_useful_public_contact_row(value: str) -> bool:
     )
 
 
-@lru_cache(maxsize=8192)
-def _is_useful_department_row(value: str) -> bool:
-    return _report_field_sanitization_is_department(
-        value,
-        deps=_report_field_sanitization_dependencies(),
-    )
-
-
 @lru_cache(maxsize=16384)
 def _sanitize_entity_row(field_key: str, value: str) -> str:
     return _report_field_sanitization_entity_row(
-        field_key,
-        value,
-        deps=_report_field_sanitization_dependencies(),
-    )
-
-
-def _sanitize_generic_row(field_key: str, value: str) -> str:
-    return _report_field_sanitization_generic_row(
         field_key,
         value,
         deps=_report_field_sanitization_dependencies(),
@@ -3881,12 +3491,6 @@ def _source_has_region_conflict(source: SourceDocument, *, scope_hints: dict[str
         text_has_region_conflict=_text_has_region_conflict,
         source_text=_source_text,
     )
-
-
-def _count_region_conflicts(sources: list[SourceDocument], *, scope_hints: dict[str, object]) -> int:
-    if not sources:
-        return 0
-    return sum(1 for source in sources if _source_has_region_conflict(source, scope_hints=scope_hints))
 
 
 def _region_conflict_signature(source: SourceDocument) -> str:
@@ -5947,14 +5551,6 @@ def _section_quality_dependencies() -> SectionQualityDependencies:
     )
 
 
-def _excerpt_for_evidence(source: SourceDocument, *, matched_terms: list[str] | None = None) -> str:
-    return _section_quality_excerpt_for_evidence(
-        source,
-        matched_terms=matched_terms,
-        deps=_section_quality_dependencies(),
-    )
-
-
 def _section_confidence_profile(
     *,
     section_title: str,
@@ -6606,10 +6202,6 @@ def _evidence_density_level(sources: list[SourceDocument], parsed: ResearchRepor
     return "low"
 
 
-def _extract_section_anchor_terms(section_title: str, items: list[str]) -> list[str]:
-    return _section_quality_extract_anchor_terms(section_title, items)
-
-
 def _build_section_evidence_links(
     *,
     section_title: str,
@@ -6709,13 +6301,6 @@ def _section_insufficiency_profile(
     )
 
 
-def _primary_section_items(report: ResearchReportDocument, aliases: tuple[str, ...]) -> list[str]:
-    section = _research_section(report, aliases)
-    if section:
-        return [normalize_text(item) for item in section.items if normalize_text(item)]
-    return []
-
-
 def _report_readiness_dependencies() -> ReportReadinessDependencies:
     return ReportReadinessDependencies(
         dedupe_strings=_dedupe_strings,
@@ -6768,10 +6353,6 @@ def _build_report_readiness(report: ResearchReportDocument) -> ResearchReportRea
 
 def _build_technical_appendix(report: ResearchReportDocument) -> ResearchTechnicalAppendixOut:
     return _delivery_materials_build_technical_appendix(report, deps=_delivery_materials_dependencies())
-
-
-def _review_queue_severity(section: ResearchReportSectionOut) -> str:
-    return _delivery_materials_review_queue_severity(section)
 
 
 def _build_review_queue(report: ResearchReportDocument) -> list[ResearchReviewQueueItemOut]:
@@ -6846,10 +6427,6 @@ def _build_source_diagnostics(
             evidence_mode_from_metrics=_evidence_mode_from_metrics,
         ),
     )
-
-
-def _quality_expansion_score(report: ResearchReportDocument) -> int:
-    return _quality_expansion_score_impl(report)
 
 
 def _quality_expansion_dependencies() -> QualityExpansionDependencies:
@@ -7058,37 +6635,11 @@ def _render_section_retrieval_prompt_context(
     index: ResearchRetrievalIndex,
     limit_per_section: int = 3,
 ) -> str:
-    packs = build_section_retrieval_packs(report, index, limit_per_section=limit_per_section)
-    if not packs:
-        return ""
-
-    blocks: list[str] = []
-    for pack in packs[:8]:
-        hit_rows: list[str] = []
-        for hit in pack.hits[:2]:
-            snippet = normalize_text(hit.snippet)
-            if len(snippet) > 180:
-                snippet = f"{snippet[:180]}..."
-            hit_rows.append(
-                f"- [{hit.source_tier}] {hit.title} | {hit.label or hit.field_key} | score={hit.score} | {snippet} | {hit.source_url or 'no-url'}"
-            )
-        if not hit_rows:
-            hit_rows.append("- 当前未命中可直接注入的章节证据，需要按 next_steps 补证。")
-        blocks.append(
-            "\n".join(
-                [
-                    f"[Section] {pack.section_title}",
-                    f"Status: {pack.status} | Support Score: {pack.support_score} | Official Hits: {pack.official_hit_count}",
-                    f"Target Axes: {' / '.join(pack.target_axes) if pack.target_axes else 'n/a'}",
-                    f"Query: {pack.query}",
-                    "Evidence Hits:",
-                    *hit_rows,
-                    f"Missing Terms: {' / '.join(pack.missing_terms) if pack.missing_terms else 'none'}",
-                    f"Next Steps: {'；'.join(pack.next_steps) if pack.next_steps else 'none'}",
-                ]
-            )
-        )
-    return "\n\n".join(blocks)
+    return _section_retrieval_render_prompt_context(
+        report,
+        index=index,
+        limit_per_section=limit_per_section,
+    )
 
 
 def _build_sections(
@@ -7558,18 +7109,6 @@ def _runtime_strategy_scope_hints(payload: ResearchReportRequest) -> dict[str, o
     return hints
 
 
-def _apply_runtime_query_config(
-    runtime: dict[str, int | bool],
-    payload: ResearchReportRequest,
-) -> dict[str, int | bool]:
-    return _runtime_config_apply_query_config(
-        runtime,
-        payload,
-        runtime_consumer_effective_config=_runtime_consumer_effective_config,
-        safe_int=_safe_int,
-    )
-
-
 def _build_research_runtime(payload: ResearchReportRequest) -> dict[str, int | bool]:
     return _runtime_config_build_research_runtime(
         payload,
@@ -7642,18 +7181,6 @@ def _build_followup_planning_focus(
     )
 
 
-def _followup_context_sections(followup_context: ResearchFollowupContextOut) -> list[tuple[str, str]]:
-    return _followup_diagnostics_context_sections(followup_context)
-
-
-def _split_followup_research_segments(value: str, *, limit: int) -> list[str]:
-    return _followup_diagnostics_split_segments(
-        value,
-        limit=limit,
-        deps=_followup_diagnostics_dependencies(),
-    )
-
-
 def _merge_scope_hints_with_followup_context(
     base: dict[str, object],
     followup: dict[str, object],
@@ -7691,32 +7218,6 @@ def _render_followup_prompt_context(followup_context: ResearchFollowupContextOut
     return _followup_diagnostics_render_prompt(followup_context)
 
 
-def _followup_resolution_status(*, previous_text: str, current_text: str, enabled: bool) -> str:
-    return _followup_diagnostics_resolution_status(
-        previous_text=previous_text,
-        current_text=current_text,
-        enabled=enabled,
-    )
-
-
-def _build_followup_impact_terms(
-    followup_context: ResearchFollowupContextOut,
-    followup_diagnostics: ResearchFollowupDiagnosticsOut,
-) -> list[str]:
-    return _followup_diagnostics_build_impact_terms(
-        followup_context,
-        followup_diagnostics,
-        deps=_followup_diagnostics_dependencies(),
-    )
-
-
-def _build_followup_section_impacts(report: ResearchReportDocument) -> list[ResearchFollowupSectionImpactOut]:
-    return _followup_diagnostics_build_section_impacts(
-        report,
-        deps=_followup_diagnostics_dependencies(),
-    )
-
-
 def _render_followup_section_focus_prompt_context(report: ResearchReportDocument) -> str:
     return _followup_diagnostics_render_section_focus_prompt(
         report,
@@ -7739,10 +7240,6 @@ def _research_archive_query_text(
         scope_hints,
         dedupe_strings=_dedupe_strings,
     )
-
-
-def _entry_report_payload(entry: KnowledgeEntry) -> ResearchReportResponse | None:
-    return _archive_loader_entry_report_payload(entry)
 
 
 def _build_archive_report_scope_hints(report: ResearchReportResponse) -> dict[str, object]:
@@ -7822,44 +7319,6 @@ def _merge_scope_hints_with_archive_context(
 
 def _render_archive_prompt_context(archive_context_items: list[dict[str, object]]) -> str:
     return _archive_context_render_prompt(archive_context_items)
-
-
-def _parse_archive_context_datetime(value: object) -> datetime | None:
-    return _archive_context_parse_datetime(value)
-
-
-def _archive_item_is_queryworthy(item: dict[str, object]) -> bool:
-    return _archive_context_item_is_queryworthy(item)
-
-
-def _archive_budget_query_term(value: str) -> str:
-    return _archive_context_budget_query_term(
-        value,
-        is_actionable_budget_row=_is_actionable_budget_row,
-        truncate_text=_truncate_text,
-    )
-
-
-def _build_archive_query_expansions(
-    *,
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object],
-    targets: list[str],
-    departments: list[str],
-    budget_terms: list[str],
-) -> list[str]:
-    return _archive_context_build_query_expansions(
-        keyword=keyword,
-        research_focus=research_focus,
-        scope_hints=scope_hints,
-        targets=targets,
-        departments=departments,
-        budget_terms=budget_terms,
-        strip_query_noise=_strip_query_noise,
-        sanitize_research_focus_text=_sanitize_research_focus_text,
-        dedupe_strings=_dedupe_strings,
-    )
 
 
 def _build_partial_report_result(
@@ -8021,18 +7480,6 @@ def _stored_entity_canonicalization_dependencies() -> StoredEntityCanonicalizati
     )
 
 
-def _canonical_org_name_from_evidence_links(
-    evidence_links: Iterable[object] | None,
-    *,
-    scope_hints: dict[str, object],
-) -> str:
-    return _stored_entity_canonicalization_org_from_evidence_links(
-        evidence_links,
-        scope_hints=scope_hints,
-        deps=_stored_entity_canonicalization_dependencies(),
-    )
-
-
 def _canonicalize_stored_entity_name(
     value: str,
     *,
@@ -8047,38 +7494,6 @@ def _canonicalize_stored_entity_name(
         scope_hints=scope_hints,
         source_documents=source_documents,
         evidence_links=evidence_links,
-        deps=_stored_entity_canonicalization_dependencies(),
-    )
-
-
-def _canonicalize_stored_entity_rows(
-    values: Iterable[str],
-    *,
-    field_key: str,
-    scope_hints: dict[str, object],
-    source_documents: list[SourceDocument],
-) -> list[str]:
-    return _stored_entity_canonicalization_entity_rows(
-        values,
-        field_key=field_key,
-        scope_hints=scope_hints,
-        source_documents=source_documents,
-        deps=_stored_entity_canonicalization_dependencies(),
-    )
-
-
-def _canonicalize_stored_ranked_entities(
-    entities: Iterable[ResearchRankedEntityOut],
-    *,
-    field_key: str,
-    scope_hints: dict[str, object],
-    source_documents: list[SourceDocument],
-) -> list[ResearchRankedEntityOut]:
-    return _stored_entity_canonicalization_ranked_entities(
-        entities,
-        field_key=field_key,
-        scope_hints=scope_hints,
-        source_documents=source_documents,
         deps=_stored_entity_canonicalization_dependencies(),
     )
 
@@ -8249,10 +7664,6 @@ def _resolve_stored_report_target_support(
     )
 
 
-def _guarded_rewrite_reason_label(reason: str, output_language: str) -> str:
-    return _stored_report_rewrite_reason_label(reason, output_language)
-
-
 def _apply_guarded_rewrite_diagnostics(
     source_diagnostics: ResearchSourceDiagnosticsOut,
     *,
@@ -8348,32 +7759,6 @@ def _stored_report_rewrite_orchestration_dependencies() -> StoredReportRewriteOr
         scope_anchor_text_segments=_scope_anchor_text_segments,
         build_guarded_rewrite_title=_build_guarded_rewrite_title,
         source_max_age_years=SOURCE_MAX_AGE_YEARS,
-    )
-
-
-def _build_guarded_stored_research_report(
-    report: ResearchReportResponse,
-    *,
-    source_documents: list[SourceDocument],
-    scope_hints: dict[str, object],
-    output_language: str,
-    source_diagnostics: ResearchSourceDiagnosticsOut,
-    entity_graph: ResearchEntityGraphOut,
-    guarded_rewrite_reasons: list[str] | None = None,
-    supported_target_accounts: list[str] | None = None,
-    unsupported_target_accounts: list[str] | None = None,
-) -> ResearchReportResponse:
-    return _stored_report_rewrite_build_guarded_report(
-        report,
-        source_documents=source_documents,
-        scope_hints=scope_hints,
-        output_language=output_language,
-        source_diagnostics=source_diagnostics,
-        entity_graph=entity_graph,
-        guarded_rewrite_reasons=guarded_rewrite_reasons,
-        supported_target_accounts=supported_target_accounts,
-        unsupported_target_accounts=unsupported_target_accounts,
-        deps=_stored_report_rewrite_orchestration_dependencies(),
     )
 
 
