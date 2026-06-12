@@ -1,6 +1,6 @@
 # Feature Screenshot Coverage
 
-Version: `1.1.0+20260602`
+Version: `1.1.1+20260612`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 

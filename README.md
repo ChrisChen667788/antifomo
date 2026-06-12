@@ -242,7 +242,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.1.0+20260602`
+- current version: `1.1.1+20260612`
 - web build passes
 - backend test suite passes via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current synced release line: `1.1.0+20260602`, focused on modular architecture, architecture-review artifacts, and semantic day/night design-system hardening.
+- Current synced release line: `1.1.1+20260612`, adding measurable research workflow, cost-ledger, and 100-case evaluation contracts to the modular architecture baseline.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -33,7 +33,7 @@ Current completion status:
 - The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 7,913 lines.
 - Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
-- Release screenshots are currently aligned to `1.1.0+20260602` with `15/15` accepted screenshots.
+- Release screenshots are currently aligned to `1.1.1+20260612` with `15/15` accepted screenshots; this backend-only baseline did not change visual surfaces.
 
 Latest verified checks from the current work line:
 

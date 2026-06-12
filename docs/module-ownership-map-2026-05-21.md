@@ -1,6 +1,6 @@
 # Module Ownership Map
 
-Updated: 2026-06-05
+Updated: 2026-06-12
 
 This map records the current ownership boundaries after the first modular refactor slices. It is intended to keep future development from drifting back into broad orchestration files.
 
@@ -58,6 +58,9 @@ Current owners:
 | Research generation execution | `backend/app/services/research/generation_execution.py` | Partial outline generation, draft snapshot, section retrieval prompt context, final LLM prompt execution, parsing, intelligence merge, and refinement. |
 | Research generation setup | `backend/app/services/research/generation_setup.py` | Pre-generation environment setup: settings/LLM/runtime, follow-up scope diagnostics, strategy scope planning, source settings, and archive context assembly. |
 | Research generation workflow | `backend/app/services/research/generation_workflow.py` | Research generation application workflow spine: planning, source collection, enrichment, generation execution, ranking, assembly, quality review, and snapshot return using stage-scoped compatibility dependency ports. |
+| Research workflow engine | `backend/app/services/research/workflow_engine.py` | Framework-neutral workflow protocol, deterministic engine implementation, callback preservation, and run-metrics lifecycle. |
+| Research run metrics | `backend/app/services/research/run_metrics.py` | Per-run node/stage timing, counters, gauges, model-call token estimates, and cost-ledger aggregation without prompt/source-content logging. |
+| Research evaluation dataset | `backend/app/services/research/evaluation_dataset.py`, `backend/evaluation/research_golden_v1.json` | Versioned 100-case evaluation manifest loading, suite expansion, uniqueness/count validation, expected behavior, and retrieval/quality/cost targets. |
 | Research generation facade | `backend/app/services/research_service.py` | Public research-generation compatibility entrypoint, setup binding, workflow dependency wiring, and legacy monkeypatch wrappers while residual policy wrappers are retired. |
 | Research strategy refinement | `backend/app/services/research/strategy_refinement.py` | Topic-specific report overrides, strategy scope LLM planning, and post-generation strategy LLM refinement. |
 | Research stored-report rewrite | `backend/app/services/research/stored_report_rewrite.py` | Stored report rewrite orchestration, guarded backlog report assembly, guard assessment, target support checks, low-signal source checks, guarded diagnostics, and guarded title generation. |
@@ -85,7 +88,7 @@ Current backend hotspots still requiring future slices:
 
 | File | Approx. size | Risk |
 | --- | ---: | --- |
-| `backend/app/services/research_service.py` | 7,913 lines | Primary research service is now a compatibility facade plus setup and stage-port dependency wiring after stored-report rewrite orchestration, report readiness, action cards, entity ranking heuristics, source query plans, scope terms, report field sanitization, entity graph builder, source intelligence, source diagnostics, source scoping policy, ranking/source utility, strategy refinement, generation setup, generation workflow, general evidence expansion, tender-detail enrichment, generation execution, source enrichment, corrective expansion, candidate-profile enrichment, quality expansion, delivery enrichment/materials, stored entity canonicalization, follow-up diagnostics, section quality, markdown, web-search, source-document, storage-mapping, archive-context, archive-loader, runtime-config, source-collection, entity-ranking, generation-artifact, retrieval-orchestration, report-assembly, and report-persistence extraction. Wrapper-retirement slices removed zero-call legacy helpers, moved tender-detail/source-query/source-document/section-delivery tests to owner modules, and extracted source text cleanup plus section prompt rendering; remaining risk is residual entity/theme policy wrappers, direct test monkeypatch seams, and compatibility wrapper retirement. |
+| `backend/app/services/research_service.py` | 4,623 lines | The public facade is materially smaller after scope/entity/ranking/storage/delivery owner extraction. Remaining risk is compatibility aliases and dependency factory wiring; new orchestration implementations must enter through `ResearchWorkflowEngine` rather than adding another facade-level workflow. |
 | `backend/app/services/research/generation_workflow.py` | 804 lines | Workflow spine is isolated and its public dependency surface is grouped into progress/source-collection/scope/enrichment/generation/ranking/assembly/quality ports; remaining risk is internal workflow length rather than a flat injection list. |
 | `backend/app/services/knowledge_intelligence_service.py` | 2,709 lines | Knowledge intelligence rules, scoring, and rendering concerns should be checked before new features. |
 | `backend/app/services/work_task_service.py` | 2,058 lines | Task execution and export generation need clearer task-handler boundaries. |

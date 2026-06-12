@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `1.1.0+20260602`
+Current version: `1.1.1+20260612`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
@@ -25,6 +25,7 @@ For the upcoming modular architecture refactor and day/night design-system refre
 | `0.9.0` | Solution architect workbench | Added customer scenarios, stakeholder question maps, decision criteria, validation actions, next-meeting agendas, markdown export, and research-report-card surfacing inside solution delivery packs. |
 | `1.0.0` | Local-first WeChat-to-solution baseline | Connected WeChat-heavy intake, homepage triage, evidence-backed research, solution architecture readiness, architect workbench output, migration coverage, release metadata, and validation into one complete local-first baseline. |
 | `1.1.0` | Modular architecture and semantic theme baseline | Refactored research generation, collector operations, delivery intelligence, feature clients, controller hooks, report panels, knowledge detail, and session summary surfaces into smaller modules while moving major UI surfaces to semantic day/night theme tokens. |
+| `1.1.1` | Measurable research workflow baseline | Completed owner/seam migration, added a framework-neutral workflow engine, runtime metrics and model cost ledger, and established the versioned 100-case research evaluation structure before LangChain/LangGraph adoption. |
 
 ## Current Capability Inventory
 

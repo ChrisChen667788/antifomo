@@ -337,6 +337,13 @@ from app.services.research.generation_workflow import (
     ResearchWorkflowSourceCollectionPorts,
     run_research_generation_workflow as _generation_workflow_run,
 )
+from app.services.research.run_metrics import ResearchRunMetrics, instrument_llm_service
+from app.services.research.workflow_engine import (
+    DeterministicResearchWorkflowDependencies,
+    DeterministicResearchWorkflowEngine,
+    ResearchWorkflowEngine,
+    ResearchWorkflowExecution,
+)
 from app.services.research.quality_expansion import (
     QualityExpansionDependencies,
     expand_report_public_sources_until_quality_improves as _quality_expansion_expand_report,
@@ -2616,7 +2623,10 @@ def _strategy_refinement_dependencies() -> StrategyRefinementDependencies:
         build_exec_summary_override=_build_exec_summary_override,
         concrete_rows=_concrete_rows,
         dedupe_strings=_dedupe_strings,
-        get_strategy_llm_service=get_strategy_llm_service,
+        get_strategy_llm_service=lambda: instrument_llm_service(
+            get_strategy_llm_service(),
+            role="strategy",
+        ),
         parse_strategy_scope_response=parse_research_strategy_scope_response,
         parse_strategy_refine_response=parse_research_strategy_refine_response,
         merge_scope_hints=_merge_scope_hints,
@@ -4442,7 +4452,10 @@ def rewrite_stored_research_report(report: ResearchReportResponse) -> ResearchRe
 def _generation_setup_dependencies() -> ResearchGenerationSetupDependencies:
     return ResearchGenerationSetupDependencies(
         get_settings=get_settings,
-        get_llm_service=get_llm_service,
+        get_llm_service=lambda: instrument_llm_service(
+            get_llm_service(),
+            role="generation",
+        ),
         build_followup_context=_build_followup_context,
         infer_input_scope_hints=_infer_input_scope_hints,
         build_followup_research_diagnostics=_build_followup_research_diagnostics,
@@ -4567,17 +4580,44 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
     )
 
 
+def _research_workflow_engine() -> ResearchWorkflowEngine:
+    return DeterministicResearchWorkflowEngine(
+        DeterministicResearchWorkflowDependencies(
+            prepare_setup=_generation_setup_prepare,
+            setup_dependencies=_generation_setup_dependencies,
+            run_workflow=_generation_workflow_run,
+            workflow_dependencies=_generation_workflow_dependencies,
+        )
+    )
+
+
+def execute_research_report_workflow(
+    payload: ResearchReportRequest,
+    *,
+    progress_callback: ResearchProgressCallback | None = None,
+    snapshot_callback: ResearchSnapshotCallback | None = None,
+    metrics: ResearchRunMetrics | None = None,
+    engine: ResearchWorkflowEngine | None = None,
+) -> ResearchWorkflowExecution:
+    workflow_engine = engine or _research_workflow_engine()
+    return workflow_engine.execute(
+        payload,
+        progress_callback=progress_callback,
+        snapshot_callback=snapshot_callback,
+        metrics=metrics,
+    )
+
+
 def generate_research_report(
     payload: ResearchReportRequest,
     *,
     progress_callback: ResearchProgressCallback | None = None,
     snapshot_callback: ResearchSnapshotCallback | None = None,
+    metrics: ResearchRunMetrics | None = None,
 ) -> ResearchReportResponse:
-    setup = _generation_setup_prepare(payload, deps=_generation_setup_dependencies())
-    return _generation_workflow_run(
+    return execute_research_report_workflow(
         payload,
-        setup=setup,
         progress_callback=progress_callback,
         snapshot_callback=snapshot_callback,
-        deps=_generation_workflow_dependencies(),
-    )
+        metrics=metrics,
+    ).report
