@@ -8,7 +8,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.schemas.research import ResearchCommercialSummaryOut, ResearchReportResponse, ResearchSourceDiagnosticsOut
-from app.services import research_service
+from app.services.content_extractor import normalize_text
+from app.services.research.report_runtime_dependencies import stored_report_rewrite_orchestration_dependencies
+from app.services.research.stored_report_rewrite import rewrite_stored_research_report as _rewrite_stored_research_report
+from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
 from scripts import audit_low_quality_research_reports as audit_script
 
 
@@ -62,12 +65,24 @@ def _audit_sample(report: ResearchReportResponse) -> dict[str, object]:
     return audit_script._audit_report(
         SimpleNamespace(id="demo-entry", updated_at=datetime.now(timezone.utc), title=report.report_title),
         report,
-        {"looks_like_bad_executive_summary": research_service._looks_like_bad_executive_summary},
+        {"looks_like_bad_executive_summary": _looks_like_bad_executive_summary},
+    )
+
+
+def _looks_like_bad_executive_summary(value: str) -> bool:
+    normalized = normalize_text(value)
+    return not normalized or len(normalized) < 36 or any(token in normalized for token in ("结论：", "证据："))
+
+
+def rewrite_stored_research_report(report: ResearchReportResponse) -> ResearchReportResponse:
+    return _rewrite_stored_research_report(
+        report,
+        deps=stored_report_rewrite_orchestration_dependencies(build_report_runtime_owner_ports()),
     )
 
 
 def test_audit_ignores_expected_low_signal_issues_for_standard_guarded_backlog_report() -> None:
-    rewritten = research_service.rewrite_stored_research_report(_build_low_signal_report())
+    rewritten = rewrite_stored_research_report(_build_low_signal_report())
 
     sample = _audit_sample(rewritten)
 
@@ -77,7 +92,7 @@ def test_audit_ignores_expected_low_signal_issues_for_standard_guarded_backlog_r
 
 
 def test_audit_keeps_real_noise_flags_for_guarded_backlog_report() -> None:
-    rewritten = research_service.rewrite_stored_research_report(_build_low_signal_report())
+    rewritten = rewrite_stored_research_report(_build_low_signal_report())
     noisy_rewritten = rewritten.model_copy(
         update={"target_accounts": ["建议补充公开服务热线、继续扩大搜索范围"]},
     )

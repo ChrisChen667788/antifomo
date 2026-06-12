@@ -1,6 +1,129 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+import re
+
 from app.schemas.research import ResearchEntityEvidenceOut, ResearchReportDocument, ResearchReportSectionOut
+from app.services.content_extractor import normalize_text
 from app.services.llm_parser import ResearchReportResult
-from app.services.research_service import SourceDocument, _build_sections, build_research_action_cards
+from app.services.research.report_sections import ReportSectionsDependencies, build_sections
+from app.services.research.section_quality import (
+    SectionQualityDependencies,
+    build_section_evidence_links,
+    section_confidence_profile,
+    section_evidence_quota,
+    section_insufficiency_profile,
+    section_next_verification_steps,
+    section_quota_note,
+    section_signal_quality,
+)
+from app.services.research.action_cards import build_research_action_cards as _build_research_action_cards
+from app.services.research.report_runtime_dependencies import action_card_dependencies
+from app.services.research.source_documents import SourceDocument, source_document_text
+from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
+
+
+GENERIC_FOCUS_TOKENS = {
+    "预算",
+    "招标",
+    "采购",
+    "中标",
+    "甲方",
+    "竞品",
+    "生态伙伴",
+    "生态",
+    "伙伴",
+    "领导讲话",
+    "领导",
+    "讲话",
+    "项目",
+    "商机",
+    "区域",
+    "行业",
+    "客户",
+    "公司",
+    "同行",
+    "战略",
+    "规划",
+}
+
+
+def _dedupe_strings(values: Iterable[str], limit: int) -> list[str]:
+    rows: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = normalize_text(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _tokenize_for_match(*values: str) -> list[str]:
+    tokens: list[str] = []
+    for value in values:
+        tokens.extend(re.findall(r"[A-Za-z0-9\u4e00-\u9fff]{2,}", normalize_text(value)))
+    return _dedupe_strings(tokens, 24)
+
+
+def _concrete_rows(values: Iterable[str]) -> list[str]:
+    return [normalize_text(value) for value in values if normalize_text(value) and "证据不足" not in normalize_text(value)]
+
+
+def _section_quality_dependencies() -> SectionQualityDependencies:
+    return SectionQualityDependencies(
+        source_text=source_document_text,
+        tokenize_for_match=_tokenize_for_match,
+        concrete_rows=_concrete_rows,
+        dedupe_strings=_dedupe_strings,
+        generic_focus_tokens=GENERIC_FOCUS_TOKENS,
+    )
+
+
+def _report_sections_dependencies() -> ReportSectionsDependencies:
+    return ReportSectionsDependencies(
+        build_section_evidence_links=lambda **kwargs: build_section_evidence_links(
+            **kwargs,
+            deps=_section_quality_dependencies(),
+        ),
+        section_signal_quality=lambda *args, **kwargs: section_signal_quality(
+            *args,
+            **kwargs,
+            deps=_section_quality_dependencies(),
+        ),
+        section_evidence_quota=section_evidence_quota,
+        section_quota_note=section_quota_note,
+        section_confidence_profile=lambda **kwargs: section_confidence_profile(
+            **kwargs,
+            deps=_section_quality_dependencies(),
+        ),
+        section_next_verification_steps=lambda **kwargs: section_next_verification_steps(
+            **kwargs,
+            deps=_section_quality_dependencies(),
+        ),
+        section_insufficiency_profile=lambda **kwargs: section_insufficiency_profile(
+            **kwargs,
+            deps=_section_quality_dependencies(),
+        ),
+    )
+
+
+def _build_sections(
+    result: ResearchReportResult,
+    output_language: str,
+    sources: list[SourceDocument],
+) -> list[ResearchReportSectionOut]:
+    return build_sections(result, output_language, sources, deps=_report_sections_dependencies())
+
+
+def build_research_action_cards(report: ResearchReportDocument):
+    return _build_research_action_cards(
+        report,
+        deps=action_card_dependencies(build_report_runtime_owner_ports()),
+    )
 
 
 def test_build_sections_attaches_official_evidence_links() -> None:

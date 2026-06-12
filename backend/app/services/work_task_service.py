@@ -18,7 +18,7 @@ from app.schemas.research import (
 )
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
 from app.services.research_delivery_quality_service import review_and_improve_formal_document_sections
-from app.services.research_service import build_research_report_markdown
+from app.services.research.report_markdown import build_research_report_markdown
 from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 
 _WECHAT_AUTO_PREFIX_RE = re.compile(r"^(?:主题[:：]\s*)?(?:wechat\s*(?:auto|ocr)|截图ocr)\b.*$", re.IGNORECASE)

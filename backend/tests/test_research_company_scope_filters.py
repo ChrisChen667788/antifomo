@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from app.services.research_service import (
+from app.services.research.entity_heuristics import (
+    build_entity_graph,
+    company_intent_summary_needs_override,
+    extract_rank_entity_candidates,
+    filter_sources_by_theme_relevance,
+    filter_theme_aligned_rows,
+    infer_scope_hints,
+    rank_top_entities,
+)
+from app.services.research.source_documents import (
     SourceDocument,
-    _build_entity_graph,
-    _company_intent_summary_needs_override,
-    _extract_rank_entity_candidates,
-    _filter_sources_by_theme_relevance,
-    _filter_theme_aligned_rows,
-    _infer_scope_hints,
-    _rank_top_entities,
 )
 
 
@@ -47,7 +49,7 @@ def test_company_intent_filters_non_company_rows_for_ai_comic_queries() -> None:
         "内容及服务：优化运营与交付流程",
     ]
 
-    filtered = _filter_theme_aligned_rows(
+    filtered = filter_theme_aligned_rows(
         rows,
         role="target",
         theme_labels=["AI漫剧"],
@@ -93,7 +95,7 @@ def test_rank_top_entities_prefers_theme_companies_over_school_like_candidates()
         "seed_companies": ["爱奇艺", "腾讯动漫", "快看漫画", "哔哩哔哩"],
     }
 
-    top_targets, pending_targets = _rank_top_entities(
+    top_targets, pending_targets = rank_top_entities(
         sources,
         role="target",
         output_language="zh-CN",
@@ -138,7 +140,7 @@ def test_filter_sources_by_theme_relevance_prefers_company_like_sources_for_comp
         "seed_companies": ["爱奇艺", "腾讯动漫", "快看漫画"],
     }
 
-    filtered = _filter_sources_by_theme_relevance(
+    filtered = filter_sources_by_theme_relevance(
         sources,
         theme_terms=["ai漫剧", "漫剧", "动画", "ip", "短剧"],
         scope_hints=scope_hints,
@@ -159,7 +161,7 @@ def test_company_query_summary_override_triggers_when_summary_lacks_company_anch
         "seed_companies": ["爱奇艺", "腾讯动漫", "快看漫画"],
     }
 
-    needs_override = _company_intent_summary_needs_override(
+    needs_override = company_intent_summary_needs_override(
         scope_hints=scope_hints,
         summary="当前围绕行业趋势、内容服务与课程建设做了泛化判断，但没有收敛到具体公司。",
         accounts=["爱奇艺", "腾讯动漫"],
@@ -185,7 +187,7 @@ def test_rank_top_entities_skips_phrase_only_fallback_values_without_source_supp
         ),
     ]
 
-    top_targets, pending_targets = _rank_top_entities(
+    top_targets, pending_targets = rank_top_entities(
         sources,
         role="target",
         output_language="zh-CN",
@@ -207,7 +209,7 @@ def test_rank_top_entities_skips_phrase_only_fallback_values_without_source_supp
 
 
 def test_extract_rank_entity_candidates_links_scope_seed_alias_to_canonical_name() -> None:
-    candidates = _extract_rank_entity_candidates(
+    candidates = extract_rank_entity_candidates(
         "百联将推进会员运营与数字化建设。",
         scope_hints={"seed_companies": ["百联集团"]},
     )
@@ -217,7 +219,7 @@ def test_extract_rank_entity_candidates_links_scope_seed_alias_to_canonical_name
 
 
 def test_extract_rank_entity_candidates_trims_semiconductor_product_specs() -> None:
-    candidates = _extract_rank_entity_candidates(
+    candidates = extract_rank_entity_candidates(
         "格科半导体12英寸CIS集成项目、超硅半导体先进逻辑制程用300毫米硅片全自动智能产线。",
         scope_hints={"industries": ["半导体"]},
     )
@@ -239,7 +241,7 @@ def test_build_entity_graph_merges_scope_alias_mentions_under_canonical_company(
         )
     ]
 
-    graph = _build_entity_graph(
+    graph = build_entity_graph(
         sources,
         scope_hints={"regions": [], "industries": [], "clients": [], "seed_companies": ["百联集团"]},
     )
@@ -270,7 +272,7 @@ def test_rank_top_entities_uses_scope_alias_canonicalization_for_company_seed() 
         "seed_companies": ["百联集团"],
     }
 
-    top_targets, pending_targets = _rank_top_entities(
+    top_targets, pending_targets = rank_top_entities(
         sources,
         role="target",
         output_language="zh-CN",
@@ -299,13 +301,13 @@ def test_ai_news_sentence_fragments_do_not_become_scope_clients_or_accounts() ->
     )
     bad_names = {"新协议保留了两家公司", "现在可以通过任何云服务"}
 
-    candidates = set(_extract_rank_entity_candidates(f"{source.title}。{source.snippet}"))
-    scope_hints = _infer_scope_hints(
+    candidates = set(extract_rank_entity_candidates(f"{source.title}。{source.snippet}"))
+    scope_hints = infer_scope_hints(
         "长三角 大模型 2026年政企行业、医药行业AI相关需求及潜在商机情报",
         "需要找到尽可能多的有价值实体",
         [source],
     )
-    top_targets, pending_targets = _rank_top_entities(
+    top_targets, pending_targets = rank_top_entities(
         [source],
         role="target",
         output_language="zh-CN",

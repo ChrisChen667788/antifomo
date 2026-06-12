@@ -154,11 +154,14 @@ def main() -> int:
         apply_review_queue_resolutions,
         build_research_report_metadata,
     )
-    from app.services.research_service import (
-        build_research_action_cards,
-        build_research_report_markdown,
-        rewrite_stored_research_report,
+    from app.services.research.action_cards import build_research_action_cards
+    from app.services.research.report_markdown import build_research_report_markdown
+    from app.services.research.report_runtime_dependencies import (
+        action_card_dependencies,
+        stored_report_rewrite_orchestration_dependencies,
     )
+    from app.services.research.stored_report_rewrite import rewrite_stored_research_report
+    from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
 
     def synthesize_report_from_entry(entry: KnowledgeEntry) -> ResearchReportResponse | None:
         content = entry.content or ""
@@ -242,8 +245,14 @@ def main() -> int:
             if previous_report is None:
                 continue
 
-            rewritten_report = rewrite_stored_research_report(previous_report)
-            action_cards = build_research_action_cards(rewritten_report)
+            rewritten_report = rewrite_stored_research_report(
+                previous_report,
+                deps=stored_report_rewrite_orchestration_dependencies(build_report_runtime_owner_ports()),
+            )
+            action_cards = build_research_action_cards(
+                rewritten_report,
+                deps=action_card_dependencies(build_report_runtime_owner_ports()),
+            )
             _, markdown_content = build_research_report_markdown(
                 rewritten_report,
                 output_language=rewritten_report.output_language,

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timezone
+import re
+from types import SimpleNamespace
 import uuid
 
 from sqlalchemy import create_engine
@@ -12,11 +15,38 @@ from app.models.entities import KnowledgeEntry, User
 from app.schemas.research import (
     ResearchEntityGraphOut,
     ResearchFollowupContextOut,
+    ResearchFollowupDiagnosticsOut,
     ResearchReportRequest,
     ResearchReportResponse,
+    ResearchSourceDiagnosticsOut,
 )
-from app.services import research_service
-from app.services.research.source_query_plans import build_query_plan
+from app.services.content_extractor import normalize_text
+from app.services.research.archive_context import (
+    merge_scope_hints_with_archive_context,
+    render_archive_prompt_context,
+    research_archive_query_text,
+)
+from app.services.research.archive_loader import (
+    build_archive_context_item,
+    build_archive_report_scope_hints,
+    load_research_archive_context,
+)
+from app.services.research.followup_diagnostics import (
+    FollowupDiagnosticsDependencies,
+    build_followup_research_diagnostics,
+)
+from app.services.research.generation_artifacts import (
+    build_partial_report_response,
+    build_partial_report_result,
+)
+from app.services.research.generation_execution import (
+    ResearchGenerationExecutionDependencies,
+    execute_research_generation,
+)
+from app.services.research.report_row_quality import is_actionable_budget_row
+from app.services.research.source_documents import SourceDocument
+from app.services.research.source_query_plans import SourceQueryPlanDependencies, build_query_plan
+from app.services.llm_parser import parse_research_report_response
 
 
 def _new_session_factory():
@@ -25,8 +55,228 @@ def _new_session_factory():
     return sessionmaker(bind=engine, future=True, autoflush=False, autocommit=False)
 
 
-def _source_query_plan_dependencies():
-    return research_service._source_query_plan_dependencies()
+def _dedupe_strings(values: Iterable[object], limit: int) -> list[str]:
+    rows: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = normalize_text(str(value or ""))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _strip_query_noise(value: str) -> str:
+    return normalize_text(value)
+
+
+def _sanitize_research_focus_text(value: str | None) -> str:
+    return normalize_text(value or "")
+
+
+def _extract_topic_anchor_terms(keyword: str, research_focus: str | None) -> list[str]:
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    terms = [keyword]
+    for token in ("政务云", "预算窗口", "南京市数据局", "上海数据集团"):
+        if token in text:
+            terms.append(token)
+    return _dedupe_strings(terms, 8)
+
+
+def _expand_region_scope_terms(regions: list[str]) -> list[str]:
+    aliases = {"上海": ("上海市",), "江苏": ("南京",), "南京": ("江苏",)}
+    expanded: list[str] = []
+    for region in regions:
+        normalized = normalize_text(region)
+        if not normalized:
+            continue
+        expanded.append(normalized)
+        expanded.extend(aliases.get(normalized, ()))
+    return _dedupe_strings(expanded, 8)
+
+
+def _source_query_plan_dependencies() -> SourceQueryPlanDependencies:
+    return SourceQueryPlanDependencies(
+        strip_query_noise=_strip_query_noise,
+        sanitize_research_focus_text=_sanitize_research_focus_text,
+        extract_topic_anchor_terms=_extract_topic_anchor_terms,
+        expand_region_scope_terms=_expand_region_scope_terms,
+        dedupe_strings=_dedupe_strings,
+        collect_theme_seed_companies=lambda *args, **kwargs: [],
+        is_plausible_entity_name=lambda value: bool(normalize_text(value)),
+        industry_scope_aliases={"政务云": ("政务云", "政务", "数据局")},
+        theme_query_expansion_templates={},
+        research_source_site_queries=(),
+        theme_official_query_templates={},
+    )
+
+
+def _merge_scope_hints(base: dict[str, object], updates: dict[str, object]) -> dict[str, object]:
+    merged = dict(base)
+    for key, value in updates.items():
+        if isinstance(value, list):
+            merged[key] = _dedupe_strings([*(merged.get(key, []) or []), *value], 8)
+        elif value:
+            merged[key] = value
+    return merged
+
+
+def _infer_input_scope_hints(keyword: str, research_focus: str | None) -> dict[str, object]:
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    hints: dict[str, object] = {
+        "regions": [],
+        "industries": [],
+        "clients": [],
+        "company_anchors": [],
+        "strategy_query_expansions": [],
+    }
+    if "上海" in text:
+        hints["regions"] = ["上海"]
+    if "南京" in text or "江苏" in text:
+        hints["regions"] = _dedupe_strings([*(hints["regions"] or []), "江苏"], 4)
+    if "政务云" in text or "电子政务" in text:
+        hints["industries"] = ["政务云"]
+    if "南京市数据局" in text:
+        hints["clients"] = ["南京市数据局"]
+        hints["company_anchors"] = ["南京市数据局"]
+        hints["strategy_query_expansions"] = [
+            '"南京市数据局" 政务云 采购意向 预算',
+            '"南京市数据局" 电子政务云平台 招标 项目',
+        ]
+    if "上海数据集团" in text:
+        hints["clients"] = _dedupe_strings([*(hints["clients"] or []), "上海数据集团"], 4)
+        hints["company_anchors"] = _dedupe_strings([*(hints["company_anchors"] or []), "上海数据集团"], 4)
+    return hints
+
+
+def _build_theme_terms(keyword: str, research_focus: str | None, scope_hints: dict[str, object]) -> list[str]:
+    return _dedupe_strings(
+        [
+            *_extract_topic_anchor_terms(keyword, research_focus),
+            *list(scope_hints.get("industries", []) or []),
+            *list(scope_hints.get("regions", []) or []),
+        ],
+        12,
+    )
+
+
+def _prune_industry_hints(values: list[str]) -> list[str]:
+    return _dedupe_strings(values, 4)
+
+
+def _truncate_text(value: str | None, limit: int) -> str:
+    return normalize_text(value or "")[:limit]
+
+
+def _report_sources_to_source_documents(sources: list[object]) -> list[SourceDocument]:
+    documents: list[SourceDocument] = []
+    for source in sources:
+        documents.append(
+            SourceDocument(
+                title=normalize_text(getattr(source, "title", "")),
+                url=normalize_text(getattr(source, "url", "")),
+                domain=normalize_text(getattr(source, "domain", "")),
+                snippet=normalize_text(getattr(source, "snippet", "")),
+                search_query=normalize_text(getattr(source, "search_query", "")),
+                source_type=normalize_text(getattr(source, "source_type", "")) or "web",
+                content_status=normalize_text(getattr(source, "content_status", "")) or "extracted",
+                excerpt=normalize_text(getattr(source, "snippet", "")),
+                source_label=normalize_text(getattr(source, "source_label", "")) or None,
+                source_tier=getattr(source, "source_tier", "media"),
+            )
+        )
+    return documents
+
+
+def _build_archive_report_scope_hints(report: ResearchReportResponse) -> dict[str, object]:
+    return build_archive_report_scope_hints(
+        report,
+        dedupe_strings=_dedupe_strings,
+        prune_industry_hints=_prune_industry_hints,
+        stored_report_concrete_targets=lambda stored_report: list(stored_report.target_accounts),
+    )
+
+
+def _resolve_stored_report_target_support(
+    report: ResearchReportResponse,
+    *,
+    source_documents: list[SourceDocument],
+    scope_hints: dict[str, object],
+) -> tuple[list[str], list[str], list[str]]:
+    targets = _dedupe_strings(report.target_accounts, 4)
+    return targets, targets, []
+
+
+def _build_archive_context_item(*, entry, match, scope_hints: dict[str, object]) -> dict[str, object] | None:
+    return build_archive_context_item(
+        entry=entry,
+        match=match,
+        scope_hints=scope_hints,
+        truncate_text=_truncate_text,
+        report_sources_to_source_documents=_report_sources_to_source_documents,
+        merge_scope_hints=_merge_scope_hints,
+        infer_input_scope_hints=_infer_input_scope_hints,
+        build_archive_report_scope_hints=_build_archive_report_scope_hints,
+        infer_scope_hints=lambda *args, **kwargs: {},
+        assess_stored_report_rewrite_mode=lambda *args, **kwargs: ("rewrite", [], {}),
+        resolve_stored_report_target_support=_resolve_stored_report_target_support,
+        theme_labels_from_scope=lambda scope, **kwargs: list(scope.get("industries", []) or []),
+        dedupe_strings=_dedupe_strings,
+        sanitize_entity_row=lambda _field, value: normalize_text(value),
+        is_trustworthy_scope_client_name=lambda *args, **kwargs: True,
+        resolved_report_readiness=lambda report: SimpleNamespace(
+            status="ready" if int(report.source_count or 0) >= 4 else "needs_evidence"
+        ),
+    )
+
+
+def _research_archive_query_text(keyword: str, research_focus: str | None, scope_hints: dict[str, object]) -> str:
+    return research_archive_query_text(keyword, research_focus, scope_hints, dedupe_strings=_dedupe_strings)
+
+
+def _build_query_plan_for_followup(
+    keyword: str,
+    research_focus: str | None,
+    include_wechat: bool,
+    *,
+    scope_hints: dict[str, object],
+    limit: int,
+) -> list[str]:
+    return build_query_plan(
+        keyword,
+        research_focus,
+        include_wechat,
+        scope_hints=scope_hints,
+        preferred_wechat_accounts=None,
+        limit=limit,
+        deps=_source_query_plan_dependencies(),
+    )
+
+
+def _followup_diagnostics_dependencies() -> FollowupDiagnosticsDependencies:
+    return FollowupDiagnosticsDependencies(
+        truncate_text=lambda value, limit: _truncate_text(value, limit),
+        sanitize_research_focus_text=_sanitize_research_focus_text,
+        looks_like_source_noise_segment=lambda *args, **kwargs: False,
+        merge_scope_hints=_merge_scope_hints,
+        dedupe_strings=_dedupe_strings,
+        prune_industry_hints=_prune_industry_hints,
+        infer_input_scope_hints=_infer_input_scope_hints,
+        theme_labels_from_scope=lambda scope, **kwargs: list(scope.get("industries", []) or []),
+        clean_scope_entity_names=lambda values, *, limit, **kwargs: _dedupe_strings(values, limit),
+        build_query_plan=_build_query_plan_for_followup,
+        extract_topic_anchor_terms=_extract_topic_anchor_terms,
+        tokenize_for_match=lambda value, **kwargs: [token for token in re.split(r"\s+", normalize_text(value)) if token],
+        generic_focus_tokens={"预算", "窗口", "采购"},
+        org_pattern=re.compile(r"([\u4e00-\u9fa5]{2,40}(?:数据局|集团|公司|医院|中心))"),
+    )
+
+
+def _sanitize_report_field_rows(field_key: str, values: list[str]) -> list[str]:
+    return _dedupe_strings(values, 4)
 
 
 def _seed_demo_user(db: Session) -> User:
@@ -95,9 +345,8 @@ def _build_stored_report(*, title: str, keyword: str) -> ResearchReportResponse:
     )
 
 
-def test_load_research_archive_context_returns_supported_stored_reports(monkeypatch) -> None:
+def test_load_research_archive_context_returns_supported_stored_reports() -> None:
     session_factory = _new_session_factory()
-    monkeypatch.setattr(research_service, "SessionLocal", session_factory)
 
     with session_factory() as db:
         user = _seed_demo_user(db)
@@ -114,11 +363,14 @@ def test_load_research_archive_context_returns_supported_stored_reports(monkeypa
         db.add(entry)
         db.commit()
 
-    items = research_service._load_research_archive_context(
+    items = load_research_archive_context(
         keyword="上海数据集团预算窗口",
         research_focus="判断预算复核时间节点和组织入口",
         scope_hints={"industries": ["政务云"], "prefer_company_entities": True},
         limit=3,
+        session_factory=session_factory,
+        research_archive_query_text=_research_archive_query_text,
+        build_archive_context_item=_build_archive_context_item,
     )
 
     assert items
@@ -129,7 +381,7 @@ def test_load_research_archive_context_returns_supported_stored_reports(monkeypa
 
 
 def test_build_followup_research_diagnostics_rebuilds_filters_and_queries() -> None:
-    followup_scope_hints, diagnostics = research_service._build_followup_research_diagnostics(
+    followup_scope_hints, diagnostics = build_followup_research_diagnostics(
         keyword="政务云预算窗口",
         report_research_focus="梳理预算窗口和组织入口",
         followup_context=ResearchFollowupContextOut(
@@ -139,6 +391,7 @@ def test_build_followup_research_diagnostics_rebuilds_filters_and_queries() -> N
         ),
         include_wechat=False,
         base_scope_hints={"regions": [], "industries": ["政务云"], "clients": [], "company_anchors": []},
+        deps=_followup_diagnostics_dependencies(),
     )
 
     assert diagnostics.enabled is True
@@ -160,7 +413,7 @@ def test_merge_scope_hints_with_archive_context_pushes_archive_targets_into_quer
         "strategy_query_expansions": [],
         "prefer_company_entities": False,
     }
-    merged_scope_hints = research_service._merge_scope_hints_with_archive_context(
+    merged_scope_hints = merge_scope_hints_with_archive_context(
         base_scope_hints,
         [
             {
@@ -176,6 +429,12 @@ def test_merge_scope_hints_with_archive_context_pushes_archive_targets_into_quer
         ],
         keyword="上海政务云预算窗口",
         research_focus="优先锁定具体账户和采购中心",
+        dedupe_strings=_dedupe_strings,
+        sanitize_report_field_rows=_sanitize_report_field_rows,
+        is_actionable_budget_row=is_actionable_budget_row,
+        truncate_text=_truncate_text,
+        strip_query_noise=_strip_query_noise,
+        sanitize_research_focus_text=_sanitize_research_focus_text,
     )
 
     assert merged_scope_hints["archive_targets"] == ["上海数据集团"]
@@ -204,7 +463,7 @@ def test_merge_scope_hints_with_archive_context_ignores_stale_low_support_archiv
         "strategy_query_expansions": [],
         "prefer_company_entities": False,
     }
-    merged_scope_hints = research_service._merge_scope_hints_with_archive_context(
+    merged_scope_hints = merge_scope_hints_with_archive_context(
         base_scope_hints,
         [
             {
@@ -220,6 +479,12 @@ def test_merge_scope_hints_with_archive_context_ignores_stale_low_support_archiv
         ],
         keyword="上海政务云预算窗口",
         research_focus="优先锁定具体账户和采购中心",
+        dedupe_strings=_dedupe_strings,
+        sanitize_report_field_rows=_sanitize_report_field_rows,
+        is_actionable_budget_row=is_actionable_budget_row,
+        truncate_text=_truncate_text,
+        strip_query_noise=_strip_query_noise,
+        sanitize_research_focus_text=_sanitize_research_focus_text,
     )
 
     assert "archive_targets" not in merged_scope_hints
@@ -234,14 +499,6 @@ def test_merge_scope_hints_with_archive_context_ignores_stale_low_support_archiv
     )
 
     assert not any("上海数据集团" in query and "采购中心" in query for query in queries)
-
-
-class _FakeSourceSettings:
-    enable_curated_wechat_channels = False
-
-    @staticmethod
-    def enabled_labels() -> list[str]:
-        return []
 
 
 class _CaptureLLM:
@@ -295,76 +552,105 @@ class _CaptureLLM:
         raise AssertionError(f"unexpected prompt: {prompt_name}")
 
 
-def test_generate_research_report_passes_archive_context_into_outline_and_full_prompt(monkeypatch) -> None:
+def _build_partial_report_result_for_test(**kwargs):
+    return build_partial_report_result(
+        **kwargs,
+        render_industry_methodology_context=lambda _scope_hints: "",
+        apply_topic_specific_overrides=lambda parsed, **_kwargs: parsed,
+    )
+
+
+def _build_partial_report_response_for_test(**kwargs):
+    return build_partial_report_response(
+        **kwargs,
+        evidence_density_level=lambda _sources, _parsed: "low",
+        source_quality_level=lambda _sources: "low",
+        build_sections=lambda _parsed, _output_language, _sources: [],
+        source_documents_to_outputs=lambda _sources: [],
+        enrich_report_for_delivery=lambda report: report,
+    )
+
+
+def test_execute_research_generation_passes_archive_context_into_outline_and_full_prompt() -> None:
     llm = _CaptureLLM()
-    monkeypatch.setattr(research_service, "get_llm_service", lambda: llm)
-    monkeypatch.setattr(research_service, "_apply_strategy_scope_planning", lambda **kwargs: kwargs["input_scope_hints"])
-    monkeypatch.setattr(research_service, "read_research_source_settings", lambda: _FakeSourceSettings())
-    monkeypatch.setattr(research_service, "collect_enabled_source_hits", lambda *args, **kwargs: (_FakeSourceSettings(), []))
-    monkeypatch.setattr(research_service, "_build_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_expanded_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_corrective_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_company_contact_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_company_profile_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_company_team_query_plan", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_build_company_seed_hits", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_search_public_web", lambda *args, **kwargs: [])
-    monkeypatch.setattr(research_service, "_load_research_archive_context", lambda **kwargs: [
-        {
-            "kind": "stored_report",
-            "title": "历史上海数据集团研判",
-            "match_label": "补充新证据",
-            "match_snippet": "上海数据集团将在 7 月启动预算复核。",
-            "summary": "历史研报已锁定预算窗口和采购中心。",
-            "supported_targets": ["上海数据集团"],
-            "target_departments": ["采购中心"],
-            "budget_signals": ["7 月预算复核"],
-            "source_count": 4,
-            "official_source_ratio": 0.75,
-            "score": 0.91,
-        }
-    ])
-    monkeypatch.setattr(
-        research_service,
-        "_build_research_runtime",
-        lambda payload: {
-            "query_limit": 1,
-            "adapter_per_source_limit": 1,
-            "effective_max_sources": 6,
-            "expanded_adapter_per_source_limit": 1,
-            "enough_hit_threshold": 2,
-            "expanded_selected_limit": 6,
-            "search_timeout_seconds": 1,
-            "search_result_limit": 1,
-            "url_timeout_seconds": 1,
-            "llm_timeout_seconds": 30,
-            "expansion_min_sources": 6,
-            "expansion_min_dimensions": 5,
-            "enable_expansion": False,
-            "expanded_query_limit": 1,
-        },
+    archive_context = render_archive_prompt_context(
+        [
+            {
+                "kind": "stored_report",
+                "title": "历史上海数据集团研判",
+                "match_label": "补充新证据",
+                "match_snippet": "上海数据集团将在 7 月启动预算复核。",
+                "summary": "历史研报已锁定预算窗口和采购中心。",
+                "supported_targets": ["上海数据集团"],
+                "target_departments": ["采购中心"],
+                "budget_signals": ["7 月预算复核"],
+                "source_count": 4,
+                "official_source_ratio": 0.75,
+                "score": 0.91,
+            }
+        ]
     )
-    monkeypatch.setattr(research_service, "_build_source_intelligence", lambda *args, **kwargs: {"target_accounts": ["上海数据集团"]})
-    monkeypatch.setattr(research_service, "_company_convergence_is_weak", lambda **kwargs: False)
-    monkeypatch.setattr(research_service, "_retrieval_quality_band", lambda **kwargs: "medium")
-    monkeypatch.setattr(research_service, "_apply_topic_specific_overrides", lambda parsed, **kwargs: parsed)
-    monkeypatch.setattr(research_service, "_apply_strategy_llm_refinement", lambda parsed, **kwargs: parsed)
-    monkeypatch.setattr(research_service, "_rank_top_entities", lambda *args, **kwargs: ([], []))
-
-    report = research_service.generate_research_report(
-        ResearchReportRequest(
-            keyword="上海政务云预算窗口",
-            research_focus="优先锁定具体账户和采购中心",
-            supplemental_context="新增范围集中到上海数据集团采购中心。",
-            supplemental_evidence="新增证据显示 7 月预算复核后会同步确认采购安排。",
-            supplemental_requirements="优先补采购中心、预算口径和官网公告。",
-            include_wechat=False,
-            research_mode="fast",
-            max_sources=6,
-        )
+    followup_context = ResearchFollowupContextOut(
+        supplemental_context="新增范围集中到上海数据集团采购中心。",
+        supplemental_evidence="新增证据显示 7 月预算复核后会同步确认采购安排。",
+        supplemental_requirements="优先补采购中心、预算口径和官网公告。",
+    )
+    followup_diagnostics = ResearchFollowupDiagnosticsOut(
+        enabled=True,
+        scope_rebuilt=True,
+        query_decomposition_applied=True,
+        decomposition_queries=["上海数据集团 采购中心 预算复核"],
+        rebuilt_clients=["上海数据集团"],
+        rebuilt_industries=["政务云"],
     )
 
-    assert "上海" in report.report_title
+    execution = execute_research_generation(
+        keyword="上海政务云预算窗口",
+        research_focus="优先锁定具体账户和采购中心",
+        report_research_focus="优先锁定具体账户和采购中心",
+        output_language="zh-CN",
+        research_mode="fast",
+        archive_context=archive_context,
+        followup_context=followup_context,
+        followup_diagnostics=followup_diagnostics,
+        source_intelligence={"target_accounts": ["上海数据集团"]},
+        scope_hints={"regions": ["上海"], "industries": ["政务云"], "clients": ["上海数据集团"]},
+        llm=llm,
+        runtime={"llm_timeout_seconds": 30},
+        effective_query_plan=["上海政务云预算窗口"],
+        adapter_query_plan=[],
+        sources=[],
+        source_diagnostics=ResearchSourceDiagnosticsOut(),
+        entity_graph=ResearchEntityGraphOut(),
+        retrieval_correction_profile=SimpleNamespace(),
+        progress_callback=None,
+        snapshot_callback=None,
+        section_retrieval_dependencies={},
+        deps=ResearchGenerationExecutionDependencies(
+            build_partial_report_result=_build_partial_report_result_for_test,
+            render_followup_diagnostics_prompt_context=lambda diagnostics: (
+                f"二次检索摘要：{'；'.join(diagnostics.decomposition_queries)}；采购中心"
+            ),
+            emit_research_progress=lambda *args, **kwargs: None,
+            build_progress_message=lambda value, **kwargs: value,
+            build_partial_report_response=_build_partial_report_response_for_test,
+            build_section_retrieval_runtime_context=lambda **kwargs: SimpleNamespace(
+                followup_section_focus_context="采购中心",
+                section_retrieval_context="",
+            ),
+            emit_research_snapshot=lambda *args, **kwargs: None,
+            render_source_digest=lambda _sources: "",
+            render_followup_prompt_context=lambda context: context.supplemental_context,
+            render_retrieval_correction_context=lambda _profile: "",
+            render_industry_methodology_context=lambda _scope_hints: "",
+            parse_research_report_response=parse_research_report_response,
+            merge_result_with_intelligence=lambda parsed, _intelligence: parsed,
+            apply_topic_specific_overrides=lambda parsed, **_kwargs: parsed,
+            apply_strategy_llm_refinement=lambda parsed, **_kwargs: parsed,
+        ),
+    )
+
+    assert "上海" in execution.parsed.report_title
     outline_call = next(call for call in llm.calls if call[0] == "research_report_outline.txt")
     full_call = next(call for call in llm.calls if call[0] == "research_report.txt")
     assert "上海数据集团" in outline_call[1]["archive_context"]

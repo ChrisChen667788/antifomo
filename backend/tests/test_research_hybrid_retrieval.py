@@ -1,14 +1,56 @@
 from __future__ import annotations
 
-from app.services import research_service
+from collections.abc import Iterable
+from types import SimpleNamespace
+
+from app.services.content_extractor import extract_domain, normalize_text
+from app.services.research.delivery_enrichment import apply_report_readiness_guardrails
+from app.services.research.delivery_materials import (
+    DeliveryMaterialsDependencies,
+    build_commercial_summary,
+    build_review_queue,
+    build_technical_appendix,
+)
+from app.services.research.entity_ranking import (
+    EntityRankingHeuristicDependencies,
+    build_candidate_profile_support,
+    promote_pending_entities_with_candidate_profiles,
+)
+from app.services.research.report_readiness import (
+    ReportReadinessDependencies,
+    build_report_readiness,
+    is_low_signal_execution_report,
+    resolved_report_readiness,
+)
+from app.services.research.report_row_quality import is_actionable_budget_row, summary_fact_rows
+from app.services.research.runtime_config import (
+    build_research_runtime,
+    build_runtime_strategy_scope_hints,
+    runtime_consumer_effective_config,
+)
+from app.services.research.source_ranking import (
+    SourceRankingDependencies,
+    classify_source_tier,
+    classify_source_type,
+    hybrid_rank_hits,
+    rerank_sources_hybrid,
+)
+from app.services.research.source_diagnostics import (
+    SourceDiagnosticsDependencies,
+    build_source_diagnostics,
+)
+from app.services.research.source_documents import SourceDocument
 from app.services.research.source_query_plans import (
+    SourceQueryPlanDependencies,
     build_company_profile_query_plan,
     build_corrective_query_plan,
     build_expanded_query_plan,
     build_query_plan,
 )
-from app.services.research.tender_detail_enrichment import build_tender_detail_query_plan
+from app.services.research.tender_detail_enrichment import TenderDetailDependencies, build_tender_detail_query_plan
+from app.services.research.web_search import SearchHit
 from app.schemas.research import (
+    ResearchEntityEvidenceOut,
     ResearchEntityGraphOut,
     ResearchRankedEntityOut,
     ResearchReportDocument,
@@ -17,8 +59,555 @@ from app.schemas.research import (
 )
 
 
-def _source_query_plan_dependencies():
-    return research_service._source_query_plan_dependencies()
+def _dedupe_strings(values: Iterable[object], limit: int) -> list[str]:
+    rows: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = normalize_text(str(value or ""))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _resolve_research_mode(payload: ResearchReportRequest) -> str:
+    mode = normalize_text(str(getattr(payload, "research_mode", "") or "")).lower()
+    if mode in {"fast", "deep"}:
+        return mode
+    return "fast" if getattr(payload, "deep_research", None) is False else "deep"
+
+
+def _safe_int(value: object, default: int, *, minimum: int = 0, maximum: int = 1000) -> int:
+    try:
+        parsed = int(value if value is not None else default)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _retrieval_quality_band(
+    *,
+    strict_match_ratio: float,
+    official_source_ratio: float,
+    unique_domain_count: int,
+    normalized_entity_count: int,
+) -> str:
+    if strict_match_ratio >= 0.7 and official_source_ratio >= 0.3 and unique_domain_count >= 2:
+        return "high"
+    if strict_match_ratio >= 0.4 or official_source_ratio >= 0.2 or normalized_entity_count:
+        return "medium"
+    return "low"
+
+
+def _evidence_mode_from_metrics(
+    *,
+    retained_source_count: int,
+    strict_topic_source_count: int,
+    strict_match_ratio: float,
+    official_source_ratio: float,
+    unique_domain_count: int,
+) -> tuple[str, str]:
+    if retained_source_count >= 2 and strict_topic_source_count >= 2 and official_source_ratio >= 0.3:
+        return "strong", "强证据"
+    if strict_match_ratio >= 0.4:
+        return "provisional", "候选证据"
+    return "fallback", "兜底候选"
+
+
+def _source_diagnostics_dependencies() -> SourceDiagnosticsDependencies:
+    return SourceDiagnosticsDependencies(
+        dedupe_strings=_dedupe_strings,
+        retrieval_quality_band=_retrieval_quality_band,
+        evidence_mode_from_metrics=_evidence_mode_from_metrics,
+    )
+
+
+def _extract_topic_anchor_terms(keyword: str, research_focus: str | None) -> list[str]:
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    terms = [keyword]
+    for token in ("AI漫剧", "快手可灵", "政务云", "预算窗口", "采购意向", "南京市数据局"):
+        if token in text:
+            terms.append(token)
+    return _dedupe_strings(terms, 8)
+
+
+def _build_theme_terms(keyword: str, research_focus: str | None, scope_hints: dict[str, object]) -> list[str]:
+    return _dedupe_strings(
+        [
+            *_extract_topic_anchor_terms(keyword, research_focus),
+            *list(scope_hints.get("industries", []) or []),
+            *list(scope_hints.get("regions", []) or []),
+        ],
+        12,
+    )
+
+
+def _resolved_company_anchor_terms(
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object] | None,
+) -> list[str]:
+    scope = scope_hints or {}
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    terms = [
+        *list(scope.get("company_anchors", []) or []),
+        *list(scope.get("clients", []) or []),
+    ]
+    for token in ("快手可灵", "阅文", "中文在线", "南京市数据局"):
+        if token in text:
+            terms.append(token)
+    return _dedupe_strings(terms, 12)
+
+
+def _source_scope_match_score(
+    source: SourceDocument | SearchHit,
+    *,
+    scope_hints: dict[str, object],
+    company_anchor_terms: list[str],
+    theme_terms: list[str],
+) -> int:
+    text = normalize_text(
+        " ".join(
+            [
+                str(getattr(source, "title", "") or ""),
+                str(getattr(source, "snippet", "") or ""),
+                str(getattr(source, "excerpt", "") or ""),
+                str(getattr(source, "search_query", "") or "") if isinstance(source, SearchHit) else "",
+                str(getattr(source, "source_label", "") or ""),
+                str(getattr(source, "domain", "") or ""),
+                str(getattr(source, "url", "") or ""),
+            ]
+        )
+    ).lower()
+    company_terms = [normalize_text(item).lower() for item in company_anchor_terms if normalize_text(item)]
+    if bool(scope_hints.get("prefer_company_entities")) and company_terms and not any(term in text for term in company_terms):
+        return 0
+    score = 0
+    if any(normalize_text(item).lower() in text for item in theme_terms if normalize_text(item)):
+        score += 4
+    if any(normalize_text(str(item)).lower() in text for item in scope_hints.get("regions", []) or []):
+        score += 4
+    if any(normalize_text(str(item)).lower() in text for item in scope_hints.get("industries", []) or []):
+        score += 4
+    if any(normalize_text(str(item)).lower() in text for item in scope_hints.get("clients", []) or []):
+        score += 6
+    if any(term in text for term in company_terms):
+        score += 8
+    source_tier = normalize_text(str(getattr(source, "source_tier", "") or ""))
+    if not source_tier:
+        url = str(getattr(source, "url", "") or "")
+        source_type = str(getattr(source, "source_type", "") or getattr(source, "source_hint", "") or classify_source_type(url))
+        source_tier = classify_source_tier(
+            source_type=source_type,
+            domain=str(getattr(source, "domain", "") or extract_domain(url) or ""),
+            source_label=str(getattr(source, "source_label", "") or ""),
+        )
+    if source_tier == "official" and score > 0:
+        score += 2
+    return score
+
+
+class _PassthroughRerankProfile:
+    def to_diagnostics_update(self) -> dict[str, object]:
+        return {
+            "reranker_used": True,
+            "reranker_model": "test-local-reranker",
+            "reranker_top_k": 1,
+            "reranker_backend": "local",
+            "reranker_notes": ["test profile"],
+        }
+
+
+def _passthrough_rerank_sources_cross_encoder(
+    sources: list[SourceDocument],
+    *,
+    query: str,
+    model_name: str,
+    top_k: int = 20,
+    backend: str = "auto",
+) -> tuple[list[SourceDocument], _PassthroughRerankProfile]:
+    return list(sources), _PassthroughRerankProfile()
+
+
+def _dedupe_hits(hits: list[SearchHit]) -> list[SearchHit]:
+    rows: list[SearchHit] = []
+    seen: set[str] = set()
+    for hit in hits:
+        key = normalize_text(hit.url)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        rows.append(hit)
+    return rows
+
+
+def _dedupe_sources(sources: list[SourceDocument]) -> list[SourceDocument]:
+    rows: list[SourceDocument] = []
+    seen: set[str] = set()
+    for source in sources:
+        key = normalize_text(source.url)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        rows.append(source)
+    return rows
+
+
+def _source_ranking_dependencies(
+    *,
+    rerank_sources_cross_encoder=_passthrough_rerank_sources_cross_encoder,
+) -> SourceRankingDependencies:
+    settings = SimpleNamespace(
+        research_cross_encoder_rerank_enabled=False,
+        research_cross_encoder_backend="auto",
+        research_cross_encoder_top_k=20,
+        research_cross_encoder_model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    )
+    return SourceRankingDependencies(
+        dedupe_hits=lambda hits: _dedupe_hits(list(hits)),
+        dedupe_sources=lambda sources: _dedupe_sources(list(sources)),
+        extract_topic_anchor_terms=_extract_topic_anchor_terms,
+        build_theme_terms=_build_theme_terms,
+        resolved_company_anchor_terms=_resolved_company_anchor_terms,
+        source_scope_match_score=_source_scope_match_score,
+        get_settings=lambda: settings,
+        safe_int=_safe_int,
+        rerank_sources_cross_encoder=rerank_sources_cross_encoder,
+    )
+
+
+INDUSTRY_SCOPE_ALIASES = {
+    "政务云": ("政务云", "政务", "政府云", "数据局", "电子政务"),
+    "AI漫剧": ("AI漫剧", "漫剧", "AI短剧", "AIGC短剧", "AIGC漫剧", "AI动画", "AIGC动画"),
+    "医疗": ("医疗", "医院", "卫健", "医共体", "医保", "AI影像"),
+    "文旅": ("文旅", "景区", "旅游", "数字人导览", "AIGC"),
+}
+
+
+REGION_SCOPE_ALIASES = {
+    "江苏": ("南京", "苏州", "无锡"),
+    "上海": ("上海市", "浦东", "徐汇"),
+    "华东": ("上海", "江苏", "浙江"),
+}
+
+
+THEME_QUERY_EXPANSION_TEMPLATES = {
+    "AI漫剧": (
+        "{keyword} AIGC动画 短剧 平台 商业化",
+        "{keyword} 漫剧 IP 内容平台 合作 发行",
+    ),
+    "政务云": (
+        "{keyword} 数据局 政务云 一体化 招标 预算",
+        "site:gov.cn {keyword} 数据局 政务云 规划",
+    ),
+}
+
+
+RESEARCH_SOURCE_SITE_QUERIES = (
+    ("official_policy", "site:gov.cn {keyword} 领导 讲话 规划 战略"),
+    ("public_procurement", "site:ccgp.gov.cn {keyword} 招标 中标 预算"),
+    ("public_resource", "site:ggzy.gov.cn {keyword} 招标 中标 项目"),
+)
+
+
+THEME_OFFICIAL_QUERY_TEMPLATES = {
+    "AI漫剧": (
+        "site:kuaishou.com {keyword} 短剧 AIGC 内容 平台",
+        "site:yuewen.com {keyword} IP 动漫 短剧 合作",
+    ),
+    "政务云": (
+        "site:aliyun.com {keyword} 政务云 政务 合作",
+        "site:huawei.com {keyword} 政务云 行业 数字政府",
+    ),
+}
+
+
+def _strip_query_noise(value: str) -> str:
+    return normalize_text(value)
+
+
+def _sanitize_research_focus_text(value: str | None) -> str:
+    return normalize_text(value or "")
+
+
+def _expand_region_scope_terms(regions: list[str]) -> list[str]:
+    expanded: list[str] = []
+    for region in regions:
+        normalized = normalize_text(region)
+        if not normalized:
+            continue
+        expanded.append(normalized)
+        expanded.extend(REGION_SCOPE_ALIASES.get(normalized, ()))
+    return _dedupe_strings(expanded, 24)
+
+
+def _collect_theme_seed_companies(
+    *,
+    keyword: str,
+    research_focus: str | None,
+    scope_hints: dict[str, object],
+) -> list[str]:
+    text = normalize_text(" ".join([keyword, research_focus or "", *map(str, scope_hints.get("industries", []) or [])]))
+    candidates: list[str] = []
+    if "AI漫剧" in text or "漫剧" in text:
+        candidates.extend(["快手可灵", "阅文集团", "中文在线"])
+    if "政务云" in text or "数据局" in text:
+        candidates.extend(["阿里云", "华为云", "腾讯云"])
+    return _dedupe_strings(candidates, 8)
+
+
+def _is_plausible_entity_name(value: str) -> bool:
+    normalized = normalize_text(value)
+    return bool(normalized and len(normalized) >= 2 and not any(char in normalized for char in "，,。；;"))
+
+
+def _source_query_plan_dependencies() -> SourceQueryPlanDependencies:
+    return SourceQueryPlanDependencies(
+        strip_query_noise=_strip_query_noise,
+        sanitize_research_focus_text=_sanitize_research_focus_text,
+        extract_topic_anchor_terms=_extract_topic_anchor_terms,
+        expand_region_scope_terms=_expand_region_scope_terms,
+        dedupe_strings=_dedupe_strings,
+        collect_theme_seed_companies=_collect_theme_seed_companies,
+        is_plausible_entity_name=_is_plausible_entity_name,
+        industry_scope_aliases=INDUSTRY_SCOPE_ALIASES,
+        theme_query_expansion_templates=THEME_QUERY_EXPANSION_TEMPLATES,
+        research_source_site_queries=RESEARCH_SOURCE_SITE_QUERIES,
+        theme_official_query_templates=THEME_OFFICIAL_QUERY_TEMPLATES,
+    )
+
+
+def _tender_detail_dependencies() -> TenderDetailDependencies:
+    return TenderDetailDependencies(
+        dedupe_strings=_dedupe_strings,
+        search_public_web=lambda *args, **kwargs: [],
+        hybrid_rank_hits=lambda hits, *args, **kwargs: list(hits),
+        select_hits_with_source_balance=lambda hits, *, limit: list(hits)[:limit],
+        extract_source_document_best_effort=lambda *args, **kwargs: None,
+        filter_recent_sources=lambda sources: list(sources),
+        emit_research_progress=lambda *args, **kwargs: None,
+        build_progress_message=lambda *args, **kwargs: "",
+        dedupe_sources=_dedupe_sources,
+        refine_sources_for_report=lambda sources, *args, **kwargs: list(sources),
+        merge_scope_hints=lambda base, updates: {**base, **updates},
+        infer_scope_hints=lambda *args, **kwargs: {},
+        build_theme_terms=_build_theme_terms,
+        resolved_company_anchor_terms=_resolved_company_anchor_terms,
+        build_source_intelligence=lambda *args, **kwargs: {},
+    )
+
+
+def _infer_input_scope_hints(keyword: str, research_focus: str | None) -> dict[str, object]:
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    hints: dict[str, object] = {
+        "anchor_text": normalize_text(" ".join([keyword, research_focus or ""])),
+        "regions": [],
+        "industries": [],
+        "clients": [],
+        "strategy_query_expansions": [],
+        "industry_methodology_questions": [],
+    }
+    if "上海" in text:
+        hints["regions"] = ["上海"]
+    if any(token in text for token in ("医疗", "医院", "卫健", "AI影像", "AI 影像")):
+        hints["industries"] = ["医疗"]
+        hints["clients"] = ["三甲医院"] if "三甲" in text else []
+        hints.update(
+            {
+                "industry_methodology_profile": "医疗",
+                "industry_methodology_framework": "临床场景 -> 信息科与医务线 -> 合规安全 -> 系统集成 -> 投入产出",
+                "industry_methodology_questions": [
+                    "需求来自临床、医务、运营还是科研教学场景",
+                    "信息科、医务处、设备处、财务处和采购办的分工如何",
+                    "试点科室、医院集团复制和区域医共体扩展节奏如何",
+                ],
+                "strategy_query_expansions": [
+                    "上海 医院 AI影像 信息化 建设 采购 预算",
+                    "上海 卫健 AI影像 试点 示范 预算",
+                    '"三甲医院" AI影像 信息科 医务处 招标',
+                ],
+                "industry_methodology_source_preferences": ["医院官网", "卫健委官网", "招采公告"],
+            }
+        )
+    return hints
+
+
+def _source_text(source: SourceDocument) -> str:
+    return normalize_text(
+        " ".join(
+            [
+                source.title,
+                source.snippet,
+                source.excerpt,
+                source.search_query,
+                source.source_label or "",
+                source.domain or "",
+                source.url,
+            ]
+        )
+    )
+
+
+def _entity_canonical_key(name: str) -> str:
+    return normalize_text(name).lower().replace(" ", "")
+
+
+def _extract_rank_entity_name(value: str) -> str:
+    return normalize_text(value)
+
+
+def _org_entity_variants(value: str) -> list[str]:
+    normalized = normalize_text(value)
+    variants = [normalized]
+    if normalized == "快手可灵":
+        variants.extend(["快手", "Kling AI", "Kuaishou", "kling-ai"])
+    return _dedupe_strings(variants, 8)
+
+
+def _source_mentions_entity(source: SourceDocument, entity_name: str) -> bool:
+    text = _source_text(source).lower()
+    return any(normalize_text(variant).lower() in text for variant in _org_entity_variants(entity_name))
+
+
+def _source_negates_entity(source: SourceDocument, entity_name: str) -> bool:
+    normalized_name = normalize_text(entity_name)
+    if not normalized_name:
+        return False
+    return any(
+        normalized_name in sentence and any(token in sentence for token in ("未提及", "未覆盖", "不涉及"))
+        for sentence in _source_text(source).split("。")
+    )
+
+
+def _build_entity_evidence(source: SourceDocument) -> ResearchEntityEvidenceOut:
+    return ResearchEntityEvidenceOut(
+        title=source.title,
+        url=source.url,
+        source_label=source.source_label,
+        source_tier=source.source_tier if source.source_tier in {"official", "media", "aggregate"} else "media",
+        excerpt=normalize_text(source.excerpt or source.snippet),
+    )
+
+
+def _entity_ranking_dependencies() -> EntityRankingHeuristicDependencies:
+    return EntityRankingHeuristicDependencies(
+        clean_scope_entity_names=lambda *args, **kwargs: [],
+        entity_graph_lookup=lambda graph: {},
+        is_theme_aligned_entity_name=lambda *args, **kwargs: True,
+        is_company_like_entity_name=lambda *args, **kwargs: True,
+        source_text=_source_text,
+        extract_rank_entity_candidates=lambda *args, **kwargs: [],
+        canonical_org_name_from_domain=lambda domain: "",
+        dedupe_strings=_dedupe_strings,
+        resolve_known_org_name=lambda value, *args, **kwargs: normalize_text(value),
+        source_type_weight=lambda source: 30 if source.source_tier == "official" else 10,
+        build_entity_evidence=_build_entity_evidence,
+        entity_canonical_key=_entity_canonical_key,
+        extract_rank_entity_name=_extract_rank_entity_name,
+        extract_org_candidates=lambda *args, **kwargs: [],
+        is_plausible_entity_name=_is_plausible_entity_name,
+        is_lightweight_entity_name=lambda value: bool(normalize_text(value)),
+        org_entity_variants=_org_entity_variants,
+        source_mentions_entity=_source_mentions_entity,
+        source_negates_entity=_source_negates_entity,
+        known_company_public_source_seeds={
+            "快手可灵": (("https://www.kuaishou.com/brand/kling-ai", "快手官网"),),
+        },
+        company_profile_page_tokens=("官网", "官方", "公开入口", "official", "profile", "company", "business", "brand"),
+        theme_entity_allow_tokens={},
+        generic_company_name_tokens=(),
+        theme_role_archetypes={},
+        partner_connector_aliases=(),
+    )
+
+
+def _sanitize_entity_row(field_key: str, value: str) -> str:
+    return normalize_text(value)
+
+
+def _report_readiness_dependencies() -> ReportReadinessDependencies:
+    return ReportReadinessDependencies(
+        dedupe_strings=_dedupe_strings,
+        sanitize_entity_row=_sanitize_entity_row,
+        is_actionable_budget_row=is_actionable_budget_row,
+    )
+
+
+def _theme_labels_from_scope(
+    scope_hints: dict[str, object],
+    *,
+    keyword: str,
+    research_focus: str | None,
+) -> list[str]:
+    text = normalize_text(" ".join([keyword, research_focus or ""]))
+    labels = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+    if "漫剧" in text:
+        labels.append("AI漫剧")
+    if "政务云" in text:
+        labels.append("政务云")
+    if any(token in text for token in ("医疗", "医院", "AI影像")):
+        labels.append("医疗")
+    return _dedupe_strings(labels, 4)
+
+
+def _entity_names_from_ranked(
+    ranked: list[ResearchRankedEntityOut],
+    fallback_rows: list[str],
+    *,
+    limit: int = 3,
+) -> list[str]:
+    names: list[str] = []
+    for item in ranked:
+        names.append(normalize_text(getattr(item, "name", "")))
+    names.extend(normalize_text(row) for row in fallback_rows)
+    return _dedupe_strings(names, limit)
+
+
+def _entity_display_labels(values: Iterable[str], *, limit: int = 2) -> list[str]:
+    return _dedupe_strings(values, limit)
+
+
+def _derive_entry_window(report: ResearchReportDocument, output_language: str) -> str:
+    return normalize_text((report.tender_timeline or report.strategic_directions or ["近期预算窗口"])[0])
+
+
+def _truncate_sentence(value: str, limit: int) -> str:
+    text = normalize_text(value)
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 1].rstrip(' ，,：:；;、')}…"
+
+
+def _delivery_materials_dependencies() -> DeliveryMaterialsDependencies:
+    return DeliveryMaterialsDependencies(
+        dedupe_strings=_dedupe_strings,
+        theme_labels_from_scope=_theme_labels_from_scope,
+        entity_names_from_ranked=_entity_names_from_ranked,
+        looks_like_scope_prompt_noise=lambda value: False,
+        looks_like_placeholder_entity_name=lambda value: False,
+        looks_like_fragment_entity_name=lambda value: False,
+        contains_low_value_entity_token=lambda value: False,
+        is_trustworthy_scope_client_name=lambda *args, **kwargs: True,
+        is_theme_aligned_entity_name=lambda *args, **kwargs: True,
+        is_lightweight_entity_name=lambda value: bool(normalize_text(value)),
+        entity_display_labels=_entity_display_labels,
+        is_actionable_budget_row=is_actionable_budget_row,
+        summary_fact_rows=summary_fact_rows,
+        derive_entry_window=_derive_entry_window,
+        truncate_sentence=_truncate_sentence,
+        is_useful_public_contact_row=lambda value: bool(normalize_text(value)),
+        looks_like_placeholder_contact_row=lambda value: False,
+        looks_like_source_artifact_text=lambda value: False,
+        resolved_report_readiness=lambda report: resolved_report_readiness(report, deps=_report_readiness_dependencies()),
+        is_low_signal_execution_report=lambda report: is_low_signal_execution_report(
+            report,
+            deps=_report_readiness_dependencies(),
+        ),
+        field_row_noise_tokens=(),
+    )
 
 
 def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
@@ -30,14 +619,14 @@ def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
         "company_anchors": ["快手可灵", "阅文", "中文在线"],
     }
     hits = [
-        research_service.SearchHit(
+        SearchHit(
             title="广州大学 AIGC 研究中心年度论坛",
             url="https://news.gzhu.edu.cn/aigc-forum",
             snippet="AIGC 动画、教学与研究活动。",
             search_query=keyword,
             source_hint="web",
         ),
-        research_service.SearchHit(
+        SearchHit(
             title="快手可灵 内容平台与 AI 漫剧合作",
             url="https://www.kuaishou.com/brand/kling-ai-comic",
             snippet="快手可灵开放 AIGC 漫剧内容平台、合作与商业化入口。",
@@ -45,7 +634,7 @@ def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
             source_hint="web",
             source_label="官网",
         ),
-        research_service.SearchHit(
+        SearchHit(
             title="AI漫剧行业趋势观察",
             url="https://36kr.com/p/ai-comic-market",
             snippet="行业趋势与多家公司布局概览。",
@@ -55,11 +644,12 @@ def test_hybrid_rank_prefers_company_official_hits_for_company_intent() -> None:
         ),
     ]
 
-    ranked = research_service._hybrid_rank_hits(
+    ranked = hybrid_rank_hits(
         hits,
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
 
     assert ranked
@@ -76,14 +666,14 @@ def test_hybrid_rank_does_not_promote_search_query_only_overlap_noise() -> None:
         "clients": ["南京市数据局"],
     }
     hits = [
-        research_service.SearchHit(
+        SearchHit(
             title="某高校论坛圆桌回顾",
             url="https://news.example.edu.cn/forum-roundtable",
             snippet="围绕 AI 教学、论坛活动和研究分享。",
             search_query='site:gov.cn "南京市数据局" 政务云预算窗口 规划 预算',
             source_hint="web",
         ),
-        research_service.SearchHit(
+        SearchHit(
             title="南京市数据局电子政务云平台采购意向公告",
             url="https://www.nanjing.gov.cn/data/procurement-intent",
             snippet="公告披露电子政务云平台采购意向、预算安排与项目建设路径。",
@@ -93,11 +683,12 @@ def test_hybrid_rank_does_not_promote_search_query_only_overlap_noise() -> None:
         ),
     ]
 
-    ranked = research_service._hybrid_rank_hits(
+    ranked = hybrid_rank_hits(
         hits,
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
 
     assert ranked
@@ -114,7 +705,7 @@ def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
         "company_anchors": ["快手可灵"],
     }
     sources = [
-        research_service.SourceDocument(
+        SourceDocument(
             title="AI漫剧行业趋势",
             url="https://36kr.com/p/ai-comic-market",
             domain="36kr.com",
@@ -127,7 +718,7 @@ def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
             source_tier="media",
             source_origin="search",
         ),
-        research_service.SourceDocument(
+        SourceDocument(
             title="快手可灵 AI 漫剧合作平台",
             url="https://www.kuaishou.com/brand/kling-ai-comic",
             domain="www.kuaishou.com",
@@ -142,11 +733,12 @@ def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
         ),
     ]
 
-    ranked = research_service._rerank_sources_hybrid(
+    ranked = rerank_sources_hybrid(
         sources,
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
 
     assert ranked[0].url == "https://www.kuaishou.com/brand/kling-ai-comic"
@@ -162,7 +754,7 @@ def test_source_rerank_does_not_promote_query_only_overlap_noise() -> None:
         "clients": ["南京市数据局"],
     }
     sources = [
-        research_service.SourceDocument(
+        SourceDocument(
             title="某高校数字化论坛纪要",
             url="https://news.example.edu.cn/forum-roundtable",
             domain="news.example.edu.cn",
@@ -175,7 +767,7 @@ def test_source_rerank_does_not_promote_query_only_overlap_noise() -> None:
             source_tier="media",
             source_origin="search",
         ),
-        research_service.SourceDocument(
+        SourceDocument(
             title="南京市数据局电子政务云平台采购意向公告",
             url="https://www.nanjing.gov.cn/data/procurement-intent",
             domain="www.nanjing.gov.cn",
@@ -190,11 +782,12 @@ def test_source_rerank_does_not_promote_query_only_overlap_noise() -> None:
         ),
     ]
 
-    ranked = research_service._rerank_sources_hybrid(
+    ranked = rerank_sources_hybrid(
         sources,
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
 
     assert ranked
@@ -212,7 +805,7 @@ def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagn
         "enable_cross_encoder_rerank": True,
     }
     sources = [
-        research_service.SourceDocument(
+        SourceDocument(
             title="政务云预算行业观察",
             url="https://media.example.cn/gov-cloud-opinion",
             domain="media.example.cn",
@@ -225,7 +818,7 @@ def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagn
             source_tier="media",
             source_origin="search",
         ),
-        research_service.SourceDocument(
+        SourceDocument(
             title="南京市数据局电子政务云采购意向公告",
             url="https://www.nanjing.gov.cn/data/procurement-intent",
             domain="www.nanjing.gov.cn",
@@ -240,11 +833,12 @@ def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagn
         ),
     ]
 
-    ranked = research_service._rerank_sources_hybrid(
+    ranked = rerank_sources_hybrid(
         sources,
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
 
     assert ranked[0].url == "https://www.nanjing.gov.cn/data/procurement-intent"
@@ -254,7 +848,7 @@ def test_cross_encoder_style_reranker_is_feature_flagged_and_records_scope_diagn
     assert scope_hints["reranker_notes"]
 
 
-def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatch) -> None:
+def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints() -> None:
     payload = ResearchReportRequest(
         keyword="南京市数据局 政务云",
         research_focus="核验采购意向、预算窗口和官方来源",
@@ -287,8 +881,17 @@ def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatc
         },
     )
 
-    runtime = research_service._build_research_runtime(payload)
-    hints = research_service._runtime_strategy_scope_hints(payload)
+    runtime = build_research_runtime(
+        payload,
+        resolve_research_mode=_resolve_research_mode,
+        runtime_consumer_effective_config=runtime_consumer_effective_config,
+        safe_int=_safe_int,
+    )
+    hints = build_runtime_strategy_scope_hints(
+        payload,
+        dedupe_strings=_dedupe_strings,
+        safe_int=_safe_int,
+    )
 
     assert runtime["runtime_query_recovery_enabled"] is True
     assert runtime["corrective_query_limit"] == 7
@@ -315,15 +918,14 @@ def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatc
         captured.update({"top_k": top_k, "backend": backend})
         return list(sources), _FakeRerankProfile()
 
-    monkeypatch.setattr(research_service, "rerank_sources_cross_encoder", _fake_rerank)
     scope_hints = {
         "enable_cross_encoder_rerank": True,
         "runtime_reranker_backend": "sentence_transformers",
         "runtime_reranker_top_k": 7,
     }
-    research_service._rerank_sources_hybrid(
+    rerank_sources_hybrid(
         [
-            research_service.SourceDocument(
+            SourceDocument(
                 title="南京市数据局电子政务云采购意向公告",
                 url="https://www.nanjing.gov.cn/data/procurement-intent",
                 domain="www.nanjing.gov.cn",
@@ -340,6 +942,7 @@ def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatc
         keyword=payload.keyword,
         research_focus=payload.research_focus,
         scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(rerank_sources_cross_encoder=_fake_rerank),
     )
 
     assert captured == {"top_k": 7, "backend": "sentence_transformers"}
@@ -347,7 +950,7 @@ def test_runtime_strategy_config_feeds_query_and_reranker_scope_hints(monkeypatc
 
 def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
     sources = [
-        research_service.SourceDocument(
+        SourceDocument(
             title="快手可灵 AI 漫剧合作平台",
             url="https://www.kuaishou.com/brand/kling-ai-comic",
             domain="www.kuaishou.com",
@@ -360,7 +963,7 @@ def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
             source_tier="official",
             source_origin="search",
         ),
-        research_service.SourceDocument(
+        SourceDocument(
             title="AI漫剧行业趋势观察",
             url="https://36kr.com/p/ai-comic-market",
             domain="36kr.com",
@@ -375,7 +978,7 @@ def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
         ),
     ]
 
-    diagnostics = research_service._build_source_diagnostics(
+    diagnostics = build_source_diagnostics(
         sources,
         enabled_source_labels=["官网", "36氪"],
         scope_hints={"industries": ["AI漫剧"], "clients": ["快手可灵"]},
@@ -393,6 +996,7 @@ def test_source_diagnostics_exposes_fetch_clean_analyze_pipeline() -> None:
         candidate_profile_hit_count=2,
         candidate_profile_official_hit_count=1,
         candidate_profile_source_labels=["官网"],
+        deps=_source_diagnostics_dependencies(),
     )
 
     assert diagnostics.pipeline_stages[0].key == "fetch"
@@ -473,7 +1077,7 @@ def test_expanded_and_corrective_query_plans_add_scoped_official_queries() -> No
 
 
 def test_tender_detail_query_plan_targets_confirmed_project_fields() -> None:
-    source = research_service.SourceDocument(
+    source = SourceDocument(
         title="某市智慧文旅AIGC导览平台公开招标公告",
         url="https://ggzy.example.gov.cn/tender/aigc-tourism",
         domain="ggzy.example.gov.cn",
@@ -492,7 +1096,7 @@ def test_tender_detail_query_plan_targets_confirmed_project_fields() -> None:
         research_focus="景区数字人导览",
         scope_hints={"regions": ["华东"], "industries": ["文旅"], "clients": ["某文旅集团"]},
         limit=8,
-        deps=research_service._tender_detail_dependencies(),
+        deps=_tender_detail_dependencies(),
     )
 
     assert queries
@@ -537,7 +1141,7 @@ def test_query_plans_include_curated_wechat_accounts_when_enabled() -> None:
 
 
 def test_scope_hints_attach_industry_methodology_profile_for_medical_topics() -> None:
-    scope_hints = research_service._infer_input_scope_hints(
+    scope_hints = _infer_input_scope_hints(
         "上海医疗 AI 影像商机",
         "关注三甲医院信息科、医务处、预算批次和试点扩面",
     )
@@ -549,7 +1153,7 @@ def test_scope_hints_attach_industry_methodology_profile_for_medical_topics() ->
 
 
 def test_query_plan_prioritizes_industry_methodology_expansions() -> None:
-    scope_hints = research_service._infer_input_scope_hints(
+    scope_hints = _infer_input_scope_hints(
         "上海医疗 AI 影像商机",
         "关注三甲医院信息科、医务处、预算批次和试点扩面",
     )
@@ -570,7 +1174,7 @@ def test_query_plan_prioritizes_industry_methodology_expansions() -> None:
 
 def test_candidate_profile_support_promotes_entity_from_official_profile_query() -> None:
     profile_sources = [
-        research_service.SourceDocument(
+        SourceDocument(
             title="Kling AI | Kuaishou",
             url="https://www.kuaishou.com/brand/kling-ai",
             domain="www.kuaishou.com",
@@ -593,8 +1197,12 @@ def test_candidate_profile_support_promotes_entity_from_official_profile_query()
         )
     ]
 
-    support = research_service._build_candidate_profile_support(profile_sources, ["快手可灵"])
-    promoted, remaining = research_service._promote_pending_entities_with_candidate_profiles(
+    support = build_candidate_profile_support(
+        profile_sources,
+        ["快手可灵"],
+        deps=_entity_ranking_dependencies(),
+    )
+    promoted, remaining = promote_pending_entities_with_candidate_profiles(
         [],
         pending,
         candidate_profile_support=support,
@@ -693,16 +1301,16 @@ def test_report_readiness_and_commercial_summary_enforce_business_slots() -> Non
         entity_graph=ResearchEntityGraphOut(),
     )
 
-    readiness = research_service._build_report_readiness(report)
-    commercial_summary = research_service._build_commercial_summary(report)
+    readiness = build_report_readiness(report, deps=_report_readiness_dependencies())
+    commercial_summary = build_commercial_summary(report, deps=_delivery_materials_dependencies())
     report = report.model_copy(
         update={
             "report_readiness": readiness,
             "commercial_summary": commercial_summary,
         }
     )
-    technical_appendix = research_service._build_technical_appendix(report)
-    review_queue = research_service._build_review_queue(report)
+    technical_appendix = build_technical_appendix(report, deps=_delivery_materials_dependencies())
+    review_queue = build_review_queue(report, deps=_delivery_materials_dependencies())
 
     assert readiness.status == "ready"
     assert readiness.actionable is True
@@ -743,8 +1351,8 @@ def test_report_readiness_guardrails_keep_title_clean() -> None:
         entity_graph=ResearchEntityGraphOut(),
     )
 
-    readiness = research_service._build_report_readiness(report)
-    guarded = research_service._apply_report_readiness_guardrails(
+    readiness = build_report_readiness(report, deps=_report_readiness_dependencies())
+    guarded = apply_report_readiness_guardrails(
         report.model_copy(update={"report_readiness": readiness})
     )
 

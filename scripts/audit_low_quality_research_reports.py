@@ -472,10 +472,15 @@ def main() -> int:
     from app.db.session import SessionLocal, engine
     from app.models.entities import KnowledgeEntry
     from app.schemas.research import ResearchReportResponse
-    from app.services import research_service
+    from app.services.research.report_runtime_dependencies import report_text_quality_dependencies
+    from app.services.research.report_text_quality import looks_like_bad_executive_summary
+    from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
 
     helpers = {
-        "looks_like_bad_executive_summary": research_service._looks_like_bad_executive_summary,
+        "looks_like_bad_executive_summary": lambda value: looks_like_bad_executive_summary(
+            value,
+            deps=report_text_quality_dependencies(build_report_runtime_owner_ports()),
+        ),
     }
 
     db = SessionLocal()

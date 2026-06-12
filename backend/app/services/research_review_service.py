@@ -17,7 +17,16 @@ from app.services.knowledge_intelligence_service import (
     apply_review_queue_resolutions,
     build_research_report_metadata,
 )
-from app.services import research_service
+from app.services.research.action_cards import build_research_action_cards as _build_research_action_cards
+from app.services.research.report_markdown import build_research_report_markdown
+from app.services.research.report_runtime_dependencies import (
+    action_card_dependencies,
+    report_text_quality_dependencies,
+    stored_report_rewrite_orchestration_dependencies,
+)
+from app.services.research.report_text_quality import looks_like_bad_executive_summary
+from app.services.research.stored_report_rewrite import rewrite_stored_research_report as _rewrite_stored_research_report
+from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
 
 
 LEGACY_TITLE_PREFIXES = (
@@ -320,7 +329,10 @@ def _audit_report(entry: Any, report: Any) -> dict[str, Any]:
 
     if _is_guarded_backlog_summary(executive_summary):
         pass
-    elif research_service._looks_like_bad_executive_summary(executive_summary):
+    elif looks_like_bad_executive_summary(
+        executive_summary,
+        deps=report_text_quality_dependencies(build_report_runtime_owner_ports()),
+    ):
         _add_issue(issues, "bad_executive_summary", "high", 22, "执行摘要仍是模板腔或结论颗粒度不够。", executive_summary)
     elif all(token in executive_summary for token in ("结论：", "证据：", "动作：")):
         _add_issue(issues, "templated_executive_summary", "medium", 10, "执行摘要仍保留旧版“结论/证据/动作”串联模板。", executive_summary)
@@ -696,7 +708,10 @@ def rewrite_low_quality_research_entry(db: Session, entry_id: str) -> dict[str, 
     previous_payload, previous_report = _load_previous_report(entry)
     before_sample = _audit_report(entry, previous_report)
 
-    rewritten_report = research_service.rewrite_stored_research_report(previous_report)
+    rewritten_report = _rewrite_stored_research_report(
+        previous_report,
+        deps=stored_report_rewrite_orchestration_dependencies(build_report_runtime_owner_ports()),
+    )
     after_sample = _audit_report(entry, rewritten_report)
     diff = _build_rewrite_diff(
         previous_report,
@@ -705,8 +720,11 @@ def rewrite_low_quality_research_entry(db: Session, entry_id: str) -> dict[str, 
         after_risk_score=int(after_sample.get("risk_score") or 0),
     )
 
-    action_cards = research_service.build_research_action_cards(rewritten_report)
-    _, markdown_content = research_service.build_research_report_markdown(
+    action_cards = _build_research_action_cards(
+        rewritten_report,
+        deps=action_card_dependencies(build_report_runtime_owner_ports()),
+    )
+    _, markdown_content = build_research_report_markdown(
         rewritten_report,
         output_language=rewritten_report.output_language,
     )

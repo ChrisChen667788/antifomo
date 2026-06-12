@@ -3,19 +3,31 @@ from __future__ import annotations
 import warnings
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from app.schemas.research import (
+    ResearchEntityGraphOut,
     ResearchReportDocument,
     ResearchReportResponse,
     ResearchSourceDiagnosticsOut,
     ResearchSourceOut,
 )
-from app.services import research_service
 from app.services.content_extractor import normalize_text
-from app.services.research.quality_expansion import expand_report_public_sources_until_quality_improves
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.llm_parser import ResearchReportResult
+from app.services.research.quality_expansion import (
+    QualityExpansionDependencies,
+    expand_report_public_sources_until_quality_improves,
+)
 from app.services.research.report_storage import report_sources_to_source_documents
-from app.services.research.source_documents import SourceDocument, clean_source_text_for_analysis
+from app.services.research.source_documents import (
+    SourceDocument,
+    clean_source_text_for_analysis,
+    source_documents_to_research_source_outputs,
+)
 from app.services.research.web_search import SearchHit
+from app.services.research_quality_service import build_research_quality_profile
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 from app.services.research_report_evaluation_service import (
     evaluate_and_improve_research_report,
     evaluate_research_report,
@@ -31,6 +43,244 @@ def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> lis
         clean_source_text_for_analysis=clean_source_text_for_analysis,
         truncate_text=lambda value, limit: normalize_text(value)[:limit],
         dedupe_sources=lambda documents: list(documents),
+    )
+
+
+def _dedupe_strings(values: list[object], limit: int = 10) -> list[str]:
+    rows: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = normalize_text(str(value or ""))
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        rows.append(normalized)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _dedupe_sources(sources: list[SourceDocument]) -> list[SourceDocument]:
+    rows: list[SourceDocument] = []
+    seen: set[str] = set()
+    for source in sources:
+        key = normalize_text(source.url or source.title)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        rows.append(source)
+    return rows
+
+
+def _dedupe_hits(hits: list[SearchHit]) -> list[SearchHit]:
+    rows: list[SearchHit] = []
+    seen: set[str] = set()
+    for hit in hits:
+        key = normalize_text(hit.url or hit.title)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        rows.append(hit)
+    return rows
+
+
+def _scope_hints(
+    keyword: str,
+    research_focus: str | None,
+    sources: list[SourceDocument] | None = None,
+) -> dict[str, object]:
+    text = normalize_text(
+        " ".join(
+            [
+                keyword,
+                research_focus or "",
+                *(source.title for source in sources or []),
+                *(source.snippet for source in sources or []),
+            ]
+        )
+    )
+    return {
+        "regions": ["南京"] if "南京" in text else [],
+        "industries": ["政务云"] if "政务云" in text else [],
+        "clients": ["南京市数据局"] if "南京市数据局" in text else [],
+        "company_anchors": [],
+        "strategy_query_expansions": [],
+        "strategy_exclusion_terms": [],
+        "strategy_scope_summary": "",
+    }
+
+
+def _merge_scope_hints(base: dict[str, object], followup: dict[str, object]) -> dict[str, object]:
+    merged = dict(base)
+    for key, value in followup.items():
+        if isinstance(value, list):
+            merged[key] = _dedupe_strings([*(merged.get(key, []) or []), *value], 10)
+        elif value:
+            merged[key] = value
+        else:
+            merged.setdefault(key, value)
+    return merged
+
+
+def _stored_report_to_result(report: ResearchReportResponse) -> ResearchReportResult:
+    return ResearchReportResult(
+        report_title=report.report_title,
+        executive_summary=report.executive_summary,
+        consulting_angle=report.consulting_angle,
+        target_accounts=list(report.target_accounts),
+        budget_signals=list(report.budget_signals),
+        strategic_directions=list(report.strategic_directions),
+        solution_design=list(report.strategic_directions),
+        next_actions=["补齐官方采购公告后准备客户 brief 和投标准备 memo。"],
+    )
+
+
+def _build_source_diagnostics(
+    sources: list[SourceDocument],
+    *,
+    enabled_source_labels: list[str],
+    scope_hints: dict[str, object],
+    recency_window_years: int,
+    filtered_old_source_count: int,
+    filtered_region_conflict_count: int,
+    retained_source_count: int,
+    strict_topic_source_count: int,
+    topic_anchor_terms: list[str],
+    matched_theme_labels: list[str],
+    entity_graph: ResearchEntityGraphOut,
+    expansion_triggered: bool,
+    corrective_triggered: bool,
+    candidate_profile_companies: list[str],
+    candidate_profile_hit_count: int,
+    candidate_profile_official_hit_count: int,
+    candidate_profile_source_labels: list[str],
+) -> ResearchSourceDiagnosticsOut:
+    source_type_counts: dict[str, int] = {}
+    source_tier_counts: dict[str, int] = {}
+    for source in sources:
+        source_type_counts[source.source_type] = source_type_counts.get(source.source_type, 0) + 1
+        source_tier_counts[source.source_tier] = source_tier_counts.get(source.source_tier, 0) + 1
+    official_count = source_tier_counts.get("official", 0)
+    official_source_ratio = official_count / max(len(sources), 1)
+    return ResearchSourceDiagnosticsOut(
+        enabled_source_labels=_dedupe_strings(enabled_source_labels, 10),
+        matched_source_labels=_dedupe_strings([source.source_label for source in sources], 8),
+        scope_regions=_dedupe_strings(list(scope_hints.get("regions", []) or []), 3),
+        scope_industries=_dedupe_strings(list(scope_hints.get("industries", []) or []), 3),
+        scope_clients=_dedupe_strings(list(scope_hints.get("clients", []) or []), 3),
+        source_type_counts=source_type_counts,
+        source_tier_counts=source_tier_counts,
+        recency_window_years=recency_window_years,
+        filtered_old_source_count=filtered_old_source_count,
+        filtered_region_conflict_count=filtered_region_conflict_count,
+        retained_source_count=retained_source_count,
+        strict_topic_source_count=strict_topic_source_count,
+        topic_anchor_terms=_dedupe_strings(topic_anchor_terms, 8),
+        matched_theme_labels=_dedupe_strings(matched_theme_labels, 8),
+        retrieval_quality="high" if official_count else "medium",
+        evidence_mode="strong" if official_count else "provisional",
+        evidence_mode_label="强证据" if official_count else "候选证据",
+        strict_match_ratio=round(strict_topic_source_count / max(retained_source_count, 1), 3),
+        official_source_ratio=round(official_source_ratio, 3),
+        unique_domain_count=len({source.domain for source in sources if normalize_text(source.domain)}),
+        normalized_entity_count=len(entity_graph.entities),
+        normalized_target_count=len(entity_graph.target_entities),
+        normalized_competitor_count=len(entity_graph.competitor_entities),
+        normalized_partner_count=len(entity_graph.partner_entities),
+        expansion_triggered=expansion_triggered,
+        corrective_triggered=corrective_triggered,
+        candidate_profile_companies=_dedupe_strings(candidate_profile_companies, 6),
+        candidate_profile_hit_count=candidate_profile_hit_count,
+        candidate_profile_official_hit_count=candidate_profile_official_hit_count,
+        candidate_profile_source_labels=_dedupe_strings(candidate_profile_source_labels, 8),
+        generation_grounding_score=88,
+        response_quality_score=88,
+    )
+
+
+def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchReportResponse:
+    return report.model_copy(
+        update={
+            "market_intelligence": build_market_intelligence_pack(report),
+            "solution_delivery_pack": build_solution_delivery_pack(report),
+            "quality_profile": build_research_quality_profile(report),
+        }
+    )
+
+
+class _GroundingReview:
+    def to_diagnostics_update(self) -> dict[str, object]:
+        return {
+            "generation_grounding_score": 90,
+            "response_quality_score": 90,
+        }
+
+
+def _quality_expansion_dependencies(
+    *,
+    search_public_web,
+    extract_source_document_best_effort,
+) -> QualityExpansionDependencies:
+    settings = SimpleNamespace(
+        research_quality_expansion_enabled=True,
+        research_quality_expansion_min_score=82,
+        research_quality_expansion_max_rounds=1,
+        research_quality_expansion_query_limit=16,
+        research_search_timeout_seconds=6,
+        research_max_search_results=3,
+        research_max_sources=6,
+        url_fetch_timeout_seconds=8,
+        research_source_excerpt_chars=500,
+    )
+    return QualityExpansionDependencies(
+        get_settings=lambda: settings,
+        dedupe_strings=_dedupe_strings,
+        infer_input_scope_hints=lambda keyword, research_focus: _scope_hints(keyword, research_focus),
+        infer_scope_hints=_scope_hints,
+        merge_scope_hints=_merge_scope_hints,
+        build_corrective_query_plan=lambda **_kwargs: [],
+        build_expanded_query_plan=lambda *_args, **_kwargs: [],
+        curated_wechat_channels=("政采云",),
+        build_company_seed_hits=lambda *_args, **_kwargs: [],
+        search_public_web=search_public_web,
+        hybrid_rank_hits=lambda hits, **_kwargs: _dedupe_hits(list(hits)),
+        select_hits_with_source_balance=lambda hits, *, limit: hits[:limit],
+        dedupe_hits=_dedupe_hits,
+        extract_source_document_best_effort=extract_source_document_best_effort,
+        filter_recent_sources=lambda sources: sources,
+        build_theme_terms=lambda keyword, research_focus, scope_hints: _dedupe_strings(
+            [keyword, research_focus or "", *list(scope_hints.get("industries", []) or [])],
+            8,
+        ),
+        resolved_company_anchor_terms=lambda keyword, research_focus, scope_hints: _dedupe_strings(
+            [keyword, research_focus or "", *list(scope_hints.get("clients", []) or [])],
+            8,
+        ),
+        refine_sources_for_report=lambda sources, **_kwargs: list(sources),
+        stored_report_to_result=_stored_report_to_result,
+        build_entity_graph=lambda *_args, **_kwargs: ResearchEntityGraphOut(),
+        rank_top_entities=lambda *_args, **_kwargs: ([], []),
+        filtered_rank_fallback_values=lambda values, **_kwargs: _dedupe_strings(values, 6),
+        build_entity_specific_contact_rows=lambda *_args, **_kwargs: [],
+        build_entity_specific_team_rows=lambda *_args, **_kwargs: [],
+        extract_topic_anchor_terms=lambda keyword, research_focus: _dedupe_strings([keyword, research_focus or ""], 6),
+        collect_matched_theme_labels=lambda sources, **_kwargs: _dedupe_strings(
+            [source.source_label for source in sources],
+            8,
+        ),
+        build_source_diagnostics=_build_source_diagnostics,
+        source_max_age_years=7,
+        evidence_density_level=lambda sources, _parsed: "high" if len(sources) >= 2 else "low",
+        source_quality_level=lambda sources: "high" if any(source.source_tier == "official" for source in sources) else "low",
+        source_documents_to_outputs=source_documents_to_research_source_outputs,
+        build_sections=lambda *_args, **_kwargs: [],
+        enrich_report_for_delivery=_enrich_report_for_delivery,
+        report_sources_to_source_documents=_report_sources_to_source_documents,
+        dedupe_sources=_dedupe_sources,
+        review_generation_grounding=lambda *_args, **_kwargs: _GroundingReview(),
+        evaluate_and_improve_research_report=lambda candidate, **_kwargs: candidate,
+        emit_research_progress=lambda *_args, **_kwargs: None,
+        build_progress_message=lambda message, **_kwargs: message,
     )
 
 
@@ -130,7 +380,7 @@ def test_research_report_assignment_coerces_ranked_entities_without_serializer_w
     assert not [item for item in caught if "Pydantic serializer warnings" in str(item.message)]
 
 
-def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypatch) -> None:
+def test_watch_quality_triggers_public_expansion_for_delivery_materials() -> None:
     base = ResearchReportResponse(
         keyword="南京政务云",
         research_focus="准备政务云客户 brief、投标准备 memo 和执行材料",
@@ -208,14 +458,6 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypa
             source_origin="search",
         )
 
-    monkeypatch.setattr(research_service, "_search_public_web", _fake_search)
-    monkeypatch.setattr(research_service, "_extract_source_document_best_effort", _fake_extract)
-    local_settings = research_service.get_settings()
-    monkeypatch.setattr(local_settings, "research_quality_expansion_enabled", True)
-    monkeypatch.setattr(local_settings, "research_quality_expansion_min_score", 82)
-    monkeypatch.setattr(local_settings, "research_quality_expansion_query_limit", 16)
-    monkeypatch.setattr(research_service, "get_settings", lambda: local_settings)
-
     expanded = expand_report_public_sources_until_quality_improves(
         evaluated,
         source_documents=_report_sources_to_source_documents(evaluated.sources),
@@ -225,7 +467,10 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials(monkeypa
             "url_timeout_seconds": 1,
             "expanded_selected_limit": 6,
         },
-        deps=research_service._quality_expansion_dependencies(),
+        deps=_quality_expansion_dependencies(
+            search_public_web=_fake_search,
+            extract_source_document_best_effort=_fake_extract,
+        ),
     )
 
     diagnostics = expanded.source_diagnostics

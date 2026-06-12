@@ -34,6 +34,14 @@ class FollowupDiagnosticsDependencies:
     org_pattern: Pattern[str]
 
 
+@dataclass(frozen=True, slots=True)
+class FollowupImpactDependencies:
+    looks_like_source_noise_segment: Callable[..., bool]
+    dedupe_strings: Callable[[Iterable[str], int], list[str]]
+    tokenize_for_match: Callable[..., list[str]]
+    generic_focus_tokens: Collection[str]
+
+
 def build_followup_context(payload: ResearchReportRequest, *, deps: FollowupDiagnosticsDependencies) -> ResearchFollowupContextOut:
     return ResearchFollowupContextOut(
         followup_report_title=normalize_text(payload.followup_report_title or ""),
@@ -356,7 +364,7 @@ def build_followup_impact_terms(
     followup_context: ResearchFollowupContextOut,
     followup_diagnostics: ResearchFollowupDiagnosticsOut,
     *,
-    deps: FollowupDiagnosticsDependencies,
+    deps: FollowupImpactDependencies,
 ) -> list[str]:
     candidates: list[str] = []
     candidates.extend(
@@ -399,7 +407,7 @@ def build_followup_impact_terms(
 def build_followup_section_impacts(
     report: ResearchReportDocument,
     *,
-    deps: FollowupDiagnosticsDependencies,
+    deps: FollowupImpactDependencies,
 ) -> list[ResearchFollowupSectionImpactOut]:
     diagnostics = getattr(report, "followup_diagnostics", None)
     followup_context = getattr(report, "followup_context", None)
@@ -513,7 +521,7 @@ def build_followup_section_impacts(
 def render_followup_section_focus_prompt_context(
     report: ResearchReportDocument,
     *,
-    deps: FollowupDiagnosticsDependencies,
+    deps: FollowupImpactDependencies,
 ) -> str:
     impacts = build_followup_section_impacts(report, deps=deps)
     if not impacts:
@@ -538,7 +546,7 @@ def render_followup_section_focus_prompt_context(
 def enrich_followup_diagnostics(
     report: ResearchReportResponse,
     *,
-    deps: FollowupDiagnosticsDependencies,
+    deps: FollowupImpactDependencies,
 ) -> ResearchReportResponse:
     diagnostics = getattr(report, "followup_diagnostics", None)
     followup_context = getattr(report, "followup_context", None)

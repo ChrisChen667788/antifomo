@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 from app.schemas.research import ResearchCommercialSummaryOut, ResearchReportResponse, ResearchSourceDiagnosticsOut, ResearchSourceOut
-from app.services import research_service
 from app.services.content_extractor import normalize_text
 from app.services.research.report_storage import report_sources_to_source_documents
 from app.services.research.source_documents import (
@@ -9,6 +8,13 @@ from app.services.research.source_documents import (
     clean_source_text_for_analysis,
     source_document_text,
 )
+from app.services.research.action_cards import build_research_action_cards as _build_research_action_cards
+from app.services.research.report_runtime_dependencies import (
+    action_card_dependencies,
+    stored_report_rewrite_orchestration_dependencies,
+)
+from app.services.research.stored_report_rewrite import rewrite_stored_research_report as _rewrite_stored_research_report
+from app.services.research.report_runtime_owner_factory import build_report_runtime_owner_ports
 
 
 def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> list[SourceDocument]:
@@ -20,6 +26,20 @@ def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> lis
         clean_source_text_for_analysis=clean_source_text_for_analysis,
         truncate_text=lambda value, limit: normalize_text(value)[:limit],
         dedupe_sources=lambda documents: list(documents),
+    )
+
+
+def rewrite_stored_research_report(report: ResearchReportResponse) -> ResearchReportResponse:
+    return _rewrite_stored_research_report(
+        report,
+        deps=stored_report_rewrite_orchestration_dependencies(build_report_runtime_owner_ports()),
+    )
+
+
+def build_research_action_cards(report: ResearchReportResponse):
+    return _build_research_action_cards(
+        report,
+        deps=action_card_dependencies(build_report_runtime_owner_ports()),
     )
 
 
@@ -71,8 +91,8 @@ def test_rewrite_stored_research_report_uses_guarded_mode_for_low_signal_reports
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
-    cards = research_service.build_research_action_cards(rewritten)
+    rewritten = rewrite_stored_research_report(report)
+    cards = build_research_action_cards(rewritten)
 
     assert rewritten.report_title.endswith("待核验清单与补证路径")
     assert "结论：" not in rewritten.executive_summary
@@ -155,8 +175,8 @@ def test_rewrite_stored_research_report_rewrites_legacy_title_and_template_summa
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
-    cards = research_service.build_research_action_cards(rewritten)
+    rewritten = rewrite_stored_research_report(report)
+    cards = build_research_action_cards(rewritten)
 
     assert not rewritten.report_title.startswith("候选推进版｜")
     assert "陕西省文物局" in rewritten.report_title
@@ -248,7 +268,7 @@ def test_rewrite_stored_research_report_canonicalizes_legacy_alias_entities_from
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert "百联集团" in rewritten.target_accounts
     assert "百联" not in rewritten.target_accounts
@@ -304,7 +324,7 @@ def test_rewrite_stored_research_report_strips_prompt_style_scope_entities_from_
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title == "长三角｜大模型：待核验清单与补证路径"
     assert "我作为maas公司" not in rewritten.report_title
@@ -361,7 +381,7 @@ def test_rewrite_stored_research_report_strips_source_noise_scope_entities_from_
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title == "长三角｜政务云：待核验清单与补证路径"
     assert "华尔街和全球银行" not in rewritten.report_title
@@ -414,7 +434,7 @@ def test_rewrite_stored_research_report_drops_generic_placeholder_clients_from_g
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title == "AI漫剧：待核验清单与补证路径"
     assert "头部公司" not in rewritten.report_title
@@ -514,7 +534,7 @@ def test_rewrite_stored_research_report_guards_single_source_company_intent_with
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title.endswith("待核验清单与补证路径")
     assert "科技数码" not in rewritten.report_title
@@ -620,7 +640,7 @@ def test_rewrite_stored_research_report_strips_source_dump_rows_from_summary_and
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert "CSDN博客" not in rewritten.executive_summary
     assert "文章标签" not in rewritten.executive_summary
@@ -711,7 +731,7 @@ def test_rewrite_stored_research_report_guards_when_targets_have_no_source_suppo
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title.endswith("待核验清单与补证路径")
     assert rewritten.target_accounts == []
@@ -783,7 +803,7 @@ def test_rewrite_stored_research_report_guards_single_source_with_placeholder_pa
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title.endswith("待核验清单与补证路径")
     assert rewritten.commercial_summary.next_action == "先补官网、公告、采购和联系人线索，再决定是否进入正式推进。"
@@ -874,7 +894,7 @@ def test_rewrite_stored_research_report_guards_procurement_aggregate_only_source
         generated_at=datetime.now(timezone.utc),
     )
 
-    rewritten = research_service.rewrite_stored_research_report(report)
+    rewritten = rewrite_stored_research_report(report)
 
     assert rewritten.report_title.endswith("待核验清单与补证路径")
     assert rewritten.budget_signals == []

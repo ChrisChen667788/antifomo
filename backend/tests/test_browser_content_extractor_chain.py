@@ -5,10 +5,14 @@ from types import SimpleNamespace
 import uuid
 
 from app.models.entities import Item
-from app.services import item_processor, research_service, wechat_url_resolver
+from app.services import item_processor, wechat_url_resolver
 from app.services.browser_content_extractor import extract_from_browser
 from app.services import browser_content_extractor
-from app.services.content_extractor import ContentExtractionError, ExtractedContent
+from app.services.content_extractor import ContentExtractionError, ExtractedContent, normalize_text
+from app.services.research.source_documents import clean_source_text_for_analysis
+from app.services.research.source_extraction import SourceExtractionDependencies, extract_source_document
+from app.services.research.source_ranking import classify_source_tier, classify_source_type, derive_source_label
+from app.services.research.web_search import SearchHit
 
 
 def test_extract_from_browser_parses_script_output(monkeypatch) -> None:
@@ -73,7 +77,7 @@ def test_item_processor_prefers_browser_extractor_for_wechat_url(monkeypatch) ->
     assert clean_content == body
 
 
-def test_research_source_document_marks_browser_extracted_for_wechat(monkeypatch) -> None:
+def test_research_source_document_marks_browser_extracted_for_wechat() -> None:
     body = "提取到的微信正文。" * 40
 
     def fake_browser(*args, **kwargs):
@@ -85,26 +89,29 @@ def test_research_source_document_marks_browser_extracted_for_wechat(monkeypatch
             clean_content=body,
         )
 
-    monkeypatch.setattr(research_service, "extract_from_browser", fake_browser)
-    monkeypatch.setattr(
-        research_service,
-        "extract_from_url",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("url extractor should not be used")),
-    )
-    monkeypatch.setattr(
-        research_service,
-        "extract_from_reader_proxy",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("reader proxy should not be used")),
+    deps = SourceExtractionDependencies(
+        classify_source_type=classify_source_type,
+        classify_source_tier=classify_source_tier,
+        derive_source_label=derive_source_label,
+        truncate_text=lambda value, limit: normalize_text(value or "")[:limit],
+        clean_source_text_for_analysis=clean_source_text_for_analysis,
+        extract_from_browser=fake_browser,
+        extract_from_url=lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("url extractor should not be used")
+        ),
+        extract_from_reader_proxy=lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("reader proxy should not be used")
+        ),
     )
 
-    hit = research_service.SearchHit(
+    hit = SearchHit(
         title="研究微信正文",
         url="https://mp.weixin.qq.com/s/research-demo",
         snippet="微信正文片段",
         search_query="AI漫剧 快手 官方",
         source_hint="wechat",
     )
-    source = research_service._extract_source_document(hit, timeout_seconds=8, excerpt_chars=220)
+    source = extract_source_document(hit, timeout_seconds=8, excerpt_chars=220, deps=deps)
     assert source.content_status == "browser_extracted"
     assert "提取到的微信正文" in source.excerpt
 

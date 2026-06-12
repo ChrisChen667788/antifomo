@@ -34,17 +34,12 @@ from app.schemas.research import (
 )
 from app.services.browser_content_extractor import extract_from_browser
 from app.services.content_extractor import (
-    ContentExtractionError,
     extract_domain,
     extract_from_reader_proxy,
     extract_from_url,
     normalize_text,
 )
-from app.services.knowledge_retrieval_service import (
-    TextRetrievalCandidate,
-    retrieve_knowledge_entry_matches,
-    retrieve_text_matches,
-)
+from app.services.knowledge_retrieval_service import retrieve_knowledge_entry_matches
 from app.services.language import localized_text
 from app.services.llm_parser import (
     ResearchReportResult,
@@ -66,6 +61,142 @@ from app.services.research.report_readiness import (
     is_low_signal_execution_report as _report_readiness_is_low_signal,
     resolved_report_readiness as _report_readiness_resolved,
 )
+from app.services.research.report_common import dedupe_strings as _report_common_dedupe_strings
+from app.services.research.organization_identity import (
+    KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS,
+    OFFICIAL_DOMAIN_ENTITY_MAP as _OFFICIAL_DOMAIN_ENTITY_MAP,
+    RESEARCH_ACCOUNT_ALIAS_MAP as _RESEARCH_ACCOUNT_ALIAS_MAP,
+)
+from app.services.research.report_row_quality import (
+    BAD_EXEC_SUMMARY_PHRASES,
+    BAD_SUMMARY_PHRASES,
+    BUDGET_ROW_CONTEXT_TOKENS,
+    BUDGET_ROW_NOISE_TOKENS,
+    COMMERCIAL_BUDGET_SIGNAL_TOKENS,
+    FIELD_ROW_NOISE_TOKENS,
+    MONEY_PATTERN,
+    SUMMARY_GUIDANCE_TOKENS,
+    is_actionable_budget_row as _row_quality_is_actionable_budget_row,
+    is_summary_fact_row as _row_quality_is_summary_fact_row,
+    looks_like_insufficient as _row_quality_looks_like_insufficient,
+    summary_fact_rows as _row_quality_summary_fact_rows,
+)
+from app.services.research.report_runtime_dependencies import (
+    action_card_dependencies as _runtime_action_card_dependencies,
+    report_readiness_dependencies as _runtime_report_readiness_dependencies,
+    report_text_quality_dependencies as _runtime_report_text_quality_dependencies,
+    stored_report_rewrite_dependencies as _runtime_stored_report_rewrite_dependencies,
+    stored_report_rewrite_orchestration_dependencies as _runtime_stored_report_rewrite_orchestration_dependencies,
+)
+from app.services.research.report_runtime_owner_factory import (
+    build_report_runtime_owner_ports as _build_report_runtime_owner_ports,
+)
+from app.services.research.report_ranking_runtime import (
+    build_runtime_source_diagnostics as _report_ranking_build_source_diagnostics,
+    evidence_mode_from_metrics as _report_ranking_evidence_mode_from_metrics,
+    retrieval_quality_band as _report_ranking_retrieval_quality_band,
+)
+from app.services.research.report_delivery_runtime import (
+    evidence_density_level as _report_delivery_evidence_density_level,
+    merge_result_with_intelligence as _report_delivery_merge_result_with_intelligence,
+    source_quality_level as _report_delivery_source_quality_level,
+)
+from app.services.research.report_delivery_runtime_dependencies import (
+    build_sections as _report_delivery_build_sections,
+    enrich_report_for_delivery as _report_delivery_enrich_report,
+)
+from app.services.research.report_delivery_strategy_runtime import (
+    apply_topic_specific_overrides as _report_delivery_apply_topic_overrides,
+    compress_title_segments as _report_delivery_compress_title_segments,
+    summary_contains_output_noise as _report_delivery_summary_contains_output_noise,
+)
+from app.services.research.source_intelligence_runtime import (
+    build_source_intelligence as _report_delivery_build_source_intelligence,
+)
+from app.services.research.report_scope_runtime import (
+    collect_matched_theme_labels as _report_scope_collect_matched_theme_labels,
+    prune_industry_hints as _report_scope_prune_industry_hints,
+    scope_anchor_text_segments as _report_scope_anchor_text_segments,
+)
+from app.services.research.scope_hints import (
+    REGION_SCOPE_ALIASES,
+    expand_region_scope_terms as _scope_hints_expand_regions,
+    infer_company_query_preferences as _scope_hints_infer_company_preferences,
+    infer_input_scope_hints as _scope_hints_infer_input,
+    infer_scope_hints as _scope_hints_infer,
+    merge_scope_hints as _scope_hints_merge,
+    source_theme_match_score as _scope_hints_source_theme_match_score,
+)
+from app.services.research.industry_methodology import (
+    IndustryMethodologyProfile,
+    build_industry_methodology_scope_hints as _industry_methodology_build_scope_hints,
+    format_methodology_query_templates as _industry_methodology_format_queries,
+    pick_industry_methodology_profile as _industry_methodology_pick_profile,
+)
+from app.services.research.report_storage_runtime import (
+    report_intelligence_from_result as _report_storage_intelligence_from_result,
+    report_sources_to_documents as _report_storage_sources_to_documents,
+    stored_report_to_runtime_result as _report_storage_to_runtime_result,
+)
+from app.services.research.entity_policy import (
+    CASE_HINT_TOKENS,
+    COMPACT_ENTITY_PATTERN,
+    CONTACT_PAGE_TOKENS,
+    CONTACT_PLACEHOLDER_TOKENS,
+    CONTACT_ROW_HINT_TOKENS,
+    DEPARTMENT_HINT_TOKENS,
+    DEPARTMENT_PATTERN,
+    EMAIL_PATTERN,
+    ENTITY_ACTION_PHRASE_TOKENS,
+    ENTITY_BLACKLIST_TOKENS,
+    ENTITY_FRAGMENT_INFIX_TOKENS,
+    ENTITY_FRAGMENT_PREFIX_TOKENS,
+    ENTITY_INVALID_PHRASE_TOKENS,
+    ENTITY_LEADING_NOISE_PREFIXES,
+    ENTITY_PLACEHOLDER_TOKENS,
+    ENTITY_ROLE_CONTEXT_TOKENS,
+    ENTITY_ROLE_FIELDS,
+    ENTITY_ROLE_NAME_HINTS,
+    ENTITY_SUFFIX_TOKENS,
+    GENERIC_COMPANY_ANCHOR_TOKENS,
+    GENERIC_CONTENT_DOMAINS,
+    GENERIC_COUNT_ENTITY_PATTERN,
+    GENERIC_FOCUS_TOKENS,
+    GENERIC_SCOPE_CLIENT_TOKENS,
+    INDUSTRY_SCOPE_ALIASES,
+    INVALID_COMPANY_ANCHOR_PHRASES,
+    KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
+    LOW_VALUE_ENTITY_NAME_TOKENS,
+    NON_CONTACT_SOURCE_LABEL_TOKENS,
+    ORG_PATTERN,
+    PARTNER_CONNECTOR_ALIASES,
+    PHONE_PATTERN,
+    PRODUCT_HINT_TOKENS,
+    QUERY_NOISE_SUFFIXES,
+    REGION_TOKENS,
+    SCOPE_PROMPT_NOISE_PREFIXES,
+    SCOPE_PROMPT_NOISE_REGEXES,
+    SCOPE_PROMPT_NOISE_TOKENS,
+    SPECIAL_ENTITY_ALIASES,
+    THEME_COMPANY_PUBLIC_SOURCE_SEEDS,
+    THEME_ENTITY_ALLOW_TOKENS,
+    THEME_ENTITY_BLOCK_TOKENS,
+    THEME_GENERIC_SUPPRESSIONS,
+    contains_low_value_entity_token as _entity_policy_contains_low_value_entity_token,
+    entity_canonical_key as _entity_policy_entity_canonical_key,
+    extract_rank_entity_name as _entity_policy_extract_rank_entity_name,
+    fallback_entity_name_from_row as _entity_policy_fallback_entity_name_from_row,
+    is_lightweight_entity_name as _entity_policy_is_lightweight_entity_name,
+    is_plausible_entity_name as _entity_policy_is_plausible_entity_name,
+    is_theme_aligned_entity_name as _entity_policy_is_theme_aligned_entity_name,
+    is_trustworthy_scope_client_name as _entity_policy_is_trustworthy_scope_client_name,
+    looks_like_fragment_entity_name as _entity_policy_looks_like_fragment_entity_name,
+    looks_like_placeholder_contact_row as _entity_policy_looks_like_placeholder_contact_row,
+    looks_like_placeholder_entity_name as _entity_policy_looks_like_placeholder_entity_name,
+    looks_like_sentence_fragment_entity as _entity_policy_looks_like_sentence_fragment_entity,
+    strip_entity_leading_noise as _entity_policy_strip_entity_leading_noise,
+    trim_product_spec_from_entity_name as _entity_policy_trim_product_spec_from_entity_name,
+)
 from app.services.research.report_storage import (
     report_sources_to_source_documents as _storage_report_sources_to_source_documents,
     stored_report_section_aliases as _stored_report_section_aliases,
@@ -73,6 +204,7 @@ from app.services.research.report_storage import (
 )
 from app.services.research.runtime_config import (
     build_research_runtime as _runtime_config_build_research_runtime,
+    build_runtime_strategy_scope_hints as _runtime_config_build_runtime_strategy_scope_hints,
 )
 from app.services.research.scope_terms import (
     ScopeTermDependencies,
@@ -85,7 +217,23 @@ from app.services.research.scope_terms import (
     resolved_company_anchor_terms as _scope_terms_resolved_company_anchor_terms,
     sanitize_research_focus_text as _scope_terms_sanitize_research_focus,
     strip_query_noise as _scope_terms_strip_query_noise,
+    theme_labels_from_scope as _scope_terms_theme_labels_from_scope,
     tokenize_for_match as _scope_terms_tokenize_for_match,
+)
+from app.services.research.scope_entity_runtime_dependencies import (
+    report_field_sanitization_dependencies as _runtime_report_field_sanitization_dependencies,
+    scope_term_dependencies as _runtime_scope_term_dependencies,
+)
+from app.services.research.source_ranking import (
+    SourceRankingDependencies,
+    classify_source_tier as _source_ranking_classify_source_tier,
+    classify_source_type as _source_ranking_classify_source_type,
+    derive_source_label as _source_ranking_derive_source_label,
+    hybrid_rank_hits as _source_ranking_hybrid_rank_hits,
+    rerank_sources_hybrid as _source_ranking_rerank_sources_hybrid,
+    search_query_text_for_matching as _source_ranking_search_query_text,
+    select_hits_with_source_balance as _source_ranking_select_hits_with_source_balance,
+    source_matches_company_anchor as _source_ranking_matches_company_anchor,
 )
 from app.services.research.action_cards import (
     ResearchActionCardDependencies,
@@ -137,6 +285,17 @@ from app.services.research.entity_ranking import (
     promote_ranked_entities_with_candidate_profiles as _entity_ranking_promote_with_profiles,
     rank_report_entities as _entity_ranking_rank_report_entities,
     rank_top_entities as _entity_ranking_rank_top_entities,
+)
+from app.services.research.entity_ranking_runtime import (
+    COMPANY_PROFILE_PAGE_TOKENS,
+    GENERIC_COMPANY_NAME_TOKENS,
+    THEME_ROLE_ARCHETYPES,
+    build_entity_specific_contact_rows as _ranking_runtime_build_contact_rows,
+    build_entity_specific_team_rows as _ranking_runtime_build_team_rows,
+    build_runtime_entity_graph as _ranking_runtime_build_entity_graph,
+    filtered_rank_fallback_values as _ranking_runtime_filtered_fallback_values,
+    rank_runtime_top_entities as _ranking_runtime_rank_top_entities,
+    source_supports_target_account as _ranking_runtime_source_supports_target,
 )
 from app.services.research.entity_graph_builder import (
     EntityGraphBuilderDependencies,
@@ -209,6 +368,14 @@ from app.services.research.section_quality import (
     section_quota_note as _section_quality_quota_note,
     section_signal_quality as _section_quality_signal_quality,
 )
+from app.services.research.report_sections import (
+    ReportSectionsDependencies,
+    build_sections as _report_sections_build_sections,
+)
+from app.services.research.report_text_quality import (
+    ReportTextQualityDependencies,
+    looks_like_bad_executive_summary as _report_text_quality_bad_summary,
+)
 from app.services.research.source_collection import (
     collect_adapter_hits as _source_collection_collect_adapter_hits,
     collect_public_search_hits as _source_collection_collect_public_search_hits,
@@ -217,6 +384,11 @@ from app.services.research.source_collection import (
 from app.services.research.source_diagnostics import (
     SourceDiagnosticsDependencies,
     build_source_diagnostics as _source_diagnostics_build,
+)
+from app.services.research.source_extraction import (
+    SourceExtractionDependencies,
+    extract_source_document as _source_extraction_extract_source_document,
+    extract_source_document_best_effort as _source_extraction_extract_source_document_best_effort,
 )
 from app.services.research.source_documents import (
     SourceDocument,
@@ -240,6 +412,7 @@ from app.services.research.source_query_plans import (
     build_query_plan as _source_query_plans_build_query,
 )
 from app.services.research.source_scope_policy import (
+    SOURCE_MAX_AGE_YEARS,
     SourceScopePolicyDependencies,
     filter_recent_sources as _source_scope_policy_filter_recent,
     filter_sources_by_theme_relevance as _source_scope_policy_filter_by_theme,
@@ -247,7 +420,6 @@ from app.services.research.source_scope_policy import (
     region_conflict_signature as _source_scope_policy_region_conflict_signature,
     source_has_region_conflict as _source_scope_policy_has_region_conflict,
     source_scope_match_score as _source_scope_policy_scope_score,
-    source_theme_match_score as _source_scope_policy_theme_score,
 )
 from app.services.research.strategy_refinement import (
     StrategyRefinementDependencies,
@@ -255,12 +427,11 @@ from app.services.research.strategy_refinement import (
     apply_strategy_scope_planning as _strategy_refinement_apply_scope,
     apply_topic_specific_overrides as _strategy_refinement_apply_topic_overrides,
 )
-from app.services.research.stored_entity_canonicalization import (
-    StoredEntityCanonicalizationDependencies,
-    canonicalize_stored_entity_name as _stored_entity_canonicalization_entity_name,
-    canonicalize_stored_report_entities as _stored_entity_canonicalization_report_entities,
-    canonicalize_stored_result_entities as _stored_entity_canonicalization_result_entities,
-    clean_candidate_profile_company_names as _stored_entity_canonicalization_clean_candidate_names,
+from app.services.research.stored_entity_runtime_dependencies import (
+    canonicalize_entity_name as _stored_entity_runtime_canonicalize_name,
+    canonicalize_report_entities as _stored_entity_runtime_canonicalize_report,
+    canonicalize_result_entities as _stored_entity_runtime_canonicalize_result,
+    clean_candidate_company_names as _stored_entity_runtime_clean_candidates,
 )
 from app.services.research.stored_report_rewrite import (
     StoredReportRewriteDependencies,
@@ -309,21 +480,6 @@ class RankedEntityCandidate:
     evidence_links: list[ResearchEntityEvidenceOut]
 
 
-@dataclass(frozen=True, slots=True)
-class IndustryMethodologyProfile:
-    key: str
-    authority_label: str
-    framework: str
-    primary_questions: tuple[str, ...]
-    query_templates: tuple[str, ...]
-    source_preferences: tuple[str, ...]
-    solution_lenses: tuple[str, ...]
-    sales_lenses: tuple[str, ...]
-    bidding_lenses: tuple[str, ...]
-    outreach_lenses: tuple[str, ...]
-    ecosystem_lenses: tuple[str, ...]
-
-
 ResearchProgressCallback = Callable[[str, int, str], None]
 ResearchSnapshotCallback = Callable[[ResearchReportResponse], None]
 
@@ -344,19 +500,6 @@ RESEARCH_SOURCE_SITE_QUERIES = (
     ("ecosystem", "{keyword} 生态伙伴 渠道 集成商 ISV 咨询"),
 )
 
-INDUSTRY_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
-    "政务云": ("政务云", "政务", "政府云", "政务大模型", "数据局", "智慧政务", "电子政务"),
-    "大模型": ("大模型", "模型", "生成式AI", "AI", "人工智能", "算力", "MaaS"),
-    "人工智能": ("人工智能", "AI", "智能", "大模型", "模型", "算力"),
-    "AI漫剧": ("AI漫剧", "漫剧", "AI短剧", "AIGC短剧", "AIGC漫剧", "AI动画", "AIGC动画", "动漫短剧", "漫画短剧"),
-    "数据中心": ("数据中心", "算力", "服务器", "机房", "存储", "智算中心"),
-    "信息化": ("信息化", "数字化", "平台", "系统", "软件", "集成"),
-    "智慧城市": ("智慧城市", "城市治理", "城市运行", "数字城市", "城市大脑"),
-    "医疗": ("医疗", "医院", "卫健", "医共体", "医保"),
-    "教育": ("教育", "学校", "高校", "职教", "教委"),
-    "金融": ("金融", "银行", "证券", "保险", "资管"),
-    "能源": ("能源", "电力", "电网", "光伏", "风电", "储能"),
-}
 
 THEME_QUERY_EXPANSION_TEMPLATES: dict[str, tuple[str, ...]] = {
     "AI漫剧": (
@@ -373,86 +516,7 @@ THEME_QUERY_EXPANSION_TEMPLATES: dict[str, tuple[str, ...]] = {
     ),
 }
 
-THEME_GENERIC_SUPPRESSIONS: dict[str, tuple[str, ...]] = {
-    "AI漫剧": ("大模型", "人工智能"),
-}
 
-THEME_STRICT_MUST_INCLUDE_TERMS: dict[str, tuple[str, ...]] = {
-    "AI漫剧": ("ai漫剧", "漫剧", "ai短剧", "aigc短剧", "aigc漫剧", "ai动画", "aigc动画", "动漫短剧", "漫画短剧"),
-}
-
-THEME_ROLE_ARCHETYPES: dict[str, dict[str, tuple[str, ...]]] = {
-    "AI漫剧": {
-        "target": (
-            "短剧内容平台运营方（待验证）",
-            "动漫 IP 版权运营机构（待验证）",
-            "文旅/教育数字内容运营主体（待验证）",
-        ),
-        "competitor": (
-            "AIGC 短剧生成平台服务商（待验证）",
-            "动漫内容工业化制作团队（待验证）",
-            "AI 视频分镜与角色生成厂商（待验证）",
-        ),
-        "partner": (
-            "动漫 IP 咨询与发行伙伴（待验证）",
-            "区域内容集成与渠道分发伙伴（待验证）",
-            "文旅/教育场景牵线伙伴（待验证）",
-        ),
-    },
-    "政务云": {
-        "target": (
-            "省级数据局/政务服务管理局（待验证）",
-            "地市级大数据中心或信息中心（待验证）",
-            "政务云运营平台公司或城投平台（待验证）",
-        ),
-        "competitor": (
-            "政务云总集厂商（待验证）",
-            "政务一体化平台交付厂商（待验证）",
-            "本地云资源与集成服务商（待验证）",
-        ),
-        "partner": (
-            "区域总包与咨询伙伴（待验证）",
-            "本地政务集成与运维伙伴（待验证）",
-            "有政府关系的生态牵线方（待验证）",
-        ),
-    },
-}
-
-THEME_COMPANY_PUBLIC_SOURCE_SEEDS: dict[str, tuple[str, ...]] = {
-    "AI漫剧": (
-        "爱奇艺",
-        "哔哩哔哩",
-        "腾讯视频",
-        "腾讯动漫",
-        "优酷",
-        "快手",
-        "快看漫画",
-        "抖音",
-        "字节跳动",
-        "阅文集团",
-        "芒果超媒",
-        "中文在线",
-        "掌阅科技",
-        "美图",
-        "华策影视",
-        "光线传媒",
-        "上海儒意",
-        "追光动画",
-    ),
-    "政务云": (
-        "阿里云",
-        "腾讯云",
-        "华为",
-        "中兴通讯",
-        "神州数码",
-        "新华三",
-        "软通动力",
-        "太极股份",
-        "中国移动",
-        "中国电信",
-        "中国联通",
-    ),
-}
 
 THEME_OFFICIAL_QUERY_TEMPLATES: dict[str, tuple[str, ...]] = {
     "AI漫剧": (
@@ -480,557 +544,28 @@ THEME_OFFICIAL_QUERY_TEMPLATES: dict[str, tuple[str, ...]] = {
     ),
 }
 
-INDUSTRY_METHODOLOGY_PROFILES: dict[str, IndustryMethodologyProfile] = {
-    "政务云": IndustryMethodologyProfile(
-        key="政务云",
-        authority_label="公共部门数字化项目调研框架",
-        framework="政策牵引 -> 预算归口 -> 招采窗口 -> 建设期次 -> 运维绩效",
-        primary_questions=(
-            "当前牵头部门、预算归口部门和招采执行部门分别是谁",
-            "项目处于立项、试点、一期建设还是二三期扩容",
-            "是否已有可研、预算草案、采购意向或中标续建信号",
-            "云资源、平台总包、集成运维和安全厂商分别由谁承担",
-        ),
-        query_templates=(
-            "{region} {industry} 财政预算 采购意向 可研 批复",
-            "\"{client}\" {keyword} 预算 立项 可研 采购意向",
-            "{region} {industry} 一体化平台 续建 扩容 运维",
-        ),
-        source_preferences=("gov.cn", "ccgp.gov.cn", "ggzy.gov.cn", "数据局/政务服务局官网", "财政预算公开"),
-        solution_lenses=("顶层架构统建", "试点到统建分期", "云网安一体化", "运维与绩效闭环"),
-        sales_lenses=("牵头部门切入", "预算归口核验", "年度规划节点", "续建扩容窗口"),
-        bidding_lenses=("采购意向前置布局", "总包与分包角色", "资质与案例匹配", "续建项目壁垒"),
-        outreach_lenses=("数据局/信息中心优先", "财政与招采并行摸排", "总包伙伴联动"),
-        ecosystem_lenses=("本地集成商", "云资源伙伴", "咨询可研单位", "运维服务商"),
-    ),
-    "医疗": IndustryMethodologyProfile(
-        key="医疗",
-        authority_label="临床价值与医院信息化调研框架",
-        framework="临床场景 -> 信息科与医务线 -> 合规安全 -> 系统集成 -> 投入产出",
-        primary_questions=(
-            "需求来自临床、医务、运营还是科研教学场景",
-            "信息科、医务处、设备处、财务处和采购办的分工如何",
-            "是否涉及电子病历、互联互通、医保支付、数据安全等约束",
-            "试点科室、医院集团复制和区域医共体扩展节奏如何",
-        ),
-        query_templates=(
-            "{region} 医院 {keyword} 信息化 建设 采购 预算",
-            "{region} 卫健 {keyword} 试点 示范 预算",
-            "\"{client}\" {keyword} 信息科 医务处 招标",
-        ),
-        source_preferences=("医院官网", "卫健委官网", "招采公告", "试点示范名单", "医院年报/新闻"),
-        solution_lenses=("临床价值闭环", "科室试点复制", "HIS/PACS/EMR 集成", "合规与数据安全"),
-        sales_lenses=("信息科与医务双线推进", "示范科室案例", "ROI 与效率提升", "院级预算窗口"),
-        bidding_lenses=("设备/软件采购口径", "集成改造复杂度", "资质合规", "医院集团复制能力"),
-        outreach_lenses=("信息科 -> 医务处 -> 业务科室 -> 财务采购", "专家共识与标杆医院材料"),
-        ecosystem_lenses=("区域总代", "医疗集成商", "科研教学伙伴", "数据安全伙伴"),
-    ),
-    "金融": IndustryMethodologyProfile(
-        key="金融",
-        authority_label="金融科技与监管约束调研框架",
-        framework="监管约束 -> 场景优先级 -> 数据治理 -> 风控审计 -> ROI 与复制性",
-        primary_questions=(
-            "需求落在营销、风控、运营、投研还是客服场景",
-            "监管合规、模型可解释、审计留痕和数据边界要求是什么",
-            "总行、分行、科技子公司和业务条线的决策链如何分布",
-            "试点是否能复制到更多分支机构或条线",
-        ),
-        query_templates=(
-            "{region} 银行 {keyword} 科技 招标 采购",
-            "{region} 证券 保险 {keyword} 数据治理 风控 预算",
-            "\"{client}\" {keyword} 科技部 数字化 招标",
-        ),
-        source_preferences=("银行/保险/证券官网", "监管公告", "招采公告", "年报与业绩会", "科技子公司新闻"),
-        solution_lenses=("监管合规", "数据治理", "风控审计", "场景复制"),
-        sales_lenses=("科技条线切入", "业务条线共创", "监管合规证明", "总分行复制"),
-        bidding_lenses=("资质安全要求", "POC 与试点", "总包合作", "审计留痕"),
-        outreach_lenses=("科技部/数字化部先行", "业务部门共识", "监管与审计口径同步"),
-        ecosystem_lenses=("咨询与总包", "安全厂商", "数据治理伙伴", "本地交付团队"),
-    ),
-    "教育": IndustryMethodologyProfile(
-        key="教育",
-        authority_label="教育数字化项目调研框架",
-        framework="教学科研场景 -> 教委/信息中心 -> 预算批次 -> 试点扩面 -> 安全与绩效",
-        primary_questions=(
-            "场景属于课堂教学、科研平台、校园治理还是职教实训",
-            "教委、学校信息中心、教务处和资产采购部门的分工如何",
-            "是否有试点校、示范校、专项资金或年度采购批次",
-            "项目是单校部署还是区域复制/集团统建",
-        ),
-        query_templates=(
-            "{region} 教委 {keyword} 预算 试点 示范",
-            "{region} 高校 学校 {keyword} 招标 采购 信息化",
-            "\"{client}\" {keyword} 信息中心 教务处 采购",
-        ),
-        source_preferences=("教委官网", "学校官网", "招采公告", "试点示范名单", "专项资金文件"),
-        solution_lenses=("教学场景闭环", "试点校复制", "教务与科研平台集成", "校园数据安全"),
-        sales_lenses=("教委/学校双线", "示范校案例", "年度预算批次", "集团化复制"),
-        bidding_lenses=("专项资金口径", "校园网与平台集成", "安全等保", "实施交付保障"),
-        outreach_lenses=("信息中心 -> 教务处 -> 学院/职能部门", "试点校样板材料"),
-        ecosystem_lenses=("本地教育集成商", "内容与平台伙伴", "科研合作单位", "安全运维伙伴"),
-    ),
-    "AI漫剧": IndustryMethodologyProfile(
-        key="AI漫剧",
-        authority_label="内容产业与 IP 商业化调研框架",
-        framework="IP 供给 -> 制作工具链 -> 分发平台 -> 商业化路径 -> 版权合规",
-        primary_questions=(
-            "核心机会在 IP、平台分发、内容生产还是商业化变现",
-            "平台方、版权方、制作工作室和发行渠道分别是谁",
-            "当前信号来自立项合作、内容招商、生态伙伴还是投资布局",
-            "未来机会是试水项目还是平台级长期内容供给",
-        ),
-        query_templates=(
-            "{keyword} IP 合作 分发 平台 商业化",
-            "{keyword} 版权 发行 工作室 生态 预算",
-            "\"{client}\" AIGC 动画 短剧 合作 平台",
-        ),
-        source_preferences=("平台/内容公司官网", "IR/年报", "行业媒体", "公众号深度稿", "版权与合作公告"),
-        solution_lenses=("IP 供给链路", "制作工具链", "平台分发接口", "版权与变现"),
-        sales_lenses=("平台运营/内容生态切入", "先谈合作形态再谈产品", "以内容供给与效率证明价值"),
-        bidding_lenses=("合作招商口径", "版权与交付边界", "联合方案伙伴", "平台准入条件"),
-        outreach_lenses=("平台运营 -> 内容生态 -> 商务合作 -> 工作室", "案例以内容效率和变现为核心"),
-        ecosystem_lenses=("IP 版权方", "发行渠道", "动画工作室", "内容技术伙伴"),
-    ),
-    "数据中心": IndustryMethodologyProfile(
-        key="数据中心",
-        authority_label="算力与基础设施投资调研框架",
-        framework="项目批复 -> 机电土建 -> 算力设备 -> 运维能耗 -> 二三期扩容",
-        primary_questions=(
-            "项目处于规划、批复、一期建设还是扩容阶段",
-            "预算大头落在土建机电、服务器存储还是运营服务",
-            "牵头主体是国资平台、运营商还是产业园区",
-            "二三期扩容和能源约束是否已经出现公开信号",
-        ),
-        query_templates=(
-            "{region} {keyword} 可研 批复 能耗 指标",
-            "{region} 智算中心 数据中心 {keyword} 招标 中标",
-            "\"{client}\" {keyword} 扩容 二期 三期",
-        ),
-        source_preferences=("发改/工信官网", "园区与国资平台官网", "招采公告", "能耗与批复文件", "运营商官网"),
-        solution_lenses=("基础设施分层", "算力与存储组合", "运维监控", "扩容节奏"),
-        sales_lenses=("牵头主体摸排", "批复与能耗指标", "一期到扩容延续", "总包合作"),
-        bidding_lenses=("土建机电/设备分包", "能耗与资质", "交付周期", "运维 SLA"),
-        outreach_lenses=("发改/园区/国资平台先行", "总包与运营商联动"),
-        ecosystem_lenses=("机电总包", "服务器存储厂商", "运营商", "运维服务商"),
-    ),
-    "大模型": IndustryMethodologyProfile(
-        key="大模型",
-        authority_label="AI 场景落地与投资验证框架",
-        framework="场景优先级 -> 数据可得性 -> 模型与算力 -> 集成改造 -> ROI 与复制",
-        primary_questions=(
-            "是政企、医疗、金融、教育还是内容生产场景在驱动需求",
-            "数据、算力、模型部署和安全合规约束分别是什么",
-            "预算更偏平台建设、试点验证还是行业复制扩容",
-            "需要总包、ISV、模型厂商还是本地交付伙伴共同推进",
-        ),
-        query_templates=(
-            "{region} {keyword} 试点 示范 预算 采购",
-            "{region} 大模型 {keyword} 招标 中标 项目",
-            "\"{client}\" {keyword} 数据 安全 预算 采购",
-        ),
-        source_preferences=("gov.cn/招采网", "行业主管部门官网", "客户官网", "模型厂商官网", "公开案例与年报"),
-        solution_lenses=("场景优先级", "数据与合规", "模型部署架构", "复制扩容"),
-        sales_lenses=("业务场景负责人", "预算归口", "试点 ROI", "复制节奏"),
-        bidding_lenses=("数据与安全要求", "模型/算力边界", "总包协同", "案例资质"),
-        outreach_lenses=("业务部门 -> 信息化/科技部门 -> 预算与采购", "试点样板先行"),
-        ecosystem_lenses=("模型厂商", "算力伙伴", "ISV", "本地交付伙伴"),
-    ),
-}
-
-THEME_ENTITY_ALLOW_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
-    "AI漫剧": {
-        "target": ("视频", "动漫", "漫画", "影业", "传媒", "内容", "动画", "平台", "IP", "短剧", "文旅", "教育", "发行"),
-        "competitor": ("视频", "动漫", "漫画", "影业", "传媒", "内容", "动画", "平台", "IP", "短剧", "AIGC", "AI", "生成"),
-        "partner": ("咨询", "顾问", "发行", "渠道", "版权", "IP", "运营", "集成", "联盟", "文旅", "教育", "生态"),
-    },
-}
-
-THEME_ENTITY_BLOCK_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
-    "AI漫剧": {
-        "target": ("政府", "市委", "市政府", "局", "委", "办", "中心", "大学", "学院", "学校", "医院", "银行", "证券"),
-        "competitor": ("政府", "市委", "局", "委", "办", "中心", "大学", "学院", "学校", "医院", "银行", "证券"),
-        "partner": ("政府", "市委", "局", "委", "办", "中心", "大学", "学院", "学校", "医院", "银行", "证券"),
-    },
-}
 
 
-GENERIC_FOCUS_TOKENS = {
-    "预算", "招标", "采购", "中标", "甲方", "竞品", "生态伙伴", "生态", "伙伴", "领导讲话",
-    "领导", "讲话", "项目", "商机", "区域", "行业", "客户", "公司", "同行", "战略", "规划",
-}
 
-GENERIC_COMPANY_ANCHOR_TOKENS = {
-    "ai", "aigc", "大模型", "模型", "人工智能", "短剧", "漫剧", "动画", "内容", "平台",
-    "方案", "商机", "调研", "研究", "研报", "采购", "招标", "预算", "项目", "行业", "客户",
-    "生态", "伙伴", "竞品", "机会", "线索",
-}
 
-COMPANY_ENTITY_QUERY_TOKENS = (
-    "公司", "企业", "厂商", "平台方", "平台", "工作室", "发行方", "版权方", "内容方", "甲方公司",
-    "公司名单", "企业名单", "头部玩家", "company", "companies", "player", "players", "studio",
-)
 
-HEAD_COMPANY_QUERY_TOKENS = (
-    "头部", "龙头", "领先", "头部玩家", "top", "leading", "leader", "leaders", "头部公司",
-)
 
-GENERIC_COMPANY_NAME_TOKENS = (
-    "集团", "公司", "有限公司", "股份有限公司", "科技", "智能", "信息", "传媒", "影业", "视频",
-    "动漫", "漫画", "平台", "工作室", "网络", "数据", "云", "软件", "娱乐", "文化",
-)
 
-INVALID_COMPANY_ANCHOR_PHRASES = (
-    "优先给具体公司",
-    "官方业务联系方式",
-    "公开渠道联络人信息",
-    "公开业务联系方式",
-    "公开联络人信息",
-    "联系方式",
-    "联络人信息",
-    "聚焦内容平台",
-    "聚焦动漫ip",
-    "即使暂时没有明确公司",
-)
 
-SCOPE_PROMPT_NOISE_PREFIXES = (
-    "我作为",
-    "我想",
-    "我们想",
-    "我们要",
-    "帮我",
-    "请帮",
-    "请把",
-    "作为",
-    "该在",
-    "想在",
-    "预计",
-    "它将",
-    "是依托",
-    "不仅",
-)
 
-SCOPE_PROMPT_NOISE_TOKENS = (
-    "我们公司",
-    "找客户",
-    "找项目",
-    "决策权",
-    "预算规模",
-    "哪些重点公司",
-    "这些客户",
-    "一并调研",
-    "把竞品公司",
-    "竞品公司情况",
-    "竟品公司",
-    "包括但不限于",
-    "精确到决策单位",
-    "精确到决策部门",
-    "已经有了哪些标杆案例",
-    "可扩展的计算服务",
-    "大型国际银行",
-    "全球银行",
-    "全球服务中心",
-)
 
-GENERIC_SCOPE_CLIENT_TOKENS = (
-    "头部公司",
-    "重点公司",
-    "行业竞品公司",
-    "甲方公司",
-    "一家公司",
-    "一人公司",
-)
 
-SCOPE_PROMPT_NOISE_REGEXES = (
-    r"\b(?:maas|iaas|paas|saas|agent)\b.*公司",
-    r"哪些[^。；;\n]{0,24}(?:公司|客户|部门|领导)",
-    r"(?:预算|金额|规模)[^。；;\n]{0,16}如何",
-)
 
-QUERY_NOISE_SUFFIXES = (
-    "相关商机",
-    "商机",
-    "机会",
-    "线索",
-    "情报",
-    "调研",
-    "研究",
-    "研报",
-    "专题",
-    "分析",
-    "建议",
-    "方案",
-    "报告",
-)
 
-PROCUREMENT_DOMAINS = {
-    "ccgp.gov.cn",
-    "www.ccgp.gov.cn",
-    "ggzy.gov.cn",
-    "www.ggzy.gov.cn",
-    "chinabidding.com",
-    "www.chinabidding.com",
-}
 
-GENERIC_CONTENT_DOMAINS = {
-    "zhuanlan.zhihu.com",
-    "www.zhihu.com",
-    "www.bilibili.com",
-    "segmentfault.com",
-    "www.cnblogs.com",
-    "news.qq.com",
-    "mp.weixin.qq.com",
-}
 
-POLICY_DOMAINS = {
-    "gov.cn",
-    "www.gov.cn",
-}
 
-EXCHANGE_DOMAINS = {
-    "cninfo.com.cn",
-    "www.cninfo.com.cn",
-    "hkexnews.hk",
-    "www.hkexnews.hk",
-    "sec.gov",
-    "www.sec.gov",
-}
 
-REGION_TOKENS = (
-    "北京", "上海", "广州", "深圳", "杭州", "南京", "苏州", "成都", "重庆", "武汉", "西安",
-    "天津", "青岛", "郑州", "长沙", "合肥", "福州", "厦门", "宁波", "无锡", "济南", "沈阳",
-    "大连", "哈尔滨", "长春", "昆明", "南宁", "南昌", "石家庄", "太原", "贵阳", "兰州",
-    "乌鲁木齐", "呼和浩特", "海南", "河北", "河南", "山东", "山西", "陕西", "江苏", "浙江",
-    "安徽", "福建", "江西", "湖北", "湖南", "广东", "广西", "云南", "贵州", "四川", "重庆",
-    "甘肃", "青海", "宁夏", "新疆", "西藏", "内蒙古", "辽宁", "吉林", "黑龙江",
-)
 
-REGION_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
-    "长三角": ("长三角", "上海", "江苏", "浙江", "安徽", "南京", "苏州", "杭州", "宁波", "无锡", "合肥"),
-    "京津冀": ("京津冀", "北京", "天津", "河北"),
-    "粤港澳": ("粤港澳", "广东", "广州", "深圳", "珠海", "佛山", "东莞", "中山", "香港", "澳门"),
-    "成渝": ("成渝", "成都", "重庆", "四川"),
-}
 
-ORG_PATTERN = re.compile(
-    r"([A-Za-z0-9\u4e00-\u9fa5·（）()]{2,40}"
-    r"(?:集团|公司|有限公司|股份有限公司|研究院|研究所|大学|医院|银行|政府|厅|局|委|办|中心|学院|学校|科技|智能|信息|控股|实验室))"
-)
 
-COMPACT_ENTITY_PATTERN = re.compile(
-    r"([A-Za-z0-9\u4e00-\u9fa5·]{2,24}(?:数码|软件|信息|科技|咨询|顾问|股份|集团|服务|运营|网络|系统|通信|集成|研究院|协会|联盟))"
-)
 
-SPECIAL_ENTITY_ALIASES = (
-    "德勤", "普华永道", "毕马威", "安永", "埃森哲", "IBM",
-    "Microsoft", "OpenAI",
-    "阿里云", "腾讯云", "华为", "中兴通讯", "神州数码", "新华三",
-    "太极股份", "东软集团", "浪潮软件", "软通动力", "中电金信",
-    "中国移动", "中国电信", "中国联通", "用友网络", "金蝶",
-)
 
-PARTNER_CONNECTOR_ALIASES = (
-    "德勤", "普华永道", "毕马威", "安永", "埃森哲",
-    "神州数码", "新华三", "软通动力", "中电金信",
-    "中国移动", "中国电信", "中国联通", "太极股份",
-)
-
-KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS: dict[str, tuple[tuple[str, str], ...]] = {
-    "爱奇艺": (
-        ("https://www.iqiyi.com/", "爱奇艺官网"),
-        ("https://ir.iqiyi.com/", "爱奇艺投资者关系"),
-    ),
-    "快手": (
-        ("https://www.kuaishou.com/", "快手官网"),
-        ("https://ir.kuaishou.com/", "快手投资者关系"),
-    ),
-    "抖音": (
-        ("https://www.douyin.com/", "抖音官网"),
-        ("https://www.bytedance.com/zh/", "字节跳动官网"),
-    ),
-    "字节跳动": (
-        ("https://www.bytedance.com/zh/", "字节跳动官网"),
-        ("https://www.bytedance.com/zh/contact", "字节跳动联系我们"),
-    ),
-    "阿里云": (
-        ("https://www.aliyun.com/", "阿里云官网"),
-        ("https://www.alibabagroup.com/cn/global/home", "阿里巴巴集团官网"),
-    ),
-    "优酷": (
-        ("https://www.youku.com/", "优酷官网"),
-        ("https://www.alibabagroup.com/cn/global/home", "阿里巴巴集团官网"),
-    ),
-    "腾讯云": (
-        ("https://cloud.tencent.com/", "腾讯云官网"),
-        ("https://www.tencent.com/zh-cn/", "腾讯官网"),
-    ),
-    "腾讯视频": (
-        ("https://v.qq.com/", "腾讯视频官网"),
-        ("https://www.tencent.com/zh-cn/", "腾讯官网"),
-    ),
-    "腾讯动漫": (
-        ("https://ac.qq.com/", "腾讯动漫官网"),
-        ("https://www.tencent.com/zh-cn/", "腾讯官网"),
-    ),
-    "华为": (
-        ("https://www.huawei.com/cn/", "华为官网"),
-        ("https://www.huawei.com/cn/contact-us", "华为联系我们"),
-    ),
-    "哔哩哔哩": (
-        ("https://www.bilibili.com/", "哔哩哔哩官网"),
-        ("https://ir.bilibili.com/", "哔哩哔哩投资者关系"),
-    ),
-    "快看漫画": (
-        ("https://www.kuaikanmanhua.com/", "快看漫画官网"),
-        ("https://www.kuaikanmanhua.com/about", "快看漫画公开入口"),
-    ),
-    "阅文集团": (
-        ("https://www.yuewen.com/", "阅文集团官网"),
-        ("https://ir.yuewen.com/", "阅文集团投资者关系"),
-    ),
-    "芒果超媒": (
-        ("https://www.mgtv.com/", "芒果TV官网"),
-        ("https://www.mangomedia.com.cn/", "芒果超媒官网"),
-    ),
-    "小红书": (
-        ("https://www.xiaohongshu.com/", "小红书官网"),
-        ("https://www.xiaohongshu.com/explore", "小红书公开入口"),
-    ),
-    "美图": (
-        ("https://www.meitu.com/", "美图官网"),
-        ("https://ir.meitu.com/", "美图投资者关系"),
-    ),
-    "中文在线": (
-        ("https://www.col.com/", "中文在线官网"),
-        ("https://www.col.com/About/contact", "中文在线联系我们"),
-    ),
-    "掌阅科技": (
-        ("https://www.zhangyue.com/", "掌阅官网"),
-        ("https://www.zhangyue.com/about", "掌阅公开入口"),
-    ),
-    "华策影视": (
-        ("https://www.huacemedia.com/", "华策影视官网"),
-        ("https://www.huacemedia.com/contact", "华策影视联系我们"),
-    ),
-    "光线传媒": (
-        ("https://www.ewang.com/", "光线传媒官网"),
-        ("https://www.ewang.com/about", "光线传媒公开入口"),
-    ),
-    "上海儒意": (
-        ("https://www.ruyi.cn/", "儒意官网"),
-        ("https://www.ruyi.cn/contact", "儒意联系我们"),
-    ),
-    "追光动画": (
-        ("https://www.zhuiguang.com/", "追光动画官网"),
-        ("https://www.zhuiguang.com/about", "追光动画公开入口"),
-    ),
-    "中兴通讯": (
-        ("https://www.zte.com.cn/china/", "中兴通讯官网"),
-        ("https://www.zte.com.cn/china/about/contact", "中兴通讯联系我们"),
-    ),
-    "中国移动": (
-        ("https://www.10086.cn/", "中国移动官网"),
-        ("https://ir.chinamobile.com/", "中国移动投资者关系"),
-    ),
-    "中国电信": (
-        ("https://www.189.cn/", "中国电信官网"),
-        ("https://www.chinatelecom-h.com/", "中国电信投资者关系"),
-    ),
-    "中国联通": (
-        ("https://www.10010.com/", "中国联通官网"),
-        ("https://www.chinaunicom.com.hk/", "中国联通投资者关系"),
-    ),
-    "神州数码": (
-        ("https://www.digitalchina.com/", "神州数码官网"),
-        ("https://www.digitalchina.com/Contact/index.html", "神州数码联系我们"),
-    ),
-    "新华三": (
-        ("https://www.h3c.com/cn/", "新华三官网"),
-        ("https://www.h3c.com/cn/About_H3C/Contact_Us/", "新华三联系我们"),
-    ),
-    "软通动力": (
-        ("https://www.isoftstone.com/", "软通动力官网"),
-        ("https://www.isoftstone.com/contact", "软通动力联系我们"),
-    ),
-    "太极股份": (
-        ("https://www.taiji.com.cn/", "太极股份官网"),
-        ("https://www.taiji.com.cn/col/col25/index.html", "太极股份联系我们"),
-    ),
-    "德勤": (
-        ("https://www2.deloitte.com/cn/zh.html", "德勤官网"),
-        ("https://www2.deloitte.com/cn/zh/pages/about-deloitte/articles/contact-us.html", "德勤联系我们"),
-    ),
-    "埃森哲": (
-        ("https://www.accenture.com/cn-zh", "埃森哲官网"),
-        ("https://www.accenture.com/cn-zh/about/contact-us", "埃森哲联系我们"),
-    ),
-}
-
-KNOWN_LIGHTWEIGHT_ENTITY_NAMES = {
-    *SPECIAL_ENTITY_ALIASES,
-    *KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS.keys(),
-}
-
-_RESEARCH_ACCOUNT_ALIAS_MAP = {
-    "微软": "Microsoft",
-    "Open AI": "OpenAI",
-    "上海市文旅局": "上海市文化和旅游局",
-    "华为云服务": "华为云",
-    "阿里巴巴云": "阿里云",
-    "腾讯视频": "腾讯",
-    "腾讯动漫": "腾讯",
-}
-
-_OFFICIAL_DOMAIN_ENTITY_MAP: dict[str, str] = {}
-for _canonical_name, _seed_sources in KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS.items():
-    for _seed_url, _seed_label in _seed_sources:
-        _seed_domain = normalize_text(extract_domain(_seed_url) or "").lower().removeprefix("www.")
-        if _seed_domain:
-            _OFFICIAL_DOMAIN_ENTITY_MAP.setdefault(_seed_domain, _canonical_name)
-
-ENTITY_BLACKLIST_TOKENS = (
-    "发布", "推进", "围绕", "布局", "显示", "启动", "持续", "建设", "合作", "联合", "方案",
-    "项目", "预算", "政务云", "咨询与集成", "联合交付", "公开线索", "项目建设",
-)
-
-ENTITY_INVALID_PHRASE_TOKENS = (
-    "怎么办", "如何", "制作", "利用", "是指", "一种", "相关商机", "相关讯息", "教程", "指南",
-    "步骤", "案例拆解", "经验", "相关", "方向", "赛道", "行业", "领域", "信息", "新闻",
-    "建议追加", "如果短期", "当前关键词范围", "公开线索", "优先给具体公司",
-    "官方业务联系方式", "公开渠道联络人信息", "公开业务联系方式",
-    "美国证券交易委", "证券交易委", "已向美国证券交易委", "公有云服务", "基础设施即服务", "模型即服务",
-    "新协议", "保留了", "两家公司", "几家公司", "多家公司", "现在可以", "可以通过", "任何云服务",
-    "不用再", "不再给", "宣布修订", "长期合作", "绑定关系", "合作协议", "基本框架",
-    "各有关", "并经",
-)
-
-LOW_VALUE_ENTITY_NAME_TOKENS = (
-    "会员中心", "入局", "掘金赛道", "保姆级", "最新版", "工作流", "完全指南", "怎么个事",
-    "所有人都", "关于加强", "促进政府", "已成为", "改变系统", "支撑软件", "应用系统", "弹性服务",
-    "模型服务", "公有云服务", "基础设施即服务", "模型即服务", "主力与协办", "标签服务", "用户画像服务",
-    "英寸", "毫米硅片", "逻辑制程", "CIS集成",
-)
-
-ENTITY_FRAGMENT_PREFIX_TOKENS = (
-    "此次", "由于", "相应", "相关", "本次", "该", "该类", "这个", "这类", "基于", "围绕", "通过",
-    "针对", "聚焦", "正在", "已经", "主要", "因为", "如果", "对于", "已向", "即使",
-    "现在", "过去", "未来", "同时", "但", "而是", "新协议", "双方",
-    "各有关", "并经",
-)
-
-ENTITY_FRAGMENT_INFIX_TOKENS = (
-    "主要基于", "相应调整", "调整系统", "相应系统", "由于公司", "基于公司", "围绕公司", "赋能",
-    "服务于", "用于", "模式", "路径", "打法", "策略", "方法", "场景", "机会", "商机",
-    "保留了", "可以通过", "任何云服务", "不用再", "不再给", "宣布修订", "长期合作",
-    "绑定关系", "合作协议", "基本框架",
-    "先进逻辑制程", "全自动智能",
-    "各有关", "并经",
-)
-
-ENTITY_SUFFIX_TOKENS = (
-    "集团", "公司", "有限公司", "股份有限公司", "研究院", "研究所", "大学", "医院", "银行", "政府",
-    "厅", "局", "委", "办", "中心", "学院", "学校", "科技", "信息", "控股", "实验室",
-    "协会", "联盟", "咨询", "顾问", "集成", "服务", "运营", "系统", "通信", "半导体",
-)
 
 PERSON_ROLE_PATTERN = re.compile(
     r"([\u4e00-\u9fa5]{2,4})(?:同志)?(?:在[^。；;\n]{0,12})?"
@@ -1039,25 +574,8 @@ PERSON_ROLE_PATTERN = re.compile(
     r"(书记|市长|局长|厅长|主任|董事长|总经理|总裁|副总裁|院长|校长|负责人)"
 )
 
-DEPARTMENT_PATTERN = re.compile(
-    r"([A-Za-z0-9\u4e00-\u9fa5·（）()]{2,40}"
-    r"(?:采购部|采购中心|招标办|招采中心|集采中心|信息中心|信息化部|数字化部|科技部|战略发展部|数据局|数据资源局|办公室|财务部|计划财务部|运营部|网络安全部|政务服务中心|行政审批局|事业发展部|建设管理部|投资管理部))"
-)
 
-EMAIL_PATTERN = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
-)
 
-PHONE_PATTERN = re.compile(
-    r"(?<!\d)(?:\+?86[- ]?)?(?:1[3-9]\d{9}|0\d{2,3}[- ]?\d{7,8})(?!\d)"
-)
-
-MONEY_PATTERN = re.compile(
-    r"(?:预算|投资|金额|规模|采购金额|中标金额|合同金额|总投资|资金|经费|财政投入|项目投资)"
-    r"[^。；;\n]{0,28}?"
-    r"(\d+(?:\.\d+)?(?:亿|万|千)?元|\d+(?:\.\d+)?\s?(?:million|billion|mn|bn)\s?(?:usd|dollars?)?)",
-    re.IGNORECASE,
-)
 
 SOURCE_DATE_PATTERN = re.compile(
     r"(?P<year>20\d{2}|19\d{2})"
@@ -1065,9 +583,6 @@ SOURCE_DATE_PATTERN = re.compile(
     r"(?:[\-/月\.](?P<day>0?[1-9]|[12]\d|3[01]))?"
     r"(?:日)?"
 )
-
-SOURCE_MAX_AGE_YEARS = 7
-
 
 def _truncate_text(value: str, limit: int) -> str:
     text = normalize_text(value)
@@ -1114,27 +629,7 @@ def _build_query_plan(
 
 
 def _scope_term_dependencies() -> ScopeTermDependencies:
-    return ScopeTermDependencies(
-        dedupe_strings=_dedupe_strings,
-        is_plausible_entity_name=_is_plausible_entity_name,
-        is_lightweight_entity_name=_is_lightweight_entity_name,
-        looks_like_fragment_entity_name=_looks_like_fragment_entity_name,
-        contains_low_value_entity_token=_contains_low_value_entity_token,
-        org_pattern=ORG_PATTERN,
-        compact_entity_pattern=COMPACT_ENTITY_PATTERN,
-        query_noise_suffixes=QUERY_NOISE_SUFFIXES,
-        scope_prompt_noise_prefixes=SCOPE_PROMPT_NOISE_PREFIXES,
-        scope_prompt_noise_tokens=SCOPE_PROMPT_NOISE_TOKENS,
-        scope_prompt_noise_regexes=SCOPE_PROMPT_NOISE_REGEXES,
-        entity_suffix_tokens=ENTITY_SUFFIX_TOKENS,
-        generic_focus_tokens=GENERIC_FOCUS_TOKENS,
-        invalid_company_anchor_phrases=INVALID_COMPANY_ANCHOR_PHRASES,
-        industry_scope_aliases=INDUSTRY_SCOPE_ALIASES,
-        theme_generic_suppressions=THEME_GENERIC_SUPPRESSIONS,
-        special_entity_aliases=SPECIAL_ENTITY_ALIASES,
-        generic_company_anchor_tokens=GENERIC_COMPANY_ANCHOR_TOKENS,
-        known_lightweight_entity_names=KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
-    )
+    return _runtime_scope_term_dependencies()
 
 
 def _tokenize_for_match(*values: str) -> list[str]:
@@ -1180,222 +675,25 @@ def _resolved_company_anchor_terms(
 
 
 def _search_query_text_for_matching(source: SearchHit | SourceDocument) -> str:
-    if isinstance(source, SearchHit):
-        return str(getattr(source, "search_query", "") or "")
-    return ""
+    return _source_ranking_search_query_text(source)
 
 
 def _source_matches_company_anchor(source: SearchHit | SourceDocument, company_anchor_terms: list[str]) -> bool:
-    if not company_anchor_terms:
-        return True
-    haystack = normalize_text(
-        " ".join(
-            [
-                str(getattr(source, "title", "") or ""),
-                str(getattr(source, "snippet", "") or ""),
-                str(getattr(source, "excerpt", "") or ""),
-                _search_query_text_for_matching(source),
-                str(getattr(source, "source_label", "") or ""),
-                str(getattr(source, "url", "") or ""),
-                str(getattr(source, "domain", "") or ""),
-            ]
-        )
-    ).lower()
-    return any(normalize_text(term).lower() in haystack for term in company_anchor_terms if normalize_text(term))
+    return _source_ranking_matches_company_anchor(source, company_anchor_terms)
 
 
-def _semantic_score_hit(
-    hit: SearchHit,
-    *,
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object] | None = None,
-) -> tuple[int, SearchHit]:
-    scope = scope_hints or {}
-    haystack = normalize_text(
-        " ".join(
-            [
-                hit.title,
-                hit.snippet,
-                hit.search_query,
-                hit.source_label or "",
-                hit.url,
-                extract_domain(hit.url) or "",
-            ]
-        )
-    ).lower()
-    title_haystack = normalize_text(hit.title).lower()
-    domain = (extract_domain(hit.url) or "").lower()
-    topic_anchor_terms = [normalize_text(item).lower() for item in _extract_topic_anchor_terms(keyword, research_focus) if normalize_text(item)]
-    company_anchor_terms = [
-        normalize_text(item).lower()
-        for item in _resolved_company_anchor_terms(keyword, research_focus, scope)
-        if normalize_text(item)
-    ]
-    theme_terms = [normalize_text(item).lower() for item in _build_theme_terms(keyword, research_focus, scope) if normalize_text(item)]
-    scope_regions = [
-        normalize_text(item).lower()
-        for item in _expand_region_scope_terms(
-            [normalize_text(str(item)) for item in scope.get("regions", []) or [] if normalize_text(str(item))]
-        )
-    ]
-    scope_industries = [
-        normalize_text(item).lower()
-        for item in [
-            *[normalize_text(str(item)) for item in scope.get("industries", []) or [] if normalize_text(str(item))],
-            *[
-                normalize_text(alias)
-                for industry in scope.get("industries", []) or []
-                for alias in INDUSTRY_SCOPE_ALIASES.get(normalize_text(str(industry)), ())
-                if normalize_text(alias)
-            ],
-        ]
-    ]
-    scope_clients = [normalize_text(str(item)).lower() for item in scope.get("clients", []) or [] if normalize_text(str(item))]
-    source_type = hit.source_hint or _classify_source_type(hit.url)
-    source_label = _derive_source_label(source_type=source_type, domain=domain, fallback=hit.source_label)
-    source_tier = _classify_source_tier(source_type=source_type, domain=domain, source_label=source_label)
-
-    theme_match_count = sum(1 for term in theme_terms if term in haystack)
-    topic_match_count = sum(1 for term in topic_anchor_terms if term in haystack)
-    company_match_count = sum(1 for term in company_anchor_terms if term in haystack or term in domain)
-    region_match_count = sum(1 for term in scope_regions if term in haystack)
-    industry_match_count = sum(1 for term in scope_industries if term in haystack)
-    client_match_count = sum(1 for term in scope_clients if term in haystack)
-
-    score = 0
-    if theme_match_count:
-        score += 12 + min(theme_match_count, 4) * 4
-    if topic_match_count:
-        score += 10 + min(topic_match_count, 3) * 4
-    if company_match_count:
-        score += 16 + min(company_match_count, 2) * 6
-    if region_match_count:
-        score += 6 + min(region_match_count, 2) * 2
-    if industry_match_count:
-        score += 6 + min(industry_match_count, 2) * 2
-    if client_match_count:
-        score += 10 + min(client_match_count, 2) * 4
-    if any(term in title_haystack for term in topic_anchor_terms[:4]):
-        score += 6
-    if any(term in title_haystack for term in company_anchor_terms[:4]):
-        score += 8
-    if source_tier == "official":
-        score += 8
-    elif source_tier == "aggregate":
-        score += 4
-    if source_type == "wechat":
-        score += 3
-    if bool(scope.get("prefer_company_entities")) and company_anchor_terms and company_match_count == 0:
-        return 0, hit
-    if topic_anchor_terms and topic_match_count == 0 and theme_match_count == 0 and company_match_count == 0:
-        return 0, hit
-    return score, hit
-
-
-def _rrf_score(rank: int, *, k: int = 60) -> float:
-    return 1.0 / float(k + max(rank, 1))
-
-
-def _build_search_hit_retrieval_query(
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object] | None = None,
-) -> str:
-    scope = scope_hints or {}
-    candidates: list[str] = [
-        normalize_text(keyword),
-        normalize_text(research_focus or ""),
-        *_extract_topic_anchor_terms(keyword, research_focus),
-        *_resolved_company_anchor_terms(keyword, research_focus, scope),
-        *(normalize_text(str(item)) for item in scope.get("clients", []) or [] if normalize_text(str(item))),
-        *(normalize_text(str(item)) for item in scope.get("regions", []) or [] if normalize_text(str(item))),
-        *(normalize_text(str(item)) for item in scope.get("industries", []) or [] if normalize_text(str(item))),
-        *(
-            normalize_text(str(item))
-            for item in scope.get("strategy_must_include_terms", []) or []
-            if normalize_text(str(item))
-        ),
-        *(
-            normalize_text(str(item))
-            for item in scope.get("strategy_query_expansions", []) or []
-            if normalize_text(str(item))
-        ),
-    ]
-    return normalize_text(" ".join(_dedupe_strings(candidates, 18)))
-
-
-def _build_search_hit_retrieval_candidates(hit: SearchHit) -> list[TextRetrievalCandidate]:
-    normalized_url = normalize_text(hit.url)
-    if not normalized_url:
-        return []
-    domain = extract_domain(hit.url)
-    source_type = hit.source_hint or _classify_source_type(hit.url)
-    source_label = _derive_source_label(
-        source_type=source_type,
-        domain=domain,
-        fallback=hit.source_label,
+def _source_ranking_dependencies() -> SourceRankingDependencies:
+    return SourceRankingDependencies(
+        dedupe_hits=_dedupe_hits,
+        dedupe_sources=_dedupe_sources,
+        extract_topic_anchor_terms=_extract_topic_anchor_terms,
+        build_theme_terms=_build_theme_terms,
+        resolved_company_anchor_terms=_resolved_company_anchor_terms,
+        source_scope_match_score=_source_scope_match_score,
+        get_settings=get_settings,
+        safe_int=_safe_int,
+        rerank_sources_cross_encoder=rerank_sources_cross_encoder,
     )
-    source_tier = _classify_source_tier(
-        source_type=source_type,
-        domain=domain,
-        source_label=source_label,
-    )
-    priority = 0
-    if source_tier == "official":
-        priority += 10
-    elif source_tier == "aggregate":
-        priority += 5
-    if source_type in {"policy", "procurement", "filing"}:
-        priority += 3
-    elif source_type == "wechat":
-        priority += 2
-    if normalize_text(hit.snippet):
-        priority += 2
-
-    primary_text = normalize_text(
-        " ".join(
-            part
-            for part in [
-                hit.title,
-                hit.snippet,
-                source_label or "",
-                domain or "",
-                hit.url,
-            ]
-            if normalize_text(part)
-        )
-    )
-    title_text = normalize_text(
-        " ".join(
-            part
-            for part in [
-                hit.title,
-                source_label or "",
-                domain or "",
-            ]
-            if normalize_text(part)
-        )
-    )
-
-    candidates = [
-        TextRetrievalCandidate(
-            key=normalized_url,
-            text=primary_text,
-            source_tier=source_tier,
-            priority=priority,
-        )
-    ]
-    if title_text and title_text != primary_text:
-        candidates.append(
-            TextRetrievalCandidate(
-                key=normalized_url,
-                text=title_text,
-                source_tier=source_tier,
-                priority=max(1, priority - 2),
-            )
-        )
-    return candidates
 
 
 def _hybrid_rank_hits(
@@ -1405,236 +703,13 @@ def _hybrid_rank_hits(
     research_focus: str | None,
     scope_hints: dict[str, object] | None = None,
 ) -> list[SearchHit]:
-    deduped_hits = _dedupe_hits(hits)
-    if not deduped_hits:
-        return []
-
-    retrieval_scores: dict[str, float] = {}
-    semantic_scores: dict[str, int] = {}
-    scope_scores: dict[str, int] = {}
-    hits_by_url: dict[str, SearchHit] = {}
-    theme_terms = _build_theme_terms(keyword, research_focus, scope_hints or {})
-    company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
-    retrieval_candidates: list[TextRetrievalCandidate] = []
-
-    for hit in deduped_hits:
-        normalized_url = normalize_text(hit.url)
-        if not normalized_url:
-            continue
-        hits_by_url[normalized_url] = hit
-        retrieval_candidates.extend(_build_search_hit_retrieval_candidates(hit))
-        semantic_scores[normalized_url] = _semantic_score_hit(
-            hit,
-            keyword=keyword,
-            research_focus=research_focus,
-            scope_hints=scope_hints,
-        )[0]
-        scope_scores[normalized_url] = _source_scope_match_score(
-            hit,
-            scope_hints=scope_hints or {},
-            company_anchor_terms=company_anchor_terms,
-            theme_terms=theme_terms,
-        )
-
-    retrieval_query = _build_search_hit_retrieval_query(keyword, research_focus, scope_hints)
-    retrieval_matches = retrieve_text_matches(
-        retrieval_candidates,
-        retrieval_query,
-        limit=max(40, len(retrieval_candidates)),
+    return _source_ranking_hybrid_rank_hits(
+        hits,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
-    retrieval_scores = {
-        match.key: match.score
-        for match in retrieval_matches
-        if match.key in hits_by_url and match.score > 0
-    }
-
-    retrieval_ranked = [
-        match.key
-        for match in retrieval_matches
-        if match.key in hits_by_url and match.score > 0
-    ]
-    semantic_ranked = [url for url, _ in sorted(semantic_scores.items(), key=lambda item: item[1], reverse=True) if _ > 0]
-    scope_ranked = [url for url, _ in sorted(scope_scores.items(), key=lambda item: item[1], reverse=True) if _ > 0]
-
-    hybrid_scores: dict[str, float] = {}
-    for ranked_urls, score_map in (
-        (retrieval_ranked, retrieval_scores),
-        (semantic_ranked, semantic_scores),
-        (scope_ranked, scope_scores),
-    ):
-        for index, url in enumerate(ranked_urls, start=1):
-            hybrid_scores[url] = hybrid_scores.get(url, 0.0) + _rrf_score(index) + float(score_map.get(url, 0)) / 1000.0
-
-    ordered_urls = sorted(
-        hybrid_scores,
-        key=lambda url: (
-            hybrid_scores.get(url, 0.0),
-            retrieval_scores.get(url, 0.0),
-            semantic_scores.get(url, 0),
-            scope_scores.get(url, 0),
-        ),
-        reverse=True,
-    )
-    ranked_hits: list[SearchHit] = []
-    for url in ordered_urls:
-        hit = hits_by_url[url]
-        if hybrid_scores.get(url, 0.0) <= 0:
-            continue
-        if (
-            bool((scope_hints or {}).get("prefer_company_entities"))
-            and company_anchor_terms
-            and not _source_matches_company_anchor(hit, company_anchor_terms)
-        ):
-            continue
-        if (
-            retrieval_scores.get(url, 0.0) <= 0
-            and semantic_scores.get(url, 0) <= 0
-            and scope_scores.get(url, 0) <= 0
-        ):
-            continue
-        ranked_hits.append(hit)
-    return ranked_hits
-
-
-def _build_source_retrieval_candidates(source: SourceDocument) -> list[TextRetrievalCandidate]:
-    normalized_url = normalize_text(source.url)
-    if not normalized_url:
-        return []
-    domain = normalize_text(source.domain or "") or extract_domain(source.url) or ""
-    source_type = normalize_text(source.source_type) or _classify_source_type(source.url)
-    source_label = _derive_source_label(
-        source_type=source_type,
-        domain=domain,
-        fallback=source.source_label,
-    )
-    source_tier = normalize_text(source.source_tier) or _classify_source_tier(
-        source_type=source_type,
-        domain=domain,
-        source_label=source_label,
-    )
-    priority = 0
-    if source_tier == "official":
-        priority += 10
-    elif source_tier == "aggregate":
-        priority += 5
-    if source.content_status == "browser_extracted":
-        priority += 8
-    elif source.content_status == "extracted":
-        priority += 6
-    elif source.content_status == "reader_proxy":
-        priority += 4
-    elif source.content_status in {"snippet_only", "fetch_failed"}:
-        priority -= 4
-    excerpt = normalize_text(source.excerpt)
-    if len(excerpt) >= 260:
-        priority += 3
-
-    primary_text = normalize_text(
-        " ".join(
-            part
-            for part in [
-                source.title,
-                source.snippet,
-                excerpt,
-                source_label or "",
-                domain,
-                source.url,
-            ]
-            if normalize_text(part)
-        )
-    )
-    title_text = normalize_text(
-        " ".join(
-            part
-            for part in [
-                source.title,
-                source_label or "",
-                domain,
-            ]
-            if normalize_text(part)
-        )
-    )
-
-    candidates = [
-        TextRetrievalCandidate(
-            key=normalized_url,
-            text=primary_text,
-            source_tier=source_tier,
-            priority=max(0, priority),
-        )
-    ]
-    if title_text and title_text != primary_text:
-        candidates.append(
-            TextRetrievalCandidate(
-                key=normalized_url,
-                text=title_text,
-                source_tier=source_tier,
-                priority=max(0, priority - 2),
-            )
-        )
-    if excerpt and excerpt not in {primary_text, title_text}:
-        candidates.append(
-            TextRetrievalCandidate(
-                key=normalized_url,
-                text=normalize_text(" ".join(part for part in [source.title, excerpt] if normalize_text(part))),
-                source_tier=source_tier,
-                priority=max(0, priority - 1),
-            )
-        )
-    return candidates
-
-
-def _source_rerank_score(
-    source: SourceDocument,
-    *,
-    keyword: str,
-    research_focus: str | None,
-    scope_hints: dict[str, object] | None = None,
-) -> int:
-    theme_terms = _build_theme_terms(keyword, research_focus, scope_hints or {})
-    company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
-    base = _source_scope_match_score(
-        source,
-        scope_hints=scope_hints or {},
-        company_anchor_terms=company_anchor_terms,
-        theme_terms=theme_terms,
-    )
-    text = normalize_text(
-        " ".join(
-            [
-                source.title,
-                source.snippet,
-                source.excerpt,
-                source.source_label or "",
-                source.url,
-                source.domain or "",
-            ]
-        )
-    ).lower()
-    score = base
-    if source.source_tier == "official":
-        score += 18
-    elif source.source_tier == "aggregate":
-        score += 8
-    if source.content_status == "browser_extracted":
-        score += 10
-    elif source.content_status == "extracted":
-        score += 7
-    elif source.content_status == "reader_proxy":
-        score += 5
-    elif source.content_status in {"snippet_only", "fetch_failed"}:
-        score -= 6
-    if len(normalize_text(source.excerpt)) >= 260:
-        score += 4
-    if len(normalize_text(source.excerpt)) < 120:
-        score -= 4
-    if company_anchor_terms and not _source_matches_company_anchor(source, company_anchor_terms):
-        score -= 14 if bool((scope_hints or {}).get("prefer_company_entities")) else 6
-    if any(term in text for term in ("官网", "联系我们", "投资者关系", "合作", "采购", "招标", "中标")):
-        score += 4
-    if any(term in text for term in ("访问受限", "待补全", "captcha", "验证后即可继续访问")):
-        score -= 10
-    return score
 
 
 def _rerank_sources_hybrid(
@@ -1644,104 +719,13 @@ def _rerank_sources_hybrid(
     research_focus: str | None,
     scope_hints: dict[str, object] | None = None,
 ) -> list[SourceDocument]:
-    deduped_sources = _dedupe_sources(sources)
-    if not deduped_sources:
-        return []
-    quality_scores: dict[str, int] = {}
-    sources_by_url: dict[str, SourceDocument] = {}
-    retrieval_candidates: list[TextRetrievalCandidate] = []
-    company_anchor_terms = _resolved_company_anchor_terms(keyword, research_focus, scope_hints)
-
-    for source in deduped_sources:
-        normalized_url = normalize_text(source.url)
-        if not normalized_url:
-            continue
-        sources_by_url[normalized_url] = source
-        quality_scores[normalized_url] = _source_rerank_score(
-            source,
-            keyword=keyword,
-            research_focus=research_focus,
-            scope_hints=scope_hints,
-        )
-        retrieval_candidates.extend(_build_source_retrieval_candidates(source))
-
-    retrieval_query = _build_search_hit_retrieval_query(keyword, research_focus, scope_hints)
-    retrieval_matches = retrieve_text_matches(
-        retrieval_candidates,
-        retrieval_query,
-        limit=max(40, len(retrieval_candidates)),
+    return _source_ranking_rerank_sources_hybrid(
+        sources,
+        keyword=keyword,
+        research_focus=research_focus,
+        scope_hints=scope_hints,
+        deps=_source_ranking_dependencies(),
     )
-    retrieval_scores = {
-        match.key: match.score
-        for match in retrieval_matches
-        if match.key in sources_by_url and match.score > 0
-    }
-    retrieval_ranked = [
-        match.key
-        for match in retrieval_matches
-        if match.key in sources_by_url and match.score > 0
-    ]
-    quality_ranked = [url for url, score in sorted(quality_scores.items(), key=lambda item: item[1], reverse=True) if score > 0]
-
-    hybrid_scores: dict[str, float] = {}
-    for ranked_urls, score_map in (
-        (retrieval_ranked, retrieval_scores),
-        (quality_ranked, quality_scores),
-    ):
-        for index, url in enumerate(ranked_urls, start=1):
-            hybrid_scores[url] = hybrid_scores.get(url, 0.0) + _rrf_score(index) + float(score_map.get(url, 0)) / 1000.0
-
-    ranked_urls = sorted(
-        sources_by_url,
-        key=lambda url: (
-            hybrid_scores.get(url, 0.0),
-            retrieval_scores.get(url, 0.0),
-            quality_scores.get(url, 0),
-            1 if normalize_text(sources_by_url[url].source_tier) == "official" else 0,
-            len(normalize_text(sources_by_url[url].excerpt)),
-        ),
-        reverse=True,
-    )
-    ranked: list[SourceDocument] = []
-    for url in ranked_urls:
-        source = sources_by_url[url]
-        if (
-            bool((scope_hints or {}).get("prefer_company_entities"))
-            and company_anchor_terms
-            and not _source_matches_company_anchor(source, company_anchor_terms)
-        ):
-            continue
-        if hybrid_scores.get(url, 0.0) <= 0 and quality_scores.get(url, 0) <= 0:
-            continue
-        ranked.append(source)
-    ranked = ranked or [sources_by_url[url] for url in ranked_urls]
-
-    settings = get_settings()
-    mutable_scope_hints = scope_hints if isinstance(scope_hints, dict) else {}
-    reranker_enabled = bool(
-        settings.research_cross_encoder_rerank_enabled
-        or mutable_scope_hints.get("enable_cross_encoder_rerank")
-        or mutable_scope_hints.get("cross_encoder_rerank")
-    )
-    if not reranker_enabled:
-        return ranked
-    reranker_backend = normalize_text(str(mutable_scope_hints.get("runtime_reranker_backend") or settings.research_cross_encoder_backend))
-    reranker_top_k = _safe_int(
-        mutable_scope_hints.get("runtime_reranker_top_k"),
-        settings.research_cross_encoder_top_k,
-        minimum=1,
-        maximum=80,
-    )
-    reranker_model = normalize_text(str(mutable_scope_hints.get("runtime_reranker_model") or settings.research_cross_encoder_model))
-    reranked, profile = rerank_sources_cross_encoder(
-        ranked,
-        query=retrieval_query,
-        model_name=reranker_model,
-        top_k=reranker_top_k,
-        backend=reranker_backend,
-    )
-    mutable_scope_hints.update(profile.to_diagnostics_update())
-    return list(reranked)
 
 
 def _source_scope_policy_dependencies() -> SourceScopePolicyDependencies:
@@ -1916,167 +900,40 @@ def _dedupe_sources(sources: Iterable[SourceDocument]) -> list[SourceDocument]:
 
 
 def _select_hits_with_source_balance(hits: list[SearchHit], *, limit: int) -> list[SearchHit]:
-    selected: list[SearchHit] = []
-    seen_urls: set[str] = set()
-    official_quota = max(2, round(limit * 0.45))
-    aggregate_quota = max(1, round(limit * 0.25))
-
-    def classify_hit_tier(hit: SearchHit) -> str:
-        source_type = hit.source_hint or _classify_source_type(hit.url)
-        domain = extract_domain(hit.url)
-        source_label = _derive_source_label(
-            source_type=source_type,
-            domain=domain,
-            fallback=getattr(hit, "source_label", None),
-        )
-        return _classify_source_tier(source_type=source_type, domain=domain, source_label=source_label)
-
-    def take_hits(match: Callable[[SearchHit], bool], quota: int) -> None:
-        if quota <= 0:
-            return
-        taken = 0
-        for hit in hits:
-            if taken >= quota:
-                break
-            normalized_url = normalize_text(hit.url)
-            if not normalized_url or normalized_url in seen_urls or not match(hit):
-                continue
-            seen_urls.add(normalized_url)
-            selected.append(hit)
-            taken += 1
-
-    take_hits(lambda hit: classify_hit_tier(hit) == "official", official_quota)
-    take_hits(lambda hit: classify_hit_tier(hit) == "aggregate", aggregate_quota)
-    take_hits(lambda hit: hit.source_hint == "tech_media_feed", 1)
-    take_hits(lambda hit: True, limit - len(selected))
-    return selected[:limit]
+    return _source_ranking_select_hits_with_source_balance(hits, limit=limit)
 
 
 def _classify_source_type(url: str) -> str:
-    domain = (extract_domain(url) or "").lower()
-    if "jianyu360.com" in domain or "jianyu360.cn" in domain:
-        return "tender_feed"
-    if "yuntoutiao.com" in domain:
-        return "tech_media_feed"
-    if "mp.weixin.qq.com" in domain:
-        return "wechat"
-    if domain in PROCUREMENT_DOMAINS or "ccgp.gov.cn" in domain or "ggzy.gov.cn" in domain:
-        return "procurement"
-    if domain in EXCHANGE_DOMAINS:
-        return "filing"
-    if ".gov." in domain or domain.endswith(".gov.cn"):
-        return "policy"
-    return "web"
+    return _source_ranking_classify_source_type(url)
 
 
 def _classify_source_tier(*, source_type: str, domain: str | None, source_label: str | None) -> str:
-    normalized_domain = (domain or "").lower()
-    normalized_label = normalize_text(source_label or "").lower()
-    if source_type in {"policy", "procurement", "filing", "official_tender_feed", "official_tender_news", "official_policy_speech", "regional_public_resource"}:
-        return "official"
-    if any(token in normalized_label for token in ("官网", "投资者关系", "联系我们", "官方")):
-        return "official"
-    if any(token in normalized_label for token in ("公共资源", "招标投标网", "政府采购", "中国政府网")):
-        return "official"
-    if any(token in normalized_domain for token in ("gov.cn", "ggzy.gov.cn", "cninfo.com.cn", "sec.gov", "hkexnews.hk")):
-        return "official"
-    if source_type in {"tender_feed", "compliant_procurement_aggregate"}:
-        return "aggregate"
-    if any(token in normalized_label for token in ("剑鱼标讯", "云头条", "合规聚合")):
-        return "aggregate" if "云头条" not in normalized_label else "media"
-    if any(token in normalized_domain for token in ("jianyu", "cecbid", "cebpubservice", "china-cpp", "chinabidding")):
-        return "aggregate"
-    return "media"
+    return _source_ranking_classify_source_tier(source_type=source_type, domain=domain, source_label=source_label)
 
 
 def _derive_source_label(*, source_type: str, domain: str | None, fallback: str | None) -> str | None:
-    if fallback:
-        return fallback
-    normalized_domain = (domain or "").lower()
-    if "ggzy.gov.cn" in normalized_domain:
-        return "全国公共资源交易平台"
-    if "gov.cn" in normalized_domain:
-        return "中国政府网政策/讲话"
-    if "cninfo.com.cn" in normalized_domain:
-        return "巨潮资讯公告"
-    if "hkexnews.hk" in normalized_domain:
-        return "港交所公告"
-    if "sec.gov" in normalized_domain:
-        return "SEC 公告"
-    if "mp.weixin.qq.com" in normalized_domain:
-        return "微信公众号"
-    if "cecbid" in normalized_domain or "cebpubservice" in normalized_domain or "china-cpp" in normalized_domain:
-        return "政府采购合规聚合"
-    if "jianyu" in normalized_domain:
-        return "剑鱼标讯"
-    if "yuntoutiao" in normalized_domain:
-        return "云头条"
-    if source_type == "web":
-        return "互联网公开网页"
-    return None
+    return _source_ranking_derive_source_label(source_type=source_type, domain=domain, fallback=fallback)
+
+
+def _source_extraction_dependencies() -> SourceExtractionDependencies:
+    return SourceExtractionDependencies(
+        classify_source_type=_classify_source_type,
+        classify_source_tier=_classify_source_tier,
+        derive_source_label=_derive_source_label,
+        truncate_text=_truncate_text,
+        clean_source_text_for_analysis=_clean_source_text_for_analysis,
+        extract_from_browser=extract_from_browser,
+        extract_from_url=extract_from_url,
+        extract_from_reader_proxy=extract_from_reader_proxy,
+    )
 
 
 def _extract_source_document(hit: SearchHit, *, timeout_seconds: int, excerpt_chars: int) -> SourceDocument:
-    title = normalize_text(hit.title) or hit.url
-    domain = extract_domain(hit.url)
-    source_type = hit.source_hint or _classify_source_type(hit.url)
-    source_origin = "adapter" if bool(getattr(hit, "source_label", None)) else "search"
-    source_label = _derive_source_label(source_type=source_type, domain=domain, fallback=getattr(hit, "source_label", None))
-    source_tier = _classify_source_tier(source_type=source_type, domain=domain, source_label=source_label)
-    snippet = _truncate_text(
-        _clean_source_text_for_analysis(hit.snippet or "") or _clean_source_text_for_analysis(title),
-        180,
-    )
-
-    extracted_title = title
-    excerpt = snippet
-    content_status = "snippet_only"
-
-    if source_type != "tender_feed":
-        if source_type == "wechat" or (domain or "").endswith("mp.weixin.qq.com"):
-            try:
-                extracted = extract_from_browser(hit.url, timeout_seconds=max(timeout_seconds, 12))
-                extracted_title = normalize_text(extracted.title or title) or title
-                excerpt = _truncate_text(
-                    _clean_source_text_for_analysis(extracted.clean_content or extracted.raw_content or snippet),
-                    excerpt_chars,
-                )
-                content_status = "browser_extracted"
-            except ContentExtractionError:
-                pass
-        if content_status == "snippet_only":
-            try:
-                extracted = extract_from_url(hit.url, timeout_seconds=timeout_seconds)
-                extracted_title = normalize_text(extracted.title or title) or title
-                excerpt = _truncate_text(
-                    _clean_source_text_for_analysis(extracted.clean_content or extracted.raw_content or snippet),
-                    excerpt_chars,
-                )
-                content_status = "extracted"
-            except ContentExtractionError:
-                try:
-                    extracted = extract_from_reader_proxy(hit.url, timeout_seconds=max(timeout_seconds + 2, 10))
-                    extracted_title = normalize_text(extracted.title or title) or title
-                    excerpt = _truncate_text(
-                        _clean_source_text_for_analysis(extracted.clean_content or extracted.raw_content or snippet),
-                        excerpt_chars,
-                    )
-                    content_status = "reader_proxy"
-                except ContentExtractionError:
-                    pass
-
-    return SourceDocument(
-        title=extracted_title,
-        url=hit.url,
-        domain=domain,
-        snippet=snippet,
-        search_query=hit.search_query,
-        source_type=source_type,
-        content_status=content_status,
-        excerpt=excerpt,
-        source_label=source_label,
-        source_tier=source_tier,
-        source_origin=source_origin,
+    return _source_extraction_extract_source_document(
+        hit,
+        timeout_seconds=timeout_seconds,
+        excerpt_chars=excerpt_chars,
+        deps=_source_extraction_dependencies(),
     )
 
 
@@ -2086,46 +943,12 @@ def _extract_source_document_best_effort(
     timeout_seconds: int,
     excerpt_chars: int,
 ) -> SourceDocument | None:
-    try:
-        return _extract_source_document(
-            hit,
-            timeout_seconds=timeout_seconds,
-            excerpt_chars=excerpt_chars,
-        )
-    except Exception:
-        domain = extract_domain(hit.url)
-        source_type = hit.source_hint or _classify_source_type(hit.url)
-        source_label = _derive_source_label(
-            source_type=source_type,
-            domain=domain,
-            fallback=getattr(hit, "source_label", None),
-        )
-        source_tier = _classify_source_tier(
-            source_type=source_type,
-            domain=domain,
-            source_label=source_label,
-        )
-        if not normalize_text(hit.url):
-            return None
-        return SourceDocument(
-            title=normalize_text(hit.title) or hit.url,
-            url=hit.url,
-            domain=domain,
-            snippet=_truncate_text(
-                _clean_source_text_for_analysis(hit.snippet or "") or _clean_source_text_for_analysis(hit.title or hit.url),
-                180,
-            ),
-            search_query=hit.search_query,
-            source_type=source_type,
-            content_status="fetch_failed",
-            excerpt=_truncate_text(
-                _clean_source_text_for_analysis(hit.snippet or "") or _clean_source_text_for_analysis(hit.title or hit.url),
-                excerpt_chars,
-            ),
-            source_label=source_label,
-            source_tier=source_tier,
-            source_origin="adapter" if bool(getattr(hit, "source_label", None)) else "search",
-        )
+    return _source_extraction_extract_source_document_best_effort(
+        hit,
+        timeout_seconds=timeout_seconds,
+        excerpt_chars=excerpt_chars,
+        deps=_source_extraction_dependencies(),
+    )
 
 
 def _parse_source_datetime(
@@ -2198,11 +1021,10 @@ def _source_theme_match_score(
     theme_terms: list[str],
     scope_hints: dict[str, object],
 ) -> int:
-    return _source_scope_policy_theme_score(
+    return _scope_hints_source_theme_match_score(
         source,
         theme_terms=theme_terms,
         scope_hints=scope_hints,
-        deps=_source_scope_policy_dependencies(),
     )
 
 
@@ -2223,31 +1045,11 @@ def _filter_sources_by_theme_relevance(
 
 
 def _dedupe_strings(values: Iterable[str], limit: int) -> list[str]:
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for value in values:
-        normalized = normalize_text(value)
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        deduped.append(normalized)
-        if len(deduped) >= limit:
-            break
-    return deduped
+    return _report_common_dedupe_strings(values, limit)
 
 
 def _prune_industry_hints(values: Iterable[str]) -> list[str]:
-    hints = _dedupe_strings((normalize_text(value) for value in values), 4)
-    if not hints:
-        return []
-    pruned = list(hints)
-    for dominant, suppressed in THEME_GENERIC_SUPPRESSIONS.items():
-        if dominant in pruned:
-            pruned = [item for item in pruned if item == dominant or item not in suppressed]
-    generic_hints = {"大模型", "人工智能", "信息化"}
-    if any(item not in generic_hints for item in pruned):
-        pruned = [item for item in pruned if item not in generic_hints] + [item for item in pruned if item in generic_hints]
-    return _dedupe_strings(pruned, 4)
+    return _report_scope_prune_industry_hints(values)
 
 
 @lru_cache(maxsize=8192)
@@ -2501,13 +1303,12 @@ def _known_org_alias_candidates_from_text_cached(value: str, scope_org_names: tu
 
 
 def _entity_canonical_key(name: str) -> str:
-    return _entity_canonical_key_cached(name)
+    return _entity_policy_entity_canonical_key(name)
 
 
 @lru_cache(maxsize=16384)
 def _entity_canonical_key_cached(name: str) -> str:
-    normalized = normalize_text(_resolve_known_org_name(name))
-    return _entity_alias_lookup_key(normalized)
+    return _entity_policy_entity_canonical_key(name)
 
 
 def _entity_graph_builder_dependencies() -> EntityGraphBuilderDependencies:
@@ -2530,11 +1331,7 @@ def _build_entity_graph(
     *,
     scope_hints: dict[str, object],
 ) -> ResearchEntityGraphOut:
-    return _entity_graph_builder_build(
-        sources,
-        scope_hints=scope_hints,
-        deps=_entity_graph_builder_dependencies(),
-    )
+    return _ranking_runtime_build_entity_graph(sources, scope_hints=scope_hints)
 
 
 def _entity_graph_lookup(graph: ResearchEntityGraphOut) -> dict[str, ResearchNormalizedEntityOut]:
@@ -2548,28 +1345,12 @@ def _retrieval_quality_band(
     unique_domain_count: int,
     normalized_entity_count: int,
 ) -> str:
-    score = 0
-    if strict_match_ratio >= 0.7:
-        score += 2
-    elif strict_match_ratio >= 0.45:
-        score += 1
-    if official_source_ratio >= 0.45:
-        score += 2
-    elif official_source_ratio >= 0.25:
-        score += 1
-    if unique_domain_count >= 5:
-        score += 2
-    elif unique_domain_count >= 3:
-        score += 1
-    if normalized_entity_count >= 9:
-        score += 2
-    elif normalized_entity_count >= 4:
-        score += 1
-    if score >= 6:
-        return "high"
-    if score >= 3:
-        return "medium"
-    return "low"
+    return _report_ranking_retrieval_quality_band(
+        strict_match_ratio=strict_match_ratio,
+        official_source_ratio=official_source_ratio,
+        unique_domain_count=unique_domain_count,
+        normalized_entity_count=normalized_entity_count,
+    )
 
 
 def _evidence_mode_from_metrics(
@@ -2580,271 +1361,32 @@ def _evidence_mode_from_metrics(
     official_source_ratio: float,
     unique_domain_count: int,
 ) -> tuple[str, str]:
-    if (
-        retained_source_count >= 4
-        and strict_topic_source_count >= 2
-        and strict_match_ratio >= 0.45
-        and official_source_ratio >= 0.25
-        and unique_domain_count >= 3
-    ):
-        return "strong", "强证据"
-    if retained_source_count > 0 and (strict_topic_source_count > 0 or unique_domain_count >= 1):
-        return "provisional", "可用初版"
-    return "fallback", "兜底候选"
+    return _report_ranking_evidence_mode_from_metrics(
+        retained_source_count=retained_source_count,
+        strict_topic_source_count=strict_topic_source_count,
+        strict_match_ratio=strict_match_ratio,
+        official_source_ratio=official_source_ratio,
+        unique_domain_count=unique_domain_count,
+    )
 
 
-SUMMARY_GUIDANCE_TOKENS = (
-    "建议",
-    "建議",
-    "追加",
-    "优先",
-    "優先",
-    "继续",
-    "繼續",
-    "收敛到",
-    "收斂到",
-    "交叉检索",
-    "交叉檢索",
-    "重新生成",
-    "后重试",
-    "後重試",
-    "把搜索范围",
-    "把搜尋範圍",
-    "不要只盯",
-    "至少要回答",
-)
 
-BAD_SUMMARY_PHRASES = (
-    *SUMMARY_GUIDANCE_TOKENS,
-    "当前关键词范围",
-    "优先给具体公司",
-    "官方业务联系方式",
-    "公开渠道联络人信息",
-    "已向美国证券交易委",
-    "美国证券交易委",
-    "当前证据不足",
-    "建议补充",
-)
 
-BAD_EXEC_SUMMARY_PHRASES = (
-    "当前关键词范围",
-    "优先给具体公司",
-    "官方业务联系方式",
-    "公开渠道联络人信息",
-    "已向美国证券交易委",
-    "美国证券交易委",
-    "当前证据不足",
-    "建议补充",
-    "继续扩大搜索范围",
-    "扩大搜索范围",
-)
 
-FIELD_ROW_NOISE_TOKENS = (
-    "若金额仍缺失",
-    "若暂未拿到明确金额",
-    "可先给出高价值预算口径",
-    "这些口径最适合后续销售",
-    "尽量颗粒度细致到具体的垂直赛道",
-    "精确到有预算的甲方公司",
-    "建议补充公开服务热线",
-    "建议将关键词收敛到具体甲方公司或项目名称",
-    "继续扩大搜索范围",
-    "当前证据不足",
-    "优先给具体公司",
-    "把高价值甲方",
-    "预算判断不要只盯",
-    "优先收集公开业务入口",
-    "当前已收敛到具体公司，但公开联系方式仍不足",
-    "如果公开联系方式依旧不足",
-    "若需形成前三名单",
-    "建议追加政府采购、公共资源交易、上市公告和行业媒体对",
-)
-
-ENTITY_LEADING_NOISE_PREFIXES = (
-    "新增范围锁定到",
-    "新增范围集中到",
-    "新增重点锁定到",
-    "新增重点集中到",
-    "范围锁定到",
-    "范围集中到",
-    "重点锁定到",
-    "重点集中到",
-    "锁定到",
-    "集中到",
-    "收敛到",
-    "聚焦到",
-    "落到",
-    "落在",
-    "其中就包括",
-    "其中包括",
-    "其中有",
-    "过去一段时间",
-    "如果这一方案最终成形",
-    "若最终落地",
-    "它将被视为",
-    "预计将是",
-    "但该公司",
-    "该公司",
-    "关于",
-    "例如",
-    "比如",
-    "诸如",
-    "包括",
-)
-
-ENTITY_ACTION_PHRASE_TOKENS = (
-    "进一步",
-    "扩大",
-    "推进",
-    "推动",
-    "打造",
-    "贯彻",
-    "落实",
-    "印发",
-    "实施",
-    "支持",
-    "促进",
-    "加强",
-    "提升",
-    "降低",
-    "举办",
-    "表示",
-    "介绍",
-    "显示",
-    "获得",
-    "收购",
-    "聚焦",
-)
-
-CONTACT_PLACEHOLDER_TOKENS = (
-    "当前已收敛到具体公司，但公开联系方式仍不足",
-    "优先收集公开业务入口",
-    "建议补充公开服务热线",
-    "建议将关键词收敛到具体甲方公司或项目名称",
-    "如果公开联系方式依旧不足",
-)
-
-ENTITY_PLACEHOLDER_TOKENS = (
-    "关键词已明确收敛到该公司",
-    "该公司",
-    "我方切口在于",
-    "需重点验证",
-    "优先核验",
-    "顶层设计与咨询",
-    "动漫 IP 咨询与发行伙伴",
-    "区域内容集成与渠道分发伙伴",
-    "文旅/教育场景牵线伙伴",
-    "推出首批",
-    "掌握底层AI服务",
-    "大视听公共服务",
-    "全方位服务",
-)
-
-GENERIC_COUNT_ENTITY_PATTERN = re.compile(r"^[一二三四五六七八九十百千两几多\d]+家")
-
-COMMERCIAL_BUDGET_SIGNAL_TOKENS = (
-    "预算",
-    "采购",
-    "招标",
-    "中标",
-    "项目",
-    "投资",
-    "经费",
-    "金额",
-    "资金",
-    "专项",
-    "立项",
-    "合同额",
-    "财政",
-    "扩容",
-)
-
-BUDGET_ROW_NOISE_TOKENS = (
-    "同比增长",
-    "经济数据",
-    "中国经济",
-    "开局良好",
-    "民生网首页",
-    "微信 微博",
-    "豆瓣 ",
-    "关注民生周刊",
-    "客户端 专题报道",
-    "市场规模",
-    "爆发元年",
-    "公开市场投资者",
-    "newcomer",
-    "云头条",
-)
-
-BUDGET_ROW_CONTEXT_TOKENS = (
-    "预算",
-    "采购",
-    "招标",
-    "中标",
-    "项目",
-    "立项",
-    "合同",
-    "签约",
-    "批复",
-    "经费",
-    "专项",
-    "财政",
-)
 
 
 def _looks_like_insufficient(value: str) -> bool:
-    lowered = normalize_text(value).lower()
-    return any(
-        token in lowered
-        for token in (
-            "当前证据不足",
-            "目前證據不足",
-            "current evidence is insufficient",
-            "evidence is insufficient",
-            "待补充",
-            "待補充",
-            "insufficient",
-        )
-    )
+    return _row_quality_looks_like_insufficient(value)
 
 
 @lru_cache(maxsize=8192)
 def _strip_entity_leading_noise(value: str) -> str:
-    normalized = normalize_text(value)
-    if not normalized:
-        return ""
-    compact = normalized
-    changed = True
-    while changed and compact:
-        changed = False
-        for prefix in ENTITY_LEADING_NOISE_PREFIXES:
-            if compact.startswith(prefix):
-                compact = normalize_text(compact[len(prefix) :].lstrip("：:，,;；- "))
-                changed = True
-    return compact
+    return _entity_policy_strip_entity_leading_noise(value)
 
 
 @lru_cache(maxsize=8192)
 def _looks_like_sentence_fragment_entity(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized:
-        return False
-    if normalized in SPECIAL_ENTITY_ALIASES or normalized in KNOWN_LIGHTWEIGHT_ENTITY_NAMES:
-        return False
-    lowered = normalized.lower()
-    if lowered in {"microsoft", "openai"}:
-        return False
-    if re.search(r"(?:一|两|二|几|多|\d+)\s*家(?:公司|企业|厂商|机构)$", normalized):
-        return True
-    if normalized.startswith(ENTITY_FRAGMENT_PREFIX_TOKENS):
-        return True
-    if any(token in normalized for token in ENTITY_FRAGMENT_INFIX_TOKENS):
-        return True
-    if any(token in normalized for token in ENTITY_INVALID_PHRASE_TOKENS):
-        return True
-    if len(normalized) >= 10 and any(token in normalized for token in ("了", "可以", "通过", "不用", "仍是", "仍将", "转向")):
-        return True
-    return False
+    return _entity_policy_looks_like_sentence_fragment_entity(value)
 
 
 def _looks_like_source_artifact_text(value: str) -> bool:
@@ -2861,120 +1403,23 @@ def _clean_source_text_for_analysis(value: str) -> str:
 
 @lru_cache(maxsize=8192)
 def _looks_like_placeholder_entity_name(value: str) -> bool:
-    normalized = _strip_entity_leading_noise(value)
-    lowered = normalized.lower()
-    if not normalized:
-        return False
-    if normalized in SPECIAL_ENTITY_ALIASES or normalized in KNOWN_LIGHTWEIGHT_ENTITY_NAMES:
-        return False
-    if _looks_like_sentence_fragment_entity(normalized):
-        return True
-    if "（如" in normalized or "(如" in normalized:
-        return True
-    if normalized.startswith(("AI的", "一直", "此前", "在杭州市", "相关负责人", "对公开市场投资者而言", "上海作为")):
-        return True
-    if normalized.startswith(("推出首批", "构建PC端", "构建移动端", "对具有重大影响力的")):
-        return True
-    industry_alias_values = {
-        normalize_text(alias)
-        for aliases in INDUSTRY_SCOPE_ALIASES.values()
-        for alias in aliases
-        if normalize_text(alias)
-    }
-    if normalized in industry_alias_values:
-        return False
-    if GENERIC_COUNT_ENTITY_PATTERN.match(normalized):
-        return True
-    if re.search(r"(19|20)\d{2}", normalized):
-        return True
-    if "待验证" in normalized or "待驗證" in normalized:
-        return True
-    if any(token in normalized for token in ENTITY_PLACEHOLDER_TOKENS):
-        return True
-    if any(token in normalized for token in GENERIC_SCOPE_CLIENT_TOKENS):
-        return True
-    if any(token in lowered for token in ("报名通道开启", "多端联动", "opc社区", "opc创新社区", "超级个体")):
-        return True
-    if normalized in {"科技数码", "主办与协办", "基础算力与云服务", "区域大型系统集成", "开发集团", "各有关大学", "并经市政府"}:
-        return True
-    if len(normalized) <= 6 and normalized.endswith("公司") and any(token in normalized for token in ("音乐", "内容", "行业", "平台", "企业", "厂商")):
-        return True
-    if normalized.endswith(("服务中心", "信息中心", "数据中心")) and not any(
-        token in normalized for token in (*REGION_TOKENS, "人民", "市", "省", "区", "县", "集团", "公司", "大学", "医院")
-    ):
-        return True
-    if normalized.endswith(("系统", "方案", "平台")) and not any(
-        token in normalized for token in ("公司", "集团", "科技", "软件", "信息", "智能", "云", "股份", "有限公司")
-    ):
-        return True
-    if normalized.endswith(("伙伴", "咨询", "顾问", "发行伙伴", "牵线伙伴")) and not any(
-        token in normalized for token in ENTITY_SUFFIX_TOKENS
-    ):
-        return True
-    if len(normalized) <= 6 and normalized.endswith(("数码", "团队", "云服务")) and not any(
-        token in normalized for token in ENTITY_SUFFIX_TOKENS
-    ):
-        return True
-    if any(token in normalized for token in ENTITY_ACTION_PHRASE_TOKENS) and not any(
-        token in normalized for token in ENTITY_SUFFIX_TOKENS
-    ):
-        return True
-    if normalized.endswith(("人工智能", "生成式AI", "大模型", "AI")) and not any(
-        token in normalized for token in ENTITY_SUFFIX_TOKENS
-    ):
-        return True
-    return False
+    return _entity_policy_looks_like_placeholder_entity_name(value)
 
 
 def _looks_like_placeholder_contact_row(value: str) -> bool:
-    normalized = normalize_text(value)
-    return bool(normalized) and any(token in normalized for token in CONTACT_PLACEHOLDER_TOKENS)
+    return _entity_policy_looks_like_placeholder_contact_row(value)
 
 
 def _is_actionable_budget_row(value: str) -> bool:
-    normalized = normalize_text(value)
-    if (
-        not normalized
-        or _looks_like_insufficient(normalized)
-        or _looks_like_source_artifact_text(normalized)
-        or any(token in normalized for token in BUDGET_ROW_NOISE_TOKENS)
-        or any(token in normalized for token in FIELD_ROW_NOISE_TOKENS)
-    ):
-        return False
-    has_money_signal = bool(MONEY_PATTERN.search(normalized))
-    has_strict_budget_signal = any(
-        token in normalized for token in ("预算", "采购", "招标", "中标", "经费", "金额", "资金", "专项", "立项", "合同额", "财政", "扩容")
-    )
-    has_budget_context = any(token in normalized for token in BUDGET_ROW_CONTEXT_TOKENS)
-    has_project_or_investment_signal = any(token in normalized for token in ("项目", "投资"))
-    if has_money_signal or has_strict_budget_signal:
-        return True
-    if has_project_or_investment_signal and any(
-        token in normalized for token in ("预算", "采购", "招标", "中标", "立项", "合同", "财政", "金额", "经费", "专项")
-    ):
-        return True
-    if "投资" in normalized and not (has_money_signal or has_budget_context):
-        return False
-    return False
+    return _row_quality_is_actionable_budget_row(value)
 
 
 def _summary_contains_output_noise(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized:
-        return False
-    if len(normalized) > 320:
-        return True
-    if _looks_like_source_artifact_text(normalized):
-        return True
-    if any(token in normalized for token in FIELD_ROW_NOISE_TOKENS):
-        return True
-    if any(token in normalized for token in ("CSDN博客", "腾讯新闻", "文章标签", "报告共计", "中国政府网政策/讲话")):
-        return True
-    for candidate in _extract_rank_entity_candidates(normalized)[:6]:
-        cleaned = _strip_entity_leading_noise(candidate)
-        if not cleaned or _looks_like_scope_prompt_noise(cleaned) or _looks_like_placeholder_entity_name(cleaned):
-            return True
-    return False
+    return _report_delivery_summary_contains_output_noise(value)
+
+
+def _report_text_quality_dependencies() -> ReportTextQualityDependencies:
+    return _runtime_report_text_quality_dependencies(_build_report_runtime_owner_ports())
 
 
 def _concrete_rows(values: Iterable[str]) -> list[str]:
@@ -2982,41 +1427,15 @@ def _concrete_rows(values: Iterable[str]) -> list[str]:
 
 
 def _is_summary_fact_row(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized or _looks_like_insufficient(normalized):
-        return False
-    if _looks_like_source_artifact_text(normalized):
-        return False
-    if any(token in normalized for token in SUMMARY_GUIDANCE_TOKENS):
-        return False
-    if any(token in normalized for token in FIELD_ROW_NOISE_TOKENS):
-        return False
-    if len(normalized) > 48 and "：" not in normalized and ":" not in normalized and "（" not in normalized:
-        return False
-    return True
+    return _row_quality_is_summary_fact_row(value)
 
 
 def _summary_fact_rows(values: Iterable[str], *, limit: int = 3) -> list[str]:
-    return _dedupe_strings([normalize_text(value) for value in values if _is_summary_fact_row(value)], limit)
+    return _row_quality_summary_fact_rows(values, limit=limit)
 
 
 def _looks_like_bad_executive_summary(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized:
-        return True
-    if len(normalized) < 36:
-        return True
-    if _summary_contains_output_noise(normalized):
-        return True
-    if any(token in normalized for token in BAD_EXEC_SUMMARY_PHRASES):
-        return True
-    if normalized.count("：") > 3 or normalized.count(":") > 3:
-        return True
-    if normalized.startswith(("本次", "当前", "建议", "研究", "报告")) and len(normalized) > 80:
-        return True
-    if len(normalized) > 220 and "。" not in normalized and "." not in normalized:
-        return True
-    return False
+    return _report_text_quality_bad_summary(value, deps=_report_text_quality_dependencies())
 
 
 def _entity_display_labels(values: Iterable[str], *, limit: int = 2) -> list[str]:
@@ -3126,224 +1545,37 @@ def _company_intent_summary_needs_override(
     return any(token in normalized_summary for token in blocked_tokens) and not any(anchor in normalized_summary for anchor in anchors)
 
 
-ENTITY_ROLE_FIELDS: dict[str, str] = {
-    "target_accounts": "target",
-    "client_peer_moves": "target",
-    "competitor_profiles": "competitor",
-    "winner_peer_moves": "competitor",
-    "ecosystem_partners": "partner",
-}
 
-ENTITY_ROLE_CONTEXT_TOKENS: dict[str, tuple[str, ...]] = {
-    "target": ("采购", "预算", "招标", "项目", "建设", "立项", "规划", "部署", "业主", "甲方"),
-    "competitor": ("中标", "成交", "方案", "平台", "交付", "厂商", "案例", "竞品", "产品", "解决方案"),
-    "partner": ("合作", "伙伴", "联合", "生态", "咨询", "顾问", "渠道", "集成", "联盟", "牵线", "总包"),
-}
 
-ENTITY_ROLE_NAME_HINTS: dict[str, tuple[str, ...]] = {
-    "target": ("政府", "局", "委", "办", "中心", "医院", "大学", "银行", "学校", "集团", "城投", "交投", "水务", "地铁"),
-    "competitor": ("科技", "信息", "软件", "智能", "云", "数据", "通信", "平台", "系统", "股份", "有限公司"),
-    "partner": ("咨询", "顾问", "集成", "渠道", "联盟", "协会", "研究院", "研究所", "运营", "服务"),
-}
-
-CONTACT_PAGE_TOKENS = ("contact", "lxwm", "about", "relation", "ir", "investor", "join", "service", "联系我们", "联络", "联系")
-COMPANY_PROFILE_PAGE_TOKENS = (
-    *CONTACT_PAGE_TOKENS,
-    "官网",
-    "官方",
-    "公开入口",
-    "关于我们",
-    "公司简介",
-    "企业简介",
-    "品牌介绍",
-    "aboutus",
-    "about-us",
-    "official",
-    "profile",
-    "company",
-    "business",
-    "solution",
-    "brand",
-    "investor relations",
-)
-CONTACT_ROW_HINT_TOKENS = (
-    "公开邮箱",
-    "公开电话",
-    "公开联系人",
-    "高概率公开联系页",
-    "官网/公开入口",
-    "服务热线",
-    "联系邮箱",
-    "联系电话",
-    "采购人联系人",
-    "代理机构联系人",
-    "可能归口部门",
-)
-DEPARTMENT_HINT_TOKENS = (
-    "采购部",
-    "采购中心",
-    "招标办",
-    "招采中心",
-    "集采中心",
-    "信息中心",
-    "信息化部",
-    "数字化部",
-    "科技部",
-    "数据局",
-    "数据资源局",
-    "办公室",
-    "财务部",
-    "计划财务部",
-    "运营部",
-    "网络安全部",
-    "政务服务中心",
-    "行政审批局",
-    "事业发展部",
-    "建设管理部",
-    "投资管理部",
-)
-CASE_HINT_TOKENS = ("案例", "项目", "落地", "部署", "平台", "中标", "示范", "试点", "标杆")
-PRODUCT_HINT_TOKENS = ("产品", "平台", "系统", "方案", "服务", "引擎", "模型", "套件")
-NON_CONTACT_SOURCE_LABEL_TOKENS = ("云头条", "剑鱼标讯", "微信公众号", "互联网公开网页", "政府采购合规聚合")
 
 
 @lru_cache(maxsize=8192)
 def _contains_low_value_entity_token(value: str) -> bool:
-    normalized = normalize_text(value)
-    return any(token in normalized for token in LOW_VALUE_ENTITY_NAME_TOKENS)
+    return _entity_policy_contains_low_value_entity_token(value)
 
 
 @lru_cache(maxsize=8192)
 def _trim_product_spec_from_entity_name(value: str) -> str:
-    normalized = _strip_entity_leading_noise(value)
-    if not normalized:
-        return ""
-    product_tail_patterns = (
-        r"^([A-Za-z0-9\u4e00-\u9fa5·]{2,18}半导体)(?:\d|[一二三四五六七八九十]|先进|用|CIS|芯片|硅片|制程|工艺|项目|产线|封装|传感器).+$",
-        r"^([A-Za-z0-9\u4e00-\u9fa5·]{2,18}集成电路)(?:\d|[一二三四五六七八九十]|先进|用|芯片|硅片|制程|工艺|项目|产线).+$",
-    )
-    for pattern in product_tail_patterns:
-        match = re.match(pattern, normalized, flags=re.IGNORECASE)
-        if match:
-            candidate = _strip_entity_leading_noise(match.group(1))
-            if candidate and not any(token in candidate for token in LOW_VALUE_ENTITY_NAME_TOKENS):
-                return candidate
-    return normalized
+    return _entity_policy_trim_product_spec_from_entity_name(value)
 
 
 @lru_cache(maxsize=8192)
 def _is_lightweight_entity_name(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized or len(normalized) < 2 or len(normalized) > 14:
-        return False
-    if normalized not in KNOWN_LIGHTWEIGHT_ENTITY_NAMES:
-        return False
-    if _contains_low_value_entity_token(normalized):
-        return False
-    if any(token in normalized for token in ENTITY_INVALID_PHRASE_TOKENS):
-        return False
-    if any(token in normalized for token in ("入口", "官网", "官网入口", "公开入口", "联系页", "会员中心")):
-        return False
-    if any(char in normalized for char in "：:（）()[]【】"):
-        return False
-    return bool(re.fullmatch(r"[A-Za-z0-9\u4e00-\u9fa5·]{2,14}", normalized))
+    return _entity_policy_is_lightweight_entity_name(value)
 
 
 @lru_cache(maxsize=8192)
 def _looks_like_fragment_entity_name(value: str) -> bool:
-    normalized = normalize_text(value)
-    if not normalized:
-        return True
-    if _looks_like_sentence_fragment_entity(normalized):
-        return True
-    if _looks_like_placeholder_entity_name(normalized):
-        return True
-    if re.match(r"^(19|20)\d{2}", normalized):
-        return True
-    if normalized.startswith(ENTITY_FRAGMENT_PREFIX_TOKENS):
-        return True
-    if any(token in normalized for token in ENTITY_FRAGMENT_INFIX_TOKENS):
-        return True
-    if (
-        len(normalized) <= 4
-        and normalized.endswith(("局", "委", "办", "中心", "政府"))
-        and not any(token in normalized for token in (*REGION_TOKENS, "人民", "文物", "数据", "信息", "交通", "教育", "医疗"))
-        and normalized not in KNOWN_LIGHTWEIGHT_ENTITY_NAMES
-    ):
-        return True
-    if (
-        normalized.endswith(("服务", "系统", "社区"))
-        and not any(token in normalized for token in ENTITY_SUFFIX_TOKENS)
-        and normalized not in KNOWN_LIGHTWEIGHT_ENTITY_NAMES
-    ):
-        return True
-    if (
-        normalized.endswith("中心")
-        and (
-            "新型" in normalized
-            or not any(
-                token in normalized
-                for token in (
-                    *REGION_TOKENS,
-                    "市", "省", "区", "县", "政府", "政务", "局", "委", "办", "大学", "医院", "学校",
-                    "人民", "公共", "资源", "交易", "采购", "服务", "管理", "研究", "信息化",
-                )
-            )
-        )
-        and normalized not in KNOWN_LIGHTWEIGHT_ENTITY_NAMES
-    ):
-        return True
-    return False
+    return _entity_policy_looks_like_fragment_entity_name(value)
 
 
 @lru_cache(maxsize=8192)
 def _fallback_entity_name_from_row(value: str) -> str:
-    normalized = normalize_text(value)
-    if not normalized:
-        return ""
-    head = _strip_entity_leading_noise(normalized.split("：", 1)[0].split(":", 1)[0])
-    if _is_lightweight_entity_name(head):
-        return head
-    match = re.match(r"([A-Za-z0-9\u4e00-\u9fa5·]{2,14})(?:等|与|及|和|在|已|将|正|宣布|布局|入局|合作|参与)", normalized)
-    if match:
-        candidate = _strip_entity_leading_noise(match.group(1))
-        if _is_lightweight_entity_name(candidate):
-            return candidate
-    return ""
+    return _entity_policy_fallback_entity_name_from_row(value)
 
 
 def _report_field_sanitization_dependencies() -> ReportFieldSanitizationDependencies:
-    return ReportFieldSanitizationDependencies(
-        looks_like_insufficient=_looks_like_insufficient,
-        looks_like_source_artifact_text=_looks_like_source_artifact_text,
-        looks_like_placeholder_contact_row=_looks_like_placeholder_contact_row,
-        contains_low_value_entity_token=_contains_low_value_entity_token,
-        is_plausible_entity_name=_is_plausible_entity_name,
-        is_lightweight_entity_name=_is_lightweight_entity_name,
-        extract_rank_entity_name=_extract_rank_entity_name,
-        fallback_entity_name_from_row=_fallback_entity_name_from_row,
-        strip_entity_leading_noise=_strip_entity_leading_noise,
-        looks_like_fragment_entity_name=_looks_like_fragment_entity_name,
-        looks_like_scope_prompt_noise=_looks_like_scope_prompt_noise,
-        looks_like_placeholder_entity_name=_looks_like_placeholder_entity_name,
-        is_actionable_budget_row=_is_actionable_budget_row,
-        entity_canonical_key=_entity_canonical_key,
-        email_pattern=EMAIL_PATTERN,
-        phone_pattern=PHONE_PATTERN,
-        department_pattern=DEPARTMENT_PATTERN,
-        generic_content_domains=GENERIC_CONTENT_DOMAINS,
-        non_contact_source_label_tokens=NON_CONTACT_SOURCE_LABEL_TOKENS,
-        contact_row_hint_tokens=CONTACT_ROW_HINT_TOKENS,
-        contact_page_tokens=CONTACT_PAGE_TOKENS,
-        department_hint_tokens=DEPARTMENT_HINT_TOKENS,
-        entity_role_fields=ENTITY_ROLE_FIELDS,
-        entity_role_name_hints=ENTITY_ROLE_NAME_HINTS,
-        entity_role_context_tokens=ENTITY_ROLE_CONTEXT_TOKENS,
-        partner_connector_aliases=PARTNER_CONNECTOR_ALIASES,
-        field_row_noise_tokens=FIELD_ROW_NOISE_TOKENS,
-        case_hint_tokens=CASE_HINT_TOKENS,
-        product_hint_tokens=PRODUCT_HINT_TOKENS,
-    )
+    return _runtime_report_field_sanitization_dependencies()
 
 
 @lru_cache(maxsize=8192)
@@ -3452,14 +1684,7 @@ def _extract_region_distribution(
 
 
 def _expand_region_scope_terms(regions: list[str]) -> list[str]:
-    expanded: list[str] = []
-    for raw_region in regions:
-        normalized = normalize_text(raw_region)
-        if not normalized:
-            continue
-        expanded.append(normalized)
-        expanded.extend(REGION_SCOPE_ALIASES.get(normalized, ()))
-    return _dedupe_strings(expanded, 24)
+    return _scope_hints_expand_regions(regions)
 
 
 def _text_has_region_conflict(text: str, *, scope_hints: dict[str, object]) -> bool:
@@ -3518,38 +1743,11 @@ def _pick_industry_methodology_profile(
     keyword: str,
     research_focus: str | None,
 ) -> IndustryMethodologyProfile | None:
-    candidates = [normalize_text(str(item)) for item in industries if normalize_text(str(item))]
-    priority_order = (
-        "政务云",
-        "医疗",
-        "教育",
-        "金融",
-        "能源",
-        "数据中心",
-        "智慧城市",
-        "AI漫剧",
-        "信息化",
-        "大模型",
-        "人工智能",
+    return _industry_methodology_pick_profile(
+        industries,
+        keyword=keyword,
+        research_focus=research_focus,
     )
-    sorted_candidates = sorted(
-        candidates,
-        key=lambda candidate: priority_order.index(candidate) if candidate in priority_order else len(priority_order),
-    )
-    for candidate in sorted_candidates:
-        profile = INDUSTRY_METHODOLOGY_PROFILES.get(candidate)
-        if profile is not None:
-            return profile
-    lowered_seed = normalize_text(f"{keyword} {research_focus or ''}").lower()
-    for label, aliases in INDUSTRY_SCOPE_ALIASES.items():
-        if not any(normalize_text(alias).lower() in lowered_seed for alias in aliases):
-            continue
-        profile = INDUSTRY_METHODOLOGY_PROFILES.get(label)
-        if profile is not None:
-            return profile
-    if any(token in lowered_seed for token in ("ai", "人工智能", "大模型", "生成式")):
-        return INDUSTRY_METHODOLOGY_PROFILES.get("大模型")
-    return None
 
 
 def _format_methodology_query_templates(
@@ -3561,25 +1759,14 @@ def _format_methodology_query_templates(
     industries: list[str],
     clients: list[str],
 ) -> list[str]:
-    if profile is None:
-        return []
-    replacements = {
-        "keyword": _strip_query_noise(keyword) or normalize_text(keyword),
-        "focus": _strip_query_noise(research_focus or "") or normalize_text(research_focus or ""),
-        "region": normalize_text(regions[0]) if regions else "",
-        "industry": normalize_text(industries[0]) if industries else profile.key,
-        "client": normalize_text(clients[0]) if clients else "",
-    }
-    queries: list[str] = []
-    for template in profile.query_templates:
-        try:
-            rendered = template.format(**replacements)
-        except Exception:
-            rendered = template
-        normalized = normalize_text(rendered)
-        if normalized:
-            queries.append(normalized)
-    return _dedupe_strings(queries, 8)
+    return _industry_methodology_format_queries(
+        profile,
+        keyword=keyword,
+        research_focus=research_focus,
+        regions=regions,
+        industries=industries,
+        clients=clients,
+    )
 
 
 def _build_industry_methodology_scope_hints(
@@ -3590,31 +1777,13 @@ def _build_industry_methodology_scope_hints(
     industries: list[str],
     clients: list[str],
 ) -> dict[str, object]:
-    profile = _pick_industry_methodology_profile(industries, keyword=keyword, research_focus=research_focus)
-    if profile is None:
-        return {}
-    query_expansions = _format_methodology_query_templates(
-        profile,
+    return _industry_methodology_build_scope_hints(
         keyword=keyword,
         research_focus=research_focus,
         regions=regions,
         industries=industries,
         clients=clients,
     )
-    return {
-        "industry_methodology_profile": profile.key,
-        "industry_methodology_authority": profile.authority_label,
-        "industry_methodology_framework": profile.framework,
-        "industry_methodology_questions": list(profile.primary_questions),
-        "industry_methodology_source_preferences": list(profile.source_preferences),
-        "industry_methodology_solution_lenses": list(profile.solution_lenses),
-        "industry_methodology_sales_lenses": list(profile.sales_lenses),
-        "industry_methodology_bidding_lenses": list(profile.bidding_lenses),
-        "industry_methodology_outreach_lenses": list(profile.outreach_lenses),
-        "industry_methodology_ecosystem_lenses": list(profile.ecosystem_lenses),
-        "strategy_query_expansions": query_expansions,
-        "strategy_scope_summary": normalize_text(f"{profile.authority_label}｜{profile.framework}"),
-    }
 
 
 def _render_industry_methodology_context(scope_hints: dict[str, object]) -> str:
@@ -3739,109 +1908,7 @@ def _infer_input_scope_hints(
     keyword: str,
     research_focus: str | None,
 ) -> dict[str, object]:
-    seed_text = normalize_text(" ".join([keyword, _sanitize_research_focus_text(research_focus)]))
-    exclusion_terms = _extract_explicit_exclusion_terms(research_focus)
-    if not seed_text:
-        return {
-            "regions": [],
-            "industries": [],
-            "clients": [],
-            "company_anchors": [],
-            "strategy_must_include_terms": [],
-            "strategy_exclusion_terms": exclusion_terms,
-            "strategy_query_expansions": [],
-            "strategy_scope_summary": "",
-            "anchor_text": "",
-            "industry_methodology_profile": "",
-            "industry_methodology_authority": "",
-            "industry_methodology_framework": "",
-            "industry_methodology_questions": [],
-            "industry_methodology_source_preferences": [],
-            "industry_methodology_solution_lenses": [],
-            "industry_methodology_sales_lenses": [],
-            "industry_methodology_bidding_lenses": [],
-            "industry_methodology_outreach_lenses": [],
-            "industry_methodology_ecosystem_lenses": [],
-        }
-
-    region_hints = _dedupe_strings(
-        [
-            label
-            for label, aliases in REGION_SCOPE_ALIASES.items()
-            if any(alias in seed_text for alias in aliases)
-        ]
-        + [region for region in REGION_TOKENS if region in seed_text],
-        4,
-    )
-    industry_hints = _prune_industry_hints(
-        [
-            label
-            for label, aliases in INDUSTRY_SCOPE_ALIASES.items()
-            if any(alias in seed_text for alias in aliases)
-        ]
-    )
-    theme_labels = _dedupe_strings(
-        [*industry_hints, *_theme_labels_from_scope({}, keyword=keyword, research_focus=research_focus)],
-        3,
-    )
-    prefer_company_entities, prefer_head_companies = _infer_company_query_preferences(
-        seed_text,
-        theme_labels=theme_labels,
-    )
-    company_anchors = _extract_company_anchor_terms(keyword, research_focus)
-    client_candidates = [
-        item
-        for item in company_anchors[:3]
-        if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-    ]
-    if not client_candidates:
-        client_candidates = _dedupe_strings(
-            [
-                item
-                for item in ORG_PATTERN.findall(seed_text)
-                if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-            ],
-            3,
-        )
-    strategy_must_include_terms = _dedupe_strings(
-        [
-            term
-            for label in industry_hints
-            for term in THEME_STRICT_MUST_INCLUDE_TERMS.get(label, ())
-        ],
-        8,
-    )
-    seed_companies = _dedupe_strings(
-        [
-            item
-            for label in theme_labels
-            for item in THEME_COMPANY_PUBLIC_SOURCE_SEEDS.get(label, ())
-        ],
-        12,
-    )
-    methodology_scope_hints = _build_industry_methodology_scope_hints(
-        keyword=keyword,
-        research_focus=research_focus,
-        regions=region_hints,
-        industries=theme_labels or industry_hints,
-        clients=client_candidates,
-    )
-
-    return {
-        "regions": region_hints,
-        "industries": industry_hints,
-        "clients": client_candidates,
-        "company_anchors": company_anchors[:4],
-        "prefer_company_entities": prefer_company_entities,
-        "prefer_head_companies": prefer_head_companies,
-        "seed_companies": seed_companies if prefer_company_entities or prefer_head_companies else [],
-        "strategy_must_include_terms": strategy_must_include_terms,
-        "strategy_exclusion_terms": exclusion_terms,
-        "strategy_query_expansions": [],
-        "strategy_scope_summary": "",
-        "anchor_text": normalize_text(" / ".join(region_hints[:2] + industry_hints[:2] + client_candidates[:2])),
-        **methodology_scope_hints,
-    }
+    return _scope_hints_infer_input(keyword, research_focus)
 
 
 def _infer_scope_hints(
@@ -3849,373 +1916,14 @@ def _infer_scope_hints(
     research_focus: str | None,
     sources: list[SourceDocument],
 ) -> dict[str, object]:
-    seed_text = normalize_text(
-        " ".join([keyword, _sanitize_research_focus_text(research_focus)] + [f"{source.title} {source.snippet}" for source in sources[:10]])
-    )
-    region_counter: Counter[str] = Counter()
-    for label, aliases in REGION_SCOPE_ALIASES.items():
-        if any(alias in seed_text for alias in aliases):
-            region_counter[label] += 4
-    for region in REGION_TOKENS:
-        if region in seed_text:
-            region_counter[region] += 3
-    for source in sources:
-        text = _source_text(source)
-        for label, aliases in REGION_SCOPE_ALIASES.items():
-            if any(alias in text for alias in aliases):
-                region_counter[label] += 1
-        for region in REGION_TOKENS:
-            if region in text:
-                region_counter[region] += 1
-
-    region_hints = [region for region, _ in region_counter.most_common(3)]
-
-    normalized_seed = seed_text.lower()
-    industry_hints: list[str] = []
-    for label, aliases in INDUSTRY_SCOPE_ALIASES.items():
-        if any(alias.lower() in normalized_seed for alias in aliases):
-            industry_hints.append(label)
-    industry_hints = list(dict.fromkeys(industry_hints))[:3]
-    theme_labels = _dedupe_strings(
-        [*industry_hints, *_theme_labels_from_scope({}, keyword=keyword, research_focus=research_focus)],
-        3,
-    )
-    prefer_company_entities, prefer_head_companies = _infer_company_query_preferences(
-        seed_text,
-        theme_labels=theme_labels,
-    )
-
-    company_anchors = _extract_company_anchor_terms(keyword, research_focus)
-    org_candidates = _extract_org_candidates(sources, limit=24)
-    client_candidates = [
-        item
-        for item in company_anchors[:3]
-        if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-    ]
-    if theme_labels:
-        client_candidates.extend(
-            item
-            for item in org_candidates
-            if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-            and _looks_like_target_scope_entity_name(item)
-        )
-    else:
-        client_candidates.extend(
-            item
-            for item in org_candidates
-            if any(
-                token in item
-                for token in ("政府", "局", "委", "办", "中心", "医院", "大学", "银行", "学校", "集团", "城投", "交投", "水务", "地铁")
-            )
-        )
-    client_candidates = _dedupe_strings(client_candidates, 3)
-    if not client_candidates:
-        keyword_orgs = [
-            normalize_text(item)
-            for item in ORG_PATTERN.findall(seed_text)
-            if _is_plausible_entity_name(normalize_text(item)) or _is_lightweight_entity_name(normalize_text(item))
-        ]
-        client_candidates = _dedupe_strings(
-            [
-                item
-                for item in keyword_orgs
-                if _is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
-            ],
-            3,
-        )
-
-    seed_companies = _dedupe_strings(
-        [
-            item
-            for label in theme_labels
-            for item in THEME_COMPANY_PUBLIC_SOURCE_SEEDS.get(label, ())
-        ],
-        12,
-    )
-    methodology_scope_hints = _build_industry_methodology_scope_hints(
-        keyword=keyword,
-        research_focus=research_focus,
-        regions=region_hints,
-        industries=theme_labels or industry_hints,
-        clients=client_candidates,
-    )
-
-    return {
-        "regions": region_hints,
-        "industries": industry_hints,
-        "clients": client_candidates,
-        "company_anchors": company_anchors[:4],
-        "prefer_company_entities": prefer_company_entities,
-        "prefer_head_companies": prefer_head_companies,
-        "seed_companies": seed_companies if prefer_company_entities or prefer_head_companies else [],
-        "anchor_text": normalize_text(" / ".join(region_hints[:2] + industry_hints[:2] + client_candidates[:2])),
-        **methodology_scope_hints,
-    }
+    return _scope_hints_infer(keyword, research_focus, sources)
 
 
 def _merge_scope_hints(
     base: dict[str, object],
     refined: dict[str, object],
 ) -> dict[str, object]:
-    base_regions = [normalize_text(str(item)) for item in (base.get("regions", []) or []) if normalize_text(str(item))]
-    refined_regions = [normalize_text(str(item)) for item in (refined.get("regions", []) or []) if normalize_text(str(item))]
-    if base_regions:
-        allowed_terms = {item.lower() for item in _expand_region_scope_terms(base_regions)}
-        region_candidates = list(base_regions)
-        region_candidates.extend(
-            item
-            for item in refined_regions
-            if item.lower() in allowed_terms
-            or any(alias.lower() in allowed_terms for alias in REGION_SCOPE_ALIASES.get(item, ()))
-        )
-        regions = _dedupe_strings(region_candidates, 3)
-    else:
-        regions = _dedupe_strings([*refined_regions], 3)
-    base_industries = [normalize_text(str(item)) for item in (base.get("industries", []) or []) if normalize_text(str(item))]
-    refined_industries = [normalize_text(str(item)) for item in (refined.get("industries", []) or []) if normalize_text(str(item))]
-    if base_industries:
-        allowed_industry_terms = {
-            normalize_text(alias)
-            for industry in base_industries
-            for alias in (industry, *INDUSTRY_SCOPE_ALIASES.get(industry, ()))
-            if normalize_text(alias)
-        }
-        industry_candidates = list(base_industries)
-        industry_candidates.extend(
-            item
-            for item in refined_industries
-            if item in allowed_industry_terms
-            or any(normalize_text(alias) in allowed_industry_terms for alias in INDUSTRY_SCOPE_ALIASES.get(item, ()))
-        )
-        industries = _prune_industry_hints(industry_candidates)
-    else:
-        industries = _prune_industry_hints(refined_industries)
-
-    base_clients = [normalize_text(str(item)) for item in (base.get("clients", []) or []) if normalize_text(str(item))]
-    refined_clients = [normalize_text(str(item)) for item in (refined.get("clients", []) or []) if normalize_text(str(item))]
-    if base_clients:
-        clients = _dedupe_strings(
-            [
-                *base_clients,
-                *[
-                    item
-                    for item in refined_clients
-                    if any(base_client in item or item in base_client for base_client in base_clients)
-                ],
-            ],
-            3,
-        )
-    else:
-        clients = _dedupe_strings(refined_clients, 3)
-
-    base_company_anchors = [
-        normalize_text(str(item))
-        for item in (base.get("company_anchors", []) or [])
-        if normalize_text(str(item))
-    ]
-    refined_company_anchors = [
-        normalize_text(str(item))
-        for item in (refined.get("company_anchors", []) or [])
-        if normalize_text(str(item))
-    ]
-    if base_company_anchors:
-        company_anchors = _dedupe_strings(
-            [
-                *base_company_anchors,
-                *[
-                    item
-                    for item in refined_company_anchors
-                    if any(anchor in item or item in anchor for anchor in base_company_anchors)
-                ],
-            ],
-            4,
-        )
-    else:
-        company_anchors = _dedupe_strings(refined_company_anchors, 4)
-    clients = _clean_scope_entity_names(clients, limit=3, theme_labels=industries)
-    company_anchors = _clean_scope_entity_names(company_anchors, limit=4, theme_labels=industries)
-    strategy_must_include_terms = _dedupe_strings(
-        [*(base.get("strategy_must_include_terms", []) or []), *(refined.get("strategy_must_include_terms", []) or [])],
-        8,
-    )
-    strategy_exclusion_terms = _dedupe_strings(
-        [*(base.get("strategy_exclusion_terms", []) or []), *(refined.get("strategy_exclusion_terms", []) or [])],
-        8,
-    )
-    strategy_query_expansions = _dedupe_strings(
-        [
-            item
-            for item in [*(base.get("strategy_query_expansions", []) or []), *(refined.get("strategy_query_expansions", []) or [])]
-            if normalize_text(str(item))
-            and not any(exclusion in normalize_text(str(item)) for exclusion in strategy_exclusion_terms)
-        ],
-        10,
-    )
-    strategy_scope_summary = normalize_text(str(refined.get("strategy_scope_summary", ""))) or normalize_text(
-        str(base.get("strategy_scope_summary", ""))
-    )
-    prefer_company_entities = bool(base.get("prefer_company_entities")) or bool(refined.get("prefer_company_entities"))
-    prefer_head_companies = bool(base.get("prefer_head_companies")) or bool(refined.get("prefer_head_companies"))
-    seed_companies = _dedupe_strings(
-        [
-            normalize_text(str(item))
-            for item in [*(base.get("seed_companies", []) or []), *(refined.get("seed_companies", []) or [])]
-            if normalize_text(str(item))
-        ],
-        12,
-    )
-    industry_methodology_profile = normalize_text(str(refined.get("industry_methodology_profile", ""))) or normalize_text(
-        str(base.get("industry_methodology_profile", ""))
-    )
-    industry_methodology_authority = normalize_text(str(refined.get("industry_methodology_authority", ""))) or normalize_text(
-        str(base.get("industry_methodology_authority", ""))
-    )
-    industry_methodology_framework = normalize_text(str(refined.get("industry_methodology_framework", ""))) or normalize_text(
-        str(base.get("industry_methodology_framework", ""))
-    )
-    industry_methodology_questions = _dedupe_strings(
-        [*(base.get("industry_methodology_questions", []) or []), *(refined.get("industry_methodology_questions", []) or [])],
-        6,
-    )
-    industry_methodology_source_preferences = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_source_preferences", []) or []),
-            *(refined.get("industry_methodology_source_preferences", []) or []),
-        ],
-        6,
-    )
-    industry_methodology_solution_lenses = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_solution_lenses", []) or []),
-            *(refined.get("industry_methodology_solution_lenses", []) or []),
-        ],
-        6,
-    )
-    industry_methodology_sales_lenses = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_sales_lenses", []) or []),
-            *(refined.get("industry_methodology_sales_lenses", []) or []),
-        ],
-        6,
-    )
-    industry_methodology_bidding_lenses = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_bidding_lenses", []) or []),
-            *(refined.get("industry_methodology_bidding_lenses", []) or []),
-        ],
-        6,
-    )
-    industry_methodology_outreach_lenses = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_outreach_lenses", []) or []),
-            *(refined.get("industry_methodology_outreach_lenses", []) or []),
-        ],
-        6,
-    )
-    industry_methodology_ecosystem_lenses = _dedupe_strings(
-        [
-            *(base.get("industry_methodology_ecosystem_lenses", []) or []),
-            *(refined.get("industry_methodology_ecosystem_lenses", []) or []),
-        ],
-        6,
-    )
-    runtime_strategy_applied_lanes = _dedupe_strings(
-        [
-            *(base.get("runtime_strategy_applied_lanes", []) or []),
-            *(refined.get("runtime_strategy_applied_lanes", []) or []),
-        ],
-        8,
-    )
-    runtime_strategy_fallback_lanes = _dedupe_strings(
-        [
-            *(base.get("runtime_strategy_fallback_lanes", []) or []),
-            *(refined.get("runtime_strategy_fallback_lanes", []) or []),
-        ],
-        8,
-    )
-    runtime_strategy_warnings = _dedupe_strings(
-        [
-            *(base.get("runtime_strategy_warnings", []) or []),
-            *(refined.get("runtime_strategy_warnings", []) or []),
-        ],
-        8,
-    )
-    runtime_strategy_status = normalize_text(str(refined.get("runtime_strategy_status") or base.get("runtime_strategy_status") or ""))
-    runtime_query_recovery_enabled = bool(base.get("runtime_query_recovery_enabled")) or bool(
-        refined.get("runtime_query_recovery_enabled")
-    )
-    runtime_source_reranker_enabled = bool(base.get("runtime_source_reranker_enabled")) or bool(
-        refined.get("runtime_source_reranker_enabled")
-    )
-    runtime_corrective_query_limit = _safe_int(
-        refined.get("runtime_corrective_query_limit") or base.get("runtime_corrective_query_limit"),
-        0,
-        minimum=0,
-        maximum=12,
-    )
-    runtime_public_expansion_on_watch = bool(base.get("runtime_public_expansion_on_watch")) or bool(
-        refined.get("runtime_public_expansion_on_watch")
-    )
-    runtime_reranker_adapter = normalize_text(str(refined.get("runtime_reranker_adapter") or base.get("runtime_reranker_adapter") or ""))
-    runtime_reranker_backend = normalize_text(str(refined.get("runtime_reranker_backend") or base.get("runtime_reranker_backend") or ""))
-    runtime_reranker_top_k = _safe_int(
-        refined.get("runtime_reranker_top_k") or base.get("runtime_reranker_top_k"),
-        0,
-        minimum=0,
-        maximum=20,
-    )
-    runtime_reranker_fallback_adapter = normalize_text(
-        str(refined.get("runtime_reranker_fallback_adapter") or base.get("runtime_reranker_fallback_adapter") or "")
-    )
-    runtime_official_source_bias = bool(base.get("runtime_official_source_bias")) or bool(
-        refined.get("runtime_official_source_bias")
-    )
-    enable_cross_encoder_rerank = bool(base.get("enable_cross_encoder_rerank")) or bool(
-        refined.get("enable_cross_encoder_rerank")
-    )
-    cross_encoder_rerank = bool(base.get("cross_encoder_rerank")) or bool(refined.get("cross_encoder_rerank"))
-    anchor_text = normalize_text(" / ".join(regions[:2] + industries[:2] + clients[:2]))
-    if not anchor_text:
-        anchor_text = normalize_text(str(refined.get("anchor_text", ""))) or normalize_text(str(base.get("anchor_text", "")))
-    return {
-        "regions": regions,
-        "industries": industries,
-        "clients": clients,
-        "company_anchors": company_anchors,
-        "prefer_company_entities": prefer_company_entities,
-        "prefer_head_companies": prefer_head_companies,
-        "seed_companies": seed_companies,
-        "strategy_must_include_terms": strategy_must_include_terms,
-        "strategy_exclusion_terms": strategy_exclusion_terms,
-        "strategy_query_expansions": strategy_query_expansions,
-        "strategy_scope_summary": strategy_scope_summary,
-        "anchor_text": anchor_text,
-        "industry_methodology_profile": industry_methodology_profile,
-        "industry_methodology_authority": industry_methodology_authority,
-        "industry_methodology_framework": industry_methodology_framework,
-        "industry_methodology_questions": industry_methodology_questions,
-        "industry_methodology_source_preferences": industry_methodology_source_preferences,
-        "industry_methodology_solution_lenses": industry_methodology_solution_lenses,
-        "industry_methodology_sales_lenses": industry_methodology_sales_lenses,
-        "industry_methodology_bidding_lenses": industry_methodology_bidding_lenses,
-        "industry_methodology_outreach_lenses": industry_methodology_outreach_lenses,
-        "industry_methodology_ecosystem_lenses": industry_methodology_ecosystem_lenses,
-        "runtime_strategy_status": runtime_strategy_status,
-        "runtime_strategy_applied_lanes": runtime_strategy_applied_lanes,
-        "runtime_strategy_fallback_lanes": runtime_strategy_fallback_lanes,
-        "runtime_strategy_warnings": runtime_strategy_warnings,
-        "runtime_query_recovery_enabled": runtime_query_recovery_enabled,
-        "runtime_source_reranker_enabled": runtime_source_reranker_enabled,
-        "runtime_corrective_query_limit": runtime_corrective_query_limit,
-        "runtime_public_expansion_on_watch": runtime_public_expansion_on_watch,
-        "runtime_reranker_adapter": runtime_reranker_adapter,
-        "runtime_reranker_backend": runtime_reranker_backend,
-        "runtime_reranker_top_k": runtime_reranker_top_k,
-        "runtime_reranker_fallback_adapter": runtime_reranker_fallback_adapter,
-        "runtime_official_source_bias": runtime_official_source_bias,
-        "enable_cross_encoder_rerank": enable_cross_encoder_rerank,
-        "cross_encoder_rerank": cross_encoder_rerank,
-    }
+    return _scope_hints_merge(base, refined)
 
 
 def _build_theme_terms(
@@ -4386,17 +2094,12 @@ def _theme_labels_from_scope(
     keyword: str,
     research_focus: str | None,
 ) -> list[str]:
-    labels = [
-        normalize_text(str(item))
-        for item in scope_hints.get("industries", []) or []
-        if normalize_text(str(item))
-    ]
-    lowered_terms = " ".join(_extract_topic_anchor_terms(keyword, research_focus)).lower()
-    if any(token in lowered_terms for token in ("ai漫剧", "漫剧", "ai短剧", "aigc动画", "动漫短剧", "漫画短剧")):
-        labels.append("AI漫剧")
-    if any(token in lowered_terms for token in ("政务云", "数字政府", "政务")):
-        labels.append("政务云")
-    return _dedupe_strings(labels, 3)
+    return _scope_terms_theme_labels_from_scope(
+        scope_hints,
+        keyword=keyword,
+        research_focus=research_focus,
+        deps=_scope_term_dependencies(),
+    )
 
 
 def _infer_company_query_preferences(
@@ -4404,15 +2107,7 @@ def _infer_company_query_preferences(
     *,
     theme_labels: list[str],
 ) -> tuple[bool, bool]:
-    lowered = normalize_text(seed_text).lower()
-    prefer_company_entities = any(token in lowered for token in COMPANY_ENTITY_QUERY_TOKENS)
-    prefer_head_companies = prefer_company_entities and any(token in lowered for token in HEAD_COMPANY_QUERY_TOKENS)
-    if not prefer_company_entities and "AI漫剧" in theme_labels:
-        prefer_company_entities = any(
-            token in lowered
-            for token in ("发行方", "版权方", "平台方", "工作室", "内容平台", "短剧平台", "动漫平台")
-        )
-    return prefer_company_entities, prefer_head_companies
+    return _scope_hints_infer_company_preferences(seed_text, theme_labels=theme_labels)
 
 
 def _is_theme_aligned_entity_name(
@@ -4421,25 +2116,7 @@ def _is_theme_aligned_entity_name(
     role: str,
     theme_labels: list[str],
 ) -> bool:
-    normalized = normalize_text(value)
-    if not normalized:
-        return False
-    if not theme_labels:
-        return True
-    for theme_label in theme_labels:
-        if normalized in THEME_COMPANY_PUBLIC_SOURCE_SEEDS.get(theme_label, ()):
-            return True
-        allow_tokens = THEME_ENTITY_ALLOW_TOKENS.get(theme_label, {}).get(role, ())
-        block_tokens = THEME_ENTITY_BLOCK_TOKENS.get(theme_label, {}).get(role, ())
-        if any(token in normalized for token in block_tokens):
-            return False
-        if any(token in normalized for token in allow_tokens):
-            return True
-    return not any(
-        token in normalized
-        for theme_label in theme_labels
-        for token in THEME_ENTITY_BLOCK_TOKENS.get(theme_label, {}).get(role, ())
-    )
+    return _entity_policy_is_theme_aligned_entity_name(value, role=role, theme_labels=theme_labels)
 
 
 def _filter_theme_aligned_rows(
@@ -4544,51 +2221,7 @@ def _filtered_rank_fallback_values(
     role: str,
     scope_hints: dict[str, object],
 ) -> list[str]:
-    theme_labels = [
-        normalize_text(str(item))
-        for item in scope_hints.get("industries", []) or []
-        if normalize_text(str(item))
-    ]
-    seed_companies = [
-        normalize_text(str(item))
-        for item in scope_hints.get("seed_companies", []) or []
-        if normalize_text(str(item))
-    ]
-    prefer_company_entities = bool(scope_hints.get("prefer_company_entities"))
-    candidates: list[str] = []
-    for value in values:
-        normalized = normalize_text(str(value))
-        if (
-            not normalized
-            or _looks_like_insufficient(normalized)
-            or _looks_like_source_artifact_text(normalized)
-            or _looks_like_scope_prompt_noise(normalized)
-        ):
-            continue
-        extracted = _extract_rank_entity_candidates(normalized, scope_hints=scope_hints)
-        fallback = _fallback_entity_name_from_row(normalized)
-        for candidate in [*extracted, *([fallback] if fallback else [])]:
-            compact = _resolve_known_org_name(candidate, scope_hints=scope_hints)
-            compact = _strip_entity_leading_noise(compact)
-            if (
-                not compact
-                or _looks_like_fragment_entity_name(compact)
-                or _contains_low_value_entity_token(compact)
-                or _looks_like_placeholder_entity_name(compact)
-                or _looks_like_scope_prompt_noise(compact)
-            ):
-                continue
-            if theme_labels and not _is_theme_aligned_entity_name(compact, role=role, theme_labels=theme_labels):
-                continue
-            if prefer_company_entities and role in {"target", "competitor"} and not _is_company_like_entity_name(
-                compact,
-                role=role,
-                theme_labels=theme_labels,
-                seed_companies=seed_companies,
-            ):
-                continue
-            candidates.append(compact)
-    return _dedupe_strings(candidates, 12)
+    return _ranking_runtime_filtered_fallback_values(values, role=role, scope_hints=scope_hints)
 
 
 def _source_supports_company_intent(
@@ -4699,28 +2332,11 @@ def _pick_primary_scenario_hint(
 
 
 def _compress_title_segments(segments: Iterable[str], *, limit: int = 3) -> list[str]:
-    cleaned: list[str] = []
-    for item in segments:
-        normalized = _sanitize_title_scope_token(item)
-        if not normalized:
-            continue
-        if normalized in cleaned:
-            continue
-        cleaned.append(normalized)
-        if len(cleaned) >= limit:
-            break
-    return cleaned
+    return _report_delivery_compress_title_segments(segments, limit=limit)
 
 
 def _scope_anchor_text_segments(value: str | None) -> list[str]:
-    normalized = normalize_text(value or "")
-    if not normalized:
-        return []
-    return [
-        normalize_text(part)
-        for part in re.split(r"[|｜/／]+", normalized)
-        if normalize_text(part)
-    ]
+    return _report_scope_anchor_text_segments(value)
 
 
 def _build_report_title_suffix(
@@ -5018,14 +2634,13 @@ def _apply_topic_specific_overrides(
     scope_hints: dict[str, object],
     intelligence: dict[str, list[str]],
 ) -> ResearchReportResult:
-    return _strategy_refinement_apply_topic_overrides(
+    return _report_delivery_apply_topic_overrides(
         result,
         keyword=keyword,
         research_focus=research_focus,
         output_language=output_language,
         scope_hints=scope_hints,
         intelligence=intelligence,
-        deps=_strategy_refinement_dependencies(),
     )
 
 
@@ -5252,13 +2867,12 @@ def _source_supports_target_account(
     theme_terms: list[str],
     scope_hints: dict[str, object],
 ) -> bool:
-    if not _source_mentions_entity(source, entity_name):
-        return False
-    if _source_negates_entity(source, entity_name):
-        return False
-    if _stored_source_is_low_signal(source, theme_terms=theme_terms, scope_hints=scope_hints):
-        return False
-    return True
+    return _ranking_runtime_source_supports_target(
+        source,
+        entity_name,
+        theme_terms=theme_terms,
+        scope_hints=scope_hints,
+    )
 
 
 def _build_entity_specific_contact_rows(
@@ -5268,133 +2882,12 @@ def _build_entity_specific_contact_rows(
     output_language: str,
     limit: int,
 ) -> list[str]:
-    if not entity_names:
-        return []
-
-    normalized_entities = [
-        normalize_text(name)
-        for name in entity_names
-        if normalize_text(name) and "待验证" not in normalize_text(name) and "待驗證" not in normalize_text(name)
-        and (_is_plausible_entity_name(normalize_text(name)) or _is_lightweight_entity_name(normalize_text(name)))
-    ]
-    if not normalized_entities:
-        return []
-
-    contact_person_pattern = re.compile(
-        r"(联系人|联络人|联系人姓名|项目联系人|采购人联系人|代理机构联系人)[:：]?\s*([A-Za-z\u4e00-\u9fa5]{2,24})"
+    return _ranking_runtime_build_contact_rows(
+        sources,
+        entity_names=entity_names,
+        output_language=output_language,
+        limit=limit,
     )
-    line_contact_pattern = re.compile(
-        r"([A-Za-z0-9\u4e00-\u9fa5·（）()]{2,36})(联系人|联系电话|联系邮箱|服务热线|咨询电话)[:：]?\s*([A-Za-z0-9@\-.+\u4e00-\u9fa5]{2,48})"
-    )
-    procurement_like_source_types = {
-        "procurement",
-        "official_tender_feed",
-        "compliant_procurement_aggregate",
-        "tender_feed",
-    }
-    official_contact_source_types = {
-        "policy",
-        "filing",
-        "official_policy_speech",
-    }
-
-    def is_valid_contact_value(value: str) -> bool:
-        normalized = normalize_text(value)
-        lowered = normalized.lower()
-        if not normalized:
-            return False
-        if any(lowered.endswith(ext) for ext in (".webp", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".bmp")):
-            return False
-        if lowered.startswith("http") and any(domain in lowered for domain in GENERIC_CONTENT_DOMAINS):
-            return False
-        return True
-
-    def looks_like_company_domain(domain: str) -> bool:
-        lowered = normalize_text(domain).lower()
-        if not lowered:
-            return False
-        if lowered in GENERIC_CONTENT_DOMAINS or lowered in PROCUREMENT_DOMAINS or lowered in POLICY_DOMAINS or lowered in EXCHANGE_DOMAINS:
-            return False
-        if lowered.endswith(".gov.cn") or lowered.endswith(".edu.cn"):
-            return False
-        return "." in lowered
-
-    scored_rows: dict[str, int] = {}
-
-    def add_row(row: str, score: int) -> None:
-        normalized = normalize_text(row)
-        if not normalized or not _is_useful_public_contact_row(normalized):
-            return
-        current = scored_rows.get(normalized)
-        if current is None or score > current:
-            scored_rows[normalized] = score
-
-    for entity in _dedupe_strings(normalized_entities, 6):
-        for source in sources:
-            if not _source_mentions_entity(source, entity):
-                continue
-            text = _source_text(source)
-            domain = normalize_text(source.domain or "")
-            title_or_url = f"{source.title or ''} {source.url or ''}".lower()
-            label = normalize_text(source.source_label or source.title or domain or entity)
-            contact_page = any(token in title_or_url for token in CONTACT_PAGE_TOKENS)
-            official_like = source.source_tier == "official" or source.source_type in official_contact_source_types
-            procurement_like = source.source_type in procurement_like_source_types
-
-            if looks_like_company_domain(domain) and official_like:
-                add_row(f"{entity}：官方公开入口 https://{domain}", 92)
-
-            if contact_page and source.url and is_valid_contact_value(source.url):
-                add_row(f"{entity}：高概率公开联系页 {source.url}", 96 if official_like else 82)
-
-            for _, person in contact_person_pattern.findall(text)[:2]:
-                normalized_person = normalize_text(person)
-                if not normalized_person:
-                    continue
-                prefix = "采购/项目联系人" if procurement_like else "公开联系人"
-                add_row(
-                    f"{entity}：{prefix} {normalized_person}（{label}）",
-                    94 if procurement_like else 84,
-                )
-
-            for owner, field_name, value in line_contact_pattern.findall(text)[:3]:
-                normalized_owner = normalize_text(owner)
-                normalized_value = normalize_text(value)
-                if not normalized_value or not is_valid_contact_value(normalized_value):
-                    continue
-                owner_text = normalized_owner if normalized_owner and normalized_owner != entity else ""
-                add_row(
-                    f"{entity}：{owner_text}{field_name} {normalized_value}（{label}）",
-                    98 if procurement_like else (90 if official_like else 80),
-                )
-
-            for email in EMAIL_PATTERN.findall(text)[:2]:
-                if not is_valid_contact_value(email):
-                    continue
-                add_row(
-                    f"{entity}：公开邮箱 {email}（{label}）",
-                    96 if official_like else (92 if procurement_like else 78),
-                )
-
-            for phone in PHONE_PATTERN.findall(text)[:2]:
-                normalized_phone = normalize_text(phone)
-                if not is_valid_contact_value(normalized_phone):
-                    continue
-                add_row(
-                    f"{entity}：公开电话 {normalized_phone}（{label}）",
-                    95 if procurement_like else (88 if official_like else 76),
-                )
-
-    ordered = [
-        row
-        for row, _ in sorted(
-            scored_rows.items(),
-            key=lambda item: (-item[1], item[0]),
-        )
-    ]
-    if ordered:
-        return ordered[:limit]
-    return []
 
 
 def _build_entity_specific_team_rows(
@@ -5405,119 +2898,12 @@ def _build_entity_specific_team_rows(
     output_language: str,
     limit: int,
 ) -> list[str]:
-    if not entity_names:
-        return []
-
-    normalized_entities = [
-        normalize_text(name)
-        for name in entity_names
-        if normalize_text(name) and "待验证" not in normalize_text(name) and "待驗證" not in normalize_text(name)
-        and (_is_plausible_entity_name(normalize_text(name)) or _is_lightweight_entity_name(normalize_text(name)))
-    ]
-    if not normalized_entities:
-        return []
-
-    team_keywords = (
-        "团队",
-        "事业群",
-        "事业部",
-        "业务线",
-        "业务部",
-        "行业线",
-        "政企",
-        "政务",
-        "行业解决方案",
-        "行业方案",
-        "区域公司",
-        "区域团队",
-        "创新中心",
-        "研究院",
-        "交付中心",
-        "运营团队",
-        "商务合作",
-        "合作团队",
-        "内容生态",
-        "生态合作",
-        "大客户部",
-        "客户成功",
-        "公共事务",
-        "投资者关系",
-    )
-    scope_regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) if normalize_text(str(item))]
-    scope_region_terms = _expand_region_scope_terms(scope_regions)
-    scope_industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
-    scored_rows: dict[str, int] = {}
-
-    def add_row(row: str, score: int) -> None:
-        normalized = normalize_text(row)
-        if not normalized:
-            return
-        current = scored_rows.get(normalized)
-        if current is None or score > current:
-            scored_rows[normalized] = score
-
-    for entity in _dedupe_strings(normalized_entities, 6):
-        for source in sources:
-            if not _source_mentions_entity(source, entity):
-                continue
-            text = _source_text(source)
-            chunks = re.split(r"[。！？!?；;\n]", text)
-            label = normalize_text(source.source_label or source.title or source.domain or entity)
-            for chunk in chunks:
-                sentence = normalize_text(chunk)
-                if not sentence or entity not in sentence:
-                    continue
-                if _text_has_region_conflict(sentence, scope_hints=scope_hints):
-                    continue
-                if not any(token in sentence for token in team_keywords):
-                    continue
-                score = 72
-                if source.source_tier == "official":
-                    score += 12
-                elif source.source_tier == "aggregate":
-                    score += 6
-                if any(region and region in sentence for region in scope_region_terms):
-                    score += 8
-                if any(industry and industry in sentence for industry in scope_industries):
-                    score += 6
-                if any(token in sentence for token in ("负责", "牵头", "落地", "推进", "合作", "运营", "交付")):
-                    score += 6
-                add_row(f"{entity}：{_truncate_text(sentence, 108)}（{label}）", score)
-
-    ordered = [
-        row
-        for row, _ in sorted(
-            scored_rows.items(),
-            key=lambda item: (-item[1], item[0]),
-        )
-    ]
-    if ordered:
-        return ordered[:limit]
-
-    scope_text = " / ".join(_dedupe_strings([*scope_regions[:2], *scope_industries[:2]], 3)) or normalize_text(
-        str(scope_hints.get("anchor_text", ""))
-    ) or localized_text(
-        output_language,
-        {
-            "zh-CN": "当前范围",
-            "zh-TW": "目前範圍",
-            "en": "the current scope",
-        },
-        "当前范围",
-    )
-    return _dedupe_strings(
-        [
-            localized_text(
-                output_language,
-                {
-                    "zh-CN": f"当前已收敛到具体公司，建议优先核验其在 {scope_text} 下的政企/行业方案团队、区域交付团队与商务合作团队公开线索。",
-                    "zh-TW": f"目前已收斂到具體公司，建議優先核驗其在 {scope_text} 下的政企/產業方案團隊、區域交付團隊與商務合作團隊公開線索。",
-                    "en": f"The report converged to specific companies. Next verify public signals for their regional delivery, industry solution, and business partnership teams within {scope_text}.",
-                },
-                f"当前已收敛到具体公司，建议优先核验其在 {scope_text} 下的政企/行业方案团队、区域交付团队与商务合作团队公开线索。",
-            ),
-        ],
-        limit,
+    return _ranking_runtime_build_team_rows(
+        sources,
+        entity_names=entity_names,
+        scope_hints=scope_hints,
+        output_language=output_language,
+        limit=limit,
     )
 
 
@@ -5576,59 +2962,12 @@ def _section_confidence_profile(
 
 
 def _extract_rank_entity_name(value: str) -> str:
-    candidates = _extract_rank_entity_candidates(value)
-    return candidates[0] if candidates else ""
+    return _entity_policy_extract_rank_entity_name(value)
 
 
 @lru_cache(maxsize=16384)
 def _is_plausible_entity_name(value: str) -> bool:
-    normalized = _strip_entity_leading_noise(value)
-    if not normalized or len(normalized) < 3:
-        return False
-    if _looks_like_sentence_fragment_entity(normalized):
-        return False
-    if _looks_like_fragment_entity_name(normalized):
-        return False
-    if _looks_like_placeholder_entity_name(normalized):
-        return False
-    if _contains_low_value_entity_token(normalized):
-        return False
-    if any(token in normalized for token in ENTITY_BLACKLIST_TOKENS):
-        return False
-    if any(token in normalized for token in ENTITY_INVALID_PHRASE_TOKENS):
-        return False
-    if any(char in normalized for char in "，,。；;"):
-        return False
-    if normalized.startswith(("和", "与", "及", "或", "如", "例如", "比如", "诸如", "优先给", "官方", "公开")):
-        return False
-    if (
-        any(connector in normalized for connector in ("与", "及", "和"))
-        and normalized not in SPECIAL_ENTITY_ALIASES
-        and not any(token in normalized for token in ENTITY_SUFFIX_TOKENS)
-    ):
-        return False
-    if "：" in normalized or ":" in normalized:
-        return False
-    if normalized.endswith(("怎么办", "如何", "制作", "是指", "相关")):
-        return False
-    if re.search(r"(路径|节奏|策略|打法|能力|场景|机会|商机|窗口|趋势|布局|运营|建设|规划|升级|协同|统筹)$", normalized):
-        return False
-    industry_alias_values = {
-        normalize_text(alias)
-        for aliases in INDUSTRY_SCOPE_ALIASES.values()
-        for alias in aliases
-        if normalize_text(alias)
-    }
-    if normalized in industry_alias_values:
-        return False
-    if any(alias == normalized or alias in normalized for alias in SPECIAL_ENTITY_ALIASES):
-        return True
-    if any(token in normalized for token in ENTITY_SUFFIX_TOKENS):
-        return True
-    compact = re.sub(r"\s+", "", normalized)
-    if ORG_PATTERN.fullmatch(compact) or COMPACT_ENTITY_PATTERN.fullmatch(compact):
-        return True
-    return False
+    return _entity_policy_is_plausible_entity_name(value)
 
 
 def _extract_rank_entity_candidates(
@@ -5716,7 +3055,7 @@ def _rank_top_entities(
     fallback_values: Iterable[str] | None = None,
     limit: int = 3,
 ) -> tuple[list[ResearchRankedEntityOut], list[ResearchRankedEntityOut]]:
-    return _entity_ranking_rank_top_entities(
+    return _ranking_runtime_rank_top_entities(
         sources,
         role=role,
         output_language=output_language,
@@ -5725,7 +3064,6 @@ def _rank_top_entities(
         entity_graph=entity_graph,
         fallback_values=fallback_values,
         limit=limit,
-        deps=_entity_ranking_heuristic_dependencies(),
     )
 
 
@@ -6059,28 +3397,12 @@ def _build_source_intelligence(
     output_language: str,
     scope_hints: dict[str, object],
 ) -> dict[str, list[str]]:
-    return _source_intelligence_build(
+    return _report_delivery_build_source_intelligence(
         sources,
         keyword=keyword,
         research_focus=research_focus,
         output_language=output_language,
         scope_hints=scope_hints,
-        deps=SourceIntelligenceDependencies(
-            build_theme_terms=_build_theme_terms,
-            dedupe_strings=_dedupe_strings,
-            rank_org_rows=_rank_org_rows,
-            extract_department_rows=_extract_department_rows,
-            extract_public_contact_rows=_extract_public_contact_rows,
-            build_entity_specific_team_rows=_build_entity_specific_team_rows,
-            extract_rank_entity_name=_extract_rank_entity_name,
-            extract_money_signals=_extract_money_signals,
-            extract_region_distribution=_extract_region_distribution,
-            extract_matching_sentences=_extract_matching_sentences,
-            extract_key_people_rows=_extract_key_people_rows,
-            extract_people_signals=_extract_people_signals,
-            ensure_minimum_rows=_ensure_minimum_rows,
-            build_industry_methodology_rows=_build_industry_methodology_rows,
-        ),
     )
 
 
@@ -6088,72 +3410,11 @@ def _merge_result_with_intelligence(
     parsed: ResearchReportResult,
     intelligence: dict[str, list[str]],
 ) -> ResearchReportResult:
-    payload = parsed.model_dump(mode="python")
-    grounded_first_fields = {
-        "public_contact_channels",
-        "budget_signals",
-        "project_distribution",
-        "strategic_directions",
-        "tender_timeline",
-        "leadership_focus",
-        "benchmark_cases",
-        "flagship_products",
-        "key_people",
-        "five_year_outlook",
-        "client_peer_moves",
-        "winner_peer_moves",
-        "competition_analysis",
-    }
-    min_count_overrides = {
-        "target_accounts": 3,
-        "target_departments": 3,
-        "public_contact_channels": 3,
-        "account_team_signals": 3,
-        "budget_signals": 3,
-        "project_distribution": 3,
-        "strategic_directions": 3,
-        "tender_timeline": 3,
-        "leadership_focus": 3,
-        "ecosystem_partners": 3,
-        "competitor_profiles": 3,
-        "benchmark_cases": 3,
-        "flagship_products": 3,
-        "key_people": 3,
-        "five_year_outlook": 3,
-        "client_peer_moves": 3,
-        "winner_peer_moves": 3,
-        "competition_analysis": 3,
-    }
-    for key, values in intelligence.items():
-        current = _sanitize_report_field_rows(key, payload.get(key, []))
-        sanitized_values = _sanitize_report_field_rows(key, values)
-        min_count = min_count_overrides.get(key, 2)
-        if key in grounded_first_fields and sanitized_values:
-            payload[key] = sanitized_values
-            continue
-        if len(current) >= min_count:
-            payload[key] = current
-            continue
-        payload[key] = _sanitize_report_field_rows(
-            key,
-            _dedupe_strings(current + sanitized_values, max(6, min_count)),
-        )
-    for key, values in list(payload.items()):
-        if isinstance(values, list):
-            payload[key] = _sanitize_report_field_rows(key, values)
-    return ResearchReportResult.model_validate(payload)
+    return _report_delivery_merge_result_with_intelligence(parsed, intelligence)
 
 
 def _source_quality_level(sources: list[SourceDocument]) -> str:
-    if not sources:
-        return "low"
-    official_count = sum(1 for source in sources if source.source_tier == "official")
-    official_ratio = official_count / max(len(sources), 1)
-    if official_count >= 4 or official_ratio >= 0.55:
-        return "high"
-    if official_count >= 2 or official_ratio >= 0.3:
-        return "medium"
-    return "low"
+    return _report_delivery_source_quality_level(sources)
 
 
 def _official_coverage_is_weak(
@@ -6170,36 +3431,7 @@ def _official_coverage_is_weak(
 
 
 def _evidence_density_level(sources: list[SourceDocument], parsed: ResearchReportResult) -> str:
-    if not sources:
-        return "low"
-    concrete_groups = 0
-    for values in (
-        parsed.target_accounts,
-        parsed.target_departments,
-        parsed.public_contact_channels,
-        parsed.account_team_signals,
-        parsed.budget_signals,
-        parsed.project_distribution,
-        parsed.strategic_directions,
-        parsed.tender_timeline,
-        parsed.leadership_focus,
-        parsed.ecosystem_partners,
-        parsed.competitor_profiles,
-        parsed.benchmark_cases,
-        parsed.flagship_products,
-        parsed.key_people,
-        parsed.five_year_outlook,
-        parsed.client_peer_moves,
-        parsed.winner_peer_moves,
-        parsed.competition_analysis,
-    ):
-        if _concrete_rows(values):
-            concrete_groups += 1
-    if len(sources) >= 8 and concrete_groups >= 8:
-        return "high"
-    if len(sources) >= 4 and concrete_groups >= 4:
-        return "medium"
-    return "low"
+    return _report_delivery_evidence_density_level(sources, parsed)
 
 
 def _build_section_evidence_links(
@@ -6302,11 +3534,7 @@ def _section_insufficiency_profile(
 
 
 def _report_readiness_dependencies() -> ReportReadinessDependencies:
-    return ReportReadinessDependencies(
-        dedupe_strings=_dedupe_strings,
-        sanitize_entity_row=_sanitize_entity_row,
-        is_actionable_budget_row=_is_actionable_budget_row,
-    )
+    return _runtime_report_readiness_dependencies(_build_report_runtime_owner_ports())
 
 
 def _resolved_report_readiness(report: ResearchReportDocument) -> ResearchReportReadinessOut:
@@ -6360,23 +3588,7 @@ def _build_review_queue(report: ResearchReportDocument) -> list[ResearchReviewQu
 
 
 def _enrich_report_for_delivery(report: ResearchReportResponse) -> ResearchReportResponse:
-    return _delivery_enrichment_enrich_report(
-        report,
-        deps=DeliveryEnrichmentDependencies(
-            build_report_readiness=_build_report_readiness,
-            build_commercial_summary=_build_commercial_summary,
-            build_technical_appendix=_build_technical_appendix,
-            build_review_queue=_build_review_queue,
-            build_research_quality_profile=build_research_quality_profile,
-            report_sources_to_source_documents=_report_sources_to_source_documents,
-            load_runtime_research_retrieval_index=_load_runtime_research_retrieval_index,
-            attach_section_retrieval_packs=attach_section_retrieval_packs,
-            build_market_intelligence_pack=build_market_intelligence_pack,
-            build_solution_delivery_pack=build_solution_delivery_pack,
-            enrich_followup_diagnostics=_enrich_followup_diagnostics,
-            apply_report_readiness_guardrails=_apply_report_readiness_guardrails,
-        ),
-    )
+    return _report_delivery_enrich_report(report)
 
 
 def _apply_report_readiness_guardrails(report: ResearchReportResponse) -> ResearchReportResponse:
@@ -6403,7 +3615,7 @@ def _build_source_diagnostics(
     candidate_profile_official_hit_count: int,
     candidate_profile_source_labels: list[str],
 ) -> ResearchSourceDiagnosticsOut:
-    return _source_diagnostics_build(
+    return _report_ranking_build_source_diagnostics(
         sources,
         enabled_source_labels=enabled_source_labels,
         scope_hints=scope_hints,
@@ -6421,11 +3633,6 @@ def _build_source_diagnostics(
         candidate_profile_hit_count=candidate_profile_hit_count,
         candidate_profile_official_hit_count=candidate_profile_official_hit_count,
         candidate_profile_source_labels=candidate_profile_source_labels,
-        deps=SourceDiagnosticsDependencies(
-            dedupe_strings=_dedupe_strings,
-            retrieval_quality_band=_retrieval_quality_band,
-            evidence_mode_from_metrics=_evidence_mode_from_metrics,
-        ),
     )
 
 
@@ -6495,34 +3702,11 @@ def _collect_matched_theme_labels(
     scope_hints: dict[str, object],
     topic_anchor_terms: list[str],
 ) -> list[str]:
-    if not sources:
-        return topic_anchor_terms[:4]
-    haystack = normalize_text(
-        " ".join(
-            " ".join(
-                [
-                    source.title,
-                    source.snippet,
-                    source.excerpt,
-                    source.search_query,
-                    source.source_label or "",
-                    source.domain or "",
-                ]
-            )
-            for source in sources
-        )
-    ).lower()
-    candidates: list[str] = []
-    for label in [*(scope_hints.get("industries", []) or []), *(scope_hints.get("clients", []) or []), *(scope_hints.get("regions", []) or [])]:
-        normalized = normalize_text(str(label))
-        if not normalized:
-            continue
-        aliases = [normalized, *INDUSTRY_SCOPE_ALIASES.get(normalized, ())]
-        if any(normalize_text(alias).lower() in haystack for alias in aliases if normalize_text(alias)):
-            candidates.append(normalized)
-    if not candidates:
-        candidates.extend(topic_anchor_terms[:4])
-    return list(dict.fromkeys(item for item in candidates if normalize_text(item)))
+    return _report_scope_collect_matched_theme_labels(
+        sources,
+        scope_hints=scope_hints,
+        topic_anchor_terms=topic_anchor_terms,
+    )
 
 
 def _render_source_digest(sources: list[SourceDocument]) -> str:
@@ -6642,273 +3826,24 @@ def _render_section_retrieval_prompt_context(
     )
 
 
+def _report_sections_dependencies() -> ReportSectionsDependencies:
+    return ReportSectionsDependencies(
+        build_section_evidence_links=_build_section_evidence_links,
+        section_signal_quality=_section_signal_quality,
+        section_evidence_quota=_section_evidence_quota,
+        section_quota_note=_section_quota_note,
+        section_confidence_profile=_section_confidence_profile,
+        section_next_verification_steps=_section_next_verification_steps,
+        section_insufficiency_profile=_section_insufficiency_profile,
+    )
+
+
 def _build_sections(
     result: ResearchReportResult,
     output_language: str,
     sources: list[SourceDocument],
 ) -> list[ResearchReportSectionOut]:
-    title_map = {
-        "industry_brief": localized_text(
-            output_language,
-            {"zh-CN": "行业资讯判断", "zh-TW": "產業資訊判斷", "en": "Industry View"},
-            "行业资讯判断",
-        ),
-        "key_signals": localized_text(
-            output_language,
-            {"zh-CN": "关键信号", "zh-TW": "關鍵信號", "en": "Key Signals"},
-            "关键信号",
-        ),
-        "policy_and_leadership": localized_text(
-            output_language,
-            {"zh-CN": "政策与领导信号", "zh-TW": "政策與領導信號", "en": "Policy and Leadership"},
-            "政策与领导信号",
-        ),
-        "commercial_opportunities": localized_text(
-            output_language,
-            {"zh-CN": "项目与商机判断", "zh-TW": "專案與商機判斷", "en": "Opportunity Map"},
-            "项目与商机判断",
-        ),
-        "solution_design": localized_text(
-            output_language,
-            {"zh-CN": "解决方案设计建议", "zh-TW": "解決方案設計建議", "en": "Solution Design"},
-            "解决方案设计建议",
-        ),
-        "sales_strategy": localized_text(
-            output_language,
-            {"zh-CN": "销售策略", "zh-TW": "銷售策略", "en": "Sales Strategy"},
-            "销售策略",
-        ),
-        "bidding_strategy": localized_text(
-            output_language,
-            {"zh-CN": "投标规划", "zh-TW": "投標規劃", "en": "Bidding Strategy"},
-            "投标规划",
-        ),
-        "outreach_strategy": localized_text(
-            output_language,
-            {"zh-CN": "陌生拜访建议", "zh-TW": "陌生拜訪建議", "en": "Outreach Strategy"},
-            "陌生拜访建议",
-        ),
-        "ecosystem_strategy": localized_text(
-            output_language,
-            {"zh-CN": "生态伙伴建议", "zh-TW": "生態夥伴建議", "en": "Ecosystem Strategy"},
-            "生态伙伴建议",
-        ),
-        "target_accounts": localized_text(
-            output_language,
-            {"zh-CN": "重点甲方与目标客户", "zh-TW": "重點甲方與目標客戶", "en": "Target Accounts"},
-            "重点甲方与目标客户",
-        ),
-        "target_departments": localized_text(
-            output_language,
-            {"zh-CN": "高概率决策部门", "zh-TW": "高機率決策部門", "en": "Likely Decision Departments"},
-            "高概率决策部门",
-        ),
-        "public_contact_channels": localized_text(
-            output_language,
-            {"zh-CN": "公开业务联系方式", "zh-TW": "公開業務聯絡方式", "en": "Public Contact Channels"},
-            "公开业务联系方式",
-        ),
-        "account_team_signals": localized_text(
-            output_language,
-            {"zh-CN": "活跃团队与推进抓手", "zh-TW": "活躍團隊與推進抓手", "en": "Active Teams and Execution Handles"},
-            "活跃团队与推进抓手",
-        ),
-        "budget_signals": localized_text(
-            output_language,
-            {"zh-CN": "预算与投资信号", "zh-TW": "預算與投資信號", "en": "Budget Signals"},
-            "预算与投资信号",
-        ),
-        "project_distribution": localized_text(
-            output_language,
-            {"zh-CN": "项目分布与期次判断", "zh-TW": "專案分佈與期次判斷", "en": "Project Distribution"},
-            "项目分布与期次判断",
-        ),
-        "strategic_directions": localized_text(
-            output_language,
-            {"zh-CN": "战略方向", "zh-TW": "戰略方向", "en": "Strategic Directions"},
-            "战略方向",
-        ),
-        "tender_timeline": localized_text(
-            output_language,
-            {"zh-CN": "招标时间预测", "zh-TW": "招標時間預測", "en": "Tender Timeline"},
-            "招标时间预测",
-        ),
-        "leadership_focus": localized_text(
-            output_language,
-            {"zh-CN": "领导近三年关注点", "zh-TW": "領導近三年關注點", "en": "Leadership Focus"},
-            "领导近三年关注点",
-        ),
-        "ecosystem_partners": localized_text(
-            output_language,
-            {"zh-CN": "活跃生态伙伴", "zh-TW": "活躍生態夥伴", "en": "Ecosystem Partners"},
-            "活跃生态伙伴",
-        ),
-        "competitor_profiles": localized_text(
-            output_language,
-            {"zh-CN": "竞品公司概况", "zh-TW": "競品公司概況", "en": "Competitor Profiles"},
-            "竞品公司概况",
-        ),
-        "benchmark_cases": localized_text(
-            output_language,
-            {"zh-CN": "同领域标杆案例", "zh-TW": "同領域標竿案例", "en": "Benchmark Cases"},
-            "同领域标杆案例",
-        ),
-        "flagship_products": localized_text(
-            output_language,
-            {"zh-CN": "明星产品与方案", "zh-TW": "明星產品與方案", "en": "Flagship Products"},
-            "明星产品与方案",
-        ),
-        "key_people": localized_text(
-            output_language,
-            {"zh-CN": "关键人物", "zh-TW": "關鍵人物", "en": "Key People"},
-            "关键人物",
-        ),
-        "five_year_outlook": localized_text(
-            output_language,
-            {"zh-CN": "未来五年演化判断", "zh-TW": "未來五年演化判斷", "en": "Five-Year Outlook"},
-            "未来五年演化判断",
-        ),
-        "client_peer_moves": localized_text(
-            output_language,
-            {"zh-CN": "甲方同行 Top 3 动态", "zh-TW": "甲方同行 Top 3 動態", "en": "Top 3 Buyer Peer Moves"},
-            "甲方同行 Top 3 动态",
-        ),
-        "winner_peer_moves": localized_text(
-            output_language,
-            {"zh-CN": "中标方同行 Top 3 动态", "zh-TW": "中標方同行 Top 3 動態", "en": "Top 3 Winner Peer Moves"},
-            "中标方同行 Top 3 动态",
-        ),
-        "competition_analysis": localized_text(
-            output_language,
-            {"zh-CN": "竞争分析", "zh-TW": "競爭分析", "en": "Competition Analysis"},
-            "竞争分析",
-        ),
-        "risks": localized_text(
-            output_language,
-            {"zh-CN": "风险提示", "zh-TW": "風險提示", "en": "Risks"},
-            "风险提示",
-        ),
-        "next_actions": localized_text(
-            output_language,
-            {"zh-CN": "下一步行动", "zh-TW": "下一步行動", "en": "Next Actions"},
-            "下一步行动",
-        ),
-    }
-    sections: list[ResearchReportSectionOut] = []
-    for key in (
-        "industry_brief",
-        "key_signals",
-        "policy_and_leadership",
-        "commercial_opportunities",
-        "solution_design",
-        "sales_strategy",
-        "bidding_strategy",
-        "outreach_strategy",
-        "ecosystem_strategy",
-        "target_accounts",
-        "target_departments",
-        "public_contact_channels",
-        "account_team_signals",
-        "budget_signals",
-        "project_distribution",
-        "strategic_directions",
-        "tender_timeline",
-        "leadership_focus",
-        "ecosystem_partners",
-        "competitor_profiles",
-        "benchmark_cases",
-        "flagship_products",
-        "key_people",
-        "five_year_outlook",
-        "client_peer_moves",
-        "winner_peer_moves",
-        "competition_analysis",
-        "risks",
-        "next_actions",
-    ):
-        items = getattr(result, key)
-        if items:
-            evidence_links, source_tier_counts, official_source_ratio = _build_section_evidence_links(
-                section_title=title_map[key],
-                items=items,
-                sources=sources,
-                limit=3,
-            )
-            evidence_density, source_quality, evidence_note = _section_signal_quality(
-                items,
-                sources,
-                evidence_links=evidence_links,
-                source_tier_counts=source_tier_counts,
-                official_source_ratio=official_source_ratio,
-            )
-            evidence_quota = _section_evidence_quota(key, items)
-            meets_evidence_quota, quota_gap, quota_note = _section_quota_note(
-                section_title=title_map[key],
-                evidence_count=len(evidence_links),
-                evidence_quota=evidence_quota,
-                official_source_ratio=official_source_ratio,
-            )
-            confidence_tone, confidence_label, confidence_reason, contradiction_detected, contradiction_note = _section_confidence_profile(
-                section_title=title_map[key],
-                items=items,
-                sources=sources,
-                evidence_density=evidence_density,
-                source_quality=source_quality,
-                official_source_ratio=official_source_ratio,
-                meets_evidence_quota=meets_evidence_quota,
-                evidence_links=evidence_links,
-            )
-            next_verification_steps = _section_next_verification_steps(
-                section_title=title_map[key],
-                output_language=output_language,
-                evidence_density=evidence_density,
-                source_quality=source_quality,
-                official_source_ratio=official_source_ratio,
-                evidence_count=len(evidence_links),
-                evidence_quota=evidence_quota,
-                contradiction_detected=contradiction_detected,
-            )
-            section_status, insufficiency_reasons, insufficiency_summary = _section_insufficiency_profile(
-                section_title=title_map[key],
-                output_language=output_language,
-                evidence_density=evidence_density,
-                source_quality=source_quality,
-                official_source_ratio=official_source_ratio,
-                quota_gap=quota_gap,
-                contradiction_detected=contradiction_detected,
-            )
-            tinted_evidence_links = [
-                link.model_copy(update={"confidence_tone": confidence_tone})
-                for link in evidence_links
-            ]
-            sections.append(
-                ResearchReportSectionOut(
-                    title=title_map[key],
-                    items=items,
-                    status=section_status,
-                    evidence_density=evidence_density,
-                    source_quality=source_quality,
-                    confidence_tone=confidence_tone,
-                    confidence_label=confidence_label,
-                    confidence_reason=confidence_reason,
-                    evidence_note=evidence_note,
-                    insufficiency_reasons=insufficiency_reasons,
-                    insufficiency_summary=insufficiency_summary,
-                    source_tier_counts=source_tier_counts,
-                    official_source_ratio=official_source_ratio,
-                    evidence_links=tinted_evidence_links,
-                    evidence_count=len(evidence_links),
-                    evidence_quota=evidence_quota,
-                    meets_evidence_quota=meets_evidence_quota,
-                    quota_gap=quota_gap,
-                    quota_note=quota_note,
-                    next_verification_steps=next_verification_steps,
-                    contradiction_detected=contradiction_detected,
-                    contradiction_note=contradiction_note,
-                )
-            )
-    return sections
-
+    return _report_delivery_build_sections(result, output_language, sources)
 
 def _research_section_items(report: ResearchReportDocument, aliases: tuple[str, ...]) -> list[str]:
     normalized_aliases = tuple(alias.lower() for alias in aliases)
@@ -6946,21 +3881,7 @@ def _derive_entry_window(report: ResearchReportDocument, output_language: str) -
 
 
 def _action_card_dependencies() -> ResearchActionCardDependencies:
-    return ResearchActionCardDependencies(
-        dedupe_strings=_dedupe_strings,
-        extract_rank_entity_name=_extract_rank_entity_name,
-        theme_labels_from_scope=_theme_labels_from_scope,
-        looks_like_scope_prompt_noise=_looks_like_scope_prompt_noise,
-        looks_like_placeholder_entity_name=_looks_like_placeholder_entity_name,
-        looks_like_fragment_entity_name=_looks_like_fragment_entity_name,
-        contains_low_value_entity_token=_contains_low_value_entity_token,
-        is_trustworthy_scope_client_name=_is_trustworthy_scope_client_name,
-        is_theme_aligned_entity_name=_is_theme_aligned_entity_name,
-        is_lightweight_entity_name=_is_lightweight_entity_name,
-        is_actionable_budget_row=_is_actionable_budget_row,
-        is_summary_fact_row=_is_summary_fact_row,
-        is_low_signal_execution_report=_is_low_signal_execution_report,
-    )
+    return _runtime_action_card_dependencies(_build_report_runtime_owner_ports())
 
 
 def build_research_action_cards(report: ResearchReportDocument) -> list[ResearchActionCardOut]:
@@ -7036,77 +3957,11 @@ def _runtime_consumer_warnings(payload: ResearchReportRequest, consumer: str) ->
 
 
 def _runtime_strategy_scope_hints(payload: ResearchReportRequest) -> dict[str, object]:
-    query_config = _runtime_consumer_effective_config(payload, "query_generation")
-    reranker_config = _runtime_consumer_effective_config(payload, "source_reranker")
-    query_enabled = bool(query_config.get("enabled") or query_config.get("query_recovery_enabled"))
-    reranker_enabled = bool(reranker_config.get("enabled"))
-    applied_lanes = _dedupe_strings(
-        [
-            *_runtime_consumer_list(payload, "query_generation", "applied_lanes"),
-            *_runtime_consumer_list(payload, "source_reranker", "applied_lanes"),
-        ],
-        8,
+    return _runtime_config_build_runtime_strategy_scope_hints(
+        payload,
+        dedupe_strings=_dedupe_strings,
+        safe_int=_safe_int,
     )
-    fallback_lanes = _dedupe_strings(
-        [
-            *_runtime_consumer_list(payload, "query_generation", "fallback_lanes"),
-            *_runtime_consumer_list(payload, "source_reranker", "fallback_lanes"),
-        ],
-        8,
-    )
-    warnings = _dedupe_strings(
-        [
-            *_runtime_consumer_warnings(payload, "query_generation"),
-            *_runtime_consumer_warnings(payload, "source_reranker"),
-        ],
-        8,
-    )
-    statuses = [
-        _runtime_consumer_status(payload, "query_generation"),
-        _runtime_consumer_status(payload, "source_reranker"),
-    ]
-    runtime_status = "fallback"
-    if "degraded" in statuses:
-        runtime_status = "degraded"
-    elif "ready" in statuses:
-        runtime_status = "ready"
-
-    reranker_adapter = normalize_text(str(reranker_config.get("reranker_adapter") or ""))
-    reranker_backend = "local"
-    if reranker_adapter == "sentence_transformers_cross_encoder":
-        reranker_backend = "sentence_transformers"
-    elif reranker_adapter and reranker_adapter != "local_rrf":
-        reranker_backend = "auto"
-
-    hints: dict[str, object] = {
-        "runtime_strategy_status": runtime_status,
-        "runtime_strategy_applied_lanes": applied_lanes,
-        "runtime_strategy_fallback_lanes": fallback_lanes,
-        "runtime_strategy_warnings": warnings,
-        "runtime_query_recovery_enabled": query_enabled,
-        "runtime_source_reranker_enabled": reranker_enabled,
-    }
-    if query_enabled:
-        hints["runtime_corrective_query_limit"] = _safe_int(
-            query_config.get("corrective_query_limit"),
-            4,
-            minimum=1,
-            maximum=12,
-        )
-        hints["runtime_public_expansion_on_watch"] = bool(query_config.get("public_expansion_on_watch"))
-    if reranker_enabled:
-        hints.update(
-            {
-                "enable_cross_encoder_rerank": reranker_adapter != "local_rrf",
-                "cross_encoder_rerank": reranker_adapter != "local_rrf",
-                "runtime_reranker_adapter": reranker_adapter or "local_rrf",
-                "runtime_reranker_backend": reranker_backend,
-                "runtime_reranker_top_k": _safe_int(reranker_config.get("recall_at_k"), 5, minimum=3, maximum=20),
-                "runtime_reranker_fallback_adapter": normalize_text(str(reranker_config.get("fallback_adapter") or "local_rrf")),
-                "runtime_official_source_bias": bool(reranker_config.get("official_source_bias", True)),
-            }
-        )
-    return hints
 
 
 def _build_research_runtime(payload: ResearchReportRequest) -> dict[str, int | bool]:
@@ -7381,103 +4236,18 @@ def _build_partial_report_response(
 
 
 def _report_sources_to_source_documents(sources: list[ResearchSourceOut]) -> list[SourceDocument]:
-    return _storage_report_sources_to_source_documents(
-        sources,
-        classify_source_type=_classify_source_type,
-        classify_source_tier=_classify_source_tier,
-        derive_source_label=_derive_source_label,
-        clean_source_text_for_analysis=_clean_source_text_for_analysis,
-        truncate_text=_truncate_text,
-        dedupe_sources=_dedupe_sources,
-    )
+    return _report_storage_sources_to_documents(sources)
 
 
 def _stored_report_to_result(report: ResearchReportResponse) -> ResearchReportResult:
-    return _storage_stored_report_to_result(
-        report,
-        research_section_items=_research_section_items,
-        sanitize_report_field_rows=_sanitize_report_field_rows,
-    )
+    return _report_storage_to_runtime_result(report)
 
 
-def _report_intelligence_from_result(report: ResearchReportResponse, result: ResearchReportResult) -> dict[str, list[str]]:
-    return {
-        "industry_brief": list(result.industry_brief),
-        "key_signals": list(result.key_signals),
-        "policy_and_leadership": list(result.policy_and_leadership),
-        "commercial_opportunities": list(result.commercial_opportunities),
-        "solution_design": list(result.solution_design),
-        "sales_strategy": list(result.sales_strategy),
-        "bidding_strategy": list(result.bidding_strategy),
-        "outreach_strategy": list(result.outreach_strategy),
-        "ecosystem_strategy": list(result.ecosystem_strategy),
-        "target_accounts": _dedupe_strings(
-            [
-                *result.target_accounts,
-                *(normalize_text(item.name) for item in report.top_target_accounts if normalize_text(item.name)),
-                *(normalize_text(item.name) for item in report.pending_target_candidates if normalize_text(item.name)),
-            ],
-            6,
-        ),
-        "target_departments": list(result.target_departments),
-        "public_contact_channels": list(result.public_contact_channels),
-        "account_team_signals": list(result.account_team_signals),
-        "budget_signals": list(result.budget_signals),
-        "project_distribution": list(result.project_distribution),
-        "strategic_directions": list(result.strategic_directions),
-        "tender_timeline": list(result.tender_timeline),
-        "leadership_focus": list(result.leadership_focus),
-        "ecosystem_partners": _dedupe_strings(
-            [
-                *result.ecosystem_partners,
-                *(normalize_text(item.name) for item in report.top_ecosystem_partners if normalize_text(item.name)),
-                *(normalize_text(item.name) for item in report.pending_partner_candidates if normalize_text(item.name)),
-            ],
-            6,
-        ),
-        "competitor_profiles": _dedupe_strings(
-            [
-                *result.competitor_profiles,
-                *(normalize_text(item.name) for item in report.top_competitors if normalize_text(item.name)),
-                *(normalize_text(item.name) for item in report.pending_competitor_candidates if normalize_text(item.name)),
-            ],
-            6,
-        ),
-        "benchmark_cases": list(result.benchmark_cases),
-        "flagship_products": list(result.flagship_products),
-        "key_people": list(result.key_people),
-        "five_year_outlook": list(result.five_year_outlook),
-        "client_peer_moves": list(result.client_peer_moves),
-        "winner_peer_moves": list(result.winner_peer_moves),
-        "competition_analysis": list(result.competition_analysis),
-        "risks": list(result.risks),
-        "next_actions": list(result.next_actions),
-    }
-
-
-def _stored_entity_canonicalization_dependencies() -> StoredEntityCanonicalizationDependencies:
-    return StoredEntityCanonicalizationDependencies(
-        canonical_org_name_from_domain=_canonical_org_name_from_domain,
-        resolve_known_org_name=_resolve_known_org_name,
-        extract_rank_entity_candidates=_extract_rank_entity_candidates,
-        strip_org_public_suffixes=_strip_org_public_suffixes,
-        is_plausible_entity_name=_is_plausible_entity_name,
-        is_lightweight_entity_name=_is_lightweight_entity_name,
-        sanitize_entity_row=_sanitize_entity_row,
-        extract_rank_entity_name=_extract_rank_entity_name,
-        fallback_entity_name_from_row=_fallback_entity_name_from_row,
-        looks_like_fragment_entity_name=_looks_like_fragment_entity_name,
-        contains_low_value_entity_token=_contains_low_value_entity_token,
-        looks_like_placeholder_entity_name=_looks_like_placeholder_entity_name,
-        entity_canonical_key=_entity_canonical_key,
-        source_mentions_entity=_source_mentions_entity,
-        dedupe_strings=_dedupe_strings,
-        looks_like_insufficient=_looks_like_insufficient,
-        looks_like_scope_prompt_noise=_looks_like_scope_prompt_noise,
-        looks_like_source_artifact_text=_looks_like_source_artifact_text,
-        strip_entity_leading_noise=_strip_entity_leading_noise,
-        entity_role_fields=ENTITY_ROLE_FIELDS,
-    )
+def _report_intelligence_from_result(
+    report: ResearchReportResponse,
+    result: ResearchReportResult,
+) -> dict[str, list[str]]:
+    return _report_storage_intelligence_from_result(report, result)
 
 
 def _canonicalize_stored_entity_name(
@@ -7488,13 +4258,12 @@ def _canonicalize_stored_entity_name(
     source_documents: list[SourceDocument],
     evidence_links: Iterable[object] | None = None,
 ) -> str:
-    return _stored_entity_canonicalization_entity_name(
+    return _stored_entity_runtime_canonicalize_name(
         value,
         field_key=field_key,
         scope_hints=scope_hints,
         source_documents=source_documents,
         evidence_links=evidence_links,
-        deps=_stored_entity_canonicalization_dependencies(),
     )
 
 
@@ -7504,11 +4273,10 @@ def _canonicalize_stored_report_entities(
     scope_hints: dict[str, object],
     source_documents: list[SourceDocument],
 ) -> ResearchReportResponse:
-    return _stored_entity_canonicalization_report_entities(
+    return _stored_entity_runtime_canonicalize_report(
         report,
         scope_hints=scope_hints,
         source_documents=source_documents,
-        deps=_stored_entity_canonicalization_dependencies(),
     )
 
 
@@ -7518,63 +4286,23 @@ def _canonicalize_stored_result_entities(
     scope_hints: dict[str, object],
     source_documents: list[SourceDocument],
 ) -> ResearchReportResult:
-    return _stored_entity_canonicalization_result_entities(
+    return _stored_entity_runtime_canonicalize_result(
         result,
         scope_hints=scope_hints,
         source_documents=source_documents,
-        deps=_stored_entity_canonicalization_dependencies(),
     )
 
 
 def _clean_candidate_profile_company_names(values: Iterable[str]) -> list[str]:
-    return _stored_entity_canonicalization_clean_candidate_names(
-        values,
-        deps=_stored_entity_canonicalization_dependencies(),
-    )
+    return _stored_entity_runtime_clean_candidates(values)
 
 
 def _is_trustworthy_scope_client_name(value: str, *, theme_labels: list[str] | None = None) -> bool:
-    normalized = _strip_entity_leading_noise(value)
-    active_theme_labels = [normalize_text(item) for item in theme_labels or [] if normalize_text(item)]
-    lowered = normalized.lower()
-    if not normalized:
-        return False
-    if re.search(r"(19|20)\d{2}", normalized):
-        return False
-    if _looks_like_scope_prompt_noise(normalized):
-        return False
-    if _looks_like_placeholder_entity_name(normalized):
-        return False
-    if normalized in {"中国政府", "办公厅", "一网通办", "随申办"}:
-        return False
-    if any(token in normalized for token in GENERIC_SCOPE_CLIENT_TOKENS):
-        return False
-    if any(token in normalized for token in ("公开招标公告", "采购项目", "中标结果", "代表样本", "成功举办")):
-        return False
-    if normalized.startswith(("访", "第", "相关负责人", "对公开市场投资者而言", "在杭州市")):
-        return False
-    if normalized.startswith(("一家", "一人", "一个", "一种", "是依托", "不仅", "构建", "办公厅", "上海作为")):
-        return False
-    if (
-        any(token in normalized for token in ("和", "及", "与"))
-        and any(token in normalized for token in ("全球", "国际", "重点"))
-        and not any(token in normalized for token in ("集团", "公司", "局", "委", "办", "中心", "政府"))
-    ):
-        return False
-    if "AI漫剧" in active_theme_labels and any(token in normalized for token in ("政府", "办公厅", "市委", "局", "委", "办")):
-        return False
-    if "政务云" in active_theme_labels and not any(
-        token in normalized
-        for token in ("政府", "局", "委", "办", "中心", "集团", "公司", "平台", "城投", "国资", "大数据", "信息")
-    ):
-        return False
-    if normalized in KNOWN_LIGHTWEIGHT_ENTITY_NAMES or normalized in SPECIAL_ENTITY_ALIASES:
-        return True
-    if any(token in normalized for token in ENTITY_SUFFIX_TOKENS):
-        if any(token in lowered for token in ("maas", "iaas", "paas", "saas")) and "公司" in normalized:
-            return False
-        return True
-    return False
+    return _entity_policy_is_trustworthy_scope_client_name(
+        value,
+        theme_labels=theme_labels,
+        looks_like_scope_prompt_noise=_looks_like_scope_prompt_noise,
+    )
 
 
 def _clean_scope_entity_names(
@@ -7612,21 +4340,7 @@ def _clean_scope_entity_names(
 
 
 def _stored_report_rewrite_dependencies() -> StoredReportRewriteDependencies:
-    return StoredReportRewriteDependencies(
-        source_text=_source_text,
-        source_theme_match_score=_source_theme_match_score,
-        looks_like_insufficient=_looks_like_insufficient,
-        dedupe_strings=_dedupe_strings,
-        sanitize_entity_row=_sanitize_entity_row,
-        build_theme_terms=_build_theme_terms,
-        source_supports_target_account=_source_supports_target_account,
-        resolved_report_readiness=_resolved_report_readiness,
-        is_actionable_budget_row=_is_actionable_budget_row,
-        is_summary_fact_row=_is_summary_fact_row,
-        looks_like_bad_executive_summary=_looks_like_bad_executive_summary,
-        compress_title_segments=_compress_title_segments,
-        field_row_noise_tokens=FIELD_ROW_NOISE_TOKENS,
-    )
+    return _runtime_stored_report_rewrite_dependencies(_build_report_runtime_owner_ports())
 
 
 def _stored_source_is_low_signal(
@@ -7715,51 +4429,7 @@ def _build_guarded_rewrite_title(
 
 
 def _stored_report_rewrite_orchestration_dependencies() -> StoredReportRewriteOrchestrationDependencies:
-    return StoredReportRewriteOrchestrationDependencies(
-        report_sources_to_source_documents=_report_sources_to_source_documents,
-        infer_input_scope_hints=_infer_input_scope_hints,
-        canonicalize_stored_report_entities=_canonicalize_stored_report_entities,
-        dedupe_strings=_dedupe_strings,
-        canonicalize_stored_entity_name=_canonicalize_stored_entity_name,
-        merge_scope_hints=_merge_scope_hints,
-        infer_scope_hints=_infer_scope_hints,
-        prune_industry_hints=_prune_industry_hints,
-        sanitize_entity_row=_sanitize_entity_row,
-        build_entity_graph=_build_entity_graph,
-        extract_topic_anchor_terms=_extract_topic_anchor_terms,
-        collect_matched_theme_labels=_collect_matched_theme_labels,
-        clean_candidate_profile_company_names=_clean_candidate_profile_company_names,
-        build_source_diagnostics=_build_source_diagnostics,
-        resolve_stored_report_target_support=_resolve_stored_report_target_support,
-        apply_guarded_rewrite_diagnostics=_apply_guarded_rewrite_diagnostics,
-        assess_stored_report_rewrite_mode=_assess_stored_report_rewrite_mode,
-        stored_report_to_result=_stored_report_to_result,
-        report_intelligence_from_result=_report_intelligence_from_result,
-        build_source_intelligence=_build_source_intelligence,
-        sanitize_report_field_rows=_sanitize_report_field_rows,
-        merge_result_with_intelligence=_merge_result_with_intelligence,
-        apply_topic_specific_overrides=_apply_topic_specific_overrides,
-        canonicalize_stored_result_entities=_canonicalize_stored_result_entities,
-        build_theme_terms=_build_theme_terms,
-        rank_report_entities=_entity_ranking_rank_report_entities,
-        rank_top_entities=_rank_top_entities,
-        filtered_rank_fallback_values=_filtered_rank_fallback_values,
-        build_entity_specific_contact_rows=_build_entity_specific_contact_rows,
-        build_entity_specific_team_rows=_build_entity_specific_team_rows,
-        build_sections=_build_sections,
-        evidence_density_level=_evidence_density_level,
-        source_quality_level=_source_quality_level,
-        source_documents_to_research_source_outputs=_to_research_source_outputs,
-        enrich_report_for_delivery=_enrich_report_for_delivery,
-        is_low_signal_execution_report=_is_low_signal_execution_report,
-        theme_labels_from_scope=_theme_labels_from_scope,
-        source_supports_target_account=_source_supports_target_account,
-        summary_fact_rows=_summary_fact_rows,
-        compress_title_segments=_compress_title_segments,
-        scope_anchor_text_segments=_scope_anchor_text_segments,
-        build_guarded_rewrite_title=_build_guarded_rewrite_title,
-        source_max_age_years=SOURCE_MAX_AGE_YEARS,
-    )
+    return _runtime_stored_report_rewrite_orchestration_dependencies(_build_report_runtime_owner_ports())
 
 
 def rewrite_stored_research_report(report: ResearchReportResponse) -> ResearchReportResponse:

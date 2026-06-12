@@ -15,8 +15,11 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.entities import KnowledgeEntry
 from app.models.research_entities import ResearchReportVersion, ResearchWatchlist, ResearchWatchlistChangeEvent
-from app.schemas.research import ResearchActionCardOut, ResearchReportDocument
+from app.schemas.research import ResearchActionCardOut, ResearchReportDocument, ResearchReportResponse
 from app.services.content_extractor import normalize_text
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.research_quality_service import build_research_quality_profile
+from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 
 
 settings = get_settings()
@@ -1127,6 +1130,177 @@ def build_report_knowledge_intelligence(
     }
 
 
+def _coerce_research_report_response(report: ResearchReportDocument) -> ResearchReportResponse:
+    if isinstance(report, ResearchReportResponse):
+        return report
+    payload = report.model_dump(mode="python")
+    payload["generated_at"] = payload.get("generated_at") or getattr(report, "generated_at", None) or datetime.now(timezone.utc)
+    return ResearchReportResponse.model_validate(payload)
+
+
+def _enrich_report_for_knowledge_metadata(report: ResearchReportDocument) -> ResearchReportResponse:
+    base_report = _coerce_research_report_response(report)
+    try:
+        return base_report.model_copy(
+            update={
+                "market_intelligence": build_market_intelligence_pack(base_report),
+                "solution_delivery_pack": build_solution_delivery_pack(base_report),
+                "quality_profile": build_research_quality_profile(base_report),
+            }
+        )
+    except Exception:
+        return base_report
+
+
+def _clean_backfill_canonical_entity_name(value: str) -> str:
+    normalized = _clean_entity_name(value)
+    for suffix in ("集团官网", "官网首页", "官网"):
+        if normalized.endswith(suffix):
+            candidate = _clean_entity_name(normalized[: -len(suffix)])
+            if candidate and _looks_like_org_name(candidate) and not _is_low_signal_entity_name(candidate):
+                return candidate
+    return normalized
+
+
+def _canonicalized_ranked_entities(
+    rows: list[Any],
+    *,
+    report: ResearchReportDocument,
+    role: str,
+) -> tuple[list[Any], dict[str, str]]:
+    updated: list[Any] = []
+    aliases: dict[str, str] = {}
+    for row in rows:
+        raw_name = _entity_name(row)
+        canonical_name = _canonicalize_account_name(
+            raw_name,
+            report=report,
+            role=role,
+            evidence_links=_entity_evidence_links(row),
+        ) or raw_name
+        canonical_name = _clean_backfill_canonical_entity_name(canonical_name)
+        if raw_name and canonical_name and raw_name != canonical_name:
+            aliases[raw_name] = canonical_name
+        if hasattr(row, "model_copy"):
+            updated.append(row.model_copy(update={"name": canonical_name}))
+        elif isinstance(row, dict):
+            next_row = dict(row)
+            next_row["name"] = canonical_name
+            updated.append(next_row)
+        else:
+            updated.append(row)
+    return updated, aliases
+
+
+def _canonicalized_entity_names(
+    values: list[str],
+    *,
+    report: ResearchReportDocument,
+    role: str,
+    aliases: dict[str, str],
+    limit: int = 8,
+) -> list[str]:
+    rows: list[str] = []
+    for value in values:
+        normalized = normalize_text(value)
+        if not normalized:
+            continue
+        rows.append(
+            _clean_backfill_canonical_entity_name(
+                aliases.get(normalized)
+                or _canonicalize_account_name(normalized, report=report, role=role)
+                or normalized
+            )
+        )
+    return _unique_strings(rows, limit=limit)
+
+
+def _canonicalize_report_for_knowledge_backfill(report: ResearchReportResponse) -> ResearchReportResponse:
+    top_targets, target_aliases = _canonicalized_ranked_entities(
+        list(report.top_target_accounts),
+        report=report,
+        role="target",
+    )
+    pending_targets, pending_target_aliases = _canonicalized_ranked_entities(
+        list(report.pending_target_candidates),
+        report=report,
+        role="target",
+    )
+    target_aliases.update(pending_target_aliases)
+    top_competitors, competitor_aliases = _canonicalized_ranked_entities(
+        list(report.top_competitors),
+        report=report,
+        role="competitor",
+    )
+    pending_competitors, pending_competitor_aliases = _canonicalized_ranked_entities(
+        list(report.pending_competitor_candidates),
+        report=report,
+        role="competitor",
+    )
+    competitor_aliases.update(pending_competitor_aliases)
+    top_partners, partner_aliases = _canonicalized_ranked_entities(
+        list(report.top_ecosystem_partners),
+        report=report,
+        role="partner",
+    )
+    pending_partners, pending_partner_aliases = _canonicalized_ranked_entities(
+        list(report.pending_partner_candidates),
+        report=report,
+        role="partner",
+    )
+    partner_aliases.update(pending_partner_aliases)
+    diagnostics = report.source_diagnostics.model_copy(
+        update={
+            "scope_clients": _canonicalized_entity_names(
+                list(report.source_diagnostics.scope_clients),
+                report=report,
+                role="target",
+                aliases=target_aliases,
+                limit=6,
+            ),
+            "candidate_profile_companies": _canonicalized_entity_names(
+                list(report.source_diagnostics.candidate_profile_companies),
+                report=report,
+                role="partner",
+                aliases={**target_aliases, **competitor_aliases, **partner_aliases},
+                limit=6,
+            ),
+        }
+    )
+    return report.model_copy(
+        update={
+            "target_accounts": _canonicalized_entity_names(
+                list(report.target_accounts),
+                report=report,
+                role="target",
+                aliases=target_aliases,
+                limit=8,
+            ),
+            "competitor_profiles": _canonicalized_entity_names(
+                list(report.competitor_profiles),
+                report=report,
+                role="competitor",
+                aliases=competitor_aliases,
+                limit=8,
+            ),
+            "ecosystem_partners": _canonicalized_entity_names(
+                list(report.ecosystem_partners),
+                report=report,
+                role="partner",
+                aliases=partner_aliases,
+                limit=8,
+            ),
+            "top_target_accounts": top_targets,
+            "pending_target_candidates": pending_targets,
+            "top_competitors": top_competitors,
+            "pending_competitor_candidates": pending_competitors,
+            "top_ecosystem_partners": top_partners,
+            "pending_partner_candidates": pending_partners,
+            "source_diagnostics": diagnostics,
+        }
+    )
+
+
 def build_research_report_metadata(
     report: ResearchReportDocument,
     *,
@@ -1134,17 +1308,7 @@ def build_research_report_metadata(
     tracking_topic_id: str | None = None,
 ) -> dict[str, Any]:
     cards = list(action_cards or [])
-    enriched_report = report
-    try:
-        from app.services import research_service
-
-        base_report = report if isinstance(report, research_service.ResearchReportResponse) else research_service.ResearchReportResponse(
-            **report.model_dump(mode="python"),
-            generated_at=getattr(report, "generated_at", None) or datetime.now(timezone.utc),
-        )
-        enriched_report = research_service._enrich_report_for_delivery(base_report)
-    except Exception:
-        enriched_report = report
+    enriched_report = _enrich_report_for_knowledge_metadata(report)
     payload: dict[str, Any] = {
         "kind": "research_report",
         "report": enriched_report.model_dump(mode="json"),
@@ -1539,11 +1703,9 @@ def _rewrite_stored_report_payload(
     if not isinstance(report_payload, dict):
         return None, [], None
     try:
-        from app.services import research_service
-
-        report = research_service.ResearchReportResponse.model_validate(report_payload)
-        rewritten_report = research_service.rewrite_stored_research_report(report)
-        action_cards = research_service.build_research_action_cards(rewritten_report)
+        report = ResearchReportResponse.model_validate(report_payload)
+        rewritten_report = _canonicalize_report_for_knowledge_backfill(report)
+        action_cards: list[ResearchActionCardOut] = []
         payload = build_research_report_metadata(
             rewritten_report,
             action_cards=action_cards,

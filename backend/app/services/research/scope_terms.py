@@ -339,6 +339,26 @@ def build_theme_terms(
     return list(dict.fromkeys(term.lower() for term in terms if len(normalize_text(term)) >= 2))
 
 
+def theme_labels_from_scope(
+    scope_hints: dict[str, object],
+    *,
+    keyword: str,
+    research_focus: str | None,
+    deps: ScopeTermDependencies,
+) -> list[str]:
+    labels = [
+        normalize_text(str(item))
+        for item in scope_hints.get("industries", []) or []
+        if normalize_text(str(item))
+    ]
+    lowered_terms = " ".join(extract_topic_anchor_terms(keyword, research_focus, deps=deps)).lower()
+    if any(token in lowered_terms for token in ("ai漫剧", "漫剧", "ai短剧", "aigc动画", "动漫短剧", "漫画短剧")):
+        labels.append("AI漫剧")
+    if any(token in lowered_terms for token in ("政务云", "数字政府", "政务")):
+        labels.append("政务云")
+    return deps.dedupe_strings(labels, 3)
+
+
 def build_strict_theme_terms(scope_hints: dict[str, object]) -> list[str]:
     terms = [
         normalize_text(str(item)).lower()

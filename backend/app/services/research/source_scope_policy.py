@@ -10,6 +10,9 @@ from app.services.research.source_documents import SourceDocument
 from app.services.research.web_search import SearchHit
 
 
+SOURCE_MAX_AGE_YEARS = 7
+
+
 @dataclass(frozen=True, slots=True)
 class SourceScopePolicyDependencies:
     dedupe_sources: Callable[[Iterable[SourceDocument]], list[SourceDocument]]
