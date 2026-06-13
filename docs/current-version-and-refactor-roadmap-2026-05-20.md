@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current local release candidate: `1.3.0+20260613`, adding an executable, cost-aware 100-case evaluation baseline on top of persisted workflow observability.
+- Current local release candidate: `1.4.0+20260613`, adding opt-in LangGraph shadow orchestration on top of executable evaluation and persisted workflow observability.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -260,9 +260,15 @@ Acceptance:
 
 ### `1.4.0`: LangGraph Shadow Runtime
 
-- Implement a replaceable LangGraph workflow engine behind the existing framework-neutral protocol.
-- Run deterministic and graph engines against the same bounded evaluation cases.
-- Keep the graph engine in shadow mode until parity, latency, cost, and failure-recovery gates pass.
+- Implemented a replaceable LangGraph workflow engine behind the existing framework-neutral protocol.
+- Added explicit deterministic or graph selection for bounded evaluation cases.
+- Kept the graph engine in shadow mode until parity, latency, cost, and failure-recovery gates pass.
+
+### `1.5.x`: Hotspot Decomposition and UI Regression Coverage
+
+- Split the remaining knowledge-intelligence and work-task orchestration hotspots by stable ownership boundaries.
+- Decompose the largest frontend controllers and presentation components without changing route contracts.
+- Add frontend unit/component coverage before completing the remaining semantic theme-token migration.
 
 ### Later
 

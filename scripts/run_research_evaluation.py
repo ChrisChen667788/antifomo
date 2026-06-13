@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 import json
 from pathlib import Path
 import sys
@@ -17,10 +18,8 @@ from app.services.research.evaluation_dataset import (  # noqa: E402
     DATASET_PATH,
     load_research_evaluation_dataset,
 )
-from app.services.research.evaluation_runner import (  # noqa: E402
-    execute_research_evaluation_case,
-    run_research_evaluation,
-)
+from app.services.research.evaluation_runner import run_research_evaluation  # noqa: E402
+from app.services.research_evaluation_runtime import execute_research_evaluation_case  # noqa: E402
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -30,6 +29,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=None, help="Run only the first N selected cases.")
     parser.add_argument("--case-id", action="append", default=[], help="Select one or more case IDs.")
     parser.add_argument("--output", type=Path, default=PROJECT_ROOT / ".tmp" / "research-evaluation.json")
+    parser.add_argument(
+        "--workflow-engine",
+        choices=("deterministic", "langgraph_shadow"),
+        default="deterministic",
+    )
     parser.add_argument(
         "--allow-live-provider",
         action="store_true",
@@ -76,13 +80,18 @@ def main() -> int:
             "remote provider credentials are configured; pass --allow-live-provider to accept token cost"
         )
 
-    result = run_research_evaluation(manifest, selected, execute_research_evaluation_case)
+    result = run_research_evaluation(
+        manifest,
+        selected,
+        partial(execute_research_evaluation_case, workflow_engine=args.workflow_engine),
+    )
     result.write_json(args.output)
     print(
         json.dumps(
             {
                 **summary,
                 "artifact": str(args.output),
+                "workflow_engine": args.workflow_engine,
                 "release_gate_eligible": result.release_gate_eligible,
                 "release_gate_passed": result.release_gate_passed,
                 "gate_blockers": result.gate_blockers,

@@ -4580,15 +4580,19 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
     )
 
 
-def _research_workflow_engine() -> ResearchWorkflowEngine:
-    return DeterministicResearchWorkflowEngine(
-        DeterministicResearchWorkflowDependencies(
-            prepare_setup=_generation_setup_prepare,
-            setup_dependencies=_generation_setup_dependencies,
-            run_workflow=_generation_workflow_run,
-            workflow_dependencies=_generation_workflow_dependencies,
-        )
+def build_research_workflow_engine(engine_name: str | None = None) -> ResearchWorkflowEngine:
+    dependencies = DeterministicResearchWorkflowDependencies(
+        prepare_setup=_generation_setup_prepare,
+        setup_dependencies=_generation_setup_dependencies,
+        run_workflow=_generation_workflow_run,
+        workflow_dependencies=_generation_workflow_dependencies,
     )
+    selected_engine = engine_name or get_settings().research_workflow_engine
+    if selected_engine == "langgraph_shadow":
+        from app.services.research.langgraph_workflow_engine import LangGraphResearchWorkflowEngine
+
+        return LangGraphResearchWorkflowEngine(dependencies)
+    return DeterministicResearchWorkflowEngine(dependencies)
 
 
 def execute_research_report_workflow(
@@ -4599,7 +4603,7 @@ def execute_research_report_workflow(
     metrics: ResearchRunMetrics | None = None,
     engine: ResearchWorkflowEngine | None = None,
 ) -> ResearchWorkflowExecution:
-    workflow_engine = engine or _research_workflow_engine()
+    workflow_engine = engine or build_research_workflow_engine()
     return workflow_engine.execute(
         payload,
         progress_callback=progress_callback,

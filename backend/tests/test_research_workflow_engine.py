@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.schemas.research import ResearchReportRequest
 from app.services.research.run_metrics import ResearchRunMetrics
+from app.services.research.langgraph_workflow_engine import LangGraphResearchWorkflowEngine
 from app.services.research.workflow_engine import (
     DeterministicResearchWorkflowDependencies,
     DeterministicResearchWorkflowEngine,
@@ -87,3 +88,55 @@ def test_research_facade_executes_through_injected_engine() -> None:
 
     assert execution.report is report
     assert execution.metrics is metrics
+
+
+def test_langgraph_shadow_engine_preserves_contract_and_metrics() -> None:
+    progress_events: list[tuple[str, int, str]] = []
+    snapshots: list[object] = []
+
+    def prepare_setup(payload: ResearchReportRequest, *, deps: object) -> object:
+        assert deps == "setup-deps"
+        return {"keyword": payload.keyword}
+
+    def run_workflow(
+        payload: ResearchReportRequest,
+        *,
+        setup: object,
+        progress_callback: object,
+        snapshot_callback: object,
+        deps: object,
+    ) -> object:
+        assert setup == {"keyword": payload.keyword}
+        assert deps == "workflow-deps"
+        progress_callback("search", 30, "searching")
+        report = SimpleNamespace(source_count=2, sections=["one"])
+        snapshot_callback(report)
+        progress_callback("completed", 100, "complete")
+        return report
+
+    engine = LangGraphResearchWorkflowEngine(
+        DeterministicResearchWorkflowDependencies(
+            prepare_setup=prepare_setup,
+            setup_dependencies=lambda: "setup-deps",
+            run_workflow=run_workflow,
+            workflow_dependencies=lambda: "workflow-deps",
+        )
+    )
+    metrics = ResearchRunMetrics(run_id="langgraph-run")
+    execution = engine.execute(
+        ResearchReportRequest(keyword="政务云预算"),
+        progress_callback=lambda stage, percent, message: progress_events.append((stage, percent, message)),
+        snapshot_callback=snapshots.append,
+        metrics=metrics,
+    )
+
+    assert execution.report.source_count == 2
+    assert execution.metrics is metrics
+    assert progress_events == [("search", 30, "searching"), ("completed", 100, "complete")]
+    assert len(snapshots) == 1
+    snapshot = metrics.snapshot()
+    assert snapshot["workflow_engine"] == "langgraph_shadow"
+    assert snapshot["status"] == "succeeded"
+    assert snapshot["nodes"]["workflow.setup"]["succeeded"] == 1
+    assert snapshot["nodes"]["workflow.generate"]["succeeded"] == 1
+    assert snapshot["nodes"]["workflow.graph"]["succeeded"] == 1

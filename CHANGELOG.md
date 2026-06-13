@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.4.0+20260613 - 2026-06-13
+
+- Added a LangGraph `StateGraph` adapter behind the framework-neutral research workflow protocol.
+- Preserved deterministic setup/generation dependency ports, callbacks, snapshots, and run-metric keys for direct parity measurement.
+- Added explicit `deterministic` and `langgraph_shadow` engine selection while retaining deterministic production defaults.
+- Added bounded LangGraph evaluation CLI selection without automatic production dual-runs or hidden model-cost multiplication.
+- Pinned the LangGraph 1.x dependency line and documented the shadow promotion gates.
+
 ## 1.3.0+20260613 - 2026-06-13
 
 - Added an executable 100-case research evaluation runner with bounded case selection and machine-readable JSON artifacts.
