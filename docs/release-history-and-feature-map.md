@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `1.5.0+20260613`
+Current version: `1.6.0+20260613`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
@@ -31,6 +31,7 @@ For the upcoming modular architecture refactor and day/night design-system refre
 | `1.3.0` | Executable research evaluation | Added a bounded 100-case runner, machine-readable artifacts, honest unavailable retrieval metrics, explicit live-provider cost confirmation, and strict release-gate eligibility. |
 | `1.4.0` | LangGraph shadow runtime | Added an opt-in LangGraph `StateGraph` engine behind the workflow protocol with deterministic parity metrics and no automatic production dual-run cost. |
 | `1.5.0` | Hotspot decomposition and UI regression coverage | Split work-task and knowledge-intelligence owners, extracted inbox/archive frontend models, added Vitest component/model coverage and theme regression, and upgraded Next.js to the current security patch. |
+| `1.6.0` | Release and theme hardening | Added shared Focus runtime owners, pre-hydration preference bootstrap, isolated light/dark production screenshots, legacy dark-theme utility compatibility, and dead research-facade wrapper retirement. |
 
 ## Current Capability Inventory
 

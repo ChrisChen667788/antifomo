@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from app.services import research_service
 from app.services.research import report_row_quality
 
 
@@ -28,17 +27,3 @@ def test_looks_like_insufficient_covers_localized_and_english_markers() -> None:
     assert report_row_quality.looks_like_insufficient("当前证据不足，待补充")
     assert report_row_quality.looks_like_insufficient("Current evidence is insufficient")
     assert not report_row_quality.looks_like_insufficient("预算窗口已经明确")
-
-
-def test_research_service_row_quality_constants_are_owner_aliases() -> None:
-    for name in (
-        "MONEY_PATTERN",
-        "SUMMARY_GUIDANCE_TOKENS",
-        "BAD_SUMMARY_PHRASES",
-        "BAD_EXEC_SUMMARY_PHRASES",
-        "FIELD_ROW_NOISE_TOKENS",
-        "COMMERCIAL_BUDGET_SIGNAL_TOKENS",
-        "BUDGET_ROW_NOISE_TOKENS",
-        "BUDGET_ROW_CONTEXT_TOKENS",
-    ):
-        assert getattr(research_service, name) is getattr(report_row_quality, name)

@@ -10,6 +10,7 @@ import type {
   WechatAgentBatchStatus,
 } from "@/lib/api/types";
 import { dedupeTextList } from "@/lib/display-list";
+export { getBatchProgress, hasBatchSnapshot } from "@/lib/focus-runtime-model";
 import type { SessionMetrics } from "@/lib/mock-data";
 
 export const SESSION_ID_KEY = "anti_fomo_session_id";
@@ -137,30 +138,6 @@ function normalizeEntityNames(values: unknown): string[] {
     limit: 3,
     normalizer: conciseEntityName,
   });
-}
-
-export function hasBatchSnapshot(status: WechatAgentBatchStatus | null): boolean {
-  if (!status) return false;
-  return Boolean(
-    status.total_segments ||
-      status.finished_at ||
-      status.running ||
-      status.submitted ||
-      status.submitted_new ||
-      status.deduplicated_existing ||
-      status.skipped_seen ||
-      status.failed,
-  );
-}
-
-export function getBatchProgress(status: WechatAgentBatchStatus | null): number {
-  if (!status || status.total_segments <= 0) {
-    return 0;
-  }
-  if (status.running) {
-    return Math.max(8, Math.min(96, Math.round((Math.max(status.current_segment_index, 1) / status.total_segments) * 100)));
-  }
-  return status.finished_at ? 100 : 0;
 }
 
 export function formatDuration(minutes: number, t: SummaryTranslateFn): string {

@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0+20260613",
-  "generated_at": "2026-05-20T08:22:44.353Z",
+  "version": "1.6.0",
+  "generated_at": "2026-06-13T16:16:43.880Z",
   "viewport": {
     "width": 1600,
     "height": 1100,
@@ -9,173 +9,236 @@
   "quality_gate": {
     "min_file_size_bytes": 40000,
     "runtime_overlay_check": true,
-    "expected_screenshot_count": 15,
-    "accepted_screenshot_count": 15
+    "expected_screenshot_count": 19,
+    "accepted_screenshot_count": 19
   },
   "screenshots": [
     {
       "feature": "Home signal dashboard",
       "route": "/",
+      "theme": "light",
       "file": "docs/assets/screenshots/home-signal-dashboard.png",
       "description": "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 669800
+        "actual_file_size_bytes": 691186
       }
     },
     {
       "feature": "Inbox research workspace",
       "route": "/inbox",
+      "theme": "light",
       "file": "docs/assets/screenshots/inbox-research-workspace.png",
       "description": "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 336825
+        "actual_file_size_bytes": 284100
       }
     },
     {
       "feature": "Saved read-later workspace",
       "route": "/saved",
+      "theme": "light",
       "file": "docs/assets/screenshots/saved-readlater-workspace.png",
       "description": "Saved-item and read-later review surface with topic and scoring context.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 590088
+        "actual_file_size_bytes": 684742
       }
     },
     {
       "feature": "Focus session workspace",
       "route": "/focus",
+      "theme": "light",
       "file": "docs/assets/screenshots/focus-session-workspace.png",
       "description": "Focused execution timer with headless-source-first collector startup and WeChat PC supplementary harvesting.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 425712
+        "actual_file_size_bytes": 444201
       }
     },
     {
       "feature": "Session summary workspace",
       "route": "/session-summary",
+      "theme": "light",
       "file": "docs/assets/screenshots/session-summary-workspace.png",
       "description": "Session metrics, markdown summary, reading list, and follow-up draft workspace.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 485818
+        "actual_file_size_bytes": 463787
       }
     },
     {
       "feature": "Collector operations workspace",
       "route": "/collector",
+      "theme": "light",
       "file": "docs/assets/screenshots/collector-operations-workspace.png",
       "description": "Desktop collector, source health diagnostics, coverage rates, OCR backfill, pending queue, and daily export operations panel.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 404338
+        "actual_file_size_bytes": 450617
       }
     },
     {
       "feature": "Settings and tuning workspace",
       "route": "/settings",
+      "theme": "light",
       "file": "docs/assets/screenshots/settings-tuning-workspace.png",
       "description": "Preference, WorkBuddy, collector, and recommender tuning controls.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 405887
+        "actual_file_size_bytes": 470803
       }
     },
     {
       "feature": "Knowledge library workspace",
       "route": "/knowledge",
+      "theme": "light",
       "file": "docs/assets/screenshots/knowledge-library-workspace.png",
       "description": "Knowledge list, commercial dashboard, account signals, and saved intelligence cards.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 489587
+        "actual_file_size_bytes": 492755
       }
     },
     {
       "feature": "Knowledge commercial hub",
       "route": "/knowledge/accounts",
+      "theme": "light",
       "file": "docs/assets/screenshots/knowledge-commercial-hub.png",
       "description": "Account intelligence, opportunity context, review queues, and commercial follow-up actions.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 479447
+        "actual_file_size_bytes": 465693
       }
     },
     {
       "feature": "Knowledge merge workflow",
-      "route": "/knowledge/merge?ids=f539d1d3-3aa3-4254-b944-548d85f1731d,bf0f7228-da9d-4cb9-8a9d-b39ac3dc1add&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
+      "route": "/knowledge/merge?ids=8c98db3b-a0e2-4452-83c5-59b63a28dccf,f539d1d3-3aa3-4254-b944-548d85f1731d&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
+      "theme": "light",
       "file": "docs/assets/screenshots/knowledge-merge-workflow.png",
       "description": "Knowledge-card merge preview, inherited state checks, and target-title workflow.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 420087
+        "actual_file_size_bytes": 425020
       }
     },
     {
       "feature": "Research center dashboard",
       "route": "/research",
+      "theme": "light",
       "file": "docs/assets/screenshots/research-center-dashboard.png",
       "description": "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 520015
+        "actual_file_size_bytes": 570694
       }
     },
     {
       "feature": "Research topic workspace",
       "route": "/research/topics/f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
+      "theme": "light",
       "file": "docs/assets/screenshots/research-topic-workspace.png",
       "description": "Topic-version workspace for evidence density, follow-up impact, and long-running changes.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 434765
+        "actual_file_size_bytes": 199816
       }
     },
     {
       "feature": "Research compare workspace",
       "route": "/research/compare?snapshot=2888d87f-4dd2-4363-b978-4d22d9951111&topicId=f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
+      "theme": "light",
       "file": "docs/assets/screenshots/research-compare-workspace.png",
       "description": "Multi-version comparison matrix for account, competitor, evidence, and delivery deltas.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 505168
+        "actual_file_size_bytes": 443546
       }
     },
     {
       "feature": "Research experiment orchestration",
       "route": "/research",
+      "theme": "light",
       "file": "docs/assets/screenshots/research-experiment-control-plane.png",
       "description": "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 382390
+        "actual_file_size_bytes": 314246
       }
     },
     {
       "feature": "Research archive viewer",
       "route": "/research/archives/07d25909-3590-4ff4-ab2b-2a8b7e674306",
+      "theme": "light",
       "file": "docs/assets/screenshots/research-archive-viewer.png",
       "description": "Historical Markdown archive viewer with delivery digest, section links, and version context.",
       "quality_gate": {
         "status": "accepted",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 497928
+        "actual_file_size_bytes": 552348
+      }
+    },
+    {
+      "feature": "Home signal dashboard",
+      "route": "/",
+      "theme": "dark",
+      "file": "docs/assets/screenshots/home-signal-dashboard-dark.png",
+      "description": "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching. Dark-theme regression baseline.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 445293
+      }
+    },
+    {
+      "feature": "Inbox research workspace",
+      "route": "/inbox",
+      "theme": "dark",
+      "file": "docs/assets/screenshots/inbox-research-workspace-dark.png",
+      "description": "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace. Dark-theme regression baseline.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 308461
+      }
+    },
+    {
+      "feature": "Settings and tuning workspace",
+      "route": "/settings",
+      "theme": "dark",
+      "file": "docs/assets/screenshots/settings-tuning-workspace-dark.png",
+      "description": "Preference, WorkBuddy, collector, and recommender tuning controls. Dark-theme regression baseline.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 461033
+      }
+    },
+    {
+      "feature": "Research center dashboard",
+      "route": "/research",
+      "theme": "dark",
+      "file": "docs/assets/screenshots/research-center-dashboard-dark.png",
+      "description": "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics. Dark-theme regression baseline.",
+      "quality_gate": {
+        "status": "accepted",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 529559
       }
     }
   ]

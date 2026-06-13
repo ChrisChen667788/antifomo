@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.6.0+20260613 - 2026-06-13
+
+- Extracted shared Focus/session countdown, progress, and source-coverage behavior into a tested frontend runtime owner.
+- Added pre-hydration preference bootstrap so theme, font, text size, and language attributes are correct before React mounts.
+- Added an isolated production screenshot harness with automatic port allocation and explicit light/dark coverage for four primary routes.
+- Added a dark-theme compatibility layer for legacy Tailwind slate/white utilities and visually verified the resulting release screenshots.
+- Removed 40 unreferenced private compatibility wrappers from `research_service.py` and migrated the remaining owner tests away from facade-private calls.
+
 ## 1.5.0+20260613 - 2026-06-13
 
 - Split work-task context/PDF/formal-document responsibilities and knowledge-intelligence entity-quality/commercial-text/report-metadata responsibilities into owned backend modules while retaining compatibility exports.

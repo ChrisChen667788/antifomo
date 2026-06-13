@@ -1,16 +1,18 @@
 # Feature Screenshot Coverage
 
-Version: `1.2.0+20260613`
+Version: `1.6.0+20260613`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 
-Refresh and validate the full set with:
+With the backend running on port `8000`, refresh and validate the full set through an isolated production frontend:
 
 ```bash
 npm run repo:screenshots
 ```
 
-The capture script also writes `docs/assets/screenshots/screenshot-manifest.json` and rejects screenshots that are too small or captured with a runtime error overlay.
+The release harness builds the application, allocates a free localhost port, starts `next start`, captures the matrix, and stops only that isolated frontend process. `npm run repo:screenshots:capture` remains available when a compatible frontend is already running.
+
+The capture script also writes `docs/assets/screenshots/screenshot-manifest.json` and rejects screenshots that are too small, captured with a runtime error overlay, or rendered with a theme different from the declared manifest entry. The four primary release routes have both light and dark baselines.
 
 ## Coverage Matrix
 
@@ -31,6 +33,10 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 | Research compare workspace | `docs/assets/screenshots/research-compare-workspace.png` | Version comparison, account signals, competitor deltas, and export context. |
 | Research experiment orchestration | `docs/assets/screenshots/research-experiment-control-plane.png` | Cohorts, baselines, rollout gates, manifests, and runtime policy diagnostics. |
 | Research archive viewer | `docs/assets/screenshots/research-archive-viewer.png` | Historical markdown archive, delivery digest, section links, and version context. |
+| Home signal dashboard, dark | `docs/assets/screenshots/home-signal-dashboard-dark.png` | Explicit dark-theme feed and navigation regression baseline. |
+| Inbox / research workspace, dark | `docs/assets/screenshots/inbox-research-workspace-dark.png` | Explicit dark-theme intake and research regression baseline. |
+| Research center dashboard, dark | `docs/assets/screenshots/research-center-dashboard-dark.png` | Explicit dark-theme research operations regression baseline. |
+| Settings and tuning workspace, dark | `docs/assets/screenshots/settings-tuning-workspace-dark.png` | Explicit dark-theme preference and operations regression baseline. |
 
 ## Gallery
 

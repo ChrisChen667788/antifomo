@@ -536,6 +536,62 @@ a {
   background: var(--af-success);
 }
 
+/* Keep legacy Tailwind color utilities readable until each component moves to af-* semantics. */
+html[data-af-theme="dark"] :is(
+  [class~="text-slate-900"],
+  [class~="text-slate-800"]
+) {
+  color: var(--af-text-primary) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-slate-700"],
+  [class~="text-slate-600"]
+) {
+  color: var(--af-text-secondary) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-slate-500"],
+  [class~="text-slate-400"]
+) {
+  color: var(--af-text-tertiary) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-white"],
+  [class~="bg-white/85"],
+  [class~="bg-white/84"],
+  [class~="bg-white/80"],
+  [class~="bg-white/75"],
+  [class~="bg-white/70"],
+  [class~="bg-white/65"],
+  [class~="bg-white/60"],
+  [class~="bg-white/55"]
+) {
+  background-color: var(--af-surface-muted) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-slate-100"],
+  [class~="bg-slate-50"]
+) {
+  background-color: var(--af-surface-inset) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="border-white"],
+  [class~="border-white/85"],
+  [class~="border-white/80"],
+  [class~="border-white/70"],
+  [class~="border-white/60"],
+  [class~="border-slate-100"],
+  [class~="border-slate-200"],
+  [class~="border-slate-200/80"]
+) {
+  border-color: var(--af-border-subtle) !important;
+}
+
 .af-fade-up {
   animation: af-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

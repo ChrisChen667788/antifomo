@@ -74,6 +74,7 @@ Each public version line below includes both an English product summary and a Ch
 | `1.3.0` | Executable 100-case research evaluation with honest unavailable metrics, cost-safe provider confirmation, JSON artifacts, and strict release-gate eligibility. | 可执行 100 条研究评测：缺失 gold 指标明确不可用、远程模型成本显式确认、JSON 产物和严格发布门禁。 |
 | `1.4.0` | LangGraph shadow orchestration behind the workflow protocol, with deterministic parity metrics, explicit engine selection, and no automatic production dual-run cost. | LangGraph 影子编排：位于工作流协议之后，复用确定性指标、显式选择引擎，且不自动增加生产双跑成本。 |
 | `1.5.0` | Hotspot decomposition and UI regression coverage with backend owner splits, frontend model owners, Vitest component/model tests, theme preference regression, and a current Next.js security patch. | 热点拆分与 UI 回归覆盖：后端 owner 拆分、前端 model owner、Vitest 组件/模型测试、主题偏好回归，以及 Next.js 当前安全补丁。 |
+| `1.6.0` | Release hardening with shared Focus runtime owners, pre-hydration preferences, deterministic dual-theme screenshots, dark-mode contrast compatibility, and dead facade-wrapper retirement. | 发布加固：共享 Focus 运行时 owner、首屏偏好引导、确定性双主题截图、深色对比度兼容和废弃 facade 包装器清理。 |
 
 ## Product screenshots
 
@@ -248,7 +249,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.5.0+20260613`
+- current version: `1.6.0+20260613`
 - web build passes
 - frontend and backend test suites pass via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

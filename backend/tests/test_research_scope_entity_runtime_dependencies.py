@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.services import research_service
 from app.services.research.report_runtime_dependencies import (
     action_card_dependencies,
     report_readiness_dependencies,
@@ -56,12 +55,23 @@ from app.services.research.entity_ranking_runtime import (
     rank_runtime_top_entities,
     source_supports_target_account,
 )
-from app.services.research.scope_entity_runtime_dependencies import scope_entity_runtime_functions
+from app.services.research.report_field_sanitization import (
+    sanitize_entity_row,
+    sanitize_report_field_rows,
+)
+from app.services.research.scope_entity_runtime_dependencies import (
+    report_field_sanitization_dependencies,
+    scope_entity_runtime_functions,
+    scope_term_dependencies,
+)
+from app.services.research.scope_terms import build_theme_terms, theme_labels_from_scope
 from app.services.research.source_intelligence_runtime import build_source_intelligence
 
 
-def test_scope_entity_runtime_functions_preserve_facade_behavior() -> None:
+def test_scope_entity_runtime_functions_preserve_owner_behavior() -> None:
     runtime = scope_entity_runtime_functions()
+    scope_deps = scope_term_dependencies()
+    field_deps = report_field_sanitization_dependencies()
     scope_hints = {
         "regions": ["上海"],
         "industries": ["政务云"],
@@ -72,19 +82,21 @@ def test_scope_entity_runtime_functions_preserve_facade_behavior() -> None:
         "上海政务云预算窗口",
         "锁定数据局和采购计划",
         scope_hints,
-    ) == research_service._build_theme_terms(
+    ) == build_theme_terms(
         "上海政务云预算窗口",
         "锁定数据局和采购计划",
         scope_hints,
+        deps=scope_deps,
     )
     assert runtime.theme_labels_from_scope(
         scope_hints,
         keyword="上海政务云预算窗口",
         research_focus="锁定数据局和采购计划",
-    ) == research_service._theme_labels_from_scope(
+    ) == theme_labels_from_scope(
         scope_hints,
         keyword="上海政务云预算窗口",
         research_focus="锁定数据局和采购计划",
+        deps=scope_deps,
     )
 
     for field_key, row in (
@@ -93,16 +105,19 @@ def test_scope_entity_runtime_functions_preserve_facade_behavior() -> None:
         ("ecosystem_partners", "德勤：联合咨询与交付伙伴"),
         ("target_accounts", "当前证据不足，建议补充具体公司"),
     ):
-        assert runtime.sanitize_entity_row(field_key, row) == research_service._sanitize_entity_row(field_key, row)
+        assert runtime.sanitize_entity_row(field_key, row) == sanitize_entity_row(field_key, row, deps=field_deps)
 
 
 def test_report_runtime_dependencies_use_scope_entity_factory_functions() -> None:
     scope_hints = {"industries": ["AI漫剧"], "clients": ["爱奇艺"]}
-    expected_terms = research_service._build_theme_terms("AI漫剧头部公司", "分析平台商业化路径", scope_hints)
-    expected_labels = research_service._theme_labels_from_scope(
+    scope_deps = scope_term_dependencies()
+    field_deps = report_field_sanitization_dependencies()
+    expected_terms = build_theme_terms("AI漫剧头部公司", "分析平台商业化路径", scope_hints, deps=scope_deps)
+    expected_labels = theme_labels_from_scope(
         scope_hints,
         keyword="AI漫剧头部公司",
         research_focus="分析平台商业化路径",
+        deps=scope_deps,
     )
 
     owners = build_report_runtime_owner_ports()
@@ -124,13 +139,15 @@ def test_report_runtime_dependencies_use_scope_entity_factory_functions() -> Non
     ) == expected_terms
 
     row = "爱奇艺：推进 AI 漫剧平台采购与商业化"
-    assert readiness_deps.sanitize_entity_row("target_accounts", row) == research_service._sanitize_entity_row(
+    assert readiness_deps.sanitize_entity_row("target_accounts", row) == sanitize_entity_row(
         "target_accounts",
         row,
+        deps=field_deps,
     )
-    assert orchestration_deps.sanitize_report_field_rows("target_accounts", [row]) == research_service._sanitize_report_field_rows(
+    assert orchestration_deps.sanitize_report_field_rows("target_accounts", [row]) == sanitize_report_field_rows(
         "target_accounts",
         [row],
+        deps=field_deps,
     )
 
 
@@ -183,7 +200,6 @@ def test_report_runtime_dependency_modules_do_not_reach_back_into_facade() -> No
         if "research_service" in path.read_text(encoding="utf-8")
     }
 
-    assert not hasattr(research_service, "build_report_runtime_owner_ports")
     assert "build_scope_entity_owner_ports" not in facade_source
     assert "def build_report_runtime_owner_ports" not in facade_source
     assert "research_service" not in entity_policy_source

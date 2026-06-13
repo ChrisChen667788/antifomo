@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current local release candidate: `1.5.0+20260613`, adding backend/frontend hotspot decomposition, frontend regression coverage, and a current Next.js security patch on top of measured LangChain and opt-in LangGraph workflows.
+- Current local release candidate: `1.6.0+20260613`, adding shared Focus runtime ownership, pre-hydration preferences, deterministic light/dark release screenshots, dark-theme compatibility, and dead research-facade wrapper retirement on top of measured LangChain and opt-in LangGraph workflows.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -277,15 +277,24 @@ Acceptance:
 
 ### `1.5.x` Follow-up
 
-- Continue presentation-only decomposition for session summary, focus timer, research compare, and the remaining inbox form sections when behavior changes require those surfaces.
-- Add screenshot regression coverage for explicit light and dark theme routes; current automated coverage validates theme state/DOM synchronization, not pixel diffs.
-- Keep LangGraph in shadow mode until curated evaluation data can produce complete retrieval metrics and parity gates.
+Completed in `1.6.0+20260613`:
+
+- Extracted shared Focus/session runtime calculations without mechanically fragmenting cohesive presentation sections.
+- Added isolated production screenshot coverage for explicit light and dark theme routes, including theme-state and runtime-overlay gates.
+- Added pre-hydration preference application and legacy dark-theme utility compatibility, then visually reviewed the generated dark baselines.
+- Retired all statically unreferenced private wrappers from `research_service.py` and removed direct owner-test calls to facade-private functions.
+
+### `1.6.x` Operating Policy
+
+- Keep LangGraph in shadow mode until the curated evaluation dataset can produce complete retrieval metrics and parity gates.
+- Split remaining large presentation files only when a behavior change exposes a stable section/controller boundary; line count alone is not a refactor requirement.
+- Add new research behavior to owner modules and workflow ports, never back into the compatibility facade.
 
 ### Later
 
 - Add richer architecture-export formats: ADR table export, dependency workshop checklist, stakeholder brief, and customer technical workshop agenda.
 - Add plugin/extensibility boundaries after core modules are stable.
-- Add CI-level architecture checks for forbidden imports and cross-module coupling.
+- Extend existing architecture checks when a new package boundary is introduced; do not add speculative checks without an enforceable dependency rule.
 
 ## Refactor Execution Log
 

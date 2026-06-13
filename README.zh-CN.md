@@ -69,6 +69,11 @@ Anti-FOMO 关注的是整条工作链路：
 | `1.1.0` | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. |
 | `1.1.1` | 可度量工作流基线：框架中立编排、单次运行指标、模型成本账本和版本化 100 条研究评测集结构。 | Measurable workflow baseline with framework-neutral orchestration, per-run metrics, a model cost ledger, and a versioned 100-case research evaluation structure. |
 | `1.2.0` | LangChain 适配层：Pydantic 结构化输出、provider 真实 token usage、可配置模型价格和生成/策略模型独立路由。 | LangChain adapter with Pydantic structured output, provider-reported token usage, configurable model pricing, and independent generation/strategy routing. |
+| `1.2.1` | 运行时加固：拆分模型 provider owner、持久化任务指标与成本账本、类型化观测 API 和 CI 密钥扫描。 | Runtime hardening with split provider owners, persisted job metrics/cost ledgers, typed observability APIs, and CI secret scanning. |
+| `1.3.0` | 可执行 100 条研究评测：真实不可用指标、远程成本确认、JSON 产物和严格发布门禁。 | Executable 100-case research evaluation with honest unavailable metrics, cost confirmation, JSON artifacts, and strict release gates. |
+| `1.4.0` | LangGraph 影子编排：协议后置、可显式选择、可衡量确定性 parity，且不自动增加生产双跑成本。 | Opt-in LangGraph shadow orchestration behind the workflow protocol with measurable deterministic parity. |
+| `1.5.0` | 热点拆分与 UI 回归：后端 owner、前端 model owner、Vitest 回归和 Next.js 安全补丁。 | Hotspot decomposition, frontend owner tests, UI regression coverage, and a current Next.js security patch. |
+| `1.6.0` | 发布加固：Focus 共享运行时、首屏偏好引导、双主题生产截图、深色对比度兼容和废弃 facade 包装器清理。 | Release hardening with shared Focus runtime, pre-hydration preferences, dual-theme screenshots, dark contrast compatibility, and dead facade-wrapper retirement. |
 
 ## 产品截图
 
@@ -243,7 +248,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`1.2.0+20260613`
+- 当前版本：`1.6.0+20260613`
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面

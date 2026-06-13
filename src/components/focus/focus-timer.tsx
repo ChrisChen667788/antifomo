@@ -22,9 +22,19 @@ import {
 } from "@/lib/api";
 import { FocusAssistantPanel } from "@/components/focus/focus-assistant-panel";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
+import {
+  FOCUS_DURATIONS,
+  clampProgress,
+  formatCountdown,
+  formatRatioPercent,
+  getBatchProgress,
+  hasBatchSnapshot,
+  resolveSessionRemainingSeconds,
+  sourceCoverageClass,
+  sourceCoverageLabel,
+  type FocusDuration,
+} from "@/lib/focus-runtime-model";
 
-const DURATIONS = [25, 50] as const;
-type FocusDuration = (typeof DURATIONS)[number];
 const FOCUS_BUBBLES = [
   { left: "16%", size: 10, duration: "7.8s", delay: "0s", drift: "-14px" },
   { left: "28%", size: 14, duration: "6.6s", delay: "1.2s", drift: "10px" },
@@ -37,105 +47,6 @@ const SESSION_ID_KEY = "anti_fomo_session_id";
 const SESSION_GOAL_KEY = "anti_fomo_session_goal";
 const FOCUS_WECHAT_AGENT_KEY = "anti_fomo_focus_wechat_agent_owned";
 type FocusTransportMode = "idle" | "bootstrapping" | "live" | "local";
-
-function formatCountdown(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function clampProgress(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
-}
-
-function parseServerUtcDate(value: string | null | undefined): number {
-  const text = String(value || "").trim();
-  if (!text) {
-    return Number.NaN;
-  }
-  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/i.test(text) ? text : `${text}Z`;
-  return Date.parse(normalized);
-}
-
-function resolveSessionRemainingSeconds(session: ApiSession, fallbackDuration: FocusDuration): number {
-  const totalSeconds = Math.max(60, Number(session.duration_minutes || fallbackDuration) * 60);
-  if (typeof session.remaining_seconds === "number" && Number.isFinite(session.remaining_seconds)) {
-    return Math.max(0, Math.round(session.remaining_seconds));
-  }
-
-  const elapsedSeconds =
-    typeof session.elapsed_seconds === "number" && Number.isFinite(session.elapsed_seconds)
-      ? Math.max(0, Math.round(session.elapsed_seconds))
-      : 0;
-  if (session.status !== "running") {
-    return Math.max(0, totalSeconds - elapsedSeconds);
-  }
-
-  const currentWindowStartMs = parseServerUtcDate(session.current_window_started_at || session.start_time);
-  if (Number.isNaN(currentWindowStartMs)) {
-    return Math.max(0, totalSeconds - elapsedSeconds);
-  }
-
-  const liveElapsed = Math.max(0, Math.floor((Date.now() - currentWindowStartMs) / 1000));
-  return Math.max(0, totalSeconds - elapsedSeconds - liveElapsed);
-}
-
-function hasBatchSnapshot(status: WechatAgentBatchStatus | null): boolean {
-  if (!status) {
-    return false;
-  }
-  return Boolean(
-    status.total_segments ||
-      status.finished_at ||
-      status.running ||
-      status.submitted ||
-      status.submitted_new ||
-      status.deduplicated_existing ||
-      status.skipped_seen ||
-      status.failed,
-  );
-}
-
-function getBatchProgress(status: WechatAgentBatchStatus | null): number {
-  if (!status || status.total_segments <= 0) {
-    return 0;
-  }
-  if (status.running) {
-    return Math.max(
-      8,
-      Math.min(96, Math.round((Math.max(status.current_segment_index, 1) / status.total_segments) * 100)),
-    );
-  }
-  return status.finished_at ? 100 : 0;
-}
-
-function formatRatioPercent(value: number | null | undefined): string {
-  const safe = Math.max(0, Math.min(1, Number(value || 0)));
-  return `${Math.round(safe * 100)}%`;
-}
-
-function sourceCoverageLabel(state: CollectorDaemonStatus["coverage_state"] | undefined): string {
-  if (state === "good") return "覆盖稳定";
-  if (state === "watch") return "需观察";
-  if (state === "poor") return "需处理";
-  return "待配置";
-}
-
-function sourceCoverageClass(state: CollectorDaemonStatus["coverage_state"] | undefined): string {
-  if (state === "good") {
-    return "rounded-full border border-emerald-200/80 bg-emerald-50/90 px-3 py-1 text-xs font-medium text-emerald-700";
-  }
-  if (state === "watch") {
-    return "rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium text-amber-700";
-  }
-  if (state === "poor") {
-    return "rounded-full border border-rose-200/80 bg-rose-50/90 px-3 py-1 text-xs font-medium text-rose-700";
-  }
-  return "rounded-full border border-slate-200/80 bg-slate-50/90 px-3 py-1 text-xs font-medium text-slate-600";
-}
 
 export function FocusTimer() {
   const { t, preferences } = useAppPreferences();
@@ -779,7 +690,7 @@ export function FocusTimer() {
   return (
     <div className="mx-auto w-full max-w-3xl af-glass rounded-[34px] p-6 md:p-8">
       <div className="flex flex-wrap items-center gap-2">
-        {DURATIONS.map((option) => (
+        {FOCUS_DURATIONS.map((option) => (
           <button
             key={option}
             type="button"

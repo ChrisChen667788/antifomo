@@ -1,6 +1,6 @@
 # Module Ownership Map
 
-Updated: 2026-06-12
+Updated: 2026-06-13
 
 This map records the current ownership boundaries after the first modular refactor slices. It is intended to keep future development from drifting back into broad orchestration files.
 
@@ -88,7 +88,7 @@ Current backend hotspots still requiring future slices:
 
 | File | Approx. size | Risk |
 | --- | ---: | --- |
-| `backend/app/services/research_service.py` | 4,623 lines | The public facade is materially smaller after scope/entity/ranking/storage/delivery owner extraction. Remaining risk is compatibility aliases and dependency factory wiring; new orchestration implementations must enter through `ResearchWorkflowEngine` rather than adding another facade-level workflow. |
+| `backend/app/services/research_service.py` | 3,739 lines | The public facade retains compatibility aliases and workflow dependency wiring after 40 unreferenced private wrappers were removed. New orchestration implementations must enter through `ResearchWorkflowEngine`; remaining facade size is compatibility risk, not an invitation for helper-level splitting. |
 | `backend/app/services/research/generation_workflow.py` | 804 lines | Workflow spine is isolated and its public dependency surface is grouped into progress/source-collection/scope/enrichment/generation/ranking/assembly/quality ports; remaining risk is internal workflow length rather than a flat injection list. |
 | `backend/app/services/knowledge_intelligence_service.py` | 1,457 lines | Compatibility/application service after entity-quality, commercial-text, and report-metadata extraction; future changes should enter the owned package first. |
 | `backend/app/services/work_task_service.py` | 1,101 lines | Task orchestration and compatibility exports after context, PDF, and formal-document extraction; future export behavior should enter `work_tasks/` owners. |
@@ -125,6 +125,9 @@ Current owners:
 | Research retrieval DTO contracts | `src/lib/api/type-contracts/research-retrieval.ts` | Section evidence packs, section retrieval packs, retrieval index rebuild/status, and retrieval search result contracts. |
 | API compatibility facade | `src/lib/api.ts` | Feature-client re-exports and the historical `toFeedCardLabel` helper during migration. |
 | App preferences | `src/components/settings/app-preferences-provider.tsx` | Theme/font/language preference state and DOM data attributes. |
+| Preference bootstrap | `src/lib/preference-bootstrap.ts` | Pre-hydration validation and application of persisted theme, font, text-size, language, and mode attributes. |
+| Focus runtime model | `src/lib/focus-runtime-model.ts` | Shared countdown formatting, session restoration, progress calculations, batch snapshot detection, and source-coverage semantics for Focus and session summary. |
+| Release screenshot harness | `scripts/capture_release_screenshots.sh`, `scripts/capture_repo_screenshots.mjs` | Isolated production build/server lifecycle, free-port allocation, light/dark route matrix, theme assertions, overlay checks, and screenshot manifest generation. |
 | Theme tokens | `src/app/globals.css` | Semantic surface/text/border/accent tokens, shared primitive classes, and the restored translucent light/dark visual baseline aligned with the earlier `v0.8.0+20260518` UI direction. |
 | Layout shell | `src/components/layout/main-nav.tsx`, `src/components/layout/page-shell.tsx` | Shared navigation and page headings using semantic tokens. |
 | Common settings | `src/components/settings/common-settings-panel.tsx` | Preference controls using tokenized shared primitives. |
@@ -202,9 +205,9 @@ Current frontend hotspots still requiring future slices:
 
 ## Next Slices
 
-- Continue shrinking `research_service.py` compatibility wrappers after each caller or monkeypatch seam is moved to its owner module. `generation_workflow.py` now uses stage-level dependency ports; the next backend step should retire more direct-test wrappers, not add more helper-level splitting.
+- Keep `research_service.py` as a compatibility facade only. All statically unreferenced private wrappers and direct owner-test calls to facade-private functions are removed; future retirement should happen only when a real external caller or compatibility alias can be deleted safely.
 - Keep collector routes in owned modules only; `backend/app/api/collector.py` has been deleted.
 - Keep the research DTO facade stable; future DTO work should only split the report contract further if quality/readiness or follow-up diagnostics grow again.
 - Research Center section surface/text token migration is complete across sidebar controls, source settings, experiment control, low-quality review, results, watchlist, workspace, archives, and centralized tone helpers.
-- Research archive/console, compare/topic-version, knowledge detail, session summary, and targeted Collector Ops presentation surfaces are now tokenized; continue migrating remaining primary panels outside these closed areas from hard-coded Tailwind light colors to semantic theme token classes.
-- Add screenshot coverage for both `data-af-theme="light"` and `data-af-theme="dark"` on feed, inbox/research, research center, and settings; DOM preference synchronization is covered in Vitest, but pixel-level regression remains a follow-up.
+- Research archive/console, compare/topic-version, knowledge detail, session summary, Collector Ops, feed, inbox/research, research center, and settings now have semantic or dark-compatibility coverage; new components must prefer `af-*` tokens over legacy Tailwind light colors.
+- Light/dark production screenshots now cover feed, inbox/research, research center, and settings with manifest theme assertions; add new routes only when they become release-critical surfaces.

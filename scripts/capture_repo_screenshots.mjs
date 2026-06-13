@@ -10,11 +10,16 @@ const DEFAULT_API_BASE = "http://127.0.0.1:8000";
 const DEFAULT_MAC_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const SCREENSHOT_SCROLL_TOP_PADDING = 132;
 const SCREENSHOT_PREFERENCES = {
-  themeMode: "light",
   fontFamily: "system",
   textSize: "md",
   language: "zh-CN",
 };
+const DARK_THEME_FEATURES = new Set([
+  "Home signal dashboard",
+  "Inbox research workspace",
+  "Research center dashboard",
+  "Settings and tuning workspace",
+]);
 const MIN_SCREENSHOT_BYTES = 40_000;
 const CHROME_COMMAND_CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium", "chrome"];
 const CHROME_PATH_CANDIDATES = [
@@ -121,6 +126,7 @@ function createCaptureManifestEntry(item, outputDir) {
   return {
     feature: item.feature,
     route: item.route,
+    theme: item.theme,
     file: `docs/assets/screenshots/${item.filename}`,
     description: item.description,
     quality_gate: {
@@ -153,7 +159,7 @@ function buildCaptures(workspace, knowledgeEntries) {
       ? `/knowledge/merge?ids=${mergeEntryIds.map((id) => encodeURIComponent(id)).join(",")}&title=${encodeURIComponent("政务云投标推进材料合并")}`
       : "/knowledge/merge";
 
-  return [
+  const lightCaptures = [
     {
       feature: "Home signal dashboard",
       route: "/",
@@ -265,7 +271,18 @@ function buildCaptures(workspace, knowledgeEntries) {
           },
         ]
       : []),
-  ];
+  ].map((item) => ({ ...item, theme: "light" }));
+
+  const darkCaptures = lightCaptures
+    .filter((item) => DARK_THEME_FEATURES.has(item.feature))
+    .map((item) => ({
+      ...item,
+      theme: "dark",
+      filename: item.filename.replace(/\.png$/, "-dark.png"),
+      description: `${item.description} Dark-theme regression baseline.`,
+    }));
+
+  return [...lightCaptures, ...darkCaptures];
 }
 
 async function waitForText(page, text) {
@@ -350,11 +367,29 @@ async function assertNoRuntimeOverlay(page, filePath) {
   }
 }
 
-async function preparePageForCapture(page) {
-  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
-  await page.evaluateOnNewDocument((preferences) => {
-    window.localStorage.setItem("anti_fomo_app_preferences_v1", JSON.stringify(preferences));
-  }, SCREENSHOT_PREFERENCES);
+async function preparePageForCapture(page, theme) {
+  await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: theme }]);
+  await page.evaluateOnNewDocument((preferences, selectedTheme) => {
+    window.localStorage.setItem(
+      "anti_fomo_app_preferences_v1",
+      JSON.stringify({ ...preferences, themeMode: selectedTheme }),
+    );
+  }, SCREENSHOT_PREFERENCES, theme);
+}
+
+async function assertThemeApplied(page, expectedTheme, filePath) {
+  try {
+    await page.waitForFunction(
+      (theme) => document.documentElement.dataset.afTheme === theme,
+      { timeout: 10000 },
+      expectedTheme,
+    );
+  } catch {
+    const actualTheme = await page.evaluate(() => document.documentElement.dataset.afTheme || "unset");
+    throw new Error(
+      `Theme mismatch before writing ${path.basename(filePath)}: expected ${expectedTheme}, received ${actualTheme}.`,
+    );
+  }
 }
 
 async function hideDevelopmentChrome(page) {
@@ -373,11 +408,12 @@ async function hideDevelopmentChrome(page) {
   });
 }
 
-async function capturePage(page, { baseUrl, route, waitText, scrollSelector, scrollText, filePath }) {
+async function capturePage(page, { baseUrl, route, theme, waitText, scrollSelector, scrollText, filePath }) {
   const targetUrl = `${baseUrl.replace(/\/+$/, "")}${route}`;
   console.log(`[screenshots] capturing ${path.basename(filePath)} from ${route}`);
-  await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
   await waitForPageContent(page, route);
+  await assertThemeApplied(page, theme, filePath);
   await waitForText(page, waitText);
   await waitForCaptureAnchor(page, scrollSelector);
   await scrollToSelector(page, scrollSelector);
@@ -421,10 +457,11 @@ async function main() {
     for (const item of captures) {
       const page = await browser.newPage();
       try {
-        await preparePageForCapture(page);
+        await preparePageForCapture(page, item.theme);
         await capturePage(page, {
           baseUrl: args.frontendUrl,
           route: item.route,
+          theme: item.theme,
           waitText: item.waitText,
           scrollSelector: item.scrollSelector,
           scrollText: item.scrollText,

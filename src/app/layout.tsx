@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { MainNav } from "@/components/layout/main-nav";
 import { AppPreferencesProvider } from "@/components/settings/app-preferences-provider";
+import { buildPreferenceBootstrapScript } from "@/lib/preference-bootstrap";
 
 export const metadata: Metadata = {
   title: "Anti-FOMO",
@@ -33,7 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: buildPreferenceBootstrapScript() }} />
+      </head>
       <body className="min-h-screen antialiased">
         <AppPreferencesProvider>
           <MainNav />
