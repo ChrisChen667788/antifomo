@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `1.4.0+20260613`
+Current version: `1.5.0+20260613`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
@@ -27,6 +27,10 @@ For the upcoming modular architecture refactor and day/night design-system refre
 | `1.1.0` | Modular architecture and semantic theme baseline | Refactored research generation, collector operations, delivery intelligence, feature clients, controller hooks, report panels, knowledge detail, and session summary surfaces into smaller modules while moving major UI surfaces to semantic day/night theme tokens. |
 | `1.1.1` | Measurable research workflow baseline | Completed owner/seam migration, added a framework-neutral workflow engine, runtime metrics and model cost ledger, and established the versioned 100-case research evaluation structure before LangChain/LangGraph adoption. |
 | `1.2.0` | LangChain model adapter and measured routing | Added schema-backed structured output, provider-reported token usage, configurable model pricing, and independent generation/strategy routing while preserving the deterministic workflow engine and legacy model facade. |
+| `1.2.1` | Provider and observability hardening | Split model-provider owners, persisted research-job run metrics and cost ledgers, added a typed metrics API, and enforced tracked-file secret scanning in CI. |
+| `1.3.0` | Executable research evaluation | Added a bounded 100-case runner, machine-readable artifacts, honest unavailable retrieval metrics, explicit live-provider cost confirmation, and strict release-gate eligibility. |
+| `1.4.0` | LangGraph shadow runtime | Added an opt-in LangGraph `StateGraph` engine behind the workflow protocol with deterministic parity metrics and no automatic production dual-run cost. |
+| `1.5.0` | Hotspot decomposition and UI regression coverage | Split work-task and knowledge-intelligence owners, extracted inbox/archive frontend models, added Vitest component/model coverage and theme regression, and upgraded Next.js to the current security patch. |
 
 ## Current Capability Inventory
 

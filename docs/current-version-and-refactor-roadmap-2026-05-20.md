@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current local release candidate: `1.4.0+20260613`, adding opt-in LangGraph shadow orchestration on top of executable evaluation and persisted workflow observability.
+- Current local release candidate: `1.5.0+20260613`, adding backend/frontend hotspot decomposition, frontend regression coverage, and a current Next.js security patch on top of measured LangChain and opt-in LangGraph workflows.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -26,6 +26,10 @@ Current completion status:
 - Research Center source settings, Daily Brief, report/action-card loading, and low-quality review actions are now split out of the main controller hook.
 - Research Center filter/facet/view-derived state now lives in a dedicated view-model hook instead of the controller aggregation hook.
 - Research report card quality/readiness/profile summary calculations now live in a dedicated view-model helper instead of the parent presentation component.
+- Work-task context sanitization, PDF rendering, and formal document generation now live under `backend/app/services/work_tasks/`; the compatibility service is reduced to task orchestration and re-exports.
+- Knowledge entity-quality rules, commercial text helpers, and report metadata extraction now live under `backend/app/services/knowledge_intelligence/`; the compatibility service retains existing callers while no owner imports it.
+- Inbox research preparation and source-tier behavior now live in `inbox-form-model.ts`, while markdown archive parsing, navigation, section canonicalization, and comparison now live in `research-markdown-archive-model.ts`.
+- Vitest and Testing Library now cover the extracted frontend owners plus day/night preference-to-DOM synchronization, and `npm run check` includes frontend tests before production build and backend tests.
 - Collector Ops now has separate action/config controllers for general operations, daemon commands, WeChat agent commands, WeChat config persistence, and route/OCR metrics.
 - `research_service.py` now exposes `generate_research_report` as a thin setup/dependency facade; the generation workflow spine lives in `backend/app/services/research/generation_workflow.py` and consumes stage-scoped dependency ports.
 - Report card, its downstream report sections, Collector Ops primary shells/daemon/batch surfaces, Research Center presentation sections, research archive/console surfaces, research compare/topic-version surfaces, knowledge detail, and session summary panels now consume semantic theme tokens instead of hard-coded day-mode white/slate/status surfaces.
@@ -264,11 +268,18 @@ Acceptance:
 - Added explicit deterministic or graph selection for bounded evaluation cases.
 - Kept the graph engine in shadow mode until parity, latency, cost, and failure-recovery gates pass.
 
-### `1.5.x`: Hotspot Decomposition and UI Regression Coverage
+### `1.5.0`: Hotspot Decomposition and UI Regression Coverage
 
-- Split the remaining knowledge-intelligence and work-task orchestration hotspots by stable ownership boundaries.
-- Decompose the largest frontend controllers and presentation components without changing route contracts.
-- Add frontend unit/component coverage before completing the remaining semantic theme-token migration.
+- Split knowledge-intelligence and work-task hotspots by stable ownership boundaries while retaining compatibility imports.
+- Extracted the largest reusable pure behavior from inbox and archive presentation components without changing route contracts.
+- Added frontend unit/component coverage and day/night preference regression before further presentation decomposition.
+- Upgraded Next.js to `16.2.9`; the remaining npm audit warning is the framework's pinned build-time PostCSS dependency and cannot be safely resolved by the audit tool's proposed Next 9 downgrade.
+
+### `1.5.x` Follow-up
+
+- Continue presentation-only decomposition for session summary, focus timer, research compare, and the remaining inbox form sections when behavior changes require those surfaces.
+- Add screenshot regression coverage for explicit light and dark theme routes; current automated coverage validates theme state/DOM synchronization, not pixel diffs.
+- Keep LangGraph in shadow mode until curated evaluation data can produce complete retrieval metrics and parity gates.
 
 ### Later
 

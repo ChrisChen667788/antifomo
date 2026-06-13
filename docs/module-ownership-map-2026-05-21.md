@@ -90,8 +90,8 @@ Current backend hotspots still requiring future slices:
 | --- | ---: | --- |
 | `backend/app/services/research_service.py` | 4,623 lines | The public facade is materially smaller after scope/entity/ranking/storage/delivery owner extraction. Remaining risk is compatibility aliases and dependency factory wiring; new orchestration implementations must enter through `ResearchWorkflowEngine` rather than adding another facade-level workflow. |
 | `backend/app/services/research/generation_workflow.py` | 804 lines | Workflow spine is isolated and its public dependency surface is grouped into progress/source-collection/scope/enrichment/generation/ranking/assembly/quality ports; remaining risk is internal workflow length rather than a flat injection list. |
-| `backend/app/services/knowledge_intelligence_service.py` | 2,709 lines | Knowledge intelligence rules, scoring, and rendering concerns should be checked before new features. |
-| `backend/app/services/work_task_service.py` | 2,058 lines | Task execution and export generation need clearer task-handler boundaries. |
+| `backend/app/services/knowledge_intelligence_service.py` | 1,457 lines | Compatibility/application service after entity-quality, commercial-text, and report-metadata extraction; future changes should enter the owned package first. |
+| `backend/app/services/work_task_service.py` | 1,101 lines | Task orchestration and compatibility exports after context, PDF, and formal-document extraction; future export behavior should enter `work_tasks/` owners. |
 | `backend/app/schemas/research.py` | 1,865 lines | DTO growth is concentrated; future schema versioning or feature splits may be needed. |
 
 ## Frontend
@@ -135,6 +135,7 @@ Current owners:
 | Research report insight sections | `src/components/inbox/research-report-insights-section.tsx`, `src/components/inbox/research-report-review-queue-section.tsx`, `src/components/inbox/research-report-appendix-section.tsx` | Main report insights, review queue, and technical appendix rendering. |
 | Research report readiness and strategic sections | `src/components/inbox/research-report-readiness-section.tsx`, `src/components/inbox/research-report-strategic-section.tsx`, `src/components/inbox/research-report-source-list-section.tsx` | Readiness/playbook, strategic ranked panels, peer movement, highlight panels, and final source-list rendering. |
 | Research report card view model | `src/components/inbox/research-report-card-view-model.ts` | Quality/readiness/profile summary calculations, source grouping, diagnostics meta, delivery/readiness metadata, retrieval routing cards, and report-surface copy derivation. |
+| Inbox research form model | `src/components/inbox/inbox-form-model.ts` | Research mode budgets, keyword grouping, delivery supplement defaults, source-tier classification, progress-stage mapping, and stable UI labels. |
 | Research center markdown archives section | `src/components/research/research-center-markdown-archives-section.tsx` | Research center archive filtering controls, archive cards, delivery digest chips, archive action links, and tokenized archive status surfaces. |
 | Research center experiment/control section | `src/components/research/research-center-experiment-control-section.tsx` | Offline quality evaluation, retrieval-index rebuild controls, experiment control plane, rollout orchestration, runtime strategy snapshots, and delivery export diagnostics. |
 | Research center watchlist section | `src/components/research/research-center-watchlist-section.tsx` | Watchlist digest export, due-run action, automation health, run history, copyable ops commands, per-watchlist schedule/status/refresh controls, and tokenized operation surfaces. |
@@ -162,6 +163,7 @@ Current owners:
 | Research topic timeline section | `src/components/research/research-topic-timeline-section.tsx` | Topic version/snapshot/archive timeline cards, timeline stats, baseline/current selection actions, archive deep links, and linked snapshot/report actions. |
 | Research console panel | `src/components/research/research-console-panel.tsx` | Research conversation loading, topic-scoped message thread rendering, suggested follow-up actions, timeline display, and tokenized console surfaces. |
 | Research markdown archive viewer | `src/components/research/research-markdown-archive-viewer.tsx` | Markdown archive preview, archive comparison, follow-up/quality/section diagnostics, export/save actions, and tokenized archive preview surfaces. |
+| Research markdown archive model | `src/components/research/research-markdown-archive-model.ts` | Markdown block parsing, archive section canonicalization, diff comparison, archive navigation links, status labels, and non-React archive behavior. |
 | Research archive section link popover | `src/components/research/research-archive-section-link-popover.tsx` | Archive compare section deep-link loading, copy/open actions, fallback summary links, and tokenized popover states. |
 | Collector ops panel shell | `src/components/settings/collector-ops-panel.tsx` | Collector settings composition, preference lookup, and section wiring. |
 | Collector ops copy map | `src/components/settings/collector-ops-panel-copy.ts` | Collector operations localization map and stable `localText` lookup. |
@@ -195,6 +197,8 @@ Current frontend hotspots still requiring future slices:
 | `src/components/research/use-research-center-controller.ts` | 282 lines | Research center controller is now a thin aggregation hook; remaining risk is cross-section prop bundle growth if new domains are added without a controller boundary. |
 | `src/lib/api/type-contracts/research-report.ts` | 524 lines | Report DTOs are now separated from delivery/workspace/watchlist/evaluation/experiment/retrieval contracts; future slices can split report quality/readiness if this file grows. |
 | `src/components/inbox/research-report-card.tsx` | 615 lines | Parent card now owns top-level report presentation composition and uses semantic theme tokens for its primary shell/summary surfaces; downstream report sections have moved state tones to semantic tokens, leaving presentation density as the main risk. |
+| `src/components/inbox/inbox-form.tsx` | 1,638 lines | Pure research configuration and source-tier behavior is now extracted and tested; remaining risk is presentation/state breadth, so future work should split visible form/result sections rather than duplicate model logic. |
+| `src/components/research/research-markdown-archive-viewer.tsx` | 1,097 lines | Markdown parsing and comparison are now extracted and tested; remaining risk is dense presentation/export orchestration, suitable for section-component extraction when the UI changes. |
 
 ## Next Slices
 
@@ -203,4 +207,4 @@ Current frontend hotspots still requiring future slices:
 - Keep the research DTO facade stable; future DTO work should only split the report contract further if quality/readiness or follow-up diagnostics grow again.
 - Research Center section surface/text token migration is complete across sidebar controls, source settings, experiment control, low-quality review, results, watchlist, workspace, archives, and centralized tone helpers.
 - Research archive/console, compare/topic-version, knowledge detail, session summary, and targeted Collector Ops presentation surfaces are now tokenized; continue migrating remaining primary panels outside these closed areas from hard-coded Tailwind light colors to semantic theme token classes.
-- Add screenshot coverage for both `data-af-theme="light"` and `data-af-theme="dark"` on feed, inbox/research, research center, and settings.
+- Add screenshot coverage for both `data-af-theme="light"` and `data-af-theme="dark"` on feed, inbox/research, research center, and settings; DOM preference synchronization is covered in Vitest, but pixel-level regression remains a follow-up.

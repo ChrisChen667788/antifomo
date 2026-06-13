@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.5.0+20260613 - 2026-06-13
+
+- Split work-task context/PDF/formal-document responsibilities and knowledge-intelligence entity-quality/commercial-text/report-metadata responsibilities into owned backend modules while retaining compatibility exports.
+- Extracted inbox research form behavior and markdown archive parsing/comparison behavior into testable frontend model owners without changing route or presentation contracts.
+- Added Vitest, Testing Library, jsdom, frontend model/component regression tests, and a unified frontend test step in `npm run check`.
+- Added a day/night preference regression test covering system-theme resolution and DOM theme/font/text/language attributes.
+- Upgraded Next.js and its ESLint config from `16.1.6` to `16.2.9` to address current framework security advisories.
+
 ## 1.4.0+20260613 - 2026-06-13
 
 - Added a LangGraph `StateGraph` adapter behind the framework-neutral research workflow protocol.

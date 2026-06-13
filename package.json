@@ -1,14 +1,16 @@
 {
   "name": "anti-fomo-demo",
-  "version": "1.4.0+20260613",
+  "version": "1.5.0+20260613",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3010",
     "build": "next build",
     "start": "next start --port 3010",
     "lint": "eslint",
+    "test:frontend": "vitest run",
+    "test:frontend:watch": "vitest",
     "test:backend": "cd backend && .venv311/bin/pytest -q",
-    "check": "npm run lint && npm run build && npm run test:backend",
+    "check": "npm run lint && npm run test:frontend && npm run build && npm run test:backend",
     "security:scan": "python3 scripts/secret_scan.py",
     "security:scan:history": "python3 scripts/secret_scan.py --history",
     "security:scan:local": "python3 scripts/secret_scan.py --include-ignored-local --report-only",
@@ -46,19 +48,23 @@
     "research:evaluate": "backend/.venv311/bin/python scripts/run_research_evaluation.py"
   },
   "dependencies": {
-    "next": "16.1.6",
+    "next": "16.2.9",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.9",
+    "jsdom": "^29.1.1",
     "puppeteer-core": "^24.39.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.8"
   }
 }

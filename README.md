@@ -73,6 +73,7 @@ Each public version line below includes both an English product summary and a Ch
 | `1.2.1` | Runtime hardening with split provider owners, persisted job metrics/cost ledgers, typed observability APIs, CI secret scanning, and corrected Focus E2E port wiring. | 运行时加固：拆分模型 provider owner、持久化任务指标与成本账本、类型化观测 API、CI 密钥扫描及 Focus E2E 端口修复。 |
 | `1.3.0` | Executable 100-case research evaluation with honest unavailable metrics, cost-safe provider confirmation, JSON artifacts, and strict release-gate eligibility. | 可执行 100 条研究评测：缺失 gold 指标明确不可用、远程模型成本显式确认、JSON 产物和严格发布门禁。 |
 | `1.4.0` | LangGraph shadow orchestration behind the workflow protocol, with deterministic parity metrics, explicit engine selection, and no automatic production dual-run cost. | LangGraph 影子编排：位于工作流协议之后，复用确定性指标、显式选择引擎，且不自动增加生产双跑成本。 |
+| `1.5.0` | Hotspot decomposition and UI regression coverage with backend owner splits, frontend model owners, Vitest component/model tests, theme preference regression, and a current Next.js security patch. | 热点拆分与 UI 回归覆盖：后端 owner 拆分、前端 model owner、Vitest 组件/模型测试、主题偏好回归，以及 Next.js 当前安全补丁。 |
 
 ## Product screenshots
 
@@ -247,9 +248,9 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.4.0+20260613`
+- current version: `1.5.0+20260613`
 - web build passes
-- backend test suite passes via `npm run check`
+- frontend and backend test suites pass via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`
 - major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
 - product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`
