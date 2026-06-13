@@ -21,19 +21,22 @@ from app.services.session_service import (
     generate_session_summary_text,
     list_session_items,
 )
-from app.services.work_task_service import (
+from app.services.work_tasks.context import sanitize_task_context_payload
+from app.services.work_tasks.formal_documents import (
     build_feasibility_study_pdf_document,
     build_feasibility_study_word_document,
-    build_knowledge_bundle_markdown,
-    build_knowledge_markdown,
-    build_markdown_summary,
     build_project_proposal_pdf_document,
     build_project_proposal_word_document,
     build_research_market_intelligence_markdown,
+    build_research_solution_delivery_markdown,
+)
+from app.services.work_task_service import (
+    build_knowledge_bundle_markdown,
+    build_knowledge_markdown,
+    build_markdown_summary,
     build_research_pdf_document,
     build_reading_list,
     build_research_markdown,
-    build_research_solution_delivery_markdown,
     build_research_word_document,
     build_artifact_item_snapshots,
     build_exec_brief,
@@ -43,7 +46,6 @@ from app.services.work_task_service import (
     build_watchlist_digest,
     complete_task,
     fail_task,
-    sanitize_task_context_payload,
     select_reading_list_items,
     select_summary_items,
     select_todo_items,
