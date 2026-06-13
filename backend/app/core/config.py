@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     single_user_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     llm_provider: str = "mock"
     llm_fallback_to_mock: bool = True
+    llm_max_retries: int = 1
+    langchain_structured_output_method: str = "json_schema"
+    langchain_structured_output_fallback_method: str | None = "json_mode"
     ocr_provider: str = "auto"  # auto / local / openai / mock
     openai_api_key: str | None = None
     openai_fallback_api_key: str | None = None
@@ -41,12 +44,20 @@ class Settings(BaseSettings):
     openai_vision_model: str | None = "gpt-5.5"
     openai_temperature: float = 0.2
     openai_timeout_seconds: int = 120
+    openai_input_cost_per_million: float | None = None
+    openai_cached_input_cost_per_million: float | None = None
+    openai_output_cost_per_million: float | None = None
+    strategy_llm_provider: str = "openai"
     strategy_openai_api_key: str | None = None
     strategy_openai_fallback_api_key: str | None = None
     strategy_openai_base_url: str = "https://api.openai.com/v1"
     strategy_openai_model: str = "claude-opus-4-7"
     strategy_openai_temperature: float = 0.1
     strategy_openai_timeout_seconds: int = 90
+    strategy_llm_max_retries: int = 1
+    strategy_openai_input_cost_per_million: float | None = None
+    strategy_openai_cached_input_cost_per_million: float | None = None
+    strategy_openai_output_cost_per_million: float | None = None
     item_llm_timeout_seconds: int = 6
     ocr_item_llm_timeout_seconds: int = 3
     ocr_openai_timeout_seconds: int = 8
@@ -104,6 +115,44 @@ class Settings(BaseSettings):
     def normalize_database_url(cls, value: object) -> object:
         if isinstance(value, str):
             return _normalize_sqlite_database_url(value)
+        return value
+
+    @field_validator("llm_provider", "strategy_llm_provider", mode="before")
+    @classmethod
+    def normalize_llm_provider(cls, value: object) -> str:
+        normalized = str(value or "").strip().lower().replace("-", "_")
+        aliases = {"langchain": "langchain_openai", "legacy_openai": "openai"}
+        normalized = aliases.get(normalized, normalized)
+        if normalized not in {"mock", "openai", "langchain_openai"}:
+            raise ValueError("LLM provider must be mock, openai, or langchain_openai")
+        return normalized
+
+    @field_validator(
+        "langchain_structured_output_method",
+        "langchain_structured_output_fallback_method",
+        mode="before",
+    )
+    @classmethod
+    def normalize_structured_output_method(cls, value: object) -> str | None:
+        if value is None or str(value).strip().lower() in {"", "none", "disabled"}:
+            return None
+        normalized = str(value).strip().lower()
+        if normalized not in {"function_calling", "json_mode", "json_schema"}:
+            raise ValueError("Structured output method must be function_calling, json_mode, or json_schema")
+        return normalized
+
+    @field_validator(
+        "openai_input_cost_per_million",
+        "openai_cached_input_cost_per_million",
+        "openai_output_cost_per_million",
+        "strategy_openai_input_cost_per_million",
+        "strategy_openai_cached_input_cost_per_million",
+        "strategy_openai_output_cost_per_million",
+    )
+    @classmethod
+    def validate_non_negative_pricing(cls, value: float | None) -> float | None:
+        if value is not None and value < 0:
+            raise ValueError("Model prices must be non-negative")
         return value
 
     model_config = SettingsConfigDict(

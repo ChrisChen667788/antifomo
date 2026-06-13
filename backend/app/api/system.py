@@ -5,12 +5,16 @@ from fastapi import APIRouter
 
 from app.core.config import get_settings
 from app.services.llm_parser import (
+    parse_insight_response,
+    parse_research_report_response,
+    parse_research_strategy_refine_response,
+    parse_research_strategy_scope_response,
     parse_score_response,
     parse_session_summary_response,
     parse_summarize_response,
     parse_tags_response,
 )
-from app.services.llm_service import MockLLMService, OpenAILLMService
+from app.services.llm_service import build_llm_service, run_llm_prompt_result
 from app.services.prompt_loader import render_prompt
 
 
@@ -29,6 +33,9 @@ class LLMDryRunResponse(BaseModel):
     fallback_used: bool
     raw_preview: str
     parsed_preview: dict
+    model: str = ""
+    usage: dict[str, int | str] = Field(default_factory=dict)
+    estimated_cost_usd: float | None = None
     ok: bool
     error: str | None = None
 
@@ -38,6 +45,9 @@ def get_llm_config() -> dict:
     return {
         "llm_provider": settings.llm_provider,
         "llm_fallback_to_mock": settings.llm_fallback_to_mock,
+        "llm_max_retries": settings.llm_max_retries,
+        "langchain_structured_output_method": settings.langchain_structured_output_method,
+        "langchain_structured_output_fallback_method": settings.langchain_structured_output_fallback_method,
         "ocr_provider": settings.ocr_provider,
         "openai_base_url": settings.openai_base_url,
         "openai_model": settings.openai_model,
@@ -45,10 +55,29 @@ def get_llm_config() -> dict:
         "openai_temperature": settings.openai_temperature,
         "openai_timeout_seconds": settings.openai_timeout_seconds,
         "openai_api_key_configured": bool(settings.openai_api_key),
+        "openai_pricing_configured": (
+            settings.openai_input_cost_per_million is not None
+            and settings.openai_output_cost_per_million is not None
+        ),
+        "openai_pricing_per_million_usd": {
+            "input": settings.openai_input_cost_per_million,
+            "cached_input": settings.openai_cached_input_cost_per_million,
+            "output": settings.openai_output_cost_per_million,
+        },
+        "strategy_llm_provider": settings.strategy_llm_provider,
         "strategy_openai_base_url": settings.strategy_openai_base_url,
         "strategy_openai_model": settings.strategy_openai_model,
         "strategy_openai_timeout_seconds": settings.strategy_openai_timeout_seconds,
         "strategy_openai_api_key_configured": bool(settings.strategy_openai_api_key),
+        "strategy_openai_pricing_configured": (
+            settings.strategy_openai_input_cost_per_million is not None
+            and settings.strategy_openai_output_cost_per_million is not None
+        ),
+        "strategy_openai_pricing_per_million_usd": {
+            "input": settings.strategy_openai_input_cost_per_million,
+            "cached_input": settings.strategy_openai_cached_input_cost_per_million,
+            "output": settings.strategy_openai_output_cost_per_million,
+        },
     }
 
 
@@ -61,6 +90,14 @@ def _parse_by_prompt_name(prompt_name: str, raw: str) -> dict:
         return parse_score_response(raw).model_dump()
     if prompt_name == "session_summary.txt":
         return parse_session_summary_response(raw).model_dump()
+    if prompt_name == "interpret.txt":
+        return parse_insight_response(raw).model_dump()
+    if prompt_name == "research_report.txt":
+        return parse_research_report_response(raw).model_dump()
+    if prompt_name in {"research_report_outline.txt", "research_strategy_refine.txt"}:
+        return parse_research_strategy_refine_response(raw).model_dump()
+    if prompt_name == "research_strategy_scope.txt":
+        return parse_research_strategy_scope_response(raw).model_dump()
     return {}
 
 
@@ -84,72 +121,40 @@ def llm_dry_run(payload: LLMDryRunRequest) -> LLMDryRunResponse:
     merged_variables = {**defaults, **variables}
 
     requested = settings.llm_provider
-    mock = MockLLMService()
-
-    if requested != "openai":
-        raw = mock.run_prompt(prompt_name, merged_variables)
-        return LLMDryRunResponse(
-            provider_requested=requested,
-            provider_used="mock",
-            fallback_used=False,
-            raw_preview=raw[:800],
-            parsed_preview=_parse_by_prompt_name(prompt_name, raw),
-            ok=True,
-        )
-
-    if not settings.openai_api_key:
-        raw = mock.run_prompt(prompt_name, merged_variables)
-        return LLMDryRunResponse(
-            provider_requested=requested,
-            provider_used="mock",
-            fallback_used=True,
-            raw_preview=raw[:800],
-            parsed_preview=_parse_by_prompt_name(prompt_name, raw),
-            ok=False,
-            error="OPENAI_API_KEY is empty, fallback to mock",
-        )
-
-    openai = OpenAILLMService(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url,
-        model=settings.openai_model,
-        temperature=settings.openai_temperature,
-        timeout_seconds=settings.openai_timeout_seconds,
-        organization=settings.openai_organization,
-        project=settings.openai_project,
-    )
-
+    service = build_llm_service(settings=settings)
+    if service is None:
+        raise RuntimeError("LLM provider route returned no service")
     try:
         # Validate template is renderable before remote call.
         _ = render_prompt(prompt_name, merged_variables)
-        raw = openai.run_prompt(prompt_name, merged_variables)
+        result = run_llm_prompt_result(service, prompt_name, merged_variables)
+        fallback_used = result.status == "fallback" or result.provider != requested
+        missing_key = requested != "mock" and not settings.openai_api_key
         return LLMDryRunResponse(
             provider_requested=requested,
-            provider_used="openai",
-            fallback_used=False,
-            raw_preview=raw[:800],
-            parsed_preview=_parse_by_prompt_name(prompt_name, raw),
-            ok=True,
+            provider_used=result.provider,
+            fallback_used=fallback_used,
+            raw_preview=result.content[:800],
+            parsed_preview=_parse_by_prompt_name(prompt_name, result.content),
+            model=result.model,
+            usage={
+                "input_tokens": result.usage.input_tokens,
+                "output_tokens": result.usage.output_tokens,
+                "total_tokens": result.usage.total_tokens,
+                "cached_input_tokens": result.usage.cached_input_tokens,
+                "source": result.usage.source,
+            },
+            estimated_cost_usd=result.estimated_cost_usd,
+            ok=not missing_key,
+            error="OPENAI_API_KEY is empty, fallback to mock" if missing_key else None,
         )
     except Exception as exc:
-        if not settings.llm_fallback_to_mock:
-            return LLMDryRunResponse(
-                provider_requested=requested,
-                provider_used="openai",
-                fallback_used=False,
-                raw_preview="",
-                parsed_preview={},
-                ok=False,
-                error=str(exc),
-            )
-
-        raw = mock.run_prompt(prompt_name, merged_variables)
         return LLMDryRunResponse(
             provider_requested=requested,
-            provider_used="mock",
-            fallback_used=True,
-            raw_preview=raw[:800],
-            parsed_preview=_parse_by_prompt_name(prompt_name, raw),
+            provider_used=requested,
+            fallback_used=False,
+            raw_preview="",
+            parsed_preview={},
             ok=False,
-            error=f"OpenAI failed: {exc}",
+            error=str(exc),
         )

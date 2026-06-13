@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.services.llm_runtime import LLMRunResult, LLMUsage
 from app.services.research.run_metrics import (
     CostLedgerEntry,
     ResearchRunMetrics,
@@ -22,6 +23,25 @@ class _BrokenLLM:
 
     def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
         raise RuntimeError("provider unavailable")
+
+
+class _UsageAwareLLM:
+    def run_prompt_result(self, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
+        return LLMRunResult(
+            content='{"ok": true}',
+            provider="langchain_openai",
+            model="gpt-test-2026",
+            usage=LLMUsage(
+                input_tokens=90,
+                output_tokens=10,
+                total_tokens=100,
+                cached_input_tokens=30,
+                source="provider",
+            ),
+            estimated_cost_usd=0.00042,
+            attempts=2,
+            metadata={"structured_output_method": "json_mode"},
+        )
 
 
 def test_cost_ledger_aggregates_tokens_cost_and_status() -> None:
@@ -78,6 +98,24 @@ def test_metered_llm_records_success_and_failure_without_changing_protocol() -> 
     assert snapshot["total_tokens"] > 0
     assert snapshot["estimated_cost_usd"] is None
     assert snapshot["entries"][0]["metadata"]["token_counting"] == "estimated"
+
+
+def test_metered_llm_prefers_provider_usage_and_pricing() -> None:
+    metrics = ResearchRunMetrics(run_id="run-provider-usage")
+    with activate_research_run_metrics(metrics):
+        service = instrument_llm_service(_UsageAwareLLM(), role="generation")
+        assert service.run_prompt("missing-test-prompt.txt", {}) == '{"ok": true}'
+
+    entry = metrics.cost_ledger.snapshot()["entries"][0]
+    assert entry["provider"] == "langchain_openai"
+    assert entry["model"] == "gpt-test-2026"
+    assert entry["input_tokens"] == 90
+    assert entry["output_tokens"] == 10
+    assert entry["attempts"] == 2
+    assert entry["cache_hit"] is True
+    assert entry["estimated_cost_usd"] == 0.00042
+    assert entry["metadata"]["token_counting"] == "provider"
+    assert entry["metadata"]["cached_input_tokens"] == 30
 
 
 def test_run_metrics_records_nodes_progress_and_completion() -> None:

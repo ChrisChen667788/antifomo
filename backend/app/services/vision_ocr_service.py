@@ -88,7 +88,11 @@ class VisionOCRService:
                         output_language=resolved_language,
                     )
 
-        if provider in {"auto", "openai"} and self.settings.llm_provider == "openai" and self.settings.openai_api_key:
+        if (
+            provider in {"auto", "openai"}
+            and self.settings.llm_provider in {"openai", "langchain_openai"}
+            and self.settings.openai_api_key
+        ):
             try:
                 return self._extract_with_openai(
                     image_base64=image_base64,

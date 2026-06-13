@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.2.0+20260613 - 2026-06-13
+
+- Added a framework-neutral `LLMRunResult` contract for provider/model identity, token usage, cost estimates, attempts, response identifiers, finish reasons, and adapter metadata while preserving the existing JSON-string `run_prompt()` facade.
+- Added the `langchain_openai` provider route with prompt-specific Pydantic structured output, `json_schema` as the primary method, and configurable `json_mode` fallback for compatible gateways.
+- Added independent generation and strategy provider routing across `mock`, legacy `openai`, and `langchain_openai`, including fallback-key and mock-fallback composition.
+- Added configurable model prices per one million input, cached-input, and output tokens instead of hard-coding time-sensitive vendor prices.
+- Upgraded the research cost ledger to consume provider-reported usage and cached-token details, with estimated counting retained only for legacy compatibility services.
+- Extended the LLM configuration and dry-run diagnostics with route, structured-output, usage, model, and pricing visibility.
+
 ## 1.1.1+20260612 - 2026-06-12
 
 - Completed the research owner and dependency-seam migration for scope, entity policy, ranking, storage canonicalization, delivery, runtime dependencies, and report row quality while preserving the public research facade.

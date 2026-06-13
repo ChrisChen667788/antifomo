@@ -68,6 +68,8 @@ Each public version line below includes both an English product summary and a Ch
 | `0.9.0` | Solution architect workbench with customer scenarios, stakeholder maps, decision criteria, validation actions, next-meeting agendas, and markdown export. | 解决方案架构师工作台：客户场景、干系人地图、决策标准、验证动作、下次会议议程和 Markdown 导出。 |
 | `1.0.0` | Local-first WeChat-to-solution baseline connecting intake, triage, evidence-backed research, architecture readiness, workbench outputs, migration coverage, and validation. | 本地优先微信到方案基线：打通采集、首页处理、证据研报、架构就绪、工作台产物、迁移覆盖和验证。 |
 | `1.1.0` | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 |
+| `1.1.1` | Measurable workflow baseline with framework-neutral orchestration, per-run metrics, a model cost ledger, and a versioned 100-case research evaluation structure. | 可度量工作流基线：框架中立编排、单次运行指标、模型成本账本和版本化 100 条研究评测集结构。 |
+| `1.2.0` | LangChain adapter with Pydantic structured output, provider-reported token usage, configurable model pricing, and independent generation/strategy routing. | LangChain 适配层：Pydantic 结构化输出、provider 真实 token usage、可配置模型价格和生成/策略模型独立路由。 |
 
 ## Product screenshots
 
@@ -242,7 +244,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.1.1+20260612`
+- current version: `1.2.0+20260613`
 - web build passes
 - backend test suite passes via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

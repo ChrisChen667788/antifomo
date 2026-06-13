@@ -1,4 +1,7 @@
-from app.services.llm_service import FallbackLLMService, extract_openai_message_content
+import json
+
+from app.services.llm_runtime import ModelPricing
+from app.services.llm_service import FallbackLLMService, OpenAILLMService, extract_openai_message_content
 from app.services.prompt_loader import render_prompt
 
 
@@ -73,3 +76,46 @@ def test_extract_openai_message_content_list_blocks() -> None:
 def test_fallback_llm_service() -> None:
     service = FallbackLLMService(_BrokenService(), _StaticService('{"ok":true}'))
     assert service.run_prompt("summarize.txt", {}) == '{"ok":true}'
+    result = service.run_prompt_result("summarize.txt", {})
+    assert result.status == "fallback"
+    assert result.metadata["fallback_used"] is True
+
+
+def test_legacy_openai_service_exposes_provider_usage_and_pricing() -> None:
+    service = OpenAILLMService(
+        api_key="test-key",
+        base_url="https://api.example.com/v1",
+        model="configured-model",
+        temperature=0.1,
+        timeout_seconds=30,
+        pricing=ModelPricing(input_cost_per_million=1.0, output_cost_per_million=4.0),
+    )
+    response = {
+        "id": "chatcmpl-test",
+        "model": "resolved-model",
+        "choices": [
+            {
+                "message": {"content": '{"short_summary":"ok"}'},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 80,
+            "completion_tokens": 20,
+            "total_tokens": 100,
+            "prompt_tokens_details": {"cached_tokens": 10},
+        },
+    }
+    service._make_request = lambda *args, **kwargs: (json.dumps(response), 1)  # type: ignore[method-assign]
+
+    result = service.run_prompt_result(
+        "summarize.txt",
+        {"title": "测试", "source_domain": "example.com", "clean_content": "正文"},
+    )
+
+    assert result.model == "resolved-model"
+    assert result.usage.input_tokens == 80
+    assert result.usage.output_tokens == 20
+    assert result.usage.cached_input_tokens == 10
+    assert result.usage.source == "provider"
+    assert result.estimated_cost_usd == 0.00016

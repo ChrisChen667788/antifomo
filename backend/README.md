@@ -14,23 +14,29 @@ In SQLite mode, schema is auto-created on startup.
 
 ## LLM Provider
 
-默认使用 `mock` provider。可切换 OpenAI 兼容接口：
+默认使用 `mock` provider。推荐通过 LangChain adapter 接入 OpenAI 或兼容网关：
 
 ```env
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
+LLM_PROVIDER=langchain_openai
+OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
 OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=claude-opus-4-6
+OPENAI_MODEL=<YOUR_MODEL_NAME>
 LLM_FALLBACK_TO_MOCK=true
+LANGCHAIN_STRUCTURED_OUTPUT_METHOD=json_schema
+LANGCHAIN_STRUCTURED_OUTPUT_FALLBACK_METHOD=json_mode
+# Use the current prices from your provider; blank values disable cost estimates.
+OPENAI_INPUT_COST_PER_MILLION=
+OPENAI_CACHED_INPUT_COST_PER_MILLION=
+OPENAI_OUTPUT_COST_PER_MILLION=
 ```
 
-当 `LLM_FALLBACK_TO_MOCK=true` 时，真实模型失败会自动回退 mock，保证 demo 不中断。
+`langchain_openai` 会按 prompt 映射 Pydantic schema，并从 `AIMessage.usage_metadata` 记录真实 token usage。`openai` 仍保留为旧 urllib 兼容路径；`mock` 保留确定性离线测试。当 `LLM_FALLBACK_TO_MOCK=true` 时，真实模型失败会自动回退 mock，保证 demo 不中断。
 
 ### AIPRO / Codex 网关配置（OpenAI 兼容）
 
 ```env
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
+LLM_PROVIDER=langchain_openai
+OPENAI_API_KEY=<YOUR_GATEWAY_API_KEY>
 OPENAI_BASE_URL=https://vip.aipro.love/v1
 OPENAI_MODEL=claude-opus-4-6
 OPENAI_VERIFY_SSL=true
@@ -62,7 +68,7 @@ base_url = "https://vip.aipro.love/v1"
 并在环境变量中设置：
 
 ```bash
-export OPENAI_API_KEY=sk-...
+export OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
 ```
 
 ## PostgreSQL mode (optional)

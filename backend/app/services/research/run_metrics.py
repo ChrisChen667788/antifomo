@@ -5,12 +5,12 @@ from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import math
 from threading import RLock
 import time
 from typing import Any
 from uuid import uuid4
 
+from app.services.llm_runtime import LLMRunResult, estimate_tokens
 from app.services.prompt_loader import render_prompt
 
 
@@ -238,18 +238,12 @@ def active_research_run_metrics() -> ResearchRunMetrics | None:
     return _ACTIVE_RESEARCH_RUN_METRICS.get()
 
 
-def _estimate_tokens(value: str) -> int:
-    if not value:
-        return 0
-    return max(1, math.ceil(len(value) / 4))
-
-
 def _service_metadata(service: Any) -> tuple[str, str]:
-    provider = service.__class__.__name__
+    provider = str(getattr(service, "provider", "") or service.__class__.__name__)
     model = str(getattr(service, "model", "") or "")
     primary = getattr(service, "primary", None)
     if primary is not None:
-        provider = primary.__class__.__name__
+        provider = str(getattr(primary, "provider", "") or primary.__class__.__name__)
         model = str(getattr(primary, "model", "") or model)
     return provider, model or "unspecified"
 
@@ -271,7 +265,15 @@ class MeteredLLMService:
         except Exception:
             rendered = "\n".join(str(value) for key, value in variables.items() if not key.startswith("__"))
         try:
-            output = self._service.run_prompt(prompt_name, variables)
+            run_result = getattr(self._service, "run_prompt_result", None)
+            if callable(run_result):
+                result = run_result(prompt_name, variables)
+                if not isinstance(result, LLMRunResult):
+                    raise RuntimeError("LLM result service returned an invalid result")
+                output = result.content
+            else:
+                result = None
+                output = self._service.run_prompt(prompt_name, variables)
         except Exception:
             self._metrics.cost_ledger.record(
                 CostLedgerEntry(
@@ -281,7 +283,7 @@ class MeteredLLMService:
                     model=model,
                     status="failed",
                     latency_ms=round((time.perf_counter() - started) * 1000),
-                    input_tokens=_estimate_tokens(rendered),
+                    input_tokens=estimate_tokens(rendered),
                     metadata={
                         "role": self._role,
                         "token_counting": "estimated",
@@ -290,6 +292,32 @@ class MeteredLLMService:
                 )
             )
             raise
+        if result is not None:
+            usage = result.usage
+            self._metrics.cost_ledger.record(
+                CostLedgerEntry(
+                    category="llm",
+                    operation=prompt_name,
+                    provider=result.provider,
+                    model=result.model,
+                    status=result.status,
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    attempts=result.attempts,
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                    estimated_cost_usd=result.estimated_cost_usd,
+                    cache_hit=usage.cached_input_tokens > 0,
+                    metadata={
+                        "role": self._role,
+                        "token_counting": usage.source,
+                        "attempt_counting": "provider_adapter",
+                        "cached_input_tokens": usage.cached_input_tokens,
+                        "cache_creation_input_tokens": usage.cache_creation_input_tokens,
+                        **result.metadata,
+                    },
+                )
+            )
+            return output
         self._metrics.cost_ledger.record(
             CostLedgerEntry(
                 category="llm",
@@ -298,8 +326,8 @@ class MeteredLLMService:
                 model=model,
                 status="succeeded",
                 latency_ms=round((time.perf_counter() - started) * 1000),
-                input_tokens=_estimate_tokens(rendered),
-                output_tokens=_estimate_tokens(output),
+                input_tokens=estimate_tokens(rendered),
+                output_tokens=estimate_tokens(output),
                 metadata={
                     "role": self._role,
                     "token_counting": "estimated",

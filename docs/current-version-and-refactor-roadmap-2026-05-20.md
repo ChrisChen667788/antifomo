@@ -1,6 +1,6 @@
 # Current Version, History, and Refactor Roadmap
 
-Updated: 2026-06-05
+Updated: 2026-06-13
 
 This document is the working baseline for the next large change. It consolidates the current product state, historical version lines, completed development content, and the upcoming architecture refactor plus dark-mode redesign plan.
 
@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current synced release line: `1.1.1+20260612`, adding measurable research workflow, cost-ledger, and 100-case evaluation contracts to the modular architecture baseline.
+- Current synced release line: `1.2.0+20260613`, adding the LangChain model adapter, structured output, provider-reported token usage, configurable pricing, and provider routing on top of the measurable workflow baseline.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -33,7 +33,7 @@ Current completion status:
 - The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 7,913 lines.
 - Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
-- Release screenshots are currently aligned to `1.1.1+20260612` with `15/15` accepted screenshots; this backend-only baseline did not change visual surfaces.
+- Release screenshots are currently aligned to `1.2.0+20260613` with `15/15` accepted screenshots; this backend-only baseline did not change visual surfaces.
 
 Latest verified checks from the current work line:
 
@@ -237,11 +237,12 @@ Acceptance:
 - Keep architecture fitness checks and the module ownership map current as new feature seams are added.
 - Preserve public behavior and API compatibility unless a route or DTO is explicitly versioned.
 
-### `1.2.0`: Day/Night Design System Refresh
+### `1.2.0`: LangChain Adapter and Measured Provider Routing
 
-- Introduce semantic theme tokens.
-- Rebuild dark mode as a distinct product surface.
-- Migrate primary pages and refresh screenshot gates.
+- Keep the deterministic workflow engine and framework-neutral owner modules unchanged.
+- Add Pydantic structured output through a replaceable LangChain adapter.
+- Capture provider token usage, cached-input details, and configuration-driven cost estimates.
+- Route generation and strategy models independently across mock, legacy OpenAI, and LangChain OpenAI paths.
 
 ### Later
 

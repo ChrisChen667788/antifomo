@@ -5,13 +5,15 @@ import logging
 import re
 import time
 import ssl
+from dataclasses import replace
 from functools import lru_cache
-from typing import Protocol
+from typing import Any, Protocol
 from urllib import error, request
 
 from app.core.config import get_settings
 from app.services.content_extractor import normalize_text
 from app.services.language import localized_text, normalize_output_language
+from app.services.llm_runtime import LLMRunResult, LLMUsage, ModelPricing, estimated_usage
 from app.services.prompt_loader import load_prompt, render_prompt
 
 
@@ -52,6 +54,23 @@ def _strip_summary_boilerplate(value: str) -> str:
 
 
 class MockLLMService:
+    provider = "mock"
+    model = "deterministic-mock"
+
+    def run_prompt_result(self, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
+        runtime_variables = {key: value for key, value in variables.items() if not key.startswith("__")}
+        prompt = render_prompt(prompt_name, runtime_variables)
+        content = self.run_prompt(prompt_name, variables)
+        return LLMRunResult(
+            content=content,
+            provider=self.provider,
+            model=self.model,
+            usage=estimated_usage(prompt, content),
+            estimated_cost_usd=0.0,
+            status="mock",
+            metadata={"deterministic": True},
+        )
+
     def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
         # Ensure prompt template exists, so missing prompt fails fast in local development.
         _ = load_prompt(prompt_name)
@@ -1131,6 +1150,8 @@ logger = logging.getLogger("anti_fomo.llm")
 
 
 class OpenAILLMService:
+    provider = "openai"
+
     def __init__(
         self,
         *,
@@ -1144,6 +1165,7 @@ class OpenAILLMService:
         verify_ssl: bool = True,
         ca_bundle: str | None = None,
         fallback_api_key: str | None = None,
+        pricing: ModelPricing | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -1155,6 +1177,7 @@ class OpenAILLMService:
         self.verify_ssl = verify_ssl
         self.ca_bundle = ca_bundle
         self.fallback_api_key = fallback_api_key
+        self.pricing = pricing or ModelPricing()
         self._using_fallback = False
 
     def _build_ssl_context(self) -> ssl.SSLContext | None:
@@ -1192,7 +1215,7 @@ class OpenAILLMService:
         timeout_seconds: int,
         ssl_context: ssl.SSLContext | None,
         max_attempts: int,
-    ) -> str:
+    ) -> tuple[str, int]:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -1245,9 +1268,9 @@ class OpenAILLMService:
             time.sleep(min(2.0, 0.8 * attempt))
         if last_error is not None and not body:
             raise last_error
-        return body
+        return body, attempt
 
-    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+    def run_prompt_result(self, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
         runtime_variables = dict(variables)
         timeout_override = runtime_variables.pop("__timeout_seconds", None)
         prompt = render_prompt(prompt_name, runtime_variables)
@@ -1262,7 +1285,7 @@ class OpenAILLMService:
         max_attempts = 2 if prompt_name == "research_report.txt" else 1
 
         try:
-            body = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+            body, attempts = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
         except _QuotaExhaustedError:
             if not self.fallback_api_key or self._using_fallback:
                 raise RuntimeError("API quota exhausted and no fallback key available")
@@ -1271,7 +1294,8 @@ class OpenAILLMService:
                 self.model,
             )
             self._using_fallback = True
-            body = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+            body, fallback_attempts = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+            attempts = max_attempts + fallback_attempts
 
         try:
             response_json = json.loads(body)
@@ -1281,7 +1305,60 @@ class OpenAILLMService:
         content = extract_openai_message_content(response_json)
         if not content:
             raise RuntimeError("OpenAI returned empty message content")
-        return content
+        usage_payload = response_json.get("usage")
+        if not isinstance(usage_payload, dict):
+            usage_payload = {}
+        input_details = usage_payload.get("prompt_tokens_details")
+        if not isinstance(input_details, dict):
+            input_details = {}
+        input_tokens = int(usage_payload.get("prompt_tokens") or 0)
+        output_tokens = int(usage_payload.get("completion_tokens") or 0)
+        usage = LLMUsage(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=int(usage_payload.get("total_tokens") or input_tokens + output_tokens),
+            cached_input_tokens=int(input_details.get("cached_tokens") or 0),
+            source="provider" if usage_payload else "unavailable",
+        )
+        choices = response_json.get("choices")
+        first_choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+        return LLMRunResult(
+            content=content,
+            provider=self.provider,
+            model=str(response_json.get("model") or self.model),
+            usage=usage,
+            estimated_cost_usd=self.pricing.estimate_cost_usd(usage),
+            attempts=attempts,
+            response_id=str(response_json.get("id") or ""),
+            finish_reason=str(first_choice.get("finish_reason") or ""),
+            metadata={"fallback_api_key_used": self._using_fallback},
+        )
+
+    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+        return self.run_prompt_result(prompt_name, variables).content
+
+
+def _service_run_result(service: Any, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
+    run_result = getattr(service, "run_prompt_result", None)
+    if callable(run_result):
+        result = run_result(prompt_name, variables)
+        if isinstance(result, LLMRunResult):
+            return result
+        raise RuntimeError("LLM result service returned an invalid result")
+    content = service.run_prompt(prompt_name, variables)
+    runtime_variables = {key: value for key, value in variables.items() if not key.startswith("__")}
+    prompt = render_prompt(prompt_name, runtime_variables)
+    return LLMRunResult(
+        content=content,
+        provider=str(getattr(service, "provider", "") or service.__class__.__name__),
+        model=str(getattr(service, "model", "") or "unspecified"),
+        usage=estimated_usage(prompt, content),
+        metadata={"compatibility_adapter": True},
+    )
+
+
+def run_llm_prompt_result(service: Any, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
+    return _service_run_result(service, prompt_name, variables)
 
 
 class FallbackLLMService:
@@ -1296,16 +1373,32 @@ class FallbackLLMService:
         self.fallback = fallback
         self.logger = logging.getLogger(logger_name)
 
-    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+    def run_prompt_result(self, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
         try:
-            return self.primary.run_prompt(prompt_name, variables)
+            return _service_run_result(self.primary, prompt_name, variables)
         except Exception as exc:
             self.logger.warning(
-                "Primary LLM failed for prompt=%s, fallback to mock: %s",
+                "Primary LLM failed for prompt=%s, using fallback service: %s",
                 prompt_name,
                 exc,
             )
-            return self.fallback.run_prompt(prompt_name, variables)
+            fallback_result = _service_run_result(self.fallback, prompt_name, variables)
+            return replace(
+                fallback_result,
+                status="fallback",
+                attempts=fallback_result.attempts + 1,
+                metadata={
+                    **fallback_result.metadata,
+                    "fallback_used": True,
+                    "primary_provider": str(
+                        getattr(self.primary, "provider", "") or self.primary.__class__.__name__
+                    ),
+                    "primary_error": exc.__class__.__name__,
+                },
+            )
+
+    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+        return self.run_prompt_result(prompt_name, variables).content
 
 
 def extract_openai_message_content(response_json: dict) -> str:
@@ -1328,47 +1421,115 @@ def extract_openai_message_content(response_json: dict) -> str:
     return ""
 
 
+class LLMProviderRouter:
+    def __init__(self, settings: Any) -> None:
+        self.settings = settings
+
+    def _pricing(self, role: str) -> ModelPricing:
+        prefix = "strategy_openai" if role == "strategy" else "openai"
+        return ModelPricing(
+            input_cost_per_million=getattr(self.settings, f"{prefix}_input_cost_per_million"),
+            cached_input_cost_per_million=getattr(
+                self.settings,
+                f"{prefix}_cached_input_cost_per_million",
+            ),
+            output_cost_per_million=getattr(self.settings, f"{prefix}_output_cost_per_million"),
+        )
+
+    def _route(self, role: str) -> dict[str, Any]:
+        strategy = role == "strategy"
+        return {
+            "provider": self.settings.strategy_llm_provider if strategy else self.settings.llm_provider,
+            "api_key": self.settings.strategy_openai_api_key if strategy else self.settings.openai_api_key,
+            "fallback_api_key": (
+                self.settings.strategy_openai_fallback_api_key
+                if strategy
+                else self.settings.openai_fallback_api_key
+            ),
+            "base_url": self.settings.strategy_openai_base_url if strategy else self.settings.openai_base_url,
+            "model": self.settings.strategy_openai_model if strategy else self.settings.openai_model,
+            "temperature": (
+                self.settings.strategy_openai_temperature if strategy else self.settings.openai_temperature
+            ),
+            "timeout_seconds": (
+                self.settings.strategy_openai_timeout_seconds if strategy else self.settings.openai_timeout_seconds
+            ),
+            "max_retries": (
+                self.settings.strategy_llm_max_retries if strategy else self.settings.llm_max_retries
+            ),
+            "pricing": self._pricing(role),
+        }
+
+    def _langchain_service(self, route: dict[str, Any], *, api_key: str) -> LLMService:
+        from app.services.langchain_llm_adapter import LangChainOpenAIAdapter
+
+        fallback_method = self.settings.langchain_structured_output_fallback_method
+        return LangChainOpenAIAdapter(
+            api_key=api_key,
+            base_url=route["base_url"],
+            model=route["model"],
+            temperature=route["temperature"],
+            timeout_seconds=route["timeout_seconds"],
+            pricing=route["pricing"],
+            organization=self.settings.openai_organization,
+            project=self.settings.openai_project,
+            verify_ssl=self.settings.openai_verify_ssl,
+            ca_bundle=self.settings.openai_ca_bundle,
+            max_retries=route["max_retries"],
+            structured_output_method=self.settings.langchain_structured_output_method or "json_schema",
+            structured_output_fallback_method=fallback_method,
+        )
+
+    def _remote_service(self, route: dict[str, Any]) -> LLMService:
+        provider = route["provider"]
+        api_key = str(route["api_key"] or "")
+        if provider == "langchain_openai":
+            primary = self._langchain_service(route, api_key=api_key)
+            secondary_key = str(route["fallback_api_key"] or "")
+            if secondary_key:
+                return FallbackLLMService(
+                    primary,
+                    self._langchain_service(route, api_key=secondary_key),
+                )
+            return primary
+        return OpenAILLMService(
+            api_key=api_key,
+            base_url=route["base_url"],
+            model=route["model"],
+            temperature=route["temperature"],
+            timeout_seconds=route["timeout_seconds"],
+            organization=self.settings.openai_organization,
+            project=self.settings.openai_project,
+            verify_ssl=self.settings.openai_verify_ssl,
+            ca_bundle=self.settings.openai_ca_bundle,
+            fallback_api_key=route["fallback_api_key"],
+            pricing=route["pricing"],
+        )
+
+    def build(self, role: str = "generation") -> LLMService | None:
+        route = self._route(role)
+        provider = route["provider"]
+        mock_service = MockLLMService()
+        if provider == "mock":
+            return mock_service
+        if not route["api_key"]:
+            return None if role == "strategy" else mock_service
+        service = self._remote_service(route)
+        if role != "strategy" and self.settings.llm_fallback_to_mock:
+            return FallbackLLMService(service, mock_service)
+        return service
+
+
+def build_llm_service(*, role: str = "generation", settings: Any | None = None) -> LLMService | None:
+    return LLMProviderRouter(settings or get_settings()).build(role)
+
+
 @lru_cache(maxsize=1)
 def get_llm_service() -> LLMService:
-    settings = get_settings()
-    mock_service = MockLLMService()
-
-    if settings.llm_provider == "openai":
-        if not settings.openai_api_key:
-            return mock_service
-        primary = OpenAILLMService(
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
-            model=settings.openai_model,
-            temperature=settings.openai_temperature,
-            timeout_seconds=settings.openai_timeout_seconds,
-            organization=settings.openai_organization,
-            project=settings.openai_project,
-            verify_ssl=settings.openai_verify_ssl,
-            ca_bundle=settings.openai_ca_bundle,
-            fallback_api_key=settings.openai_fallback_api_key,
-        )
-        if settings.llm_fallback_to_mock:
-            return FallbackLLMService(primary, mock_service)
-        return primary
-
-    return mock_service
+    service = build_llm_service()
+    return service or MockLLMService()
 
 
 @lru_cache(maxsize=1)
 def get_strategy_llm_service() -> LLMService | None:
-    settings = get_settings()
-    if not settings.strategy_openai_api_key:
-        return None
-    return OpenAILLMService(
-        api_key=settings.strategy_openai_api_key,
-        base_url=settings.strategy_openai_base_url,
-        model=settings.strategy_openai_model,
-        temperature=settings.strategy_openai_temperature,
-        timeout_seconds=settings.strategy_openai_timeout_seconds,
-        organization=settings.openai_organization,
-        project=settings.openai_project,
-        verify_ssl=settings.openai_verify_ssl,
-        ca_bundle=settings.openai_ca_bundle,
-        fallback_api_key=settings.strategy_openai_fallback_api_key,
-    )
+    return build_llm_service(role="strategy")

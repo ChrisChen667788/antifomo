@@ -1,6 +1,6 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `1.1.1+20260612`
+Version: `1.2.0+20260613`
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
@@ -12,7 +12,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 1.1.0 line keeps the local-first loop intact while hardening the architecture: research generation, collector operations, delivery intelligence, feature clients, controller hooks, report panels, knowledge detail, and session summary surfaces are split into clearer modules, and major UI surfaces now consume semantic day/night theme tokens.
+The 1.2.0 line keeps the deterministic local-first workflow intact while adding a replaceable LangChain model adapter: prompt-specific Pydantic structured output, provider-reported token usage, configuration-driven model pricing, and independent generation/strategy routes now sit behind the framework-neutral service boundary.
 
 ## Problem
 
