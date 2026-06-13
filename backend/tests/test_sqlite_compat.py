@@ -119,7 +119,7 @@ def test_ensure_sqlite_compat_columns_backfills_legacy_tables() -> None:
     )
 
     research_job_columns = _columns_for(engine, "research_jobs")
-    assert "timeline_payload" in research_job_columns
+    assert {"timeline_payload", "metrics_payload"}.issubset(research_job_columns)
 
     compare_snapshot_columns = _columns_for(engine, "research_compare_snapshots")
     assert {"report_version_id", "metadata_payload"}.issubset(compare_snapshot_columns)

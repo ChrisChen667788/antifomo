@@ -46,6 +46,9 @@ jobs:
             cp backend/.env.example backend/.env
           fi
 
+      - name: Scan tracked files for secrets
+        run: npm run security:scan
+
       - name: Run check
         run: npm run check
 
@@ -252,7 +255,7 @@ jobs:
       - name: Wait for frontend
         run: |
           for attempt in {1..60}; do
-            if curl -fsS http://127.0.0.1:3000/focus > /dev/null; then
+            if curl -fsS http://127.0.0.1:3010/focus > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -261,7 +264,7 @@ jobs:
           exit 1
 
       - name: Run Focus E2E
-        run: npm run demo:focus-e2e -- --frontend-url http://127.0.0.1:3000 --backend-url http://127.0.0.1:8011 --artifact-dir /tmp/focus-e2e-artifacts --report-file /tmp/focus-e2e-artifacts/focus-e2e-report.json
+        run: npm run demo:focus-e2e -- --frontend-url http://127.0.0.1:3010 --backend-url http://127.0.0.1:8011 --artifact-dir /tmp/focus-e2e-artifacts --report-file /tmp/focus-e2e-artifacts/focus-e2e-report.json
 
       - name: Show frontend log on failure
         if: failure()

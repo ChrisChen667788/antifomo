@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.items import OutputLanguage
+from app.schemas.research_runtime import ResearchRunMetricsOut
 
 ResearchMode = Literal["fast", "deep"]
 
@@ -1703,6 +1704,7 @@ class ResearchJobOut(BaseModel):
     error: str | None = None
     report: ResearchReportResponse | None = None
     timeline: list["ResearchJobTimelineEventOut"] = Field(default_factory=list)
+    metrics: ResearchRunMetricsOut | None = None
 
 
 class ResearchJobTimelineEventOut(BaseModel):

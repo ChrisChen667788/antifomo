@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.schemas.research import ResearchJobCreateRequest
 from app.services.llm_runtime import LLMRunResult, LLMUsage
+from app.services import research_job_store
 from app.services.research.run_metrics import (
     CostLedgerEntry,
     ResearchRunMetrics,
@@ -134,3 +136,29 @@ def test_run_metrics_records_nodes_progress_and_completion() -> None:
     assert snapshot["nodes"]["workflow.setup"]["succeeded"] == 1
     assert snapshot["nodes"]["stage.search"]["succeeded"] == 1
     assert snapshot["nodes"]["stage.extracting"]["succeeded"] == 1
+
+
+def test_research_job_failure_persists_finished_metrics(monkeypatch) -> None:
+    updates: list[dict[str, object]] = []
+
+    def fail_workflow(*args, **kwargs):
+        raise RuntimeError("fixture failure")
+
+    monkeypatch.setattr(research_job_store, "execute_research_report_workflow", fail_workflow)
+    monkeypatch.setattr(
+        research_job_store,
+        "update_research_job",
+        lambda job_id, **changes: updates.append(changes),
+    )
+
+    research_job_store._run_research_job(
+        "00000000-0000-0000-0000-000000000001",
+        ResearchJobCreateRequest(keyword="测试任务", research_mode="fast"),
+    )
+
+    final_update = updates[-1]
+    assert final_update["status"] == "failed"
+    metrics = final_update["metrics_payload"]
+    assert isinstance(metrics, dict)
+    assert metrics["status"] == "failed"
+    assert metrics["finished_at"]

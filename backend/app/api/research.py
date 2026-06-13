@@ -174,6 +174,7 @@ from app.services.research_workspace_store import (
     save_tracking_topic,
     save_compare_snapshot,
 )
+from app.schemas.research_runtime import ResearchRunMetricsOut
 from app.services.research_service import (
     build_research_action_cards,
     build_research_report_markdown,
@@ -184,7 +185,12 @@ from app.services.research_review_service import (
     resolve_low_quality_research_entry,
     rewrite_low_quality_research_entry,
 )
-from app.services.research_job_store import get_research_job, get_research_job_timeline, start_research_job
+from app.services.research_job_store import (
+    get_research_job,
+    get_research_job_metrics,
+    get_research_job_timeline,
+    start_research_job,
+)
 from app.services.user_context import ensure_demo_user
 
 
@@ -1449,6 +1455,14 @@ def get_research_job_timeline_items(job_id: str) -> list[ResearchJobTimelineEven
     if timeline is None:
         raise HTTPException(status_code=404, detail="Research job not found")
     return [ResearchJobTimelineEventOut(**item) for item in timeline]
+
+
+@router.get("/jobs/{job_id}/metrics", response_model=ResearchRunMetricsOut)
+def get_research_job_metrics_snapshot(job_id: str) -> ResearchRunMetricsOut:
+    metrics = get_research_job_metrics(job_id)
+    if metrics is None:
+        raise HTTPException(status_code=404, detail="Research job metrics not found")
+    return metrics
 
 
 @router.get("/conversations", response_model=list[ResearchConversationOut])

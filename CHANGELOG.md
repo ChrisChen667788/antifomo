@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.2.1+20260613 - 2026-06-13
+
+- Split the legacy LLM facade into protocol, mock provider, OpenAI adapter, fallback composition, and provider-router owner modules while retaining import compatibility.
+- Persisted per-job research workflow metrics, node latency, token usage, and cost-ledger snapshots for successful and failed background jobs.
+- Added a typed research-job metrics API plus Alembic and SQLite compatibility migrations.
+- Added tracked-file secret scanning to CI and corrected the Focus E2E frontend health check to use the configured port `3010`.
+
 ## 1.2.0+20260613 - 2026-06-13
 
 - Added a framework-neutral `LLMRunResult` contract for provider/model identity, token usage, cost estimates, attempts, response identifiers, finish reasons, and adapter metadata while preserving the existing JSON-string `run_prompt()` facade.

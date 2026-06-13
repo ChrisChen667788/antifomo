@@ -162,3 +162,20 @@ def test_research_job_timeline_tracks_stage_progress(monkeypatch) -> None:
     assert timeline[-1]["stage_key"] == "search"
     assert timeline[-1]["progress_percent"] == 42
     assert "行业媒体" in timeline[-1]["message"]
+
+    metrics_payload = {
+        "run_id": "run-test",
+        "workflow_engine": "deterministic",
+        "status": "succeeded",
+        "started_at": "2026-06-13T01:00:00+00:00",
+        "finished_at": "2026-06-13T01:00:01+00:00",
+        "counters": {"queries": 2},
+        "gauges": {"duration_ms": 1000.0},
+        "nodes": {},
+        "cost_ledger": {"entry_count": 0, "entries": []},
+    }
+    research_job_store.update_research_job(str(job.id), metrics_payload=metrics_payload)
+    metrics = research_job_store.get_research_job_metrics(str(job.id))
+    assert metrics is not None
+    assert metrics.run_id == "run-test"
+    assert metrics.counters["queries"] == 2

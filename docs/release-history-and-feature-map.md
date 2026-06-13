@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `1.2.0+20260613`
+Current version: `1.2.1+20260613`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 

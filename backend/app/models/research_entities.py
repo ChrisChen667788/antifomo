@@ -595,6 +595,7 @@ class ResearchJob(Base):
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     report_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     timeline_payload: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    metrics_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

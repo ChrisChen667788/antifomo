@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current synced release line: `1.2.0+20260613`, adding the LangChain model adapter, structured output, provider-reported token usage, configurable pricing, and provider routing on top of the measurable workflow baseline.
+- Current local release candidate: `1.2.1+20260613`, splitting provider owners, persisting job-level run metrics and cost ledgers, and hardening CI on top of the LangChain adapter baseline.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -33,7 +33,7 @@ Current completion status:
 - The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 7,913 lines.
 - Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
-- Release screenshots are currently aligned to `1.2.0+20260613` with `15/15` accepted screenshots; this backend-only baseline did not change visual surfaces.
+- Release screenshots remain aligned to the visually identical `1.2.0+20260613` baseline with `15/15` accepted screenshots; `1.2.1` is backend and CI hardening only.
 
 Latest verified checks from the current work line:
 
@@ -243,6 +243,19 @@ Acceptance:
 - Add Pydantic structured output through a replaceable LangChain adapter.
 - Capture provider token usage, cached-input details, and configuration-driven cost estimates.
 - Route generation and strategy models independently across mock, legacy OpenAI, and LangChain OpenAI paths.
+
+### `1.2.1`: Provider Ownership and Persisted Observability
+
+- Split the LLM compatibility facade into protocol, provider, fallback, and routing owners.
+- Persist background research run metrics and cost ledgers on research jobs.
+- Expose typed job metrics without leaking prompts, source bodies, or credentials.
+- Run tracked-file secret scanning in CI and keep Focus E2E on the configured frontend port.
+
+### `1.3.0`: Executable Evaluation Baseline
+
+- Add a deterministic evaluation runner over the versioned 100-case manifest.
+- Separate structural, retrieval, quality, latency, and cost metrics with explicit unavailable states.
+- Produce machine-readable run artifacts and release-gate summaries without requiring LangGraph.
 
 ### Later
 

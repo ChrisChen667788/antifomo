@@ -95,6 +95,10 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
         statements.append(
             "ALTER TABLE research_jobs ADD COLUMN timeline_payload JSON NOT NULL DEFAULT '[]'"
         )
+    if _table_exists(engine, "research_jobs") and not _table_has_column(engine, "research_jobs", "metrics_payload"):
+        statements.append(
+            "ALTER TABLE research_jobs ADD COLUMN metrics_payload JSON NOT NULL DEFAULT '{}'"
+        )
     if _table_exists(engine, "research_compare_snapshots") and not _table_has_column(
         engine, "research_compare_snapshots", "report_version_id"
     ):

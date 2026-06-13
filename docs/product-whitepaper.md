@@ -1,6 +1,6 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `1.2.0+20260613`
+Version: `1.2.1+20260613`
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 

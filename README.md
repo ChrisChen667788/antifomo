@@ -70,6 +70,7 @@ Each public version line below includes both an English product summary and a Ch
 | `1.1.0` | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 |
 | `1.1.1` | Measurable workflow baseline with framework-neutral orchestration, per-run metrics, a model cost ledger, and a versioned 100-case research evaluation structure. | 可度量工作流基线：框架中立编排、单次运行指标、模型成本账本和版本化 100 条研究评测集结构。 |
 | `1.2.0` | LangChain adapter with Pydantic structured output, provider-reported token usage, configurable model pricing, and independent generation/strategy routing. | LangChain 适配层：Pydantic 结构化输出、provider 真实 token usage、可配置模型价格和生成/策略模型独立路由。 |
+| `1.2.1` | Runtime hardening with split provider owners, persisted job metrics/cost ledgers, typed observability APIs, CI secret scanning, and corrected Focus E2E port wiring. | 运行时加固：拆分模型 provider owner、持久化任务指标与成本账本、类型化观测 API、CI 密钥扫描及 Focus E2E 端口修复。 |
 
 ## Product screenshots
 
@@ -244,7 +245,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.2.0+20260613`
+- current version: `1.2.1+20260613`
 - web build passes
 - backend test suite passes via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

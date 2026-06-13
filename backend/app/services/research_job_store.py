@@ -13,7 +13,9 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.research_entities import ResearchJob
 from app.schemas.research import ResearchJobCreateRequest, ResearchJobOut
-from app.services.research_service import generate_research_report
+from app.schemas.research_runtime import ResearchRunMetricsOut
+from app.services.research.run_metrics import ResearchRunMetrics
+from app.services.research_service import execute_research_report_workflow
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -89,6 +91,7 @@ def _serialize_job(job: ResearchJob) -> ResearchJobOut:
         "error": job.error,
         "report": job.report_payload,
         "timeline": list(job.timeline_payload or []),
+        "metrics": job.metrics_payload or None,
     }
     return ResearchJobOut.model_validate(payload)
 
@@ -240,6 +243,7 @@ def create_research_job(payload: ResearchJobCreateRequest) -> ResearchJobOut:
             message="正在初始化关键词研究任务",
             estimated_seconds=420 if payload.research_mode == "deep" else 180,
             timeline_payload=[],
+            metrics_payload={},
         )
         db.add(job)
         db.flush()
@@ -277,6 +281,7 @@ def _snapshot_callback(job_id: str) -> Callable[[Any], None]:
 
 
 def _run_research_job(job_id: str, payload: ResearchJobCreateRequest) -> None:
+    metrics = ResearchRunMetrics()
     try:
         update_research_job(
             job_id,
@@ -287,10 +292,11 @@ def _run_research_job(job_id: str, payload: ResearchJobCreateRequest) -> None:
             message="正在准备多源研究范围",
             progress_percent=4,
         )
-        report = generate_research_report(
+        execution = execute_research_report_workflow(
             payload,
             progress_callback=_progress_callback(job_id),
             snapshot_callback=_snapshot_callback(job_id),
+            metrics=metrics,
         )
         update_research_job(
             job_id,
@@ -299,11 +305,14 @@ def _run_research_job(job_id: str, payload: ResearchJobCreateRequest) -> None:
             stage_key="completed",
             stage_label=STAGE_LABELS["completed"],
             message="研报已生成",
-            report_payload=report.model_dump(mode="json"),
+            report_payload=execution.report.model_dump(mode="json"),
+            metrics_payload=execution.metrics.snapshot(),
             finished_at=_utc_now(),
             error=None,
         )
     except Exception as exc:  # pragma: no cover
+        if metrics.finished_at is None:
+            metrics.finish("failed")
         update_research_job(
             job_id,
             status="failed",
@@ -313,6 +322,7 @@ def _run_research_job(job_id: str, payload: ResearchJobCreateRequest) -> None:
             message="研报生成失败",
             finished_at=_utc_now(),
             error=str(exc),
+            metrics_payload=metrics.snapshot(),
         )
 
 
@@ -345,3 +355,20 @@ def get_research_job_timeline(job_id: str) -> list[dict[str, Any]] | None:
         if job is None:
             return None
         return list(job.timeline_payload or [])
+
+
+def get_research_job_metrics(job_id: str) -> ResearchRunMetricsOut | None:
+    _maybe_backfill_jobs()
+    try:
+        parsed_job_id = uuid.UUID(str(job_id))
+    except ValueError:
+        return None
+    with SessionLocal() as db:
+        job = db.scalar(
+            select(ResearchJob)
+            .where(ResearchJob.id == parsed_job_id)
+            .where(ResearchJob.user_id == settings.single_user_id)
+        )
+        if job is None or not job.metrics_payload:
+            return None
+        return ResearchRunMetricsOut.model_validate(job.metrics_payload)
