@@ -4,7 +4,7 @@
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current release: `1.2.1+20260613`, hardening the LangChain baseline with split provider owners, persisted job metrics and cost ledgers, typed observability APIs, and CI secret scanning.
+Current release: `1.3.0+20260613`, adding an executable 100-case research evaluation baseline with cost-safe provider confirmation, honest unavailable metrics, JSON artifacts, and strict release-gate eligibility.
 
 ## GitHub About
 

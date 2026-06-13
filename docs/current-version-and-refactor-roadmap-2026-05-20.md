@@ -9,7 +9,7 @@ This document is the working baseline for the next large change. It consolidates
 Current release metadata:
 
 - Previous stable released baseline: `1.0.0+20260520`.
-- Current local release candidate: `1.2.1+20260613`, splitting provider owners, persisting job-level run metrics and cost ledgers, and hardening CI on top of the LangChain adapter baseline.
+- Current local release candidate: `1.3.0+20260613`, adding an executable, cost-aware 100-case evaluation baseline on top of persisted workflow observability.
 - Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
 
 Current completion status:
@@ -253,9 +253,16 @@ Acceptance:
 
 ### `1.3.0`: Executable Evaluation Baseline
 
-- Add a deterministic evaluation runner over the versioned 100-case manifest.
-- Separate structural, retrieval, quality, latency, and cost metrics with explicit unavailable states.
-- Produce machine-readable run artifacts and release-gate summaries without requiring LangGraph.
+- Added a deterministic evaluation runner over the versioned 100-case manifest.
+- Separated structural, retrieval, quality, latency, and cost metrics with explicit unavailable states.
+- Added machine-readable run artifacts and release-gate summaries without requiring LangGraph.
+- Kept the draft dataset ineligible for release gating until expected sources and reference answers are curated and locked.
+
+### `1.4.0`: LangGraph Shadow Runtime
+
+- Implement a replaceable LangGraph workflow engine behind the existing framework-neutral protocol.
+- Run deterministic and graph engines against the same bounded evaluation cases.
+- Keep the graph engine in shadow mode until parity, latency, cost, and failure-recovery gates pass.
 
 ### Later
 

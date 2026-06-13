@@ -18,6 +18,9 @@ class ResearchEvaluationCaseSpec(BaseModel):
     regions: list[str] = Field(default_factory=list)
     entities: list[str] = Field(default_factory=list)
     required_terms: list[str] = Field(default_factory=list)
+    reference_answer_terms: list[str] = Field(default_factory=list)
+    expected_source_domains: list[str] = Field(default_factory=list)
+    expected_source_urls: list[str] = Field(default_factory=list)
     expected_behavior: ExpectedBehavior | None = None
     language: Literal["zh-CN", "zh-TW", "en"] = "zh-CN"
 
@@ -58,6 +61,9 @@ class ResearchEvaluationCase(BaseModel):
     regions: list[str]
     entities: list[str]
     required_terms: list[str]
+    reference_answer_terms: list[str]
+    expected_source_domains: list[str]
+    expected_source_urls: list[str]
     preferred_source_tiers: list[str]
     required_sections: list[str]
     metric_targets: dict[str, float]
@@ -88,6 +94,9 @@ def load_research_evaluation_dataset(path: Path = DATASET_PATH) -> tuple[Researc
                     regions=list(case.regions),
                     entities=list(case.entities),
                     required_terms=list(case.required_terms),
+                    reference_answer_terms=list(case.reference_answer_terms),
+                    expected_source_domains=list(case.expected_source_domains),
+                    expected_source_urls=list(case.expected_source_urls),
                     preferred_source_tiers=list(suite.preferred_source_tiers),
                     required_sections=list(suite.required_sections),
                     metric_targets=dict(suite.metric_targets),

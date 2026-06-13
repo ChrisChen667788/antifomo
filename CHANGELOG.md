@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.3.0+20260613 - 2026-06-13
+
+- Added an executable 100-case research evaluation runner with bounded case selection and machine-readable JSON artifacts.
+- Added case-level and aggregate scoring for citation support, answer-term coverage, behavior accuracy, latency, cost, and human-curated retrieval relevance.
+- Kept retrieval metrics unavailable until expected source domains or URLs are curated, preventing keyword proxies from being reported as Recall, MRR, or NDCG.
+- Added release-gate eligibility checks requiring a locked dataset, the complete case set, every required metric, and passing targets.
+- Added an explicit live-provider cost confirmation before evaluation can use configured remote credentials.
+
 ## 1.2.1+20260613 - 2026-06-13
 
 - Split the legacy LLM facade into protocol, mock provider, OpenAI adapter, fallback composition, and provider-router owner modules while retaining import compatibility.
