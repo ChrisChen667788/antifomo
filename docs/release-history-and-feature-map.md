@@ -4,7 +4,7 @@ Current version: `1.6.0+20260613`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
-For the upcoming modular architecture refactor and day/night design-system refresh, use `docs/current-version-and-refactor-roadmap-2026-05-20.md` as the working baseline.
+For the completed modular architecture and day/night design-system execution log, plus the current operating policy for future changes, use `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
 
 ## Major Version History
 

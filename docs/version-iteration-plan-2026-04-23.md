@@ -1,6 +1,8 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-05-20
+Updated: 2026-06-14
+
+Status note: this file preserves the original sequencing decisions. The authoritative current release map is `docs/release-history-and-feature-map.md`; the modular refactor and day/night work below were completed across `1.1.0`, `1.5.0`, and `1.6.0`, while the `1.2.0` and `1.3.0` version numbers were subsequently assigned to the LangChain adapter and executable evaluation baseline.
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
 
@@ -329,7 +331,7 @@ Acceptance:
 
 Goal: move the solution architect workbench from meeting-prep checklists into architecture-review artifacts that can drive customer technical workshops and internal solution reviews.
 
-Status: in progress.
+Status: delivered as part of `1.1.0+20260602`.
 
 Scope:
 
@@ -348,7 +350,7 @@ Acceptance:
 
 Goal: reduce coupling before the next feature expansion by separating orchestration, domain logic, persistence, external adapters, and UI features into clearer modules.
 
-Status: planned. Detailed baseline: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
+Status: completed across `1.1.0`, `1.5.0`, and `1.6.0`. Detailed execution log: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
 
 Principles:
 
@@ -375,7 +377,7 @@ Acceptance:
 
 Goal: make light mode and dark mode distinct, polished visual systems instead of a shared glass UI with variable swaps.
 
-Status: planned. Detailed baseline: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
+Status: completed across `1.1.0` and the `1.6.0` release-hardening line. Detailed execution log: `docs/current-version-and-refactor-roadmap-2026-05-20.md`.
 
 Scope:
 

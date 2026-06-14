@@ -1,16 +1,16 @@
 # Current Version, History, and Refactor Roadmap
 
-Updated: 2026-06-13
+Updated: 2026-06-14
 
-This document is the working baseline for the next large change. It consolidates the current product state, historical version lines, completed development content, and the upcoming architecture refactor plus dark-mode redesign plan.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.6.0`.
 
 ## Current State
 
 Current release metadata:
 
-- Previous stable released baseline: `1.0.0+20260520`.
-- Current local release candidate: `1.6.0+20260613`, adding shared Focus runtime ownership, pre-hydration preferences, deterministic light/dark release screenshots, dark-theme compatibility, and dead research-facade wrapper retirement on top of measured LangChain and opt-in LangGraph workflows.
-- Important local file to keep uncommitted: `backend/anti_fomo_demo.db.before-entity-quality-20260502-021530`.
+- Previous major product baseline: `1.0.0+20260520`.
+- Current release: `1.6.0+20260613`, adding shared Focus runtime ownership, pre-hydration preferences, deterministic light/dark release screenshots, dark-theme compatibility, and dead research-facade wrapper retirement on top of measured LangChain and opt-in LangGraph workflows.
+- Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
 
@@ -34,18 +34,17 @@ Current completion status:
 - `research_service.py` now exposes `generate_research_report` as a thin setup/dependency facade; the generation workflow spine lives in `backend/app/services/research/generation_workflow.py` and consumes stage-scoped dependency ports.
 - Report card, its downstream report sections, Collector Ops primary shells/daemon/batch surfaces, Research Center presentation sections, research archive/console surfaces, research compare/topic-version surfaces, knowledge detail, and session summary panels now consume semantic theme tokens instead of hard-coded day-mode white/slate/status surfaces.
 - Global theme tokens are realigned with the earlier `v0.8.0+20260518` translucent day UI: light mode returns to the pale blue Apple-style glass baseline, while dark mode now mirrors the same glass language with low-saturation deep surfaces.
-- The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 7,913 lines.
+- The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 3,739 lines.
 - Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
-- Release screenshots remain aligned to the visually identical `1.2.0+20260613` baseline with `15/15` accepted screenshots; `1.2.1` is backend and CI hardening only.
+- Release screenshots contain 19 accepted production captures: 15 light-mode routes plus 4 explicit dark-mode baselines, with theme-state and runtime-overlay assertions.
 
 Latest verified checks from the current work line:
 
-- Backend collector/research modularization regression set passed.
-- Research facade wrapper-retirement, source-document/section-delivery, and section-delivery dependency-seam regression subsets passed.
-- Current-tree secret scan passed.
-- Frontend lint for the current modularization line passed.
-- Production build passed.
+- `npm run check` passed: ESLint, 16 frontend tests, production build, and 298 backend tests.
+- `npm run security:scan` and `npm run security:scan:history` passed for the current tree and all local refs.
+- The research evaluation manifest validates all 100 draft cases; it remains intentionally ineligible for release gating until curation and locking are complete.
+- The screenshot manifest validates 19 accepted files across light and dark themes.
 - `git diff --check` passed.
 
 ## Historical Version Lines
