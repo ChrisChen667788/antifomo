@@ -2,14 +2,14 @@
 
 Updated: 2026-06-14
 
-This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.1`.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.2`.
 
 ## Current State
 
 Current release metadata:
 
 - Previous major product baseline: `1.0.0+20260520`.
-- Current release: `1.7.1+20260614`, adding independent evaluation review governance and bounded live-provider budget controls on top of the locked 100-case LangGraph production baseline.
+- Current release: `1.7.2+20260615`, applying 78 expert scope corrections to the locked research evaluation set while retaining LangGraph parity, independent review, and live-budget controls.
 - Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
@@ -306,6 +306,14 @@ Completed in `1.7.1+20260614`:
 - Added a 100-case live-evaluation plan with a target cost ceiling of `$81.50`, split into 20 batches of five cases.
 - Required live-provider runs to supply an approved review artifact and explicit budget, with a default maximum of five cases per invocation.
 - Added runtime stops after unavailable provider pricing or observed spend beyond the approved budget.
+
+Completed in `1.7.2+20260615`:
+
+- Parsed the completed Chinese review CSV without treating missing reviewer name/date as scope-feedback blockers.
+- Recorded 21 approved cases, 78 scope change requests, and one unanswered but already concrete case (`transport-003`).
+- Applied the 78 comments only to region and research-subject fields; answer anchors, source domains, and expected behavior labels were unchanged.
+- Upgraded the evaluation dataset to `1.2.0`, removed all empty/national/global region scopes, and locked the result with a new digest.
+- Kept the independent post-change approval gate separate; applying feedback is not represented as reviewer approval of the replacement subjects.
 
 ### Later
 

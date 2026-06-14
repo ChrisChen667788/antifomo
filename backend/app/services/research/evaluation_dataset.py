@@ -127,6 +127,11 @@ def _validate_locked_case(case: ResearchEvaluationCaseSpec) -> None:
         raise ValueError(f"locked case {case.case_id} requires curation_notes")
     if len(case.source_relevance_notes.strip()) < 12:
         raise ValueError(f"locked case {case.case_id} requires source_relevance_notes")
+    regions = {value.strip().casefold() for value in case.regions if value.strip()}
+    if not regions:
+        raise ValueError(f"locked case {case.case_id} requires a concrete region")
+    if regions & {"中国", "全国", "全球", "china", "global", "worldwide"}:
+        raise ValueError(f"locked case {case.case_id} contains an overly broad region")
 
 
 def research_evaluation_content_sha256(manifest: ResearchEvaluationDatasetManifest) -> str:

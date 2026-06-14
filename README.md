@@ -77,6 +77,7 @@ Each public version line below includes both an English product summary and a Ch
 | `1.6.0` | Release hardening with shared Focus runtime owners, pre-hydration preferences, deterministic dual-theme screenshots, dark-mode contrast compatibility, and dead facade-wrapper retirement. | 发布加固：共享 Focus 运行时 owner、首屏偏好引导、确定性双主题截图、深色对比度兼容和废弃 facade 包装器清理。 |
 | `1.7.0` | Production LangGraph orchestration with a locked 100-case evaluation set, a zero-cost deterministic parity gate, deterministic rollback, and a safe PostCSS transitive override while Next.js stable catches up. | LangGraph 生产编排：锁定 100 条评测集、零成本确定性等价门禁、deterministic 回滚，以及等待 Next.js 稳定版升级期间的安全 PostCSS 传递依赖覆盖。 |
 | `1.7.1` | Evaluation governance with independent-review attestations and content digests, live-run budget planning, five-case batch limits, and runtime spend stops. | 评测治理：独立复核声明与内容摘要、真实评测预算规划、每批最多五条及运行时费用停止保护。 |
+| `1.7.2` | Expert-feedback scope refinement across 78 evaluation cases, replacing national/global scopes with concrete regions and named research subjects while preserving approved behaviors, answer anchors, and source domains. | 专家意见范围修订：对 78 条评测用例补齐省级地区和明确研究主体，保持已通过的行为标签、答案锚点和来源域名不变。 |
 
 ## Product screenshots
 
@@ -251,7 +252,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.7.1+20260614`
+- current version: `1.7.2+20260615`
 - web build passes
 - frontend and backend test suites pass via `npm run check`
 - release screenshots cover every primary feature surface through `npm run repo:screenshots`

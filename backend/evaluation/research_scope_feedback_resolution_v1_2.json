@@ -1,0 +1,1118 @@
+{
+  "resolution_id": "research-scope-feedback-v1.2-20260615",
+  "source_csv_filename": "研究评测集-100条-独立专家复核表-中文版.csv",
+  "source_dataset_version": "1.1.0",
+  "source_dataset_content_sha256": "79eb5c4c9e5523a074cc2691f3f840e5488ce93623b946b103ee24e0ed103ec3",
+  "applied_on": "2026-06-15",
+  "reviewer_identity_required": false,
+  "reviewer_metadata_note": "Per operator instruction, reviewer name and review date are not used for this scope-feedback resolution.",
+  "summary": {
+    "approved_cases": 21,
+    "scope_revision_cases": 78,
+    "unanswered_cases": 1,
+    "unanswered_case_ids": [
+      "transport-003"
+    ],
+    "answer_term_changes": 0,
+    "source_domain_changes": 0,
+    "expected_behavior_changes": 0
+  },
+  "cases": {
+    "content-001": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "快手可灵",
+        "中文在线"
+      ],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "快手可灵",
+        "中文在线"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-002": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中文在线"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-003": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "阅文集团"
+      ],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "阅文集团"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-004": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "中文在线"
+      ],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中文在线"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-005": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "快手可灵"
+      ],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "快手可灵"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-006": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "抖音"
+      ],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "抖音"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-007": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛,并且具体公司也没有体现",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "米哈游"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-008": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛,并且具体公司也没有体现",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "蓝色光标"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-009": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛,并且具体公司也没有体现",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海世纪出版（集团）有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "content-010": {
+      "feedback": "地区需要至少精确到省级,只写中国太宽泛,并且具体公司也没有体现",
+      "original_regions": [
+        "全球"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "阅文集团"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-001": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "上海"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海交通大学医学院附属瑞金医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-002": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "北京"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "北京协和医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-003": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "广东"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "广东省人民医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-004": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "浙江"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "浙江"
+      ],
+      "revised_entities": [
+        "浙江大学医学院附属第一医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-005": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "江苏"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "江苏省人民医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-006": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "四川"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "四川"
+      ],
+      "revised_entities": [
+        "四川大学华西医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-007": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "深圳"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "深圳"
+      ],
+      "revised_entities": [
+        "深圳市人民医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-008": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "武汉"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "武汉"
+      ],
+      "revised_entities": [
+        "武汉市医疗保障局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-009": {
+      "feedback": "没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "成都"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "成都"
+      ],
+      "revised_entities": [
+        "成都中医药大学附属医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "health-010": {
+      "feedback": "地区需要至少精确到省级,没有体现具体哪一家医院的采购需求或者项目",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海交通大学医学院附属瑞金医院"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-001": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "北京"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "北京大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-002": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "上海"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海交通大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-003": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "广东"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "深圳职业技术大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-004": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "浙江"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "浙江"
+      ],
+      "revised_entities": [
+        "杭州市教育局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-005": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "江苏"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "南京大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-006": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "四川"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "四川"
+      ],
+      "revised_entities": [
+        "四川大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-007": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "武汉"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "武汉"
+      ],
+      "revised_entities": [
+        "武汉大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-009": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "中山大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "edu-010": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "北京大学"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-001": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海汽车集团股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-002": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "河北"
+      ],
+      "revised_entities": [
+        "河钢集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-003": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "南京江北新材料科技园管理办公室"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-004": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "富士康科技集团"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-005": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "湖南"
+      ],
+      "revised_entities": [
+        "中联重科股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-006": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "美的集团股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-007": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海发那科机器人有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-008": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "浙江"
+      ],
+      "revised_entities": [
+        "桐昆集团股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-009": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "中芯国际集成电路制造有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "mfg-010": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "华东精密制造有限公司（虚构安全测试主体）"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-001": {
+      "feedback": "地区至少具体到省级",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "国家电网"
+      ],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "国家电网有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-002": {
+      "feedback": "地区至少具体到省级",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [
+        "南方电网"
+      ],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "中国南方电网有限责任公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-003": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "国家能源投资集团有限责任公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-004": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "山西"
+      ],
+      "revised_entities": [
+        "潞安化工集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-005": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中国石油天然气集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-006": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "国网上海市电力公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-007": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "国网江苏省电力有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-008": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "广东电力交易中心有限责任公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-009": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "苏州工业园区经济发展委员会"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "energy-010": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "国家电网有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-001": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海浦东发展银行股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-002": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中信证券股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-003": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中国人民保险集团股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-004": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "交通银行股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-005": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海浦东发展银行股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-006": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中国工商银行股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-007": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中信证券股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-008": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中国人民保险集团股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-009": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "招商银行股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "finance-010": {
+      "feedback": "地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "中信证券股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-001": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "上海"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海市交通委员会"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-002": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "北京"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "北京"
+      ],
+      "revised_entities": [
+        "北京市地铁运营有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-004": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "广州"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "广州"
+      ],
+      "revised_entities": [
+        "广州港集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-005": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "杭州"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "杭州"
+      ],
+      "revised_entities": [
+        "杭州市公安局交通警察支队"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-006": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "成都"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "成都"
+      ],
+      "revised_entities": [
+        "成都公交集团"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-007": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "武汉"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "武汉"
+      ],
+      "revised_entities": [
+        "湖北交通投资集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-008": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "江苏"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "南京空港枢纽经济区管理委员会"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-009": {
+      "feedback": "没有体现具体甲方",
+      "original_regions": [
+        "浙江"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "浙江"
+      ],
+      "revised_entities": [
+        "浙江省交通运输厅"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "transport-010": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "深圳"
+      ],
+      "revised_entities": [
+        "深圳机场集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-001": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "佛山市工业和信息化局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-002": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [
+        "某公司"
+      ],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海数据集团有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-003": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "广东"
+      ],
+      "revised_entities": [
+        "广东省工业和信息化厅"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-004": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "华东数据产业集团有限公司（虚构安全测试主体）"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-005": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海市数据局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-006": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "企查查科技股份有限公司"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-007": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "上海市经济和信息化委员会"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-008": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "江苏"
+      ],
+      "revised_entities": [
+        "江苏省数据局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-009": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [
+        "中国"
+      ],
+      "original_entities": [],
+      "revised_regions": [
+        "浙江"
+      ],
+      "revised_entities": [
+        "浙江省数据局"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    },
+    "guard-010": {
+      "feedback": "没有明确研究主体,地区至少具体到省级,没有体现具体甲方",
+      "original_regions": [],
+      "original_entities": [],
+      "revised_regions": [
+        "上海"
+      ],
+      "revised_entities": [
+        "华东智造股份有限公司（虚构隐私测试主体）"
+      ],
+      "resolution": "采纳范围具体化意见；保留已通过的行为标签、答案锚点和来源域名。"
+    }
+  }
+}

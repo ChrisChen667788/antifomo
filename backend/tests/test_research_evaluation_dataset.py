@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
+import json
+from pathlib import Path
 
 from app.services.research.evaluation_dataset import load_research_evaluation_dataset
 
@@ -9,7 +11,7 @@ def test_research_evaluation_dataset_has_one_hundred_versioned_unique_cases() ->
     manifest, cases = load_research_evaluation_dataset()
 
     assert manifest.dataset_id == "anti-fomo-research-golden-v1"
-    assert manifest.version == "1.1.0"
+    assert manifest.version == "1.2.0"
     assert manifest.status == "locked"
     assert manifest.locked_at is not None
     assert manifest.locked_by
@@ -46,3 +48,27 @@ def test_research_evaluation_dataset_covers_quality_cost_latency_and_guardrails(
     assert all(case.expected_source_domains for case in cases)
     assert all(case.reviewed_by and case.reviewed_at for case in cases)
     assert all(case.curation_notes and case.source_relevance_notes for case in cases)
+    assert all(case.regions for case in cases)
+    assert all(not ({value.casefold() for value in case.regions} & {"中国", "全国", "全球"}) for case in cases)
+
+
+def test_scope_feedback_resolution_covers_all_requested_changes() -> None:
+    resolution_path = (
+        Path(__file__).resolve().parents[1]
+        / "evaluation"
+        / "research_scope_feedback_resolution_v1_2.json"
+    )
+    resolution = json.loads(resolution_path.read_text(encoding="utf-8"))
+
+    assert resolution["summary"] == {
+        "approved_cases": 21,
+        "scope_revision_cases": 78,
+        "unanswered_cases": 1,
+        "unanswered_case_ids": ["transport-003"],
+        "answer_term_changes": 0,
+        "source_domain_changes": 0,
+        "expected_behavior_changes": 0,
+    }
+    assert len(resolution["cases"]) == 78
+    assert all(change["revised_regions"] for change in resolution["cases"].values())
+    assert all(change["revised_entities"] for change in resolution["cases"].values())

@@ -4,7 +4,7 @@ Version: `1.7.1+20260614`
 
 ## Current Truth
 
-The 100-case dataset is structurally curated and locked, but its locker is `anti-fomo-maintainers (Codex-assisted)`. This is not represented as completed independent human review.
+The 100-case dataset is structurally curated and locked. In `1.7.2`, 78 reviewer comments were applied to region and research-subject precision without using reviewer name/date. This is recorded as scope-feedback resolution, not completed independent approval of the revised cases.
 
 Independent review is complete only when a different reviewer:
 

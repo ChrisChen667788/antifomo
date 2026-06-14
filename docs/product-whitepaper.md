@@ -1,6 +1,6 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `1.7.1+20260614`
+Version: `1.7.2+20260615`
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
@@ -12,7 +12,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 1.7.1 line keeps the local-first and framework-neutral workflow contract while operating LangGraph as the production default after a locked 100-case offline orchestration parity gate. Independent review artifacts and explicit budget gates now prevent Codex-assisted curation from being misrepresented as external human validation or accidentally triggering an unbounded live-provider run.
+The 1.7.2 line keeps the local-first and framework-neutral workflow contract while operating LangGraph as the production default. The locked 100-case dataset now incorporates 78 concrete scope corrections from reviewer comments, while review governance and explicit budget gates prevent scope-resolution work from being misrepresented as approval of the revised cases or from triggering an unbounded live-provider run.
 
 ## Problem
 
