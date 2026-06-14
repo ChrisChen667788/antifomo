@@ -47,6 +47,8 @@ npm run research:evaluate -- --execute --workflow-engine langgraph --allow-live-
 
 Use a bounded `--limit` first. Do not run the complete live suite without an approved provider-cost budget.
 
+As of `1.7.1`, live execution also requires a complete independent review artifact, an explicit `--budget-usd`, and no more than five selected cases by default. See `docs/research-evaluation-governance-v1.7.1.md`.
+
 ## Rollback
 
 Set:

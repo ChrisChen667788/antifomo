@@ -4,7 +4,7 @@
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current release: `1.7.0+20260614`, promoting LangGraph to the production workflow engine after a locked 100-case offline parity gate, retaining deterministic rollback, and eliminating the current PostCSS audit warning without the unsafe Next.js 9 downgrade.
+Current release: `1.7.1+20260614`, adding independently signed evaluation review artifacts and bounded live-provider budget controls on top of the locked 100-case LangGraph production gate and deterministic rollback path.
 
 ## GitHub About
 

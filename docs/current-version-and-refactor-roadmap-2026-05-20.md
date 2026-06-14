@@ -2,14 +2,14 @@
 
 Updated: 2026-06-14
 
-This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.0`.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.1`.
 
 ## Current State
 
 Current release metadata:
 
 - Previous major product baseline: `1.0.0+20260520`.
-- Current release: `1.7.0+20260614`, locking the 100-case evaluation dataset, adding a complete offline workflow parity gate, promoting LangGraph to the production default with deterministic rollback, and safely overriding Next.js's pinned vulnerable PostCSS dependency.
+- Current release: `1.7.1+20260614`, adding independent evaluation review governance and bounded live-provider budget controls on top of the locked 100-case LangGraph production baseline.
 - Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
@@ -298,6 +298,14 @@ Completed in `1.6.0+20260613`:
 - Split remaining large presentation files only when a behavior change exposes a stable section/controller boundary; line count alone is not a refactor requirement.
 - Add new research behavior to owner modules and workflow ports, never back into the compatibility facade.
 - Remove the PostCSS override after a stable Next.js release depends on `postcss>=8.5.10` and passes the same build/audit checks.
+
+Completed in `1.7.1+20260614`:
+
+- Added independent-review template export, reviewer finalization, content-digest signing, and validation against immutable locked case context.
+- Kept the current Codex-assisted dataset lock distinct from independent human approval; a pending template never satisfies the review gate.
+- Added a 100-case live-evaluation plan with a target cost ceiling of `$81.50`, split into 20 batches of five cases.
+- Required live-provider runs to supply an approved review artifact and explicit budget, with a default maximum of five cases per invocation.
+- Added runtime stops after unavailable provider pricing or observed spend beyond the approved budget.
 
 ### Later
 

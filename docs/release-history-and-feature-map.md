@@ -1,6 +1,6 @@
 # Release History and Feature Map
 
-Current version: `1.7.0+20260614`
+Current version: `1.7.1+20260614`
 
 This file is the compact product map for release notes, GitHub updates, and future iteration planning. It groups historical major-version progress by capability layer and keeps the current feature inventory explicit enough for industry-facing delivery review.
 
@@ -33,6 +33,7 @@ For the completed modular architecture and day/night design-system execution log
 | `1.5.0` | Hotspot decomposition and UI regression coverage | Split work-task and knowledge-intelligence owners, extracted inbox/archive frontend models, added Vitest component/model coverage and theme regression, and upgraded Next.js to the current security patch. |
 | `1.6.0` | Release and theme hardening | Added shared Focus runtime owners, pre-hydration preference bootstrap, isolated light/dark production screenshots, legacy dark-theme utility compatibility, and dead research-facade wrapper retirement. |
 | `1.7.0` | Locked evaluation and LangGraph production cutover | Locked the 100-case evaluation dataset with review metadata and a content digest, added a full offline deterministic/LangGraph parity gate, made LangGraph the production default with deterministic rollback, and overrode Next.js's vulnerable pinned PostCSS with 8.5.15 without downgrading the framework. |
+| `1.7.1` | Evaluation review and spend governance | Added independent-review export/finalize/validation artifacts with attestations and content digests, immutable locked-context checks, full-suite live-cost planning, explicit approved budgets, a default five-case live batch ceiling, and immediate runtime stops when provider pricing is missing or spend exceeds approval. |
 
 ## Current Capability Inventory
 
