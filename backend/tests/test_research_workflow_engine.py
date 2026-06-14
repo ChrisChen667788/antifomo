@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from app.core.config import Settings
 from app.schemas.research import ResearchReportRequest
 from app.services.research.run_metrics import ResearchRunMetrics
 from app.services.research.langgraph_workflow_engine import LangGraphResearchWorkflowEngine
@@ -11,6 +12,14 @@ from app.services.research.workflow_engine import (
     ResearchWorkflowExecution,
 )
 from app.services.research_service import execute_research_report_workflow
+
+
+def test_langgraph_is_default_and_shadow_name_is_a_compatibility_alias() -> None:
+    assert Settings(_env_file=None).research_workflow_engine == "langgraph"
+    assert (
+        Settings(_env_file=None, research_workflow_engine="langgraph_shadow").research_workflow_engine
+        == "langgraph"
+    )
 
 
 def test_deterministic_engine_preserves_callbacks_and_returns_metrics() -> None:
@@ -90,7 +99,7 @@ def test_research_facade_executes_through_injected_engine() -> None:
     assert execution.metrics is metrics
 
 
-def test_langgraph_shadow_engine_preserves_contract_and_metrics() -> None:
+def test_langgraph_engine_preserves_contract_and_metrics() -> None:
     progress_events: list[tuple[str, int, str]] = []
     snapshots: list[object] = []
 
@@ -135,7 +144,7 @@ def test_langgraph_shadow_engine_preserves_contract_and_metrics() -> None:
     assert progress_events == [("search", 30, "searching"), ("completed", 100, "complete")]
     assert len(snapshots) == 1
     snapshot = metrics.snapshot()
-    assert snapshot["workflow_engine"] == "langgraph_shadow"
+    assert snapshot["workflow_engine"] == "langgraph"
     assert snapshot["status"] == "succeeded"
     assert snapshot["nodes"]["workflow.setup"]["succeeded"] == 1
     assert snapshot["nodes"]["workflow.generate"]["succeeded"] == 1

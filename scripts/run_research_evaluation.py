@@ -31,8 +31,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=PROJECT_ROOT / ".tmp" / "research-evaluation.json")
     parser.add_argument(
         "--workflow-engine",
-        choices=("deterministic", "langgraph_shadow"),
-        default="deterministic",
+        choices=("deterministic", "langgraph", "langgraph_shadow"),
+        default="langgraph",
     )
     parser.add_argument(
         "--allow-live-provider",

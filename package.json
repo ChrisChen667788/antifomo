@@ -1,6 +1,6 @@
 {
   "name": "anti-fomo-demo",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3010",
@@ -46,7 +46,8 @@
     "research:watchlists:automation:install": "backend/.venv311/bin/python scripts/manage_watchlist_launch_agent.py install --notify",
     "research:watchlists:automation:uninstall": "backend/.venv311/bin/python scripts/manage_watchlist_launch_agent.py uninstall",
     "research:watchlists:automation:status": "backend/.venv311/bin/python scripts/manage_watchlist_launch_agent.py status",
-    "research:evaluate": "backend/.venv311/bin/python scripts/run_research_evaluation.py"
+    "research:evaluate": "backend/.venv311/bin/python scripts/run_research_evaluation.py",
+    "research:evaluate:parity": "backend/.venv311/bin/python scripts/run_research_workflow_parity.py"
   },
   "dependencies": {
     "next": "16.2.9",
@@ -67,5 +68,8 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
   }
 }

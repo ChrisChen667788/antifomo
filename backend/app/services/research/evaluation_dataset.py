@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+import hashlib
+import json
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 DATASET_PATH = Path(__file__).resolve().parents[3] / "evaluation" / "research_golden_v1.json"
@@ -23,6 +27,10 @@ class ResearchEvaluationCaseSpec(BaseModel):
     expected_source_urls: list[str] = Field(default_factory=list)
     expected_behavior: ExpectedBehavior | None = None
     language: Literal["zh-CN", "zh-TW", "en"] = "zh-CN"
+    reviewed_by: str = ""
+    reviewed_at: date | None = None
+    curation_notes: str = ""
+    source_relevance_notes: str = ""
 
 
 class ResearchEvaluationSuiteSpec(BaseModel):
@@ -44,6 +52,29 @@ class ResearchEvaluationDatasetManifest(BaseModel):
     expected_case_count: int = Field(ge=1)
     required_metrics: list[str]
     suites: list[ResearchEvaluationSuiteSpec]
+    locked_at: datetime | None = None
+    locked_by: str = ""
+    curation_policy_version: str = ""
+    content_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_locked_dataset(self) -> "ResearchEvaluationDatasetManifest":
+        if self.status != "locked":
+            return self
+        if not self.locked_at or not self.locked_by.strip():
+            raise ValueError("locked research evaluation datasets require locked_at and locked_by")
+        if not self.curation_policy_version.strip():
+            raise ValueError("locked research evaluation datasets require curation_policy_version")
+        for suite in self.suites:
+            for case in suite.cases:
+                _validate_locked_case(case)
+        expected_digest = research_evaluation_content_sha256(self)
+        if self.content_sha256 != expected_digest:
+            raise ValueError(
+                "locked research evaluation dataset content_sha256 mismatch; "
+                "review the changes and regenerate the lock digest"
+            )
+        return self
 
 
 class ResearchEvaluationCase(BaseModel):
@@ -67,6 +98,41 @@ class ResearchEvaluationCase(BaseModel):
     preferred_source_tiers: list[str]
     required_sections: list[str]
     metric_targets: dict[str, float]
+    reviewed_by: str
+    reviewed_at: date | None
+    curation_notes: str
+    source_relevance_notes: str
+
+
+def _normalized_domain(value: str) -> str:
+    candidate = value.strip().casefold()
+    if "://" in candidate:
+        candidate = urlparse(candidate).netloc
+    return candidate.removeprefix("www.").split(":", 1)[0]
+
+
+def _validate_locked_case(case: ResearchEvaluationCaseSpec) -> None:
+    if case.expected_behavior is None:
+        raise ValueError(f"locked case {case.case_id} requires explicit expected_behavior")
+    if len({value.strip() for value in case.reference_answer_terms if value.strip()}) < 2:
+        raise ValueError(f"locked case {case.case_id} requires at least two reference_answer_terms")
+    domains = {_normalized_domain(value) for value in case.expected_source_domains if value.strip()}
+    if not domains:
+        raise ValueError(f"locked case {case.case_id} requires expected_source_domains")
+    if any("." not in domain or domain.endswith(".example") for domain in domains):
+        raise ValueError(f"locked case {case.case_id} contains an invalid expected source domain")
+    if not case.reviewed_by.strip() or case.reviewed_at is None:
+        raise ValueError(f"locked case {case.case_id} requires reviewer metadata")
+    if len(case.curation_notes.strip()) < 12:
+        raise ValueError(f"locked case {case.case_id} requires curation_notes")
+    if len(case.source_relevance_notes.strip()) < 12:
+        raise ValueError(f"locked case {case.case_id} requires source_relevance_notes")
+
+
+def research_evaluation_content_sha256(manifest: ResearchEvaluationDatasetManifest) -> str:
+    payload = manifest.model_dump(mode="json", exclude={"content_sha256"})
+    serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def load_research_evaluation_dataset(path: Path = DATASET_PATH) -> tuple[ResearchEvaluationDatasetManifest, list[ResearchEvaluationCase]]:
@@ -100,6 +166,10 @@ def load_research_evaluation_dataset(path: Path = DATASET_PATH) -> tuple[Researc
                     preferred_source_tiers=list(suite.preferred_source_tiers),
                     required_sections=list(suite.required_sections),
                     metric_targets=dict(suite.metric_targets),
+                    reviewed_by=case.reviewed_by,
+                    reviewed_at=case.reviewed_at,
+                    curation_notes=case.curation_notes,
+                    source_relevance_notes=case.source_relevance_notes,
                 )
             )
     if len(cases) != manifest.expected_case_count:

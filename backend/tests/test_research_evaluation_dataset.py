@@ -9,8 +9,11 @@ def test_research_evaluation_dataset_has_one_hundred_versioned_unique_cases() ->
     manifest, cases = load_research_evaluation_dataset()
 
     assert manifest.dataset_id == "anti-fomo-research-golden-v1"
-    assert manifest.version == "1.0.0"
-    assert manifest.status == "draft"
+    assert manifest.version == "1.1.0"
+    assert manifest.status == "locked"
+    assert manifest.locked_at is not None
+    assert manifest.locked_by
+    assert len(manifest.content_sha256) == 64
     assert manifest.expected_case_count == 100
     assert len(cases) == 100
     assert len({case.case_id for case in cases}) == 100
@@ -38,4 +41,8 @@ def test_research_evaluation_dataset_covers_quality_cost_latency_and_guardrails(
     assert behavior_counts["refuse"] >= 8
     assert all(case.required_sections for case in cases)
     assert all(case.metric_targets.keys() >= required_metrics for case in cases)
-    assert all(case.curation_status == "draft" for case in cases)
+    assert all(case.curation_status == "locked" for case in cases)
+    assert all(len(case.reference_answer_terms) >= 2 for case in cases)
+    assert all(case.expected_source_domains for case in cases)
+    assert all(case.reviewed_by and case.reviewed_at for case in cases)
+    assert all(case.curation_notes and case.source_relevance_notes for case in cases)

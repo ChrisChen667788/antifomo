@@ -26,9 +26,9 @@ class LangGraphResearchWorkflowState(TypedDict, total=False):
 
 
 class LangGraphResearchWorkflowEngine:
-    """Shadow graph adapter that preserves the framework-neutral workflow contract."""
+    """Production graph adapter that preserves the framework-neutral workflow contract."""
 
-    name = "langgraph_shadow"
+    name = "langgraph"
 
     def __init__(self, deps: DeterministicResearchWorkflowDependencies) -> None:
         self._deps = deps

@@ -134,8 +134,9 @@ def _source_retrieval_metrics(
         source_url = source.url.rstrip("/").casefold()
         source_domain = (source.domain or urlparse(source.url).netloc).casefold().removeprefix("www.")
         matches: set[str] = set()
-        if source_domain in expected_domains:
-            matches.add(f"domain:{source_domain}")
+        for expected_domain in expected_domains:
+            if source_domain == expected_domain or source_domain.endswith(f".{expected_domain}"):
+                matches.add(f"domain:{expected_domain}")
         if source_url in expected_urls:
             matches.add(f"url:{source_url}")
         matched_references.update(matches)

@@ -3700,7 +3700,7 @@ def build_research_workflow_engine(engine_name: str | None = None) -> ResearchWo
         workflow_dependencies=_generation_workflow_dependencies,
     )
     selected_engine = engine_name or get_settings().research_workflow_engine
-    if selected_engine == "langgraph_shadow":
+    if selected_engine in {"langgraph", "langgraph_shadow"}:
         from app.services.research.langgraph_workflow_engine import LangGraphResearchWorkflowEngine
 
         return LangGraphResearchWorkflowEngine(dependencies)

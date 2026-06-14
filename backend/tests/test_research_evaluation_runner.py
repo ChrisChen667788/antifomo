@@ -43,6 +43,10 @@ def _case(**changes) -> ResearchEvaluationCase:
             "latency_ms": 1000,
             "estimated_cost_usd": 0.1,
         },
+        "reviewed_by": "test reviewer",
+        "reviewed_at": "2026-06-14",
+        "curation_notes": "Reviewed fixture behavior and expected answer terms.",
+        "source_relevance_notes": "The fixture government domain is the primary source.",
     }
     payload.update(changes)
     return ResearchEvaluationCase.model_validate(payload)
@@ -77,7 +81,7 @@ def test_score_case_computes_retrieval_quality_cost_and_behavior() -> None:
     assert result.required_section_coverage == 1.0
 
 
-def test_draft_dataset_run_is_explicitly_not_release_gate_eligible() -> None:
+def test_partial_dataset_run_is_explicitly_not_release_gate_eligible() -> None:
     manifest, cases = load_research_evaluation_dataset()
 
     result = run_research_evaluation(
@@ -96,6 +100,36 @@ def test_draft_dataset_run_is_explicitly_not_release_gate_eligible() -> None:
 
     assert result.release_gate_eligible is False
     assert result.release_gate_passed is False
-    assert any("dataset status is draft" in blocker for blocker in result.gate_blockers)
     assert any("selected 2 of 100" in blocker for blocker in result.gate_blockers)
-    assert result.aggregate_metrics["recall_at_5"].available is False
+    assert result.aggregate_metrics["recall_at_5"].available is True
+
+
+def test_locked_full_dataset_is_release_gate_eligible_with_complete_observations() -> None:
+    manifest, cases = load_research_evaluation_dataset()
+
+    result = run_research_evaluation(
+        manifest,
+        cases,
+        lambda case: ResearchEvaluationObservation(
+            observed_behavior=case.expected_behavior,
+            text=" ".join(case.reference_answer_terms),
+            section_titles=case.required_sections,
+            supported_section_count=len(case.required_sections),
+            section_count=len(case.required_sections),
+            sources=[
+                ResearchEvaluationSourceObservation(
+                    url=f"https://{case.expected_source_domains[0]}/evidence",
+                    domain=f"news.{case.expected_source_domains[0]}",
+                    source_tier="official",
+                )
+            ],
+            latency_ms=10,
+            estimated_cost_usd=0.0,
+        ),
+    )
+
+    assert result.release_gate_eligible is True
+    assert result.release_gate_passed is True
+    assert result.gate_blockers == []
+    assert result.failed_case_count == 0
+    assert result.error_case_count == 0

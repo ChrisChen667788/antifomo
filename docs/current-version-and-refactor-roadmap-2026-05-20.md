@@ -2,14 +2,14 @@
 
 Updated: 2026-06-14
 
-This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.6.0`.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.0`.
 
 ## Current State
 
 Current release metadata:
 
 - Previous major product baseline: `1.0.0+20260520`.
-- Current release: `1.6.0+20260613`, adding shared Focus runtime ownership, pre-hydration preferences, deterministic light/dark release screenshots, dark-theme compatibility, and dead research-facade wrapper retirement on top of measured LangChain and opt-in LangGraph workflows.
+- Current release: `1.7.0+20260614`, locking the 100-case evaluation dataset, adding a complete offline workflow parity gate, promoting LangGraph to the production default with deterministic rollback, and safely overriding Next.js's pinned vulnerable PostCSS dependency.
 - Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
@@ -283,11 +283,21 @@ Completed in `1.6.0+20260613`:
 - Added pre-hydration preference application and legacy dark-theme utility compatibility, then visually reviewed the generated dark baselines.
 - Retired all statically unreferenced private wrappers from `research_service.py` and removed direct owner-test calls to facade-private functions.
 
-### `1.6.x` Operating Policy
+### `1.7.0`: Locked Evaluation and LangGraph Production
 
-- Keep LangGraph in shadow mode until the curated evaluation dataset can produce complete retrieval metrics and parity gates.
+- Locked all 100 evaluation cases with explicit behavior, answer terms, expected first-party domains, review notes, reviewer metadata, and a reproducible SHA-256 digest.
+- Added a no-network, no-model-cost parity gate that runs every locked case through deterministic and LangGraph engines with the same owner ports.
+- Promoted `langgraph` to the default workflow engine after 100/100 parity; retained `deterministic` as an immediate configuration rollback and `langgraph_shadow` as a compatibility alias.
+- Kept full live-provider evaluation explicit behind `--allow-live-provider`; offline orchestration parity is not presented as retrieval or answer-quality proof.
+- Overrode the PostCSS transitive dependency to `8.5.15` while Next.js stable remains on a vulnerable pin; rejected the audit tool's incompatible Next.js 9 downgrade.
+
+### `1.7.x` Operating Policy
+
+- Keep the deterministic workflow engine healthy as the rollback path and require the full offline parity gate for orchestration changes.
+- Run live retrieval/model evaluation only with explicit provider-cost approval and preserve its artifacts separately from the offline parity artifact.
 - Split remaining large presentation files only when a behavior change exposes a stable section/controller boundary; line count alone is not a refactor requirement.
 - Add new research behavior to owner modules and workflow ports, never back into the compatibility facade.
+- Remove the PostCSS override after a stable Next.js release depends on `postcss>=8.5.10` and passes the same build/audit checks.
 
 ### Later
 

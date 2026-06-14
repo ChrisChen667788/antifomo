@@ -4,7 +4,7 @@
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current release: `1.6.0+20260613`, adding deterministic light/dark release screenshots, pre-hydration preferences, shared Focus runtime ownership, dark-theme contrast hardening, and final research-facade dead-wrapper cleanup on top of measured LangChain and opt-in LangGraph workflows.
+Current release: `1.7.0+20260614`, promoting LangGraph to the production workflow engine after a locked 100-case offline parity gate, retaining deterministic rollback, and eliminating the current PostCSS audit warning without the unsafe Next.js 9 downgrade.
 
 ## GitHub About
 

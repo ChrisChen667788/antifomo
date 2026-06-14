@@ -2,10 +2,12 @@
 
 Anti-FOMO now includes a LangGraph orchestration adapter behind the existing framework-neutral `ResearchWorkflowEngine` protocol.
 
+Status: historical shadow-stage record. LangGraph became the production default in `1.7.0` after the locked 100-case offline parity gate passed 100/100.
+
 ## Runtime Policy
 
-- Production remains `deterministic` by default.
-- `langgraph_shadow` is opt-in through `RESEARCH_WORKFLOW_ENGINE` or the evaluation CLI.
+- The `1.4.0` production default remained `deterministic`.
+- The `1.4.0` graph engine was selected through `langgraph_shadow`; this name remains a compatibility alias for `langgraph`.
 - The graph adapter reuses the same setup and generation dependency ports as the deterministic engine.
 - Prompt, retrieval, ranking, storage, and delivery owners do not import LangGraph.
 
@@ -31,4 +33,4 @@ Run a bounded graph baseline:
 npm run research:evaluate -- --execute --limit 5 --workflow-engine langgraph_shadow
 ```
 
-Remote provider credentials still require `--allow-live-provider`. The graph adapter must remain shadow-only until deterministic parity, failure recovery, latency, cost, and output-quality gates are measured on a locked dataset.
+Remote provider credentials still require `--allow-live-provider`. See `docs/langgraph-production-v1.7.0.md` for the production cutover evidence and the boundary between offline parity and live quality evaluation.

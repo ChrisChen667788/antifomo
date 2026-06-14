@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     research_quality_expansion_min_score: int = 82
     research_quality_expansion_max_rounds: int = 2
     research_quality_expansion_query_limit: int = 8
-    research_workflow_engine: str = "deterministic"
+    research_workflow_engine: str = "langgraph"
     wechat_agent_auto_start: bool = False
     pending_item_recovery_enabled: bool = True
     pending_item_recovery_interval_seconds: int = 8
@@ -131,9 +131,11 @@ class Settings(BaseSettings):
     @field_validator("research_workflow_engine", mode="before")
     @classmethod
     def normalize_research_workflow_engine(cls, value: object) -> str:
-        normalized = str(value or "deterministic").strip().lower().replace("-", "_")
-        if normalized not in {"deterministic", "langgraph_shadow"}:
-            raise ValueError("Research workflow engine must be deterministic or langgraph_shadow")
+        normalized = str(value or "langgraph").strip().lower().replace("-", "_")
+        aliases = {"langgraph_shadow": "langgraph"}
+        normalized = aliases.get(normalized, normalized)
+        if normalized not in {"deterministic", "langgraph"}:
+            raise ValueError("Research workflow engine must be deterministic or langgraph")
         return normalized
 
     @field_validator(
