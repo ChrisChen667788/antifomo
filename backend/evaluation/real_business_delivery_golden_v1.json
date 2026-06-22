@@ -1,0 +1,367 @@
+{
+  "dataset_id": "anti-fomo-real-business-delivery-golden-v1",
+  "version": "1.0.0",
+  "status": "draft_for_blind_review",
+  "updated_at": "2026-06-20",
+  "description": "面向真实业务主题的 source-backed 交付黄金样本输入集。样本只保存公开来源、机会假设、范围约束和验收规则，不包含私有客户资料、不调用付费模型。",
+  "samples": [
+    {
+      "sample_id": "shanghai-medical-ai-2026",
+      "topic": "2026年上海市医疗行业AI需求调研和潜在商机",
+      "scenario": "上海医疗行业AI需求与商机",
+      "target_customer": "上海市卫生健康系统与市级医疗机构",
+      "vertical_scene": "医学人工智能、临床辅助决策、医学影像、智能随访和医疗数据治理",
+      "research_focus": "围绕上海医学人工智能2025—2027工作方案、国家卫生健康行业AI场景指引和上海数据要素政策，判断2026年上海医疗机构AI建设需求、可进入场景和商机优先级。",
+      "executive_summary": "上海医疗AI需求集中在医学数据治理、临床诊疗辅助决策、检验检查辅助诊断、智能随访/院后管理、智慧药房和医学AI应用中试验证；公开政策尚未披露具体项目金额，交付材料必须把财务测算降级为假设和待补数据。",
+      "consulting_angle": "先锁定市级卫健、申康体系、三甲医院和医学AI中试/验证平台，再以临床流程效率、数据治理、安全合规和产品试点落地作为商机筛选标准。",
+      "target_accounts": [
+        "上海市卫生健康委员会",
+        "上海市级医疗机构",
+        "上海医学人工智能创新与应用促进中心"
+      ],
+      "target_departments": [
+        "医务管理部门",
+        "信息中心",
+        "临床科室",
+        "科研管理部门",
+        "数据治理与安全合规部门"
+      ],
+      "public_contact_channels": [
+        "上海市卫生健康委员会公开政策与通知",
+        "上海市人民政府公开政策",
+        "国家卫生健康委应用场景指引"
+      ],
+      "budget_signals": [
+        "公开政策未披露项目金额，CAPEX 必须结合后续采购公告、主管部门预算或客户确认核验。",
+        "医学AI中试基地、医疗健康高质量数据集和临床辅助系统覆盖要求构成后续预算窗口线索。"
+      ],
+      "tender_timeline": [
+        "2025—2027年医学人工智能工作方案覆盖期内，2026年适合跟进试点、数据集和临床应用采购窗口。",
+        "应用中试、数据治理和医院智能服务场景应优先关注卫健委、医院和数据局后续公开采购。"
+      ],
+      "strategic_directions": [
+        "以医疗数据治理和隐私计算作为底座，支撑医学大模型、知识库和临床辅助决策。",
+        "优先切入智能随访、院后管理、智慧药房、智能陪诊和满意度分析等低侵入场景。",
+        "检验检查辅助诊断和临床决策支持必须建立医疗安全、模型验证和医生责任边界。"
+      ],
+      "leadership_focus": [
+        "医学人工智能创新、应用示范和产业发展高地。",
+        "高质量医疗健康数据集、垂类模型和智能体应用。"
+      ],
+      "ecosystem_partners": [
+        "医疗机构",
+        "卫健主管部门",
+        "市数据局",
+        "医学AI企业",
+        "算力和数据安全服务商"
+      ],
+      "benchmark_cases": [
+        "临床诊疗辅助决策知识库",
+        "医学影像辅助诊断",
+        "智能随访和院后管理",
+        "医学AI应用中试基地"
+      ],
+      "flagship_products": [
+        "医学知识库与临床辅助决策平台",
+        "医学影像AI质控与预警平台",
+        "智能随访和院后管理平台",
+        "医疗健康数据治理与隐私计算平台"
+      ],
+      "five_year_outlook": [
+        "从单点AI应用走向院内流程智能化、区域数据协同和医学AI产品验证平台。",
+        "医疗AI商机重点由模型演示转向数据治理、临床闭环、合规审计和可复用服务能力。"
+      ],
+      "competition_analysis": [
+        "医疗AI项目需要兼顾医疗安全、数据合规、院内系统集成和临床可解释性；单纯通用大模型方案不适合直接作为医疗核心系统。",
+        "供应商竞争焦点在医疗数据治理能力、医院信息系统集成经验、模型验证和持续运营。"
+      ],
+      "query_plan": [
+        "上海 医学人工智能 工作方案 2025 2027",
+        "卫生健康行业 人工智能 应用场景 指引 智能随访",
+        "上海 医疗健康 高质量数据集 垂类模型 智能体"
+      ],
+      "sources": [
+        {
+          "title": "上海市发展医学人工智能工作方案（2025—2027年）",
+          "url": "https://www.shanghai.gov.cn/nw12344/20241224/0f60c01551784720899dbb911e9d5f08.html",
+          "domain": "www.shanghai.gov.cn",
+          "snippet": "方案提出医学AI创新高地、医学大模型、数据治理、应用中试基地、临床辅助诊疗、影像辅助诊断和智能用药等方向。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海市发展医学人工智能工作方案 2025 2027"
+        },
+        {
+          "title": "卫生健康行业人工智能应用场景参考指引",
+          "url": "https://www.nhc.gov.cn/guihuaxxs/c100133/202411/3dee425b8dc34f739d63483c4e5c334c/files/1733227133524_47343.pdf",
+          "domain": "www.nhc.gov.cn",
+          "snippet": "国家指引覆盖智能陪诊、智能随访、满意度调查、院后管理等医疗健康AI场景，强调流程效率和患者体验。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "卫生健康行业人工智能应用场景参考指引 智能随访"
+        },
+        {
+          "title": "国家数字经济创新发展试验区（上海）实施方案",
+          "url": "https://www.shanghai.gov.cn/nw12344/20260421/9edf5d5c1b2244298c315304349d0963.html?siteId=1",
+          "domain": "www.shanghai.gov.cn",
+          "snippet": "上海提出聚焦医疗健康等重点行业建设高质量数据集，服务垂类模型和智能体创新应用。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海 国家数字经济创新发展试验区 医疗健康 高质量数据集"
+        },
+        {
+          "title": "“人工智能+医疗健康”推进会暨医学AI赛事在徐汇举行",
+          "url": "https://wsjkw.sh.gov.cn/gzdt1/20250519/c9b2d912b30845d0b8ed3e4bf1d9127d.html",
+          "domain": "wsjkw.sh.gov.cn",
+          "snippet": "上海卫健系统推进医学人工智能高地建设，医学AI创新应用促进中心作为支撑平台亮相。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海 卫健委 医学人工智能 创新应用促进中心"
+        }
+      ],
+      "acceptance": {
+        "expected_golden_sample_id": "shanghai-medical-ai-2026",
+        "expected_quantitative_status": "assumption_required",
+        "min_source_support_score": 35,
+        "required_document_kinds": ["solution_design", "consulting_report", "project_proposal", "feasibility_study"],
+        "required_pack_terms": ["医学人工智能", "临床", "数据治理", "量化决策模型", "四类专用文档编译器"],
+        "must_not_contain": ["景区游客", "一网通办跨省通办", "制造产线"]
+      }
+    },
+    {
+      "sample_id": "shanghai-culture-tourism-ai-2026",
+      "topic": "2026年上海市文旅行业AI需求调研和潜在商机",
+      "scenario": "上海文旅行业AI需求与商机",
+      "target_customer": "上海市文化和旅游企事业单位",
+      "vertical_scene": "人工智能+文化和旅游应用试点、文旅数据集、智能导览、AIGC内容和文旅监管",
+      "research_focus": "围绕上海2026年“人工智能+文化和旅游”应用试点、AIGC微短剧生态和数智文旅场景，判断文旅AI建设需求、可落地产品和商机优先级。",
+      "executive_summary": "上海文旅AI需求集中在文化艺术创作生产、公共文化服务、文化遗产保护、旅游智能服务、文旅市场监管、文旅数据集和AIGC内容生产；试点要求形成数据治理、技术验证和应用成效，适合切入综合解决方案。",
+      "consulting_angle": "先围绕应用试点申报方向筛选文化场馆、景区、文旅集团和内容机构，再以数据集、智能讲解、智能票务、数字人、客流疏导和监管预警形成产品组合。",
+      "target_accounts": [
+        "上海市文化和旅游局",
+        "上海文化和旅游企事业单位",
+        "上海文化场馆与景区运营主体"
+      ],
+      "target_departments": [
+        "公共文化服务部门",
+        "景区运营部门",
+        "市场监管与执法部门",
+        "内容生产与宣传部门",
+        "数据治理部门"
+      ],
+      "public_contact_channels": [
+        "上海市文化和旅游局政策文件",
+        "上海市人民政府文旅动态",
+        "国家级媒体公开报道"
+      ],
+      "budget_signals": [
+        "应用试点文件未披露项目金额，正式投资估算需结合申报方案、后续采购和客户确认补证。",
+        "数据集、智能终端、导览服务、AIGC内容和监管平台构成潜在预算拆分。"
+      ],
+      "tender_timeline": [
+        "2026年上海组织推荐“人工智能+文化和旅游”应用试点，单个试点建议按1—2年推进技术验证和应用落地。",
+        "试点申报后应跟踪文化场馆、景区运营和监管平台相关采购窗口。"
+      ],
+      "strategic_directions": [
+        "以文旅数据采集、标注、质检和数据集建设作为底座。",
+        "优先形成智能讲解、行程规划、智能票务、数字人和自动翻译等游客服务场景。",
+        "同步建设文旅市场监管、风险预警、投诉分析和应急指挥能力。"
+      ],
+      "leadership_focus": [
+        "人工智能+文化和旅游应用试点。",
+        "文旅语料库、垂类模型、先锋产品和示范场景。"
+      ],
+      "ecosystem_partners": [
+        "文化场馆",
+        "景区运营主体",
+        "文旅内容机构",
+        "AIGC模型和数字人服务商",
+        "票务和客流数据平台"
+      ],
+      "benchmark_cases": [
+        "文旅数据集和语料库建设",
+        "智能讲解和数字人导览",
+        "AIGC微短剧与内容生产",
+        "文旅市场智能监管"
+      ],
+      "flagship_products": [
+        "文旅知识问答与智能讲解平台",
+        "AIGC文旅内容生产平台",
+        "智能票务预约与行程推荐平台",
+        "文旅监管风险预警平台"
+      ],
+      "five_year_outlook": [
+        "文旅AI会从单点体验项目扩展到数据集、垂类模型、游客服务和监管治理的一体化能力。",
+        "上海文旅商机重点在文化语料、AIGC生产、公共服务体验和监管效能提升。"
+      ],
+      "competition_analysis": [
+        "文旅AI方案必须避免只做展示型数字人，应同时证明数据资产沉淀、服务转化和运营指标。",
+        "供应商竞争焦点在文旅内容理解、场景集成、票务/导览接口、数字人体验和监管合规。"
+      ],
+      "query_plan": [
+        "上海 人工智能+文化和旅游 应用试点 2026",
+        "上海 AIGC 微短剧 AI+服务中心 2026",
+        "上海 文旅 语料库 垂类模型 示范场景"
+      ],
+      "sources": [
+        {
+          "title": "关于组织推荐“人工智能+文化和旅游”应用试点的通知",
+          "url": "https://whlyj.sh.gov.cn/zw-hwlf2026/20260327/2c28168841224f419a0498e04091f6a3.html",
+          "domain": "whlyj.sh.gov.cn",
+          "snippet": "上海组织推荐人工智能+文旅应用试点，方向包括创作生产、公共文化、遗产保护、旅游服务治理和市场监管。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海 人工智能+文化和旅游 应用试点 2026"
+        },
+        {
+          "title": "AI如何重塑微短剧生产？2026上海微短剧大会在沪举行",
+          "url": "https://www.shanghai.gov.cn/nw31406/20260311/78858c166b0944faafafe03f5cd48228.html",
+          "domain": "www.shanghai.gov.cn",
+          "snippet": "上海微短剧大会聚焦AIGC驱动，徐汇启动AI+微短剧服务中心，静安发布剧商融合城区IP场景。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "2026 上海 微短剧大会 AIGC AI服务中心"
+        },
+        {
+          "title": "“双向奔赴”的一年：“科技+”激发文旅消费潜力",
+          "url": "https://www.news.cn/20251230/b91293e4a1394515bfcb94a9bb4eb03f/c.html",
+          "domain": "www.news.cn",
+          "snippet": "公开报道显示上海未来三年计划推动文旅开放语料库、垂类模型、先锋产品和示范场景建设。",
+          "source_type": "media",
+          "source_tier": "media",
+          "search_query": "上海 文旅 开放语料库 垂类模型 示范场景"
+        }
+      ],
+      "acceptance": {
+        "expected_golden_sample_id": "shanghai-culture-tourism-ai-2026",
+        "expected_quantitative_status": "assumption_required",
+        "min_source_support_score": 35,
+        "required_document_kinds": ["solution_design", "consulting_report", "project_proposal", "feasibility_study"],
+        "required_pack_terms": ["人工智能+文化和旅游", "文旅", "数据集", "智能讲解", "量化决策模型"],
+        "must_not_contain": ["临床诊疗", "政务一网通办", "制造产线"]
+      }
+    },
+    {
+      "sample_id": "yangtze-delta-gov-ai-2026",
+      "topic": "2026年长三角政府行业AI需求调研和潜在商机",
+      "scenario": "长三角政府行业AI需求与商机",
+      "target_customer": "长三角政务服务一网通办主管部门",
+      "vertical_scene": "长三角一网通办、跨省通办、AI政务服务、数据共享和智能帮办",
+      "research_focus": "围绕2026年长三角政务服务“一网通办”协同立法、长三角主要领导座谈会和上海一网通办改革，判断政府行业AI需求、跨区域数据协同和政务智能体商机。",
+      "executive_summary": "长三角政府行业AI需求集中在跨省通办事项标准化、电子证照互认、政务数据共享、智能引导、智能预填、智能帮办、可信知识库、语料库、政务算力和运行效能监测；商机重点是跨区域政务AI基础能力与场景运营。",
+      "consulting_angle": "先锁定长三角一网通办、随申办/政务服务平台、数据共享目录和高频事项，再用标准统一、跨域协同、安全治理和服务效能指标判断可落地商机。",
+      "target_accounts": [
+        "长三角政务服务一网通办主管部门",
+        "上海市政府办公厅",
+        "三省一市数据和政务服务主管部门"
+      ],
+      "target_departments": [
+        "政务服务管理部门",
+        "数据管理部门",
+        "12345热线与好差评运营部门",
+        "信息中心",
+        "安全合规部门"
+      ],
+      "public_contact_channels": [
+        "长三角政务服务一网通办平台",
+        "上海市人民政府公开法规",
+        "江苏人大公开法规",
+        "上海一网通办改革公开信息"
+      ],
+      "budget_signals": [
+        "协同立法和一网通办改革未披露项目金额，财务模型须等待后续平台升级、数据共享和AI政务服务采购信息。",
+        "跨省通办、智能帮办、可信知识库、语料库和政务算力支撑构成潜在预算拆分。"
+      ],
+      "tender_timeline": [
+        "2026年5月1日起长三角政务服务一网通办协同规定同步施行，2026年适合跟进配套平台升级和智能服务试点。",
+        "上海持续深化一网通办改革，智慧帮办、智能审批和智能政务助理是近期可观察窗口。"
+      ],
+      "strategic_directions": [
+        "以事项清单、业务标准、电子证照和数据共享目录统一为基础。",
+        "建设智能引导、智能预填、智能帮办和工作人员智能政务助理。",
+        "加强可信知识库、语料库、政务算力、数据安全和运行效能监测。"
+      ],
+      "leadership_focus": [
+        "长三角一体化和政务服务一网通办。",
+        "协同实施人工智能+行动、算力跨区域调度、数据开放共享和跨省市应用场景开放。"
+      ],
+      "ecosystem_partners": [
+        "政务服务平台运营方",
+        "数据共享交换平台",
+        "电子证照与电子印章服务商",
+        "政务大模型与智能体服务商",
+        "安全合规和审计服务商"
+      ],
+      "benchmark_cases": [
+        "长三角政务服务一网通办平台",
+        "长三角远程虚拟窗口",
+        "智能帮办和智能审批双引擎",
+        "惠企政策免申即享"
+      ],
+      "flagship_products": [
+        "跨省通办智能导办与预填平台",
+        "政务服务可信知识库和语料库",
+        "12345与好差评智能分析平台",
+        "政务数据共享目录和安全治理平台"
+      ],
+      "five_year_outlook": [
+        "长三角政务服务将从跨省可办走向同标准、无差别、智能化协同办理。",
+        "政府AI商机重点从单点客服走向跨区域数据共享、事项标准化、智能政务助理和安全可控运营。"
+      ],
+      "competition_analysis": [
+        "政府行业AI方案必须同时满足跨区域协同、数据安全、审计追溯和标准统一，不能只做通用客服机器人。",
+        "供应商竞争焦点在政务知识库、业务流程编排、数据共享接口、国产化适配和治理合规。"
+      ],
+      "query_plan": [
+        "长三角 政务服务 一网通办 规定 2026 人工智能",
+        "上海 一网通办 人工智能 政务服务 智能帮办 2026",
+        "长三角 人工智能+ 数据共享 算力调度 跨省应用场景"
+      ],
+      "sources": [
+        {
+          "title": "上海市促进长三角政务服务“一网通办”规定",
+          "url": "https://www.shanghai.gov.cn/nw12344/20260401/b83261592788473788f20e95dc2ec690.html",
+          "domain": "www.shanghai.gov.cn",
+          "snippet": "规定明确长三角一网通办、标准统一、电子证照互认、数据共享和人工智能等数智技术应用。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海市促进长三角政务服务一网通办规定 人工智能"
+        },
+        {
+          "title": "江苏省促进长三角政务服务“一网通办”规定",
+          "url": "https://www.jsrd.gov.cn/qwfb/sjfg/202604/t20260409_1321590.shtml",
+          "domain": "www.jsrd.gov.cn",
+          "snippet": "江苏规定提出高质量数据集、语料库、可信知识库、政务算力、智能引导、智能预填和智能帮办。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "江苏省促进长三角政务服务一网通办规定 智能帮办"
+        },
+        {
+          "title": "2026年度长三角地区主要领导座谈会在上海举行",
+          "url": "https://cgzf.sh.gov.cn/channel_8/20260525/2bdaa60eb2cd4b94ab842fabe22f6db5.html",
+          "domain": "cgzf.sh.gov.cn",
+          "snippet": "会议提出协同实施人工智能+行动，加强算力资源跨区域调度、数据开放共享和跨省市应用场景开放。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "2026 长三角 主要领导座谈会 人工智能+ 算力 数据开放"
+        },
+        {
+          "title": "上海持续深化“一网通办”改革",
+          "url": "https://www.ssme.sh.gov.cn/public/news%21loadNewsDetail.do?id=2c9e88329daff4c7019e29b16ba00794",
+          "domain": "www.ssme.sh.gov.cn",
+          "snippet": "上海改革信息显示长三角虚拟窗口、跨省通办、免申即享、智慧帮办、智能审批和智能政务助理等方向。",
+          "source_type": "policy",
+          "source_tier": "official",
+          "search_query": "上海 一网通办 智慧帮办 智能审批 智能政务助理"
+        }
+      ],
+      "acceptance": {
+        "expected_golden_sample_id": "yangtze-delta-gov-ai-2026",
+        "expected_quantitative_status": "assumption_required",
+        "min_source_support_score": 35,
+        "required_document_kinds": ["solution_design", "consulting_report", "project_proposal", "feasibility_study"],
+        "required_pack_terms": ["长三角", "一网通办", "智能帮办", "数据共享", "量化决策模型"],
+        "must_not_contain": ["临床诊疗", "景区游客", "制造产线"]
+      }
+    }
+  ]
+}

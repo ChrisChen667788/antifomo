@@ -24,21 +24,21 @@ export function ResearchCenter() {
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-3xl">
             <p className="af-kicker">{t("research.centerKicker", "Research Center")}</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900 md:text-[2rem]">
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)] md:text-[2rem]">
               {t("research.centerTitle", "商机情报中心")}
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500 md:text-[15px]">
+            <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)] md:text-[15px]">
               {t(
                 "research.centerDesc",
                 "统一查看保存过的情报简报、推荐动作和 Focus 参考，快速回到客户推进、投标排期与生态协同。",
               )}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="af-glass-orb-btn inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-slate-700">
-              <AppIcon name="source" className="h-4 w-4" />
+          <div className="flex max-w-full flex-wrap items-center justify-start gap-3 md:justify-end">
+            <div className="af-pill inline-flex h-11 max-w-full items-center gap-2 px-4 text-sm font-semibold">
+              <AppIcon name="source" className="h-4 w-4 shrink-0 text-[var(--af-info)]" />
               <span>{t("research.centerSourceToggle", "公开源")}</span>
-              <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] text-slate-500">
+              <span className="shrink-0 rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[11px] text-[var(--af-text-tertiary)]">
                 {controller.heroProps.enabledSourceCount}
               </span>
             </div>
@@ -53,7 +53,7 @@ export function ResearchCenter() {
 
         <ResearchCenterSourceSettingsSection {...controller.sourceSettingsSectionProps} />
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {controller.heroProps.overviewStats.map((stat) => (
             <div key={stat.label} className="rounded-[26px] border border-white/60 bg-white/60 p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
               <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">
@@ -69,8 +69,8 @@ export function ResearchCenter() {
 
       <ResearchCenterExperimentControlSection {...controller.experimentControlSectionProps} />
 
-      <div className="grid gap-5 xl:grid-cols-[300px,minmax(0,1fr)]">
-        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[300px,minmax(0,1fr)]">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
           <ResearchCenterSidebarControls {...controller.sidebarControlsProps} />
 
           <ResearchCenterMarkdownArchivesSection {...controller.markdownArchivesSectionProps} />
@@ -82,7 +82,9 @@ export function ResearchCenter() {
           <ResearchCenterWatchlistSection {...controller.watchlistSectionProps} />
         </aside>
 
-        <ResearchCenterResultsSection {...controller.resultsSectionProps} />
+        <div className="min-w-0">
+          <ResearchCenterResultsSection {...controller.resultsSectionProps} />
+        </div>
       </div>
     </div>
   );

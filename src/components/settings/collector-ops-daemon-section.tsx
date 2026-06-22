@@ -89,7 +89,7 @@ export function CollectorOpsDaemonSection({
           ) : null}
         </div>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <StatCard label={text("daemonPid")} value={String(daemonStatus?.pid ?? "-")} />
           <StatCard label={text("daemonUptime")} value={formatDuration(daemonStatus?.uptime_seconds ?? null)} />
           <StatCard
@@ -144,6 +144,40 @@ export function CollectorOpsDaemonSection({
             label={text("daemonFailedCount")}
             value={daemonStatus?.last_run_failed_count ?? 0}
           />
+        </div>
+
+        <div className="af-surface-card mt-3 rounded-xl border px-3 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-[var(--af-text-primary)]">微信收藏自动导入</p>
+            <span
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                daemonStatus?.favorites_auto_status === "imported"
+                  ? "af-chip-success"
+                  : daemonStatus?.favorites_auto_status === "error"
+                    ? "af-chip-danger"
+                    : daemonStatus?.favorites_auto_status === "unavailable"
+                      ? "af-chip-warning"
+                      : "af-chip-info"
+              }`}
+            >
+              {daemonStatus?.favorites_auto_status || "idle"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-[var(--af-text-secondary)]">
+            {daemonStatus?.favorites_auto_message ||
+              "采集守护进程会检测本地只读 wechat-cli 适配器，并增量导入新的公众号文章收藏。"}
+          </p>
+          <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">
+            最近检查 {formatTs(daemonStatus?.favorites_auto_last_at ?? null)} · 发现{" "}
+            {daemonStatus?.favorites_auto_discovered_count ?? 0} · 新增{" "}
+            {daemonStatus?.favorites_auto_imported_count ?? 0} · 去重{" "}
+            {daemonStatus?.favorites_auto_deduplicated_count ?? 0}
+          </p>
+          {daemonStatus?.favorites_auto_status === "unavailable" ? (
+            <p className="mt-2 text-[11px] leading-5 text-[var(--af-warning)]">
+              需用户自行完成本地只读适配器安装和授权；Anti-FOMO 不会自动解密、重签名或上传微信数据库。
+            </p>
+          ) : null}
         </div>
 
         <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">{daemonStatus?.log_file || "-"}</p>

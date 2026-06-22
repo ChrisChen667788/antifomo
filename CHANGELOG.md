@@ -2,6 +2,65 @@
 
 ## Unreleased
 
+## 1.8.0+20260622 - 2026-06-22
+
+- Started the `1.8.0` professional-report quality line and inserted it ahead of later generic delivery-export work.
+- Split delivery scoring into structural and semantic dimensions, adding deterministic content-hygiene and claim-to-evidence traceability metrics.
+- Added semantic hard caps so webpage/navigation contamination fails delivery review and structure-only documents without concrete evidence anchors cannot receive pass status.
+- Added regression coverage for the previous false-high-score failure mode, contaminated delivery content, and traceable strong claims.
+- Added a versioned claim/evidence ledger with stable claim, evidence, and issue IDs; typed support/conflict/background/validation relationships; and high-confidence evidence coverage gates.
+- Added entity-role consistency checks and normalized numeric comparison across CNY units, periods, and percentages; conflicting non-scenario values now block delivery pass status.
+- Exposed the ledger in solution-pack APIs, Markdown exports, formal feasibility/proposal appendices, and the research delivery summary UI.
+- Added the P0.3 semantic challenger with stable `sch_*` issue IDs for scope drift, cross-section entity/numeric conflicts, source contamination, unsupported high-confidence claims, template placeholders, and golden-sample alignment gaps.
+- Added versioned, de-identified real-project-style delivery golden samples for government AI service-center, tourism AIGC guide, and smart-manufacturing quality-platform scenarios, plus regression tests for scope drift, cross-section conflicts, and unsupported strong claims.
+- Exposed semantic-challenger status, scores, blocking issues, and golden-sample alignment in solution-pack APIs, Markdown exports, formal feasibility/proposal appendices, and the delivery summary UI.
+- Added P1.1 dedicated document compilers for solution design, consulting reports, project proposals, and feasibility studies, each with distinct section logic, assumptions, validation actions, quality gates, and Markdown output.
+- Routed solution-pack outlines and formal feasibility/proposal Word/PDF exports through the dedicated compiler outputs while preserving legacy outline/API compatibility and supplemental evidence sections.
+- Added the P1.2 quantitative decision model with weighted alternatives, tender scoring response matrix, three-scenario CAPEX/OPEX/TCO/benefit/NPV/IRR/ROI/payback calculations, and sensitivity variables.
+- Routed the quantitative model into solution-pack APIs, Markdown exports, formal feasibility/proposal appendices, TypeScript contracts, and the research delivery summary UI while keeping missing finance inputs as explicit assumptions instead of fabricated numbers.
+- Added a source-backed real-business golden sample gate for 2026 Shanghai medical AI, 2026 Shanghai culture-tourism AI, and 2026 Yangtze River Delta government AI opportunity themes.
+- Registered the three real-business themes as semantic-challenger golden samples and added deterministic validation covering source integrity, four document compilers, P1.2 no-amount finance degradation, and P0.3 golden alignment.
+- Hardened policy/pilot source handling so non-tender public sources no longer generate fake procurement projects or pseudo-financial estimates; delivery wording now falls back to policy/pilot opportunity preparation when no real tender evidence exists.
+- Started P2 formal delivery engineering by adding controlled Word-compatible HTML and PDF-preview rendering for feasibility-study and project-proposal exports, including A4 styles, metadata tables, table of contents, stable section/appendix numbering, header/footer hooks, and round-trip checklists.
+- Extended the simple PDF renderer with optional page headers and footers, and added formal-rendering regression coverage for numbering, tables, headers/footers, PDF previews, and legacy text-search compatibility.
+- Added P2.2 native DOCX export for feasibility-study and project-proposal Word tasks using in-repo OpenXML generation, with `.docx` MIME types, `content_base64` artifacts, and retained HTML previews.
+- Added controlled PDF render diagnostics for formal exports, including shared round-trip checklists, Chinese proofreading findings, and visual-regression fingerprints.
+- Added editable PPTX solution-delivery export, backend/API/WorkBuddy task typing, frontend download support, and an Inbox button for customer-facing deck output.
+- Added deterministic Chinese proofreading for formal deliverables, covering punctuation, units, spacing, brackets, overclaiming, and unresolved validation markers.
+- Refreshed 30 light/dark product screenshots through the screenshot regression harness after P2.2.
+- Upgraded formal DOCX output to a P2.3 professional template with executive dashboard, Word-updatable TOC field, Office settings, media layout placeholders, stronger styles, and chart/image placeholder guidance.
+- Upgraded editable PPTX output with a theme, professional cards, chart and image placeholders, and customer-facing layout scaffolding.
+- Added non-GUI Office round-trip validation for DOCX/PPTX/PDF artifacts, local Word/PowerPoint/QuickLook/LibreOffice capability detection, and an explicit `npm run office:roundtrip` script.
+- Extended semantic dark-theme coverage to every primary product route, including the active research progress card, knowledge commercial/account surfaces, import queues, Focus, Collector, settings, and research workspaces; regenerated 30 light/dark release screenshots.
+- Fixed WeChat Favorites manual-import batch persistence and stale frontend polling recovery so a returned batch remains queryable and resumes after refresh.
+- Added an opt-in local WeChat Favorites auto-import adapter around `wechat-cli favorites --type article`, incremental URL deduplication, daemon diagnostics, and a visible setup/unavailable state without installing or modifying WeChat automatically.
+- Hardened WeChat article extraction by waiting for the real `#js_content` body, recognizing parameter-error/verification/expired-link shells, retaining canonical URLs, and falling back instead of summarizing an error page.
+- Upgraded research delivery structure with perspective-guided decomposition, cross-source contradiction checks, alternative comparison, operations, impact evaluation, evidence matrices, and NDRC-aligned feasibility/proposal outlines.
+- Fixed the legacy OpenAI adapter's missing quota exception and Chinese quota detection; configured fallback credentials now take over correctly instead of forcing every report onto deterministic mock output.
+- Added locked `regions` and `entities` to independent-review artifacts and immutable-context validation so the `1.7.2` scope corrections can receive meaningful post-change approval.
+- Repaired `1.7.2` release metadata across the Chinese README, changelog, screenshot manifest, screenshot coverage notes, and current roadmap without recapturing unchanged UI assets.
+
+## 1.7.2+20260615 - 2026-06-15
+
+- Applied 78 expert scope comments to the locked research evaluation set by replacing broad or empty regions and missing research subjects with concrete province/city scopes and named targets.
+- Preserved every reviewed behavior label, reference answer term, and expected source domain; kept the unanswered but already concrete `transport-003` case unchanged.
+- Upgraded the dataset to `1.2.0`, removed all remaining national/global/empty region scopes, and wrote a new reproducible lock digest.
+- Added an auditable scope-feedback resolution map, repeatable application script, regression coverage, and explicit documentation that applied feedback is not independent post-change approval.
+
+## 1.7.1+20260614 - 2026-06-14
+
+- Added independent-review template export, reviewer finalization, immutable locked-context validation, reviewer separation checks, attestations, and a review-content digest.
+- Added a 100-case live-evaluation budget plan with a target ceiling of `$81.50`, split into 20 default batches of five cases.
+- Required live-provider runs to provide a validated independent-review artifact and explicit approved budget, with a default maximum of five cases per invocation.
+- Added immediate runtime stops when provider pricing is unavailable or observed spend exceeds the approved budget.
+
+## 1.7.0+20260614 - 2026-06-14
+
+- Locked all 100 research evaluation cases with explicit behavior labels, answer terms, first-party source-domain expectations, review metadata, and a reproducible SHA-256 digest.
+- Added a no-network, no-model-cost deterministic/LangGraph parity gate and passed all 100 cases with equivalent reports, callbacks, snapshots, metrics, and cost ledgers.
+- Promoted `langgraph` to the default research workflow engine while retaining `deterministic` as an immediate rollback and `langgraph_shadow` as a compatibility alias.
+- Overrode the vulnerable PostCSS transitive dependency with `8.5.15` while keeping Next.js `16.2.9`, rejecting the audit tool's incompatible Next.js 9 downgrade.
+
 ## 1.6.0+20260613 - 2026-06-13
 
 - Extracted shared Focus/session countdown, progress, and source-coverage behavior into a tested frontend runtime owner.

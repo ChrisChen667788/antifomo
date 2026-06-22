@@ -30,7 +30,7 @@ export function ResearchCenterSourceSettingsSection({
               {t("research.centerSourceActive", "当前开启")} · {sourceSettings?.enabled_source_labels?.join(" / ") || t("research.centerSourceNone", "无")}
             </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             {[
               {
                 key: "enable_jianyu_tender_feed" as const,
@@ -147,7 +147,7 @@ export function ResearchCenterSourceSettingsSection({
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                 {t("research.centerConnectorStatus", "授权/接入状态")}
               </p>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {sourceSettings.connector_statuses.map((status) => (
                   <div key={status.key} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">

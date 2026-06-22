@@ -25,7 +25,7 @@ export function ResearchTopicEntityWorkspaceSection({
       {latestEntityGroups.length ? (
         <section className="af-glass rounded-[30px] p-6">
           <p className="af-kicker">{t("research.entityWorkspace", "Entity Workspace")}</p>
-          <div className="mt-3 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-3">
               {latestEntityGroups.map((group) => (
                 <article key={group.key} className="rounded-[24px] border border-white/70 bg-white/70 p-4">

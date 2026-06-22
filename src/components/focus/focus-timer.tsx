@@ -727,7 +727,7 @@ export function FocusTimer() {
 
       <section className="mt-5 rounded-3xl border border-white/85 bg-white/55 p-4 md:p-5">
         <p className="af-kicker">{t("focus.strategyTitle", "Focus Strategy")}</p>
-        <div className="mt-3 grid gap-2">
+        <div className="mt-3 grid grid-cols-1 gap-2">
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"

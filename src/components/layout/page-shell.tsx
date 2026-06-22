@@ -30,7 +30,7 @@ export function PageShell({
           </p>
         ) : null}
       </header>
-      <div className="af-fade-up">{children}</div>
+      <div className="af-fade-up min-w-0">{children}</div>
     </section>
   );
 }

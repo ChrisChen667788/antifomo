@@ -38,7 +38,7 @@ export function ResearchReportInsightsSection({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{insightsTitle}</p>
             <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">{insightsDesc}</p>
           </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {sections.map((section) => {
             const tone = confidenceToneMeta(section.confidence_tone);
             const statusMeta = sectionStatusMeta(section.status);

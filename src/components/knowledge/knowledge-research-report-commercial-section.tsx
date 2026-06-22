@@ -23,7 +23,7 @@ export function KnowledgeResearchReportCommercialSection({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="space-y-4">
         {intelligenceAccounts.length ? (
           <article className="rounded-[24px] border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-4">
@@ -115,7 +115,7 @@ export function KnowledgeResearchReportCommercialSection({
               </span>
             </div>
             <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{intelligenceMaturity.summary}</p>
-            <div className="mt-3 grid gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3">
               {intelligenceMaturity.dimensions?.map((dimension) => (
                 <div key={`maturity-${dimension.name}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                   <div className="flex items-center justify-between gap-2">

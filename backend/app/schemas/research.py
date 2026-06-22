@@ -1358,6 +1358,106 @@ class ResearchSolutionOutlineSectionOut(BaseModel):
     bullets: list[str] = Field(default_factory=list)
 
 
+class ResearchDeliveryCompiledSectionOut(BaseModel):
+    title: str
+    purpose: str = ""
+    bullets: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+
+
+class ResearchDeliveryCompiledDocumentOut(BaseModel):
+    framework: Literal[
+        "solution_design_compiler_v1",
+        "consulting_report_compiler_v1",
+        "project_proposal_compiler_v1",
+        "feasibility_study_compiler_v1",
+    ]
+    document_kind: Literal["solution_design", "consulting_report", "project_proposal", "feasibility_study"]
+    title: str
+    audience: str = ""
+    purpose: str = ""
+    evidence_policy: str = ""
+    sections: list[ResearchDeliveryCompiledSectionOut] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+    quality_gates: list[str] = Field(default_factory=list)
+    export_markdown: str = ""
+
+
+class ResearchDecisionCriterionScoreOut(BaseModel):
+    criterion_key: str
+    label: str
+    weight_percent: int = 0
+    score: int = 0
+    rationale: str = ""
+
+
+class ResearchDecisionAlternativeOptionOut(BaseModel):
+    option_id: str
+    name: str
+    summary: str = ""
+    weighted_score: int = 0
+    rank: int = 0
+    criterion_scores: list[ResearchDecisionCriterionScoreOut] = Field(default_factory=list)
+    decision_rationale: str = ""
+    assumptions: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+
+
+class ResearchTenderScoreResponseItemOut(BaseModel):
+    score_item: str
+    weight_percent: int = 0
+    response_strategy: str = ""
+    mapped_sections: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    owner: str = ""
+    risk_level: Literal["high", "medium", "low"] = "medium"
+    validation_action: str = ""
+
+
+class ResearchFinancialScenarioOut(BaseModel):
+    scenario_key: Literal["pessimistic", "base", "optimistic"]
+    label: str
+    capex_cny: float | None = None
+    annual_opex_cny: float | None = None
+    annual_benefit_cny: float | None = None
+    tco_3y_cny: float | None = None
+    net_benefit_3y_cny: float | None = None
+    payback_months: float | None = None
+    npv_3y_cny: float | None = None
+    irr_percent: float | None = None
+    roi_percent: float | None = None
+    confidence: Literal["high", "medium", "low"] = "low"
+    assumptions: list[str] = Field(default_factory=list)
+
+
+class ResearchSensitivityVariableOut(BaseModel):
+    variable_key: str
+    label: str
+    base_value: float | None = None
+    low_value: float | None = None
+    high_value: float | None = None
+    unit: str = ""
+    impact_summary: str = ""
+    validation_action: str = ""
+
+
+class ResearchQuantitativeDecisionModelOut(BaseModel):
+    framework: Literal["delivery_quantitative_decision_model_v1"] = "delivery_quantitative_decision_model_v1"
+    status: Literal["ready", "assumption_required", "blocked"] = "assumption_required"
+    recommended_option_id: str = ""
+    summary: str = ""
+    alternative_options: list[ResearchDecisionAlternativeOptionOut] = Field(default_factory=list)
+    tender_score_response_matrix: list[ResearchTenderScoreResponseItemOut] = Field(default_factory=list)
+    financial_scenarios: list[ResearchFinancialScenarioOut] = Field(default_factory=list)
+    sensitivity_variables: list[ResearchSensitivityVariableOut] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    validation_actions: list[str] = Field(default_factory=list)
+    export_markdown: str = ""
+
+
 class ResearchAdvisoryArtifactOut(BaseModel):
     artifact_type: Literal["client_brief", "bidding_prep_memo", "execution_materials"]
     title: str
@@ -1388,6 +1488,124 @@ class ResearchDeliverySelfReviewOut(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class ResearchDeliveryNumericFactOut(BaseModel):
+    metric: str
+    raw_value: str
+    normalized_value: float | None = None
+    normalized_unit: str = ""
+    context: str = ""
+
+
+class ResearchDeliveryEvidenceAnchorOut(BaseModel):
+    evidence_id: str
+    title: str = ""
+    url: str = ""
+    source_label: str | None = None
+    source_tier: Literal["official", "media", "aggregate"] = "media"
+    anchor_text: str = ""
+    excerpt: str = ""
+    document_ref: str = ""
+    entities: list[str] = Field(default_factory=list)
+    numeric_facts: list[ResearchDeliveryNumericFactOut] = Field(default_factory=list)
+
+
+class ResearchDeliveryClaimEvidenceRelationOut(BaseModel):
+    evidence_id: str
+    relation_type: Literal["supports", "conflicts", "background", "needs_validation"] = "needs_validation"
+    score: int = 0
+    rationale: str = ""
+
+
+class ResearchDeliveryClaimOut(BaseModel):
+    claim_id: str
+    section_title: str = ""
+    claim_type: Literal[
+        "fact",
+        "numeric",
+        "recommendation",
+        "procurement",
+        "compliance",
+        "assumption",
+    ] = "fact"
+    text: str
+    confidence: Literal["high", "medium", "low"] = "medium"
+    entities: list[str] = Field(default_factory=list)
+    numeric_facts: list[ResearchDeliveryNumericFactOut] = Field(default_factory=list)
+    evidence_relations: list[ResearchDeliveryClaimEvidenceRelationOut] = Field(default_factory=list)
+    verification_status: Literal["supported", "conflicted", "background_only", "needs_validation"] = (
+        "needs_validation"
+    )
+
+
+class ResearchDeliveryConsistencyIssueOut(BaseModel):
+    issue_id: str
+    issue_type: Literal[
+        "entity_role_conflict",
+        "entity_not_supported",
+        "numeric_conflict",
+        "numeric_unit_mismatch",
+    ]
+    severity: Literal["high", "medium", "low"] = "medium"
+    claim_ids: list[str] = Field(default_factory=list)
+    summary: str = ""
+    details: list[str] = Field(default_factory=list)
+
+
+class ResearchDeliveryEvidenceLedgerOut(BaseModel):
+    framework: Literal["delivery_claim_evidence_ledger_v1"] = "delivery_claim_evidence_ledger_v1"
+    claim_count: int = 0
+    evidence_count: int = 0
+    supported_claim_count: int = 0
+    conflicted_claim_count: int = 0
+    background_only_claim_count: int = 0
+    needs_validation_claim_count: int = 0
+    high_confidence_claim_count: int = 0
+    high_confidence_supported_count: int = 0
+    claim_coverage_percent: int = 0
+    high_confidence_coverage_percent: int = 0
+    entity_consistency_score: int = 100
+    numeric_consistency_score: int = 100
+    status: Literal["pass", "watch", "fail"] = "watch"
+    claims: list[ResearchDeliveryClaimOut] = Field(default_factory=list)
+    evidence: list[ResearchDeliveryEvidenceAnchorOut] = Field(default_factory=list)
+    consistency_issues: list[ResearchDeliveryConsistencyIssueOut] = Field(default_factory=list)
+
+
+class ResearchDeliverySemanticChallengeIssueOut(BaseModel):
+    issue_id: str
+    issue_type: Literal[
+        "scope_drift",
+        "cross_section_conflict",
+        "unsupported_high_confidence_claim",
+        "source_contamination",
+        "entity_conflict",
+        "numeric_conflict",
+        "template_language",
+        "missing_gold_sample_review",
+    ]
+    severity: Literal["high", "medium", "low"] = "medium"
+    section_title: str = ""
+    claim_ids: list[str] = Field(default_factory=list)
+    summary: str = ""
+    evidence: list[str] = Field(default_factory=list)
+    suggested_action: str = ""
+
+
+class ResearchDeliverySemanticChallengeOut(BaseModel):
+    framework: Literal["delivery_semantic_challenger_v1"] = "delivery_semantic_challenger_v1"
+    status: Literal["pass", "watch", "fail"] = "watch"
+    overall_score: int = 0
+    issue_count: int = 0
+    high_severity_count: int = 0
+    scope_drift_count: int = 0
+    cross_section_conflict_count: int = 0
+    golden_sample_id: str = ""
+    golden_sample_title: str = ""
+    golden_sample_alignment_score: int = 0
+    issues: list[ResearchDeliverySemanticChallengeIssueOut] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+
+
 class ResearchDeliveryQualityProfileOut(BaseModel):
     framework: Literal["china_tech_delivery_review_v1"] = "china_tech_delivery_review_v1"
     framework_label: str = "中国科技项目交付质量自审"
@@ -1399,6 +1617,10 @@ class ResearchDeliveryQualityProfileOut(BaseModel):
     gaps: list[str] = Field(default_factory=list)
     required_axes: list[str] = Field(default_factory=list)
     missing_axes: list[str] = Field(default_factory=list)
+    evidence_ledger: ResearchDeliveryEvidenceLedgerOut = Field(default_factory=ResearchDeliveryEvidenceLedgerOut)
+    semantic_challenge: ResearchDeliverySemanticChallengeOut = Field(
+        default_factory=ResearchDeliverySemanticChallengeOut
+    )
     self_review: ResearchDeliverySelfReviewOut = Field(default_factory=ResearchDeliverySelfReviewOut)
 
 
@@ -1504,10 +1726,18 @@ class ResearchSolutionDeliveryPackOut(BaseModel):
     grounding_checks: list[str] = Field(default_factory=list)
     clarification_questions: list[str] = Field(default_factory=list)
     intelligence_summary: list[str] = Field(default_factory=list)
+    compiled_documents: list[ResearchDeliveryCompiledDocumentOut] = Field(default_factory=list)
+    quantitative_decision_model: ResearchQuantitativeDecisionModelOut = Field(
+        default_factory=ResearchQuantitativeDecisionModelOut
+    )
     feasibility_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     project_proposal_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     client_ppt_outline: list[ResearchSolutionOutlineSectionOut] = Field(default_factory=list)
     advisory_artifacts: list[ResearchAdvisoryArtifactOut] = Field(default_factory=list)
+    evidence_ledger: ResearchDeliveryEvidenceLedgerOut = Field(default_factory=ResearchDeliveryEvidenceLedgerOut)
+    semantic_challenge: ResearchDeliverySemanticChallengeOut = Field(
+        default_factory=ResearchDeliverySemanticChallengeOut
+    )
     solution_quality_profile: ResearchDeliveryQualityProfileOut = Field(default_factory=ResearchDeliveryQualityProfileOut)
     project_proposal_quality_profile: ResearchDeliveryQualityProfileOut = Field(
         default_factory=lambda: ResearchDeliveryQualityProfileOut(review_target="project_proposal")

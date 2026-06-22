@@ -62,14 +62,7 @@ export function LegacyResearchProgressCard({
       <div className="af-progress-row">
         <div className="af-progress-main">
           <div className="af-progress-ring">
-            <div
-              className="af-progress-ring-bg"
-              style={{
-                background:
-                  "radial-gradient(circle at 34% 28%, rgba(255,255,255,0.99), rgba(248,250,255,0.98) 56%, rgba(237,243,252,0.88))",
-                boxShadow: "0 10px 22px -22px rgba(73, 96, 255, 0.16)",
-              }}
-            />
+            <div className="af-progress-ring-bg" />
             <svg
               viewBox={`0 0 ${ringSize} ${ringSize}`}
               className="af-progress-ring-svg"
@@ -95,7 +88,7 @@ export function LegacyResearchProgressCard({
                 cy={ringSize / 2}
                 r={radius}
                 fill="none"
-                stroke="rgba(223,230,242,0.94)"
+                stroke="var(--af-border-subtle)"
                 strokeWidth={strokeWidth}
               />
               <circle
@@ -117,23 +110,17 @@ export function LegacyResearchProgressCard({
                   cy={ringSize / 2}
                   r={radius}
                   fill="none"
-                  stroke="rgba(255,255,255,0.95)"
-                strokeWidth={Math.max(2, strokeWidth - 5)}
-                strokeLinecap="round"
-                strokeDasharray={`${sweepLength} ${circumference}`}
-                strokeDashoffset={dashOffset + 8}
-                opacity="0.82"
-              />
-            </g>
+                  stroke="var(--af-surface-elevated)"
+                  strokeWidth={Math.max(2, strokeWidth - 5)}
+                  strokeLinecap="round"
+                  strokeDasharray={`${sweepLength} ${circumference}`}
+                  strokeDashoffset={dashOffset + 8}
+                  opacity="0.82"
+                />
+              </g>
             </svg>
 
-            <div
-              className="af-progress-center"
-              style={{
-                background: "rgba(255, 255, 255, 0.95)",
-                boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.92)",
-              }}
-            >
+            <div className="af-progress-center">
               <span className="af-progress-percent">
                 {Math.round(safeProgress)}%
               </span>
@@ -209,10 +196,16 @@ export function LegacyResearchProgressCard({
         .af-progress-card {
           margin-top: 1.25rem;
           border-radius: 34px;
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 253, 255, 0.95));
+          border: 1px solid var(--af-border-subtle);
+          background:
+            linear-gradient(
+              180deg,
+              color-mix(in srgb, var(--af-surface-elevated) 96%, transparent),
+              color-mix(in srgb, var(--af-surface-muted) 92%, transparent)
+            );
           box-shadow:
-            0 20px 44px -40px rgba(15, 23, 42, 0.14),
-            inset 0 1px 0 rgba(255, 255, 255, 0.78);
+            var(--af-shadow-card),
+            inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 72%, transparent);
           padding: 1.25rem 1.5rem;
         }
 
@@ -240,7 +233,15 @@ export function LegacyResearchProgressCard({
           position: absolute;
           inset: 6px;
           border-radius: 999px;
-          border: 1px solid rgba(236, 241, 249, 0.92);
+          border: 1px solid var(--af-border-subtle);
+          background:
+            radial-gradient(
+              circle at 34% 28%,
+              var(--af-surface-elevated),
+              var(--af-surface-inset) 56%,
+              var(--af-surface-muted)
+            );
+          box-shadow: 0 10px 22px -22px color-mix(in srgb, var(--af-accent) 32%, transparent);
         }
 
         .af-progress-ring-svg {
@@ -260,6 +261,8 @@ export function LegacyResearchProgressCard({
           justify-content: center;
           border-radius: 999px;
           text-align: center;
+          background: var(--af-surface-elevated);
+          box-shadow: inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 76%, transparent);
         }
 
         .af-progress-percent {
@@ -267,19 +270,19 @@ export function LegacyResearchProgressCard({
           font-weight: 600;
           line-height: 1;
           letter-spacing: -0.06em;
-          color: rgb(15 23 42);
+          color: var(--af-text-primary);
         }
 
         .af-progress-pill {
           margin-top: 4px;
           border-radius: 999px;
-          border: 1px solid rgba(226, 232, 240, 0.9);
-          background: rgba(248, 250, 252, 0.96);
+          border: 1px solid var(--af-border-subtle);
+          background: var(--af-surface-inset);
           padding: 2px 6px;
           font-size: 8px;
           font-weight: 600;
           line-height: 1;
-          color: rgb(100 116 139);
+          color: var(--af-text-secondary);
         }
 
         .af-progress-center-label {
@@ -288,7 +291,7 @@ export function LegacyResearchProgressCard({
           font-weight: 600;
           line-height: 1;
           letter-spacing: 0.04em;
-          color: rgb(167 139 250);
+          color: var(--af-accent);
         }
 
         .af-progress-copy {
@@ -301,7 +304,7 @@ export function LegacyResearchProgressCard({
           max-width: 235px;
           padding: 0 0.25rem;
           font-size: 0.875rem;
-          color: rgb(100 116 139);
+          color: var(--af-text-secondary);
         }
 
         .af-progress-phase-pill {
@@ -309,13 +312,13 @@ export function LegacyResearchProgressCard({
           display: inline-flex;
           align-items: center;
           border-radius: 999px;
-          border: 1px solid rgba(192, 212, 255, 0.95);
-          background: linear-gradient(180deg, rgba(239, 247, 255, 0.94), rgba(233, 243, 255, 0.86));
+          border: 1px solid color-mix(in srgb, var(--af-info) 34%, var(--af-border-subtle));
+          background: color-mix(in srgb, var(--af-info) 12%, var(--af-surface-muted));
           padding: 0.34rem 0.72rem;
           font-size: 0.72rem;
           font-weight: 600;
-          color: rgb(59 104 199);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+          color: var(--af-info);
+          box-shadow: inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 70%, transparent);
         }
 
         .af-progress-pipeline {
@@ -327,25 +330,25 @@ export function LegacyResearchProgressCard({
 
         .af-progress-stage {
           border-radius: 18px;
-          border: 1px solid rgba(226, 232, 240, 0.78);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.76));
+          border: 1px solid var(--af-border-subtle);
+          background: linear-gradient(180deg, var(--af-surface-elevated), var(--af-surface-muted));
           padding: 0.72rem 0.78rem;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+          box-shadow: inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 70%, transparent);
         }
 
         .af-progress-stage-done {
-          border-color: rgba(191, 219, 254, 0.92);
-          background: linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(233, 244, 255, 0.8));
+          border-color: color-mix(in srgb, var(--af-success) 34%, var(--af-border-subtle));
+          background: color-mix(in srgb, var(--af-success) 10%, var(--af-surface-muted));
         }
 
         .af-progress-stage-active {
-          border-color: rgba(165, 180, 252, 0.95);
+          border-color: color-mix(in srgb, var(--af-info) 38%, var(--af-border-subtle));
           background:
-            radial-gradient(circle at 18% 0%, rgba(219, 234, 254, 0.76), transparent 38%),
-            linear-gradient(180deg, rgba(242, 245, 255, 0.98), rgba(233, 242, 255, 0.9));
+            radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--af-info) 14%, transparent), transparent 38%),
+            linear-gradient(180deg, var(--af-surface-elevated), var(--af-surface-selected));
           box-shadow:
-            0 10px 18px -20px rgba(79, 124, 255, 0.16),
-            inset 0 1px 0 rgba(255, 255, 255, 0.84);
+            0 10px 18px -20px color-mix(in srgb, var(--af-info) 26%, transparent),
+            inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 72%, transparent);
         }
 
         .af-progress-stage-topline {
@@ -359,30 +362,30 @@ export function LegacyResearchProgressCard({
           font-size: 0.72rem;
           font-weight: 600;
           letter-spacing: 0.02em;
-          color: rgb(15 23 42);
+          color: var(--af-text-primary);
         }
 
         .af-progress-stage-badge {
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.78);
+          background: var(--af-surface-inset);
           padding: 0.16rem 0.46rem;
           font-size: 0.62rem;
           font-weight: 600;
-          color: rgb(100 116 139);
+          color: var(--af-text-secondary);
         }
 
         .af-progress-stage-summary {
           margin-top: 0.45rem;
           font-size: 0.72rem;
           line-height: 1.45;
-          color: rgb(100 116 139);
+          color: var(--af-text-secondary);
         }
 
         .af-progress-stage-value {
           margin-top: 0.38rem;
           font-size: 0.68rem;
           font-weight: 600;
-          color: rgb(59 104 199);
+          color: var(--af-info);
         }
 
         .af-research-ring-glow {

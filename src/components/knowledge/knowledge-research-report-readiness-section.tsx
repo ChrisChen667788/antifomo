@@ -19,7 +19,7 @@ export function KnowledgeResearchReportReadinessSection({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {reportReadiness ? (
         <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -53,7 +53,7 @@ export function KnowledgeResearchReportReadinessSection({
             </div>
           ) : null}
           {(reportReadiness.missing_axes?.length || reportReadiness.next_verification_steps?.length) ? (
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3">
               {reportReadiness.missing_axes?.length ? (
                 <div className="rounded-[18px] border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_14%,var(--af-surface-muted))] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">仍缺关键维度</p>
@@ -87,7 +87,7 @@ export function KnowledgeResearchReportReadinessSection({
       {commercialSummary ? (
         <article className="rounded-[24px] border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{copy.playbookTitle}</p>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3">
             <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">重点账户</p>
               <div className="mt-2 flex flex-wrap gap-2">

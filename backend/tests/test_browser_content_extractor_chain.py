@@ -40,6 +40,29 @@ def test_extract_from_browser_parses_script_output(monkeypatch) -> None:
     assert "浏览器正文内容" in extracted.clean_content
 
 
+def test_extract_from_browser_rejects_wechat_parameter_error_shell(monkeypatch) -> None:
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout=(
+                '{"page_url":"https://mp.weixin.qq.com/s/expired","title":"微信公众平台",'
+                '"body_text":"参数错误，当前文章链接已失效。","raw_content":"正文：参数错误，当前文章链接已失效。",'
+                '"source_domain":"mp.weixin.qq.com","has_body":false,"access_limited":true}\n'
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(browser_content_extractor, "BROWSER_EXTRACT_SCRIPT", Path(__file__))
+    monkeypatch.setattr(browser_content_extractor.subprocess, "run", fake_run)
+
+    try:
+        extract_from_browser("https://mp.weixin.qq.com/s/expired", timeout_seconds=8)
+    except ContentExtractionError as exc:
+        assert "access-limited" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("parameter error shell must not be accepted as article content")
+
+
 def test_item_processor_prefers_browser_extractor_for_wechat_url(monkeypatch) -> None:
     body = "公众号正文。" * 60
     calls: list[str] = []
@@ -74,6 +97,43 @@ def test_item_processor_prefers_browser_extractor_for_wechat_url(monkeypatch) ->
     assert calls == ["browser"]
     assert source_domain == "mp.weixin.qq.com"
     assert title == "浏览器抓取成功"
+    assert clean_content == body
+
+
+def test_wechat_favorites_item_uses_fast_direct_fetch_before_browser(monkeypatch) -> None:
+    body = "公众号收藏正文。" * 60
+    calls: list[str] = []
+
+    def fake_direct(*args, **kwargs):
+        calls.append("direct")
+        return ExtractedContent(
+            source_url="https://mp.weixin.qq.com/s/favorite-demo",
+            source_domain="mp.weixin.qq.com",
+            title="收藏链接快速抓取",
+            raw_content=body,
+            clean_content=body,
+        )
+
+    def fail_browser(*args, **kwargs):  # pragma: no cover
+        raise AssertionError("favorites direct fetch succeeded; browser should not be called")
+
+    monkeypatch.setattr(item_processor, "extract_from_url", fake_direct)
+    monkeypatch.setattr(item_processor, "extract_from_browser", fail_browser)
+
+    item = Item(
+        user_id=uuid.uuid4(),
+        source_type="url",
+        source_url="https://mp.weixin.qq.com/s/favorite-demo",
+        ingest_route="wechat_favorites",
+        title=None,
+        raw_content="",
+        status="pending",
+    )
+
+    source_domain, title, clean_content = item_processor._prepare_item_content(item)
+    assert calls == ["direct"]
+    assert source_domain == "mp.weixin.qq.com"
+    assert title == "收藏链接快速抓取"
     assert clean_content == body
 
 

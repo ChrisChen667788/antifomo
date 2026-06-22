@@ -351,7 +351,7 @@ export function WorkBuddyPanel() {
       </div>
       <p className="mt-2 text-sm text-slate-500">{localText(language, "description")}</p>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-white/85 bg-white/55 p-4">
           <p className="text-sm font-semibold text-slate-800">{localText(language, "statusTitle")}</p>
           <p className="mt-2 text-sm text-slate-600">

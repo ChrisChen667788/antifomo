@@ -143,6 +143,9 @@ def _contains_access_block(text: str) -> bool:
         "去验证",
         "访问受限",
         "完成验证后即可继续访问",
+        "参数错误",
+        "parameter error",
+        "链接已失效",
     )
     return any(hint in lowered for hint in hints)
 

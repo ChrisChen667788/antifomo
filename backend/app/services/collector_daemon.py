@@ -70,6 +70,13 @@ class CollectorDaemonStatus:
     coverage_recommendation: str
     poor_source_count: int
     watch_source_count: int
+    favorites_auto_status: str
+    favorites_auto_available: bool
+    favorites_auto_last_at: datetime | None
+    favorites_auto_discovered_count: int
+    favorites_auto_imported_count: int
+    favorites_auto_deduplicated_count: int
+    favorites_auto_message: str
     source_health: list[CollectorSourceHealth]
     last_rows: list[dict[str, str | None]]
     log_tail: list[str]
@@ -239,6 +246,17 @@ def _read_latest_run_summary() -> dict[str, object]:
         return {}
     latest = runs[0]
     return latest if isinstance(latest, dict) else {}
+
+
+def _read_favorites_auto_summary() -> dict[str, object]:
+    if not STATE_FILE.exists():
+        return {}
+    try:
+        payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    summary = payload.get("last_favorites_auto")
+    return summary if isinstance(summary, dict) else {}
 
 
 def _read_latest_rows(limit: int = 12) -> list[dict[str, str | None]]:
@@ -450,6 +468,12 @@ def read_collector_daemon_status() -> CollectorDaemonStatus:
     failed_count = _safe_int(latest_run.get("failed_count"))
     skipped_seen_count = _safe_int(latest_run.get("skipped_seen_count"))
     source_health = _read_source_health()
+    favorites_auto = _read_favorites_auto_summary()
+    favorites_auto_at_text = _safe_str(favorites_auto.get("ts"))
+    try:
+        favorites_auto_last_at = datetime.fromisoformat(favorites_auto_at_text) if favorites_auto_at_text else None
+    except ValueError:
+        favorites_auto_last_at = None
     poor_source_count = sum(1 for source in source_health if source.health_state == "poor")
     watch_source_count = sum(1 for source in source_health if source.health_state == "watch")
     (
@@ -495,6 +519,13 @@ def read_collector_daemon_status() -> CollectorDaemonStatus:
         coverage_recommendation=coverage_recommendation,
         poor_source_count=poor_source_count,
         watch_source_count=watch_source_count,
+        favorites_auto_status=_safe_str(favorites_auto.get("status")) or "idle",
+        favorites_auto_available=bool(favorites_auto.get("available")),
+        favorites_auto_last_at=favorites_auto_last_at,
+        favorites_auto_discovered_count=_safe_int(favorites_auto.get("discovered_count")),
+        favorites_auto_imported_count=_safe_int(favorites_auto.get("imported_count")),
+        favorites_auto_deduplicated_count=_safe_int(favorites_auto.get("deduplicated_count")),
+        favorites_auto_message=_safe_str(favorites_auto.get("message")),
         source_health=source_health,
         last_rows=last_rows,
         log_tail=_tail_log(),

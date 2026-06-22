@@ -159,7 +159,7 @@ export function ResearchCenterExperimentControlSection({
                   </button>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
                 {[
                   { label: "断点状态", value: retrievalIndexStatus?.checkpoint_status || "idle" },
                   { label: "已持久化", value: String(retrievalIndexStatus?.persisted_chunk_count ?? 0) },
@@ -208,7 +208,7 @@ export function ResearchCenterExperimentControlSection({
               {retrievalIndexError ? <p className="mt-3 text-sm text-[var(--af-danger)]">{retrievalIndexError}</p> : null}
             </div>
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
+            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -234,7 +234,7 @@ export function ResearchCenterExperimentControlSection({
                             {experimentLaneStatusLabel(lane.status)}
                           </span>
                         </div>
-                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                           {[lane.baseline, lane.candidate].map((arm) => (
                             <div key={arm.key} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
@@ -274,7 +274,7 @@ export function ResearchCenterExperimentControlSection({
                   <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</p>
                 ) : followupDeltaEvaluation?.metrics?.length ? (
                   <>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                       {followupDeltaEvaluation.metrics.map((metric) => (
                         <div
                           key={metric.key}
@@ -321,7 +321,7 @@ export function ResearchCenterExperimentControlSection({
                 </div>
                 <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Orchestration</span>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-5 xl:grid-cols-10">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-5 xl:grid-cols-10">
                 {[
                   { label: "实验计划", value: String(experimentOrchestration?.total_plans ?? 0) },
                   { label: "已冻结", value: String(experimentOrchestration?.frozen_plan_count ?? 0) },
@@ -341,10 +341,10 @@ export function ResearchCenterExperimentControlSection({
                 ))}
               </div>
 
-              <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
+              <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">新实验计划</p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
                       计划名称
                       <input
@@ -484,7 +484,7 @@ export function ResearchCenterExperimentControlSection({
                         const queryRuntime = (experimentRuntimeAllConfig.effective_config["query_generation"] || {}) as Record<string, unknown>;
                         const rerankerRuntime = (experimentRuntimeAllConfig.effective_config["source_reranker"] || {}) as Record<string, unknown>;
                         return (
-                          <div className="mt-2 grid gap-2 md:grid-cols-4">
+                          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
                             {[
                               {
                                 label: "report query",
@@ -540,7 +540,7 @@ export function ResearchCenterExperimentControlSection({
                               {experimentRuntimeStatusLabel(experimentRuntimeConfig.status)}
                             </span>
                           </div>
-                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                             {[
                               {
                                 label: "parent boost",
@@ -585,7 +585,7 @@ export function ResearchCenterExperimentControlSection({
                                 {experimentRuntimeStatusLabel(experimentRuntimeAllConfig.status)}
                               </span>
                             </div>
-                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                               {[
                                 {
                                   label: "query recovery",
@@ -657,7 +657,7 @@ export function ResearchCenterExperimentControlSection({
                             </span>
                           </div>
                         </div>
-                        <div className="mt-3 grid gap-2 md:grid-cols-4">
+                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
                           {[
                             { label: "Cohort", value: `${plan.cohort_size} 条` },
                             { label: "Baseline", value: plan.baseline_version_label || "未锁定" },
@@ -777,7 +777,7 @@ export function ResearchCenterExperimentControlSection({
                 <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</p>
               ) : deliveryExportDiagnostics ? (
                 <>
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
                     {[
                       { label: "导出归档", value: String(deliveryExportDiagnostics.total_archives) },
                       { label: "可比较样本", value: String(deliveryExportDiagnostics.analyzed_archives) },
@@ -790,7 +790,7 @@ export function ResearchCenterExperimentControlSection({
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr),minmax(0,0.95fr)]">
+                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr),minmax(0,0.95fr)]">
                     <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">历史趋势</p>
                       <div className="mt-3 space-y-2">
@@ -840,7 +840,7 @@ export function ResearchCenterExperimentControlSection({
             </div>
 
             {offlineEvaluation?.metrics?.length ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                 {offlineEvaluation.metrics.map((metric) => (
                   <div
                     key={metric.key}
@@ -866,7 +866,7 @@ export function ResearchCenterExperimentControlSection({
               <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前暂无质量复核样本。</p>
             )}
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
+            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-[var(--af-text-primary)]">回归摘要</p>

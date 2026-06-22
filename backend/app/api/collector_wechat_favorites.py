@@ -245,6 +245,11 @@ def import_wechat_favorite_items_impl(
         include_text_blocks=payload.include_text_blocks,
         process_immediately=payload.process_immediately,
     )
+    # Item persistence can commit before the batch is created. Commit the batch
+    # explicitly so the frontend never receives an ID that disappears on poll.
+    db.commit()
+    if result.get("batch") is not None:
+        db.refresh(result["batch"])
     if not payload.process_immediately:
         for item_id in result["created_item_ids"]:
             background_tasks.add_task(process_item_task_fn, UUID(str(item_id)), payload.output_language)

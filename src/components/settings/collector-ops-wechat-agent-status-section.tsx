@@ -154,7 +154,7 @@ export function CollectorOpsWechatAgentStatusSection({
         </div>
       ) : null}
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <StatCard label={text("daemonPid")} value={String(wechatAgentStatus?.pid ?? "-")} />
         <StatCard label={text("daemonUptime")} value={formatDuration(wechatAgentStatus?.uptime_seconds ?? null)} />
         <StatCard
@@ -211,7 +211,7 @@ export function CollectorOpsWechatAgentStatusSection({
             </button>
           </div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <StatCard label={text("wechatAgentProcessedHashes")} value={wechatAgentDedupSummary?.processed_hashes ?? 0} />
           <StatCard label={text("wechatAgentDedupRuns")} value={wechatAgentDedupSummary?.run_count ?? 0} />
           <StatCard label={text("wechatAgentDedupLastRun")} value={formatTs(wechatAgentDedupSummary?.last_run_finished_at ?? null)} />

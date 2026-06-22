@@ -85,7 +85,7 @@ function rankedGroupTone(tone: RankedGroupTone) {
   if (tone === "amber") {
     return {
       panelClass:
-        "border-amber-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]",
+        "af-surface-warning",
       titleClass: "text-amber-700",
       pillClass: "border-amber-100/90 bg-amber-50/88 text-slate-800",
       dotClass: "bg-amber-400/80",
@@ -94,7 +94,7 @@ function rankedGroupTone(tone: RankedGroupTone) {
   if (tone === "emerald") {
     return {
       panelClass:
-        "border-emerald-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]",
+        "af-surface-success",
       titleClass: "text-emerald-700",
       pillClass: "border-emerald-100/90 bg-emerald-50/88 text-slate-800",
       dotClass: "bg-emerald-400/80",
@@ -102,7 +102,7 @@ function rankedGroupTone(tone: RankedGroupTone) {
   }
   return {
     panelClass:
-      "border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,249,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]",
+      "af-surface-info",
     titleClass: "text-sky-700",
     pillClass: "border-sky-100/90 bg-sky-50/88 text-slate-800",
     dotClass: "bg-sky-400/80",
@@ -273,7 +273,7 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
           {t("inbox.researchHistoryEmpty", "还没有保存的研报，先生成一份再加入知识库。")}
         </div>
       ) : (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           {items.map((item) => (
             (() => {
               const meta = extractResearchMetadata(item);
@@ -376,14 +376,14 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
                   ) : null}
 
                   {meta.actionCards.length ? (
-                    <div className="mt-4 grid gap-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3">
                       {meta.actionCards.map((card) => (
                         <div
                           key={`${item.id}-${card.title}`}
                           className="rounded-2xl border border-slate-200/80 bg-white/85 p-3"
                         >
                           <div className="break-words text-sm font-semibold leading-6 text-slate-900">{card.title}</div>
-                          <div className="mt-2 grid gap-2 text-xs text-slate-500">
+                          <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-500">
                             {card.target_persona ? (
                               <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 break-words">
                                 <span className="font-medium text-slate-700">{t("research.actionTarget", "优先对象")}：</span>
@@ -404,11 +404,11 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
                             ) : null}
                           </div>
                           {parseActionPhases(card.recommended_steps).length ? (
-                            <div className="mt-3 grid gap-2">
+                            <div className="mt-3 grid grid-cols-1 gap-2">
                               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                 {t("research.actionTimeline", "推进节奏")}
                               </div>
-                              <div className="grid gap-2">
+                              <div className="grid grid-cols-1 gap-2">
                                 {parseActionPhases(card.recommended_steps).map((phase) => (
                                   <div
                                     key={`${card.title}-${phase.label}-${phase.content}`}
@@ -436,7 +436,7 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
                   ) : null}
 
                   {(meta.topTargets.length || meta.topCompetitors.length || meta.topPartners.length) ? (
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                       {meta.topTargets.length ? (
                         <div className={`rounded-[22px] border p-3.5 ${rankedGroupTone("sky").panelClass}`}>
                           <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${rankedGroupTone("sky").titleClass}`}>

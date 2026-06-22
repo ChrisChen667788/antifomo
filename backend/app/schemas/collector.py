@@ -549,6 +549,13 @@ class CollectorDaemonStatusResponse(BaseModel):
     coverage_recommendation: str = ""
     poor_source_count: int = 0
     watch_source_count: int = 0
+    favorites_auto_status: Literal["idle", "disabled", "unavailable", "imported", "error"] = "idle"
+    favorites_auto_available: bool = False
+    favorites_auto_last_at: datetime | None = None
+    favorites_auto_discovered_count: int = 0
+    favorites_auto_imported_count: int = 0
+    favorites_auto_deduplicated_count: int = 0
+    favorites_auto_message: str = ""
     source_health: list[CollectorDaemonSourceHealthResponse] = Field(default_factory=list)
     last_rows: list[CollectorDaemonRecentRowResponse] = Field(default_factory=list)
     log_tail: list[str] = Field(default_factory=list)

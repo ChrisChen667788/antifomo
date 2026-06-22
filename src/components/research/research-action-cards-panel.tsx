@@ -76,7 +76,7 @@ export function ResearchActionCardsPanel({
       </div>
 
       {cards.length ? (
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
           {cards.map((card) => (
             <article
               key={`${card.action_type}-${card.title}`}
@@ -95,7 +95,7 @@ export function ResearchActionCardsPanel({
                 {card.summary}
               </p>
 
-              <div className="mt-4 grid gap-2 text-xs text-[var(--af-text-tertiary)]">
+              <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-[var(--af-text-tertiary)]">
                 {card.target_persona ? (
                   <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2.5 break-words">
                     <span className="font-semibold text-[var(--af-text-secondary)]">优先对象：</span>
@@ -121,7 +121,7 @@ export function ResearchActionCardsPanel({
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--af-text-tertiary)]">
                     {t("research.actionTimeline", "推进节奏")}
                   </div>
-                  <div className="mt-2 grid gap-2.5">
+                  <div className="mt-2 grid grid-cols-1 gap-2.5">
                     {card.phases.map((phase) => (
                       <div
                         key={`${card.action_type}-${phase.label}-${phase.content}`}
@@ -149,7 +149,7 @@ export function ResearchActionCardsPanel({
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--af-text-tertiary)]">
                     {t("research.actionEvidence", "证据入口")}
                   </div>
-                  <div className="mt-2 grid gap-2">
+                  <div className="mt-2 grid grid-cols-1 gap-2">
                     {card.evidenceCards.map((evidence) =>
                       evidence.url ? (
                         <div

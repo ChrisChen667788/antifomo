@@ -88,7 +88,7 @@ export function ResearchCenterWatchlistSection({
                     {watchlistAutomationAlertLabel(watchlistOpsSummary.alert_level)}
                   </span>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">活跃监控</p>
                     <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">{watchlistOpsSummary.active_count}</p>
@@ -114,7 +114,7 @@ export function ResearchCenterWatchlistSection({
                   </p>
                 ) : null}
                 {watchlistOpsSummary.issues?.length ? (
-                  <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                  <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                     {watchlistOpsSummary.issues.slice(0, 4).map((issue) => (
                       <div key={`${issue.watchlist_id || issue.name}-${issue.issue_type}`} className="rounded-2xl af-state-panel-warning px-3 py-2">
                         <div className="flex items-center justify-between gap-2">
@@ -143,7 +143,7 @@ export function ResearchCenterWatchlistSection({
                     {watchlistAutomationAlertLabel(watchlistDigestExport.alert_level)}
                   </span>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">成功</p>
                     <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">{watchlistDigestExport.refreshed_count}</p>
@@ -244,7 +244,7 @@ export function ResearchCenterWatchlistSection({
                   </p>
                 </div>
               ) : null}
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                   <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
                     {t("research.watchlistAutomationDue", "最近到期")}
@@ -372,7 +372,7 @@ export function ResearchCenterWatchlistSection({
                   </div>
                 </div>
               ) : null}
-              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">重跑命令</p>
@@ -414,7 +414,7 @@ export function ResearchCenterWatchlistSection({
                   </code>
                 </div>
               </div>
-              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">安装命令</p>
@@ -458,7 +458,7 @@ export function ResearchCenterWatchlistSection({
                   </code>
                 </div>
               </div>
-              <div className="mt-3 grid gap-2 lg:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
                 {[
                   { label: "launchd plist", value: watchlistAutomation?.plist_path || "" },
                   { label: "状态文件", value: watchlistAutomation?.state_path || "" },

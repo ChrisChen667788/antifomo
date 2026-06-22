@@ -146,7 +146,7 @@ export function WechatFavoritesImportPanel({ onImported }: WechatFavoritesImport
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
         <textarea
           rows={4}
           value={exportText}
@@ -205,7 +205,7 @@ export function WechatFavoritesImportPanel({ onImported }: WechatFavoritesImport
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700/80">
             Preview · {latestPreview.total_candidates} items
           </p>
-          <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
             {latestPreview.samples.slice(0, 6).map((item) => (
               <div key={`${item.source_url || item.title}-${item.body_source}`} className="rounded-2xl border border-slate-100 bg-white/80 px-3 py-2">
                 <p className="line-clamp-1 text-sm font-semibold text-slate-800">
@@ -221,7 +221,7 @@ export function WechatFavoritesImportPanel({ onImported }: WechatFavoritesImport
       ) : null}
 
       {latestImportPreview?.length ? (
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
           {latestImportPreview.map((item) => (
             <div key={`${item.item_id || item.source_url}-${item.status}`} className="rounded-2xl border border-white/80 bg-white/75 px-3 py-2">
               <p className="line-clamp-1 text-sm font-semibold text-slate-800">

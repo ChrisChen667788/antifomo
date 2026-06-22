@@ -278,7 +278,7 @@ export function MultiFormatImportPanel() {
             placeholder="Newsletter 标题"
             className="af-input"
           />
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               type="text"
               value={newsletterSender}
@@ -310,7 +310,7 @@ export function MultiFormatImportPanel() {
       {mode === "file" ? (
         <div className="mt-4 space-y-3">
           <input type="file" accept=".pdf,.txt,.md,.html,.csv,.json" onChange={handleFileChange} className="block w-full text-sm text-slate-600" />
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               type="text"
               value={fileTitle}

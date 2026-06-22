@@ -73,7 +73,7 @@ export function ResearchReportSourcesDiagnosticsSection({
 }) {
   return (
     <>
-      <div className={`mt-6 grid gap-4 ${hideSources ? "md:grid-cols-1" : "md:grid-cols-[1.15fr_0.85fr]"}`}>
+      <div className={`mt-6 grid grid-cols-1 gap-4 ${hideSources ? "md:grid-cols-1" : "md:grid-cols-[1.15fr_0.85fr]"}`}>
         <div className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{sourcePathTitle}</p>
           <div className="mt-3">
@@ -120,7 +120,7 @@ export function ResearchReportSourcesDiagnosticsSection({
                 <p className="mt-2 text-xs leading-5">
                   {evidenceMode.note}
                 </p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {retrievalRoutingCards.map((card) => (
                     <div key={card.title} className={`rounded-[18px] border px-3 py-3 ${card.tone}`}>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">

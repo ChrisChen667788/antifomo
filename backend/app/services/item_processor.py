@@ -327,6 +327,25 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
 
     # URL/plugin source: try fetch remote content first when URL is available.
     if item.source_url and item.source_type in {"url", "plugin"}:
+        # Favorites imports should acknowledge the click quickly. A direct fetch can usually
+        # distinguish a readable public article from an expired/verification page in seconds;
+        # the slower logged-in browser path remains available through browser ingest/extension.
+        if source_domain.endswith("mp.weixin.qq.com") and item.ingest_route == "wechat_favorites":
+            try:
+                extracted = extract_from_url(
+                    item.source_url,
+                    timeout_seconds=max(3, min(settings.url_fetch_timeout_seconds, 8)),
+                )
+                source_domain = extracted.source_domain or source_domain
+                title = title or (extracted.title or "")
+                raw_content = extracted.raw_content
+                clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                if _looks_like_bad_article_title(title, source_domain=source_domain):
+                    title = _derive_topic_title_from_text(clean_content)
+                return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
+            except ContentExtractionError:
+                pass
+
         # WeChat official account pages are frequently gated; prefer a logged-in browser extraction chain.
         if source_domain.endswith("mp.weixin.qq.com"):
             try:

@@ -23,7 +23,7 @@ export function ResearchReportReadinessSection({
   return (
     <>
       {(readiness || commercialSummary) ? (
-        <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[0.92fr_1.08fr]">
           {readiness ? (
             <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -53,7 +53,7 @@ export function ResearchReportReadinessSection({
                 </div>
               ) : null}
               {(readiness.missing_axes?.length || readiness.next_verification_steps?.length) ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {readiness.missing_axes?.length ? (
                     <div className="rounded-2xl border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))] p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">仍缺关键维度</p>
@@ -87,7 +87,7 @@ export function ResearchReportReadinessSection({
           {commercialSummary ? (
             <article className="af-report-surface rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-info)]">{playbookTitle}</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">重点账户</p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -137,7 +137,7 @@ export function ResearchReportReadinessSection({
               {weakSections.length} 个章节待收紧
             </span>
           </div>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
             {weakSections.map((section) => {
               const statusMeta = sectionStatusMeta(section.status);
               return (

@@ -1,0 +1,135 @@
+{
+  "dataset_id": "anti-fomo-delivery-golden-samples-v1",
+  "version": "1.1.0",
+  "status": "expanded_for_real_business_validation",
+  "updated_at": "2026-06-20",
+  "description": "脱敏真实项目型与公开来源真实业务主题交付黄金样本。样本保留行业、文档、章节、范围和证据审查口径，不包含私有客户材料或付费评测结果。",
+  "samples": [
+    {
+      "sample_id": "gov-ai-service-center",
+      "title": "市级政务服务 AI 助手与热线协同项目",
+      "source_basis": "公开政务服务、热线智能化、知识库问答和工单协同类招采/建设材料的脱敏结构样本。",
+      "document_types": ["solution_delivery", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["政务AI", "政务服务", "热线", "知识库", "工单协同", "数据局", "政务服务中心"],
+      "target_entities": ["某市数据局", "某市政务服务中心"],
+      "required_scope_terms": ["政务服务", "智能问答", "知识库", "工单", "数据安全", "等保", "接口"],
+      "forbidden_scope_terms": ["景区", "游客", "数字人导览", "门票", "电商直播", "制造产线"],
+      "required_sections": ["项目概况", "需求分析", "建设目标", "技术方案", "安全合规", "实施路径", "投资", "风险", "证据"],
+      "review_rubric": [
+        "目标客户、建设单位和采购主体必须保持同一政务主体口径。",
+        "预算、建设周期、等保等级、接口范围必须绑定公开来源或降级为待核验。",
+        "不得把文旅、电商或制造场景能力直接写成政务服务项目范围。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    },
+    {
+      "sample_id": "tourism-aigc-guide",
+      "title": "智慧景区 AIGC 导览与营销内容平台",
+      "source_basis": "公开智慧景区、数字人讲解、AIGC 内容生成和景区营销平台项目材料的脱敏结构样本。",
+      "document_types": ["solution_delivery", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["文旅", "景区", "AIGC", "数字人", "导览", "营销内容", "游客"],
+      "target_entities": ["某文旅集团", "某景区运营公司"],
+      "required_scope_terms": ["景区", "数字人", "导览", "AIGC内容", "游客服务", "营销", "票务或导览接口"],
+      "forbidden_scope_terms": ["政务热线", "数据局", "工单协同", "制造产线", "工业质检", "医院"],
+      "required_sections": ["项目概况", "现状", "建设目标", "方案比选", "技术方案", "运营", "投资", "风险", "证据"],
+      "review_rubric": [
+        "目标客户应为文旅集团、景区运营主体或文化旅游主管单位，不得漂移到政务热线或工业制造主体。",
+        "并发、终端数量、内容生产量、接口范围和等保要求必须有来源或待核验说明。",
+        "营销收益不得使用伪精确转化率，缺少数据时必须输出假设表。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    },
+    {
+      "sample_id": "smart-manufacturing-quality-platform",
+      "title": "智能制造质量追溯与视觉检测平台",
+      "source_basis": "公开工业互联网、质量追溯、机器视觉检测、MES/ERP 集成类项目材料的脱敏结构样本。",
+      "document_types": ["solution_delivery", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["智能制造", "质量追溯", "视觉检测", "MES", "ERP", "产线", "工业互联网"],
+      "target_entities": ["某制造集团", "某工业园区"],
+      "required_scope_terms": ["产线", "质检", "质量追溯", "机器视觉", "MES", "ERP", "设备数据"],
+      "forbidden_scope_terms": ["政务服务", "政务热线", "景区", "游客", "数字人导览", "门票"],
+      "required_sections": ["项目概况", "现状", "建设目标", "技术方案", "集成接口", "实施", "投资", "风险", "证据"],
+      "review_rubric": [
+        "业务范围必须围绕生产、质检、追溯和设备数据，不得漂移到文旅或政务服务。",
+        "检测准确率、节拍、产线数量、设备接入数量应以来源或客户确认数据为准。",
+        "MES/ERP/PLC 等集成边界必须明确，无法确认时列为接口核验动作。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    },
+    {
+      "sample_id": "shanghai-medical-ai-2026",
+      "title": "2026年上海市医疗行业AI需求与商机调研",
+      "source_basis": "公开医学人工智能政策、国家卫生健康行业AI场景指引、上海数据经济政策和卫健系统公开动态。",
+      "document_types": ["solution_delivery", "consulting_report", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["上海医疗", "医学人工智能", "医疗健康", "临床诊疗", "医学影像", "智能随访", "医疗数据治理"],
+      "target_entities": ["上海市卫生健康委员会", "上海市级医疗机构", "上海医学人工智能创新与应用促进中心"],
+      "required_scope_terms": ["医学人工智能", "临床诊疗", "医学影像", "智能随访", "数据治理", "隐私计算", "试点应用", "高质量数据集"],
+      "forbidden_scope_terms": ["景区", "游客", "一网通办", "跨省通办", "门票", "制造产线", "工单协同"],
+      "required_sections": ["项目概况", "需求", "建设目标", "技术方案", "安全合规", "方案比选", "投资", "风险", "证据"],
+      "review_rubric": [
+        "范围必须锁定上海医疗卫生系统、医疗机构和医学AI应用，不得漂移到文旅或政务一网通办。",
+        "临床辅助、医学影像、随访、院后管理和数据治理必须对应公开政策或降级为待核验。",
+        "医疗AI财务测算没有公开金额时不得输出伪精确CAPEX、ROI或回收期。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    },
+    {
+      "sample_id": "shanghai-culture-tourism-ai-2026",
+      "title": "2026年上海市文旅行业AI需求与商机调研",
+      "source_basis": "上海市文化和旅游局2026年人工智能+文旅应用试点通知、上海AIGC微短剧公开动态和公开媒体对数智文旅规划的报道。",
+      "document_types": ["solution_delivery", "consulting_report", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["上海文旅", "人工智能+文化和旅游", "文旅", "AIGC", "智能讲解", "智能票务", "数字人", "文旅数据集"],
+      "target_entities": ["上海市文化和旅游局", "上海文化和旅游企事业单位", "上海文化场馆与景区运营主体"],
+      "required_scope_terms": ["人工智能+文化和旅游", "数据集", "智能讲解", "智能票务", "数字人", "客流疏导", "市场监管", "公共文化服务", "AIGC"],
+      "forbidden_scope_terms": ["临床诊疗", "医学影像", "一网通办", "跨省通办", "工单协同", "制造产线", "医院"],
+      "required_sections": ["项目概况", "现状", "建设目标", "方案比选", "技术方案", "运营", "投资", "风险", "证据"],
+      "review_rubric": [
+        "范围必须锁定上海文旅企事业单位、文化场馆、景区或内容机构，不得漂移到医疗、政务或制造。",
+        "数据集、技术验证、智能讲解、票务预约、数字人和监管场景必须对应公开来源或待核验说明。",
+        "营销收益和游客转化不能伪精确，缺少业务基线时必须输出假设表。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    },
+    {
+      "sample_id": "yangtze-delta-gov-ai-2026",
+      "title": "2026年长三角政府行业AI需求与商机调研",
+      "source_basis": "2026年长三角政务服务一网通办协同立法、长三角主要领导座谈会和上海一网通办改革公开信息。",
+      "document_types": ["solution_delivery", "consulting_report", "project_proposal", "feasibility_study"],
+      "scenario_terms": ["长三角", "政府行业AI", "一网通办", "跨省通办", "智能帮办", "智能预填", "数据共享", "政务算力"],
+      "target_entities": ["长三角政务服务一网通办主管部门", "上海市政府办公厅", "三省一市数据和政务服务主管部门"],
+      "required_scope_terms": ["长三角", "一网通办", "跨省通办", "电子证照", "数据共享", "智能引导", "智能预填", "智能帮办", "可信知识库", "语料库", "政务算力"],
+      "forbidden_scope_terms": ["临床诊疗", "医学影像", "景区游客", "数字人导览", "票务预约", "制造产线", "智能随访"],
+      "required_sections": ["项目概况", "需求", "建设目标", "技术方案", "数据共享", "安全合规", "实施", "投资", "风险", "证据"],
+      "review_rubric": [
+        "范围必须锁定长三角政务服务一网通办、跨省通办和AI政务服务，不得漂移到医疗或文旅。",
+        "智能引导、智能预填、智能帮办、可信知识库、语料库和政务算力必须对应法规或政策来源。",
+        "涉及跨区域数据共享时必须明确数据安全、个人信息保护、审计追溯和标准统一约束。"
+      ],
+      "acceptance": {
+        "min_alignment_score": 82,
+        "max_scope_drift_issues": 0,
+        "requires_evidence_ledger": true
+      }
+    }
+  ]
+}

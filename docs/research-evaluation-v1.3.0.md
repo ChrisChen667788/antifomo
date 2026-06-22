@@ -30,6 +30,11 @@ Export the independent human-review packet:
 npm run research:evaluate:review:export
 ```
 
+The generated packet carries the current locked `regions` and `entities` for
+every case in addition to behavior, answer terms, and source domains. This is
+required so the `1.7.2` scope corrections can be independently reviewed rather
+than merely inherited from the dataset digest.
+
 After a reviewer fills every case decision and note, finalize and validate it:
 
 ```bash

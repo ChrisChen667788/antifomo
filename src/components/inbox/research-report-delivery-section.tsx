@@ -33,11 +33,20 @@ export function ResearchReportDeliverySection({
   architectureReadinessState: ReportToneMeta;
   valueBucket: (score: number) => ReportScoreBucket;
 }) {
+  const quantitativeModel = solutionDeliveryPack?.quantitative_decision_model;
+  const recommendedOption =
+    quantitativeModel?.alternative_options?.find((option) => option.option_id === quantitativeModel.recommended_option_id) ||
+    quantitativeModel?.alternative_options?.[0];
+  const baseFinancialScenario =
+    quantitativeModel?.financial_scenarios?.find((scenario) => scenario.scenario_key === "base") ||
+    quantitativeModel?.financial_scenarios?.[0];
+
   return (
     <>
       {(marketIntelligence?.tender_projects?.length ||
         marketIntelligence?.product_catalog?.length ||
-        solutionDeliveryPack?.client_ppt_outline?.length) ? (
+        solutionDeliveryPack?.client_ppt_outline?.length ||
+        quantitativeModel?.alternative_options?.length) ? (
         <article className="mt-5 af-report-surface rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -57,7 +66,7 @@ export function ResearchReportDeliverySection({
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
             <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">招投标项目明细</p>
               <div className="mt-3 space-y-2">
@@ -106,12 +115,89 @@ export function ResearchReportDeliverySection({
                 <p>建议书章节：{solutionDeliveryPack?.project_proposal_outline?.length || 0} 个</p>
                 <p>PPT 页纲：{solutionDeliveryPack?.client_ppt_outline?.length || 0} 页</p>
                 <p>Advisory 产物：{solutionDeliveryPack?.advisory_artifacts?.length || 0} 份</p>
+                <p>专用编译器：{solutionDeliveryPack?.compiled_documents?.length || 0} 类</p>
+                {quantitativeModel?.alternative_options?.length ? (
+                  <p>
+                    量化模型：{quantitativeModel.status} · 推荐{" "}
+                    {recommendedOption?.name || quantitativeModel.recommended_option_id || "待确认"}
+                  </p>
+                ) : null}
+                {solutionDeliveryPack?.evidence_ledger ? (
+                  <>
+                    <p>
+                      主张账本：{solutionDeliveryPack.evidence_ledger.claim_count} 条 · 证据{" "}
+                      {solutionDeliveryPack.evidence_ledger.evidence_count} 个
+                    </p>
+                    <p>
+                      高置信覆盖：{solutionDeliveryPack.evidence_ledger.high_confidence_coverage_percent}% ·
+                      实体/数字一致性：{solutionDeliveryPack.evidence_ledger.entity_consistency_score}/
+                      {solutionDeliveryPack.evidence_ledger.numeric_consistency_score}
+                    </p>
+                  </>
+                ) : null}
+                {solutionDeliveryPack?.semantic_challenge ? (
+                  <>
+                    <p>
+                      语义挑战者：{solutionDeliveryPack.semantic_challenge.overall_score}/100 ·{" "}
+                      {solutionDeliveryPack.semantic_challenge.status}
+                    </p>
+                    <p>
+                      范围漂移：{solutionDeliveryPack.semantic_challenge.scope_drift_count} ·
+                      跨章节冲突：{solutionDeliveryPack.semantic_challenge.cross_section_conflict_count} ·
+                      黄金样本：{solutionDeliveryPack.semantic_challenge.golden_sample_alignment_score || 0}
+                    </p>
+                  </>
+                ) : null}
               </div>
+              {solutionDeliveryPack?.semantic_challenge?.high_severity_count ? (
+                <p className="mt-2 text-xs leading-5 text-[var(--af-danger)]">
+                  语义阻断：{solutionDeliveryPack.semantic_challenge.issues?.[0]?.summary || "存在高严重度语义问题"}
+                </p>
+              ) : null}
+              {solutionDeliveryPack?.evidence_ledger?.consistency_issues?.length ? (
+                <p className="mt-2 text-xs leading-5 text-[var(--af-danger)]">
+                  一致性阻断：{solutionDeliveryPack.evidence_ledger.consistency_issues[0].summary}
+                </p>
+              ) : null}
               {solutionDeliveryPack?.review_checklist?.length ? (
                 <p className="mt-2 text-xs leading-5 text-[var(--af-info)]">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
               ) : null}
+              {solutionDeliveryPack?.compiled_documents?.length ? (
+                <div className="mt-3 grid grid-cols-1 gap-2">
+                  {solutionDeliveryPack.compiled_documents.slice(0, 4).map((document) => (
+                    <div key={document.document_kind} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+                      <p className="text-xs font-semibold text-[var(--af-text-primary)]">{document.title}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-secondary)]">
+                        {document.framework} · {document.sections?.length || 0} 章
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {quantitativeModel?.alternative_options?.length ? (
+                <div className="mt-3 rounded-xl border border-[color-mix(in_srgb,var(--af-info)_24%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_8%,var(--af-surface-muted))] px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-[var(--af-text-primary)]">量化决策模型</p>
+                    <span className="rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[11px] text-[var(--af-text-secondary)]">
+                      {quantitativeModel.status} · {quantitativeModel.financial_scenarios?.length || 0} 情景
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
+                    {quantitativeModel.summary ||
+                      `推荐 ${recommendedOption?.name || "待确认"}，加权得分 ${recommendedOption?.weighted_score || 0}/100。`}
+                  </p>
+                  {baseFinancialScenario ? (
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                      基准 CAPEX：{baseFinancialScenario.capex_cny ?? "待补"} · 三年 TCO：
+                      {baseFinancialScenario.tco_3y_cny ?? "待补"} · IRR：
+                      {baseFinancialScenario.irr_percent ?? "待补"}% · ROI：
+                      {baseFinancialScenario.roi_percent ?? "待补"}%
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {(solutionDeliveryQuality || projectProposalQuality) ? (
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid grid-cols-1 gap-2">
                   {solutionDeliveryQuality ? (
                     <div className={`rounded-xl border px-3 py-2 ${solutionDeliveryQualityMeta.className}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -177,7 +263,7 @@ export function ResearchReportDeliverySection({
                 </div>
               </div>
               {architectureReadiness.metrics?.length ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-5">
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-5">
                   {architectureReadiness.metrics.slice(0, 5).map((metric) => {
                     const bucket = valueBucket(metric.score);
                     return (
@@ -193,7 +279,7 @@ export function ResearchReportDeliverySection({
                 </div>
               ) : null}
               {architectureReadiness.blueprint_sections?.length ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                   {architectureReadiness.blueprint_sections.slice(0, 4).map((section) => (
                     <div key={`architecture-section-${section.title}`} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                       <p className="text-sm font-semibold text-[var(--af-text-primary)]">{section.title}</p>
@@ -208,7 +294,7 @@ export function ResearchReportDeliverySection({
                 </div>
               ) : null}
               {(architectureReadiness.integration_risks?.length || architectureReadiness.validation_actions?.length) ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                   {architectureReadiness.integration_risks?.length ? (
                     <div className="rounded-xl border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))] px-3 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-warning)]">集成 / 落地风险</p>
@@ -268,7 +354,7 @@ export function ResearchReportDeliverySection({
                     ) : null}
                   </div>
                   {primaryCustomerScenario.success_metrics?.length ? (
-                    <ul className="mt-2 grid gap-1 text-xs leading-5 text-[var(--af-text-secondary)] md:grid-cols-2">
+                    <ul className="mt-2 grid grid-cols-1 gap-1 text-xs leading-5 text-[var(--af-text-secondary)] md:grid-cols-2">
                       {primaryCustomerScenario.success_metrics.slice(0, 4).map((metric) => (
                         <li key={`scenario-metric-${metric}`}>{metric}</li>
                       ))}
@@ -278,7 +364,7 @@ export function ResearchReportDeliverySection({
               ) : null}
 
               {(architectWorkbench.stakeholders?.length || architectWorkbench.decision_criteria?.length) ? (
-                <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                   {architectWorkbench.stakeholders?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">干系人问题地图</p>
@@ -319,7 +405,7 @@ export function ResearchReportDeliverySection({
 
               {(architectWorkbench.capability_architecture_matrix?.length ||
                 architectWorkbench.integration_dependencies?.length) ? (
-                <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                   {architectWorkbench.capability_architecture_matrix?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">能力到架构矩阵</p>
@@ -372,7 +458,7 @@ export function ResearchReportDeliverySection({
               {architectWorkbench.architecture_decision_records?.length ? (
                 <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">ADR 架构决策记录</p>
-                  <div className="mt-2 grid gap-2 md:grid-cols-3">
+                  <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
                     {architectWorkbench.architecture_decision_records.slice(0, 3).map((record) => (
                       <div key={`architecture-decision-${record.decision}`} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                         <p className="text-sm font-semibold leading-5 text-[var(--af-text-primary)]">{record.decision}</p>

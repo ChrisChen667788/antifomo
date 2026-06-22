@@ -244,7 +244,7 @@ export function KnowledgeEditForm({ item }: { item: ApiKnowledgeEntry }) {
       </section>
 
       <section className="af-glass rounded-[30px] p-5 md:p-6">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <label className="block lg:col-span-2">
             <span className="af-kicker">
               {actionEntry ? t("research.actionTitle", "行动卡标题") : t("knowledge.title", "知识卡片")}

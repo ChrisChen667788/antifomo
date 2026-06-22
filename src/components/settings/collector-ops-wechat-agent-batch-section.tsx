@@ -114,7 +114,7 @@ export function CollectorOpsWechatAgentBatchSection({
             </div>
             <p className="mt-2 text-xs leading-5">{wechatAgentBatchStatus.route_quality.recommendation}</p>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <StatCard label={text("wechatAgentBatchSubmittedNew")} value={wechatAgentBatchStatus.submitted_new} />
             <StatCard label={text("wechatAgentBatchSubmittedUrl")} value={wechatAgentBatchStatus.submitted_url} />
             <StatCard label={text("wechatAgentBatchSubmittedOcr")} value={submittedOcr} />
@@ -122,7 +122,7 @@ export function CollectorOpsWechatAgentBatchSection({
             <StatCard label={text("wechatAgentBatchSeen")} value={skippedSeenTotal} />
             <StatCard label={text("wechatAgentBatchFailed")} value={failedTotal} />
           </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <StatCard
               label={text("focus.collectorUrlDirect")}
               value={submittedUrlDirect}
@@ -136,7 +136,7 @@ export function CollectorOpsWechatAgentBatchSection({
               value={submittedUrlResolved}
             />
           </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <StatCard label={text("wechatAgentBatchUrlFirstShare")} value={`${urlFirstShare}%`} />
             <StatCard label={text("wechatAgentBatchOcrShare")} value={`${ocrShare}%`} />
             <StatCard label={text("wechatAgentBatchDuplicateEscape")} value={duplicateEscapes} />
@@ -146,7 +146,7 @@ export function CollectorOpsWechatAgentBatchSection({
             <StatCard label={text("wechatAgentBatchRouteBreaker")} value={routeCircuitBreakers} />
             <StatCard label={text("wechatAgentBatchRecoveries")} value={recoveryActions} />
           </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label={text("wechatAgentBatchUrlOnlySkips")} value={urlOnlySkips} />
             <StatCard label={text("wechatAgentBatchPreviewLoops")} value={previewLoopHits} />
             <StatCard label={text("wechatAgentBatchAccessibilityHits")} value={accessibilityHits} />
@@ -156,7 +156,7 @@ export function CollectorOpsWechatAgentBatchSection({
           {(wechatAgentBatchStatus.live_report_batch || wechatAgentBatchStatus.live_report_stage) ? (
             <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3 text-xs text-[var(--af-text-secondary)]">
               <p className="font-semibold text-[var(--af-text-primary)]">{text("wechatAgentBatchLive")}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <StatCard label="Batch" value={wechatAgentBatchStatus.live_report_batch ?? "-"} />
                 <StatCard label="Row" value={wechatAgentBatchStatus.live_report_row ?? "-"} />
                 <StatCard label="Stage" value={wechatAgentBatchStatus.live_report_stage ?? "-"} />
@@ -198,7 +198,7 @@ export function CollectorOpsWechatAgentBatchSection({
                   </Link>
                 </div>
               </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {wechatAgentBatchItems.map((item) => (
                   <article
                     key={item.id}

@@ -17,8 +17,19 @@ const SCREENSHOT_PREFERENCES = {
 const DARK_THEME_FEATURES = new Set([
   "Home signal dashboard",
   "Inbox research workspace",
+  "Saved read-later workspace",
+  "Focus session workspace",
+  "Session summary workspace",
+  "Collector operations workspace",
   "Research center dashboard",
+  "Research topic workspace",
+  "Research compare workspace",
+  "Research experiment orchestration",
+  "Research archive viewer",
   "Settings and tuning workspace",
+  "Knowledge library workspace",
+  "Knowledge commercial hub",
+  "Knowledge merge workflow",
 ]);
 const MIN_SCREENSHOT_BYTES = 40_000;
 const CHROME_COMMAND_CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium", "chrome"];
@@ -312,8 +323,14 @@ async function waitForPageContent(page, route) {
 }
 
 async function waitForCaptureAnchor(page, selector) {
-  if (!selector) return;
-  await page.waitForSelector(selector, { timeout: 45000 });
+  if (!selector) return false;
+  try {
+    await page.waitForSelector(selector, { timeout: 20000 });
+    return true;
+  } catch {
+    console.warn(`[screenshots] optional capture anchor not rendered: "${selector}"`);
+    return false;
+  }
 }
 
 async function scrollToText(page, text) {

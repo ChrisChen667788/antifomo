@@ -163,6 +163,7 @@ a {
 }
 
 .af-glass {
+  min-width: 0;
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--af-surface-elevated) 86%, transparent) 0%,
@@ -274,6 +275,7 @@ a {
   position: relative;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
@@ -321,9 +323,12 @@ a {
 }
 
 .af-glass-orb-badge {
+  min-width: 2rem;
+  padding-inline: 0.38rem;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0;
+  z-index: 1;
 }
 
 .af-headline {
@@ -433,6 +438,58 @@ a {
   border-radius: 8px;
   border: 1px solid var(--af-border-subtle);
   background: var(--af-surface-muted);
+}
+
+.af-surface-card {
+  border-color: var(--af-border-subtle);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--af-surface-elevated) 96%, transparent),
+      color-mix(in srgb, var(--af-surface-muted) 90%, transparent)
+    );
+  color: var(--af-text-secondary);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--af-surface-elevated) 72%, transparent);
+}
+
+.af-surface-info {
+  border-color: color-mix(in srgb, var(--af-info) 28%, var(--af-border-subtle));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--af-surface-elevated) 92%, transparent),
+      color-mix(in srgb, var(--af-info) 10%, var(--af-surface-muted))
+    );
+}
+
+.af-surface-success {
+  border-color: color-mix(in srgb, var(--af-success) 28%, var(--af-border-subtle));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--af-surface-elevated) 92%, transparent),
+      color-mix(in srgb, var(--af-success) 10%, var(--af-surface-muted))
+    );
+}
+
+.af-surface-warning {
+  border-color: color-mix(in srgb, var(--af-warning) 28%, var(--af-border-subtle));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--af-surface-elevated) 92%, transparent),
+      color-mix(in srgb, var(--af-warning) 10%, var(--af-surface-muted))
+    );
+}
+
+.af-surface-danger {
+  border-color: color-mix(in srgb, var(--af-danger) 28%, var(--af-border-subtle));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--af-surface-elevated) 92%, transparent),
+      color-mix(in srgb, var(--af-danger) 9%, var(--af-surface-muted))
+    );
 }
 
 .af-control-label {
@@ -553,7 +610,8 @@ html[data-af-theme="dark"] :is(
 
 html[data-af-theme="dark"] :is(
   [class~="text-slate-500"],
-  [class~="text-slate-400"]
+  [class~="text-slate-400"],
+  [class~="text-slate-300"]
 ) {
   color: var(--af-text-tertiary) !important;
 }
@@ -567,14 +625,20 @@ html[data-af-theme="dark"] :is(
   [class~="bg-white/70"],
   [class~="bg-white/65"],
   [class~="bg-white/60"],
-  [class~="bg-white/55"]
+  [class~="bg-white/55"],
+  [class~="bg-white/86"],
+  [class~="bg-white/88"]
 ) {
   background-color: var(--af-surface-muted) !important;
 }
 
 html[data-af-theme="dark"] :is(
   [class~="bg-slate-100"],
-  [class~="bg-slate-50"]
+  [class~="bg-slate-50"],
+  [class~="bg-slate-50/70"],
+  [class~="bg-slate-50/80"],
+  [class~="bg-slate-50/84"],
+  [class~="bg-slate-50/90"]
 ) {
   background-color: var(--af-surface-inset) !important;
 }
@@ -583,11 +647,135 @@ html[data-af-theme="dark"] :is(
   [class~="border-white"],
   [class~="border-white/85"],
   [class~="border-white/80"],
+  [class~="border-white/75"],
   [class~="border-white/70"],
   [class~="border-white/60"],
   [class~="border-slate-100"],
   [class~="border-slate-200"],
+  [class~="border-slate-200/70"],
+  [class~="border-slate-200/85"],
+  [class~="border-slate-200/90"],
   [class~="border-slate-200/80"]
+) {
+  border-color: var(--af-border-subtle) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-sky-50"],
+  [class~="bg-sky-50/55"],
+  [class~="bg-sky-50/60"],
+  [class~="bg-sky-50/78"],
+  [class~="bg-sky-50/80"],
+  [class~="bg-sky-50/88"],
+  [class~="bg-sky-50/90"],
+  [class~="bg-sky-100"],
+  [class~="bg-blue-50"],
+  [class~="bg-blue-50/70"],
+  [class~="bg-blue-50/80"],
+  [class~="bg-blue-100"]
+) {
+  background-color: color-mix(in srgb, var(--af-info) 14%, var(--af-surface-muted)) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-emerald-50"],
+  [class~="bg-emerald-50/55"],
+  [class~="bg-emerald-50/60"],
+  [class~="bg-emerald-50/70"],
+  [class~="bg-emerald-50/78"],
+  [class~="bg-emerald-50/88"],
+  [class~="bg-emerald-50/90"],
+  [class~="bg-emerald-100"]
+) {
+  background-color: color-mix(in srgb, var(--af-success) 14%, var(--af-surface-muted)) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-amber-50"],
+  [class~="bg-amber-50/70"],
+  [class~="bg-amber-50/76"],
+  [class~="bg-amber-50/80"],
+  [class~="bg-amber-50/82"],
+  [class~="bg-amber-50/88"],
+  [class~="bg-amber-50/90"],
+  [class~="bg-amber-100"]
+) {
+  background-color: color-mix(in srgb, var(--af-warning) 14%, var(--af-surface-muted)) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="bg-rose-50"],
+  [class~="bg-rose-50/70"],
+  [class~="bg-rose-50/78"],
+  [class~="bg-rose-50/82"],
+  [class~="bg-rose-50/90"],
+  [class~="bg-rose-100"]
+) {
+  background-color: color-mix(in srgb, var(--af-danger) 13%, var(--af-surface-muted)) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-sky-600"],
+  [class~="text-sky-700"],
+  [class~="text-sky-800"],
+  [class~="text-sky-900"],
+  [class~="text-blue-700"]
+) {
+  color: var(--af-info) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-emerald-700"],
+  [class~="text-emerald-700/80"],
+  [class~="text-emerald-800"],
+  [class~="text-emerald-900"],
+  [class~="text-emerald-950"]
+) {
+  color: var(--af-success) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-amber-600"],
+  [class~="text-amber-700"],
+  [class~="text-amber-800"],
+  [class~="text-amber-900"],
+  [class~="text-amber-950"]
+) {
+  color: var(--af-warning) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="text-rose-500"],
+  [class~="text-rose-600"],
+  [class~="text-rose-700"],
+  [class~="text-rose-800"],
+  [class~="text-rose-900"],
+  [class~="text-rose-950"]
+) {
+  color: var(--af-danger) !important;
+}
+
+html[data-af-theme="dark"] :is(
+  [class~="border-sky-100"],
+  [class~="border-sky-100/80"],
+  [class~="border-sky-100/90"],
+  [class~="border-sky-200"],
+  [class~="border-sky-200/80"],
+  [class~="border-sky-200/90"],
+  [class~="border-blue-200/80"],
+  [class~="border-emerald-100/80"],
+  [class~="border-emerald-100/90"],
+  [class~="border-emerald-200"],
+  [class~="border-emerald-200/80"],
+  [class~="border-emerald-200/90"],
+  [class~="border-amber-100"],
+  [class~="border-amber-100/90"],
+  [class~="border-amber-200"],
+  [class~="border-amber-200/80"],
+  [class~="border-amber-200/90"],
+  [class~="border-rose-100/90"],
+  [class~="border-rose-200"],
+  [class~="border-rose-200/90"]
 ) {
   border-color: var(--af-border-subtle) !important;
 }
@@ -684,6 +872,11 @@ html[data-af-theme="dark"] .af-focus-water {
   box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.45);
   opacity: 0;
   animation: af-focus-bubble 7.2s ease-in infinite;
+}
+
+html[data-af-theme="dark"] .af-focus-bubble {
+  background: color-mix(in srgb, var(--af-text-inverse) 34%, transparent);
+  box-shadow: inset 0 0 8px color-mix(in srgb, var(--af-text-inverse) 26%, transparent);
 }
 
 .af-focus-sheen {

@@ -2,7 +2,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import puppeteer from "puppeteer-core";
+
+const execFileAsync = promisify(execFile);
 
 const DEFAULTS = {
   apiBase: "http://127.0.0.1:8000",
@@ -22,6 +26,8 @@ const DEFAULTS = {
   runPostCycle: true,
   submitMode: "browser-batch",
   batchSubmitSize: 10,
+  wechatFavoritesAutoImport: true,
+  wechatCliPath: process.env.WECHAT_CLI_BIN || "wechat-cli",
   headless: true,
   loop: false,
 };
@@ -113,6 +119,15 @@ function parseArgs(argv) {
     }
     if (token === "--no-post-cycle") {
       args.runPostCycle = false;
+      continue;
+    }
+    if (token === "--no-wechat-favorites-auto") {
+      args.wechatFavoritesAutoImport = false;
+      continue;
+    }
+    if (token === "--wechat-cli-path" && next) {
+      args.wechatCliPath = next;
+      i += 1;
       continue;
     }
     if (token === "--headful") {
@@ -377,7 +392,34 @@ async function discoverArticleLinks(page, sourceUrl, maxDiscover) {
 
 async function extractFromArticle(page, articleUrl) {
   await page.goto(articleUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
-  await sleep(1600);
+  try {
+    await page.waitForFunction(
+      () => {
+        const articleText = String(
+          document.querySelector("#js_content")?.innerText ||
+            document.querySelector("#js_content")?.textContent ||
+            "",
+        ).replace(/\s+/g, " ").trim();
+        const pageText = String(document.body?.innerText || document.body?.textContent || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+        const blockedMarkers = [
+          "参数错误",
+          "parameter error",
+          "环境异常",
+          "完成验证后即可继续访问",
+          "访问受限",
+          "链接已失效",
+          "requiring captcha",
+        ];
+        return articleText.length >= 80 || blockedMarkers.some((marker) => pageText.includes(marker));
+      },
+      { timeout: 8000 },
+    );
+  } catch {
+    // The evaluator below decides whether the page is readable.
+  }
 
   return page.evaluate(() => {
     const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
@@ -414,6 +456,11 @@ async function extractFromArticle(page, articleUrl) {
     );
     const keywords = normalize(pickMeta("keywords"));
     const description = normalize(pickMeta("og:description", "description", "twitter:description"));
+    const canonicalUrl = normalize(
+      document.querySelector('link[rel="canonical"]')?.getAttribute("href") ||
+        pickMeta("og:url") ||
+        location.href,
+    );
 
     const contentCandidates = [];
     const jsContent = nodeText(document.querySelector("#js_content"));
@@ -434,6 +481,20 @@ async function extractFromArticle(page, articleUrl) {
     }
     contentCandidates.sort((a, b) => b.length - a.length);
     const body = (contentCandidates[0] || "").slice(0, 18000);
+    const accessCheck = `${title} ${description} ${body}`.toLowerCase();
+    const blockedMarkers = [
+      "参数错误",
+      "parameter error",
+      "环境异常",
+      "完成验证后即可继续访问",
+      "访问受限",
+      "链接已失效",
+      "requiring captcha",
+    ];
+    const accessLimited =
+      blockedMarkers.some((marker) => accessCheck.includes(marker)) ||
+      (!document.querySelector("#js_content") &&
+        (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform")));
 
     const lines = [];
     if (title) lines.push(`标题：${title}`);
@@ -444,11 +505,12 @@ async function extractFromArticle(page, articleUrl) {
     if (body) lines.push(`正文：${body}`);
 
     return {
-      final_url: location.href,
+      final_url: canonicalUrl || location.href,
       title,
       source_domain: location.hostname || "",
       raw_content: lines.join("\n"),
-      has_body: body.length >= 120,
+      has_body: !accessLimited && body.length >= 120,
+      access_limited: accessLimited,
       content_length: body.length,
     };
   });
@@ -510,10 +572,132 @@ function chunkItems(items, chunkSize) {
   return chunks;
 }
 
+function collectWechatArticleUrls(value, output = new Set()) {
+  if (typeof value === "string") {
+    const matches = value.match(/https?:\/\/[^\s<>"']+/gi) || [];
+    for (const match of matches) {
+      const normalized = sanitizeUrl(match.replace(/[),.;，。；）】》]+$/g, ""));
+      if (normalized && /mp\.weixin\.qq\.com\/s(?:\/|\?)/i.test(normalized)) {
+        output.add(normalized);
+      }
+    }
+    return output;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectWechatArticleUrls(item, output));
+    return output;
+  }
+  if (value && typeof value === "object") {
+    Object.values(value).forEach((item) => collectWechatArticleUrls(item, output));
+  }
+  return output;
+}
+
+function parseWechatCliFavorites(stdout) {
+  const text = String(stdout || "").trim();
+  if (!text) return [];
+  try {
+    return Array.from(collectWechatArticleUrls(JSON.parse(text)));
+  } catch {
+    return Array.from(collectWechatArticleUrls(text));
+  }
+}
+
+async function runWechatFavoritesAutoImport(args) {
+  const state = loadState(args.stateFile);
+  state.seen_favorite_links = state.seen_favorite_links || {};
+  const record = {
+    ts: new Date().toISOString(),
+    status: "idle",
+    available: false,
+    discovered_count: 0,
+    imported_count: 0,
+    deduplicated_count: 0,
+    message: "",
+  };
+
+  if (!args.wechatFavoritesAutoImport) {
+    record.status = "disabled";
+    record.message = "WeChat Favorites auto import disabled";
+    state.last_favorites_auto = record;
+    saveState(args.stateFile, state);
+    return record;
+  }
+
+  let stdout = "";
+  try {
+    const result = await execFileAsync(
+      args.wechatCliPath,
+      ["favorites", "--type", "article"],
+      { timeout: 45_000, maxBuffer: 8 * 1024 * 1024 },
+    );
+    stdout = result.stdout || "";
+    record.available = true;
+  } catch (error) {
+    const code = String(error?.code || "");
+    record.status = code === "ENOENT" ? "unavailable" : "error";
+    record.message =
+      code === "ENOENT"
+        ? "wechat-cli not installed; automatic Favorites import is waiting for local read-only adapter setup"
+        : `wechat-cli favorites failed: ${error?.message || error}`;
+    state.last_favorites_auto = record;
+    saveState(args.stateFile, state);
+    console.warn(`[collector] ${record.message}`);
+    return record;
+  }
+
+  const discovered = parseWechatCliFavorites(stdout);
+  const freshUrls = discovered.filter((url) => !state.seen_favorite_links[url]);
+  record.discovered_count = discovered.length;
+  if (!freshUrls.length) {
+    record.status = "idle";
+    record.message = discovered.length
+      ? "WeChat Favorites checked; no new article links"
+      : "WeChat Favorites checked; no article links found";
+    state.last_favorites_auto = record;
+    saveState(args.stateFile, state);
+    console.log(`[collector] favorites auto import idle discovered=${discovered.length}`);
+    return record;
+  }
+
+  try {
+    const result = await apiCall(args.apiBase, "/api/collector/wechat-favorites/import", {
+      method: "POST",
+      payload: {
+        export_text: "",
+        urls: freshUrls.slice(0, 200),
+        output_language: args.outputLanguage,
+        include_text_blocks: false,
+        limit: 200,
+        process_immediately: false,
+      },
+    });
+    record.status = "imported";
+    record.imported_count = Number(result?.created || 0);
+    record.deduplicated_count = Number(result?.deduplicated || 0);
+    record.message =
+      `WeChat Favorites imported created=${record.imported_count} ` +
+      `deduplicated=${record.deduplicated_count}`;
+    for (const url of freshUrls.slice(0, 200)) {
+      state.seen_favorite_links[url] = { seen_at: record.ts };
+    }
+    console.log(`[collector] ${record.message}`);
+  } catch (error) {
+    record.status = "error";
+    record.message = `WeChat Favorites import API failed: ${error?.message || error}`;
+    console.error(`[collector] ${record.message}`);
+  }
+  state.last_favorites_auto = record;
+  saveState(args.stateFile, state);
+  return record;
+}
+
 async function runPostCycleTasks(args) {
   if (!args.runPostCycle) {
     return;
   }
+
+  await runWechatFavoritesAutoImport(args);
 
   try {
     const flush = await apiCall(

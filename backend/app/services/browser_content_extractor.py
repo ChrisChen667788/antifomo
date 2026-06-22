@@ -84,6 +84,10 @@ def extract_from_browser(
     final_url = normalize_text(str(payload.get("page_url", "") or "")) or url
     source_domain = normalize_text(str(payload.get("source_domain", "") or "")) or extract_domain(final_url)
 
+    if bool(payload.get("access_limited")):
+        raise ContentExtractionError("Browser extractor reached an access-limited or invalid article page")
+    if payload.get("has_body") is False:
+        raise ContentExtractionError("Browser extractor did not find a readable article body")
     if len(body_text) < 80:
         raise ContentExtractionError("Browser extractor returned too little text")
 

@@ -86,7 +86,7 @@ export function InboxForm() {
   const [exportingFormalDocument, setExportingFormalDocument] = useState<ResearchFormalExportFormat>("");
   const [refreshingSolutionIntelligence, setRefreshingSolutionIntelligence] = useState(false);
   const [exportingSolutionArtifact, setExportingSolutionArtifact] = useState<
-    "" | "market_intelligence_markdown" | "solution_delivery_markdown"
+    "" | "market_intelligence_markdown" | "solution_delivery_markdown" | "solution_delivery_pptx"
   >("");
   const [planningResearchActions, setPlanningResearchActions] = useState(false);
   const [savingResearchActions, setSavingResearchActions] = useState(false);
@@ -562,7 +562,7 @@ export function InboxForm() {
   };
 
   const exportSolutionArtifact = async (
-    kind: "market_intelligence_markdown" | "solution_delivery_markdown",
+    kind: "market_intelligence_markdown" | "solution_delivery_markdown" | "solution_delivery_pptx",
   ) => {
     if (!researchReport) return;
     setExportingSolutionArtifact(kind);
@@ -570,7 +570,9 @@ export function InboxForm() {
     const taskType =
       kind === "market_intelligence_markdown"
         ? "export_research_market_intelligence_markdown"
-        : "export_research_solution_delivery_markdown";
+        : kind === "solution_delivery_pptx"
+          ? "export_research_solution_delivery_pptx"
+          : "export_research_solution_delivery_markdown";
     try {
       const task = await createTask({
         task_type: taskType,
@@ -584,13 +586,17 @@ export function InboxForm() {
       setResearchMessage(
         kind === "market_intelligence_markdown"
           ? "近三年招投标/产品/技术参数情报包已导出"
-          : "方案交付包与对客汇报 PPT 大纲已导出",
+          : kind === "solution_delivery_pptx"
+            ? "可编辑对客汇报 PPTX 已导出"
+            : "方案交付包与对客汇报 PPT 大纲已导出",
       );
     } catch {
       setResearchMessage(
         kind === "market_intelligence_markdown"
           ? "导出近三年情报包失败，请稍后重试"
-          : "导出方案交付包失败，请稍后重试",
+          : kind === "solution_delivery_pptx"
+            ? "导出可编辑 PPTX 失败，请稍后重试"
+            : "导出方案交付包失败，请稍后重试",
       );
     } finally {
       setExportingSolutionArtifact("");
@@ -989,7 +995,7 @@ export function InboxForm() {
                 当前研报 · {researchReport.report_title}
               </span>
             </div>
-            <div className="mt-4 grid gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4">
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <p className="text-sm font-semibold text-[var(--af-text-primary)]">补充后重新整理</p>
                 <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
@@ -1065,7 +1071,7 @@ export function InboxForm() {
                     {followupDiagnostics.impacted_sections?.length ? (
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">重点影响章节</p>
-                        <div className="grid gap-2">
+                        <div className="grid grid-cols-1 gap-2">
                           {followupDiagnostics.impacted_sections.slice(0, 4).map((section) => (
                             <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3 text-xs leading-5 text-[var(--af-text-secondary)]">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1174,7 +1180,7 @@ export function InboxForm() {
                 <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
                   先确认具体场景、目标客户和垂直场景，再导出近三年情报包、方案/PPT 大纲、可研和项目建议书。
                 </p>
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       解决方案场景
@@ -1272,7 +1278,7 @@ export function InboxForm() {
                     />
                   </div>
                 </div>
-                <div className="mt-4 grid gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1303,6 +1309,16 @@ export function InboxForm() {
                   >
                     {exportingSolutionArtifact === "solution_delivery_markdown" ? "导出中..." : "导出方案交付包 / PPT 大纲 Markdown"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void exportSolutionArtifact("solution_delivery_pptx");
+                    }}
+                    disabled={!!exportingSolutionArtifact}
+                    className="af-btn af-btn-primary px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {exportingSolutionArtifact === "solution_delivery_pptx" ? "导出中..." : "导出可编辑对客 PPTX"}
+                  </button>
                 </div>
                 <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                   建设依据 / 报告引用口径
@@ -1324,7 +1340,7 @@ export function InboxForm() {
                   placeholder="补充建设范围、边界约束、项目拆分口径。"
                   className="af-input mt-2 resize-none leading-6"
                 />
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                       预期效益
@@ -1350,7 +1366,7 @@ export function InboxForm() {
                     />
                   </div>
                 </div>
-                <div className="mt-4 grid gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => {

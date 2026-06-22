@@ -93,7 +93,7 @@ export function ItemInsightPanel({ itemId }: ItemInsightPanelProps) {
             <p className="mt-3 text-sm leading-7 text-slate-700">{insight.expert_take}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-[24px] border border-slate-200/80 bg-white/70 p-4">
               <p className="af-kicker">{t("insight.keySignals", "关键信号")}</p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">

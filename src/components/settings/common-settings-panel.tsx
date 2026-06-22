@@ -18,7 +18,7 @@ export function CommonSettingsPanel() {
         {t("settings.common.description", "设置会实时生效并保存在本机。")}
       </p>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <label className="af-field-panel p-4">
           <span className="af-control-label">{t("settings.font", "字体")}</span>
           <select

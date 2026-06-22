@@ -22,7 +22,10 @@ Export:
 npm run research:evaluate:review:export
 ```
 
-Edit `.tmp/research-evaluation-independent-review.json`. The locked context fields are read-only evidence; update only each case's `decision` and `notes`.
+Edit `.tmp/research-evaluation-independent-review.json`. The locked context
+fields are read-only evidence, including `keyword`, `research_focus`,
+`regions`, `entities`, behavior, answer terms, source domains, and curation
+notes. Update only each case's `decision` and `notes`.
 
 Finalize:
 
@@ -41,7 +44,9 @@ npm run research:evaluate:review:validate -- \
   --review .tmp/research-evaluation-independent-review.json
 ```
 
-Any changed locked context, duplicate/missing case, non-approved decision, weak note, same reviewer as the original locker, or digest mismatch blocks approval.
+Any changed locked context, including a changed region or research subject,
+duplicate/missing case, non-approved decision, weak note, same reviewer as the
+original locker, or digest mismatch blocks approval.
 
 The content digest detects artifact changes after finalization. It is not a public-key cryptographic signature and does not prove the reviewer's real-world identity; reviewer identity governance remains an organizational responsibility.
 

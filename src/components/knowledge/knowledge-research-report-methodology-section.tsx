@@ -17,7 +17,7 @@ export function KnowledgeResearchReportMethodologySection({
   return (
     <>
       {(methodologyCard || confidenceCard || coverageGaps.length) ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {confidenceCard ? (
             <article className="rounded-[24px] border border-[color-mix(in_srgb,var(--af-success)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">可信度卡</p>
@@ -58,7 +58,7 @@ export function KnowledgeResearchReportMethodologySection({
               {methodologyCard.scope_summary ? (
                 <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{methodologyCard.scope_summary}</p>
               ) : null}
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid grid-cols-1 gap-3">
                 <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">取数与边界</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{methodologyCard.data_boundary}</p>
@@ -85,7 +85,7 @@ export function KnowledgeResearchReportMethodologySection({
       {coverageGaps.length ? (
         <article className="rounded-[24px] border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">缺证与补证建议</p>
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 grid grid-cols-1 gap-3">
             {coverageGaps.map((gap) => (
               <div key={`${gap.title}-${gap.detail}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                 <div className="flex flex-wrap items-center gap-2">

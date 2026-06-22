@@ -279,7 +279,7 @@ export function ResearchConsolePanel({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[320px,minmax(0,1fr)]">
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[320px,minmax(0,1fr)]">
         <div className="space-y-3">
           {loading ? (
             <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-4 py-5 text-sm text-[var(--af-text-tertiary)]">

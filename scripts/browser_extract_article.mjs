@@ -58,9 +58,43 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function extractFromPage(page, url) {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
-  await sleep(1800);
+async function extractFromPage(page, url, timeoutSec) {
+  const navigationTimeout = Math.max(8000, Math.min(45000, Number(timeoutSec || 28) * 1000));
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: navigationTimeout });
+
+  const isWeChatTarget = new URL(page.url()).hostname.includes("mp.weixin.qq.com");
+  if (isWeChatTarget) {
+    try {
+      await page.waitForFunction(
+        () => {
+          const articleText = String(
+            document.querySelector("#js_content")?.innerText ||
+              document.querySelector("#js_content")?.textContent ||
+              "",
+          ).replace(/\s+/g, " ").trim();
+          const pageText = String(document.body?.innerText || document.body?.textContent || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+          const blockedMarkers = [
+            "参数错误",
+            "parameter error",
+            "环境异常",
+            "完成验证后即可继续访问",
+            "访问受限",
+            "链接已失效",
+            "requiring captcha",
+          ];
+          return articleText.length >= 80 || blockedMarkers.some((marker) => pageText.includes(marker));
+        },
+        { timeout: Math.min(9000, Math.max(2500, navigationTimeout - 1000)) },
+      );
+    } catch {
+      // The evaluator below decides whether this is a readable article or a gated shell.
+    }
+  } else {
+    await sleep(1000);
+  }
 
   return page.evaluate(() => {
     const normalize = (value) => String(value || "").replace(/\s+/g, " ").trim();
@@ -83,6 +117,11 @@ async function extractFromPage(page, url) {
     };
 
     const isWeChat = location.hostname.includes("mp.weixin.qq.com");
+    const canonicalUrl = normalize(
+      document.querySelector('link[rel="canonical"]')?.getAttribute("href") ||
+        pickMeta("og:url") ||
+        location.href,
+    );
     const wxTitle = normalize(
       document.querySelector("#activity-name")?.textContent ||
         document.querySelector(".rich_media_title")?.textContent,
@@ -132,6 +171,22 @@ async function extractFromPage(page, url) {
 
     candidates.sort((a, b) => b.length - a.length);
     const body = (candidates[0] || "").slice(0, 18000);
+    const accessCheck = `${title} ${description} ${body}`.toLowerCase();
+    const blockedMarkers = [
+      "参数错误",
+      "parameter error",
+      "环境异常",
+      "完成验证后即可继续访问",
+      "访问受限",
+      "链接已失效",
+      "requiring captcha",
+    ];
+    const hasWechatArticleNode = Boolean(document.querySelector("#js_content"));
+    const accessLimited =
+      blockedMarkers.some((marker) => accessCheck.includes(marker)) ||
+      (isWeChat &&
+        !hasWechatArticleNode &&
+        (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform")));
 
     const lines = [];
     if (title) lines.push(`标题：${title}`);
@@ -142,11 +197,12 @@ async function extractFromPage(page, url) {
     if (body) lines.push(`正文：${body}`);
 
     return {
-      page_url: location.href,
+      page_url: canonicalUrl || location.href,
       title,
       body_text: body,
       raw_content: lines.join("\n"),
-      has_body: body.length >= 120,
+      has_body: !accessLimited && body.length >= 120,
+      access_limited: accessLimited,
       content_length: body.length,
       source_domain: location.hostname || "",
       is_wechat: isWeChat,
@@ -181,7 +237,7 @@ async function main() {
   const browser = await puppeteer.launch(launchOptions);
   try {
     const page = await browser.newPage();
-    const extracted = await extractFromPage(page, args.url);
+    const extracted = await extractFromPage(page, args.url, args.timeoutSec);
     process.stdout.write(`${JSON.stringify({
       ...extracted,
       title: normalizeText(extracted.title),

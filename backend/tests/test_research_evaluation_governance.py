@@ -19,6 +19,9 @@ def test_independent_review_requires_complete_approval_and_valid_digest() -> Non
     manifest, cases = load_research_evaluation_dataset()
     artifact = build_research_evaluation_review_template(manifest, cases)
 
+    assert artifact.cases[0].regions == cases[0].regions
+    assert artifact.cases[0].entities == cases[0].entities
+
     pending = validate_research_evaluation_review(manifest, cases, artifact)
 
     assert pending.independent_review_complete is False
@@ -45,6 +48,11 @@ def test_independent_review_requires_complete_approval_and_valid_digest() -> Non
     tampered = validate_research_evaluation_review(manifest, cases, artifact)
     assert tampered.independent_review_complete is False
     assert any("digest" in blocker for blocker in tampered.blockers)
+
+    artifact = build_research_evaluation_review_template(manifest, cases)
+    artifact.cases[0].regions = ["altered-region"]
+    altered_scope = validate_research_evaluation_review(manifest, cases, artifact)
+    assert any("changed locked context" in blocker for blocker in altered_scope.blockers)
 
     artifact = build_research_evaluation_review_template(manifest, cases)
     artifact.cases[0].expected_source_domains = ["altered.example.org"]

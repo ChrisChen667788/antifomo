@@ -32,7 +32,7 @@ export function CollectorOpsWechatAgentConfigSection({
       <p className="text-sm font-semibold text-[var(--af-text-primary)]">
         {text("wechatAgentConfigTitle")}
       </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs text-[var(--af-text-secondary)]">
           {text("wechatAgentConfigProfile")}
           <select
@@ -115,7 +115,7 @@ export function CollectorOpsWechatAgentConfigSection({
         </label>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs text-[var(--af-text-secondary)]">
           {text("wechatAgentConfigListOrigin")} x
           <input
@@ -237,7 +237,7 @@ export function CollectorOpsWechatAgentConfigSection({
           />
         </label>
       </div>
-      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs text-[var(--af-text-secondary)]">
           {text("wechatAgentConfigHotspots")}
           <input

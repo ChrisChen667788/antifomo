@@ -14,6 +14,8 @@ FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1:${FRONTEND_PORT}}"
 AUTO_OPEN_BROWSER="${AUTO_OPEN_BROWSER:-1}"
 FRONTEND_NODE="${FRONTEND_NODE:-}"
 
+source "$ROOT_DIR/scripts/backend_python.sh"
+
 mkdir -p "$TMP_DIR"
 
 is_pid_running() {
@@ -45,7 +47,7 @@ wait_http_ok() {
 }
 
 ensure_dependencies() {
-  if [[ ! -d "$BACKEND_DIR/.venv312" && ! -d "$BACKEND_DIR/.venv" && ! -d "$BACKEND_DIR/.venv311" || ! -d "$ROOT_DIR/node_modules" ]]; then
+  if ! select_backend_python "$BACKEND_DIR" >/dev/null 2>&1 || [[ ! -d "$ROOT_DIR/node_modules" ]]; then
     echo "[setup] installing dependencies..."
     "$ROOT_DIR/scripts/setup_demo.sh"
   fi
@@ -61,13 +63,11 @@ start_backend() {
 
   echo "[backend] starting..."
   local backend_python
-  if [ -d "$BACKEND_DIR/.venv312" ]; then
-    backend_python="$BACKEND_DIR/.venv312/bin/python"
-  elif [ -d "$BACKEND_DIR/.venv" ]; then
-    backend_python="$BACKEND_DIR/.venv/bin/python"
-  else
-    backend_python="$BACKEND_DIR/.venv311/bin/python"
+  if ! backend_python="$(select_backend_python "$BACKEND_DIR")"; then
+    echo "[backend] no complete Python environment found. Run: npm run demo:setup"
+    return 1
   fi
+  echo "[backend] using $backend_python"
   if [ ! -f "$BACKEND_DIR/.env" ]; then
     cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
   fi

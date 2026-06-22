@@ -13,6 +13,7 @@ _QUOTA_ERROR_TOKENS = (
     "insufficient_quota",
     "insufficient balance",
     "余额不足",
+    "额度已用尽",
     "quota exceeded",
     "billing",
     "exceeded your current quota",
@@ -21,6 +22,10 @@ _QUOTA_ERROR_TOKENS = (
 )
 
 logger = logging.getLogger("anti_fomo.llm")
+
+
+class _QuotaExhaustedError(RuntimeError):
+    """Internal signal used to retry once with the configured fallback key."""
 
 
 class OpenAILLMService:

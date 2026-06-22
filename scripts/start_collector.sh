@@ -28,29 +28,56 @@ fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] collector launcher start interval=${INTERVAL_SEC}s" >>"$LOG_FILE"
 
-nohup bash -lc "
-  cd '$ROOT_DIR'
-  exec node '$ROOT_DIR/scripts/desktop_wechat_collector.mjs' \
-    --loop \
-    --source-file '$SOURCE_FILE' \
-    --state-file '$TMP_DIR/wechat_collector_state.json' \
-    --report-file '$TMP_DIR/wechat_collector_latest.md' \
-    --submit-mode 'browser-batch' \
-    --batch-submit-size '10' \
-    --interval-sec '$INTERVAL_SEC' \
-    --flush-limit '$FLUSH_LIMIT' \
-    --daily-hours 24 \
-    --daily-limit 12 \
-    --daily-report '$TMP_DIR/collector_daily_summary.md'
-" >>"$LOG_FILE" 2>&1 &
+RUN_PID="$(
+  ROOT_DIR="$ROOT_DIR" SOURCE_FILE="$SOURCE_FILE" TMP_DIR="$TMP_DIR" LOG_FILE="$LOG_FILE" \
+    INTERVAL_SEC="$INTERVAL_SEC" FLUSH_LIMIT="$FLUSH_LIMIT" python3 - <<'PY'
+import os
+import subprocess
 
-LAUNCH_PID=$!
+root = os.environ["ROOT_DIR"]
+tmp_dir = os.environ["TMP_DIR"]
+log = open(os.environ["LOG_FILE"], "ab", buffering=0)
+proc = subprocess.Popen(
+    [
+        "node",
+        os.path.join(root, "scripts", "desktop_wechat_collector.mjs"),
+        "--loop",
+        "--source-file",
+        os.environ["SOURCE_FILE"],
+        "--state-file",
+        os.path.join(tmp_dir, "wechat_collector_state.json"),
+        "--report-file",
+        os.path.join(tmp_dir, "wechat_collector_latest.md"),
+        "--submit-mode",
+        "browser-batch",
+        "--batch-submit-size",
+        "10",
+        "--interval-sec",
+        os.environ["INTERVAL_SEC"],
+        "--flush-limit",
+        os.environ["FLUSH_LIMIT"],
+        "--daily-hours",
+        "24",
+        "--daily-limit",
+        "12",
+        "--daily-report",
+        os.path.join(tmp_dir, "collector_daily_summary.md"),
+    ],
+    stdin=subprocess.DEVNULL,
+    stdout=log,
+    stderr=subprocess.STDOUT,
+    cwd=root,
+    start_new_session=True,
+)
+print(proc.pid)
+PY
+)"
+echo "$RUN_PID" >"$PID_FILE"
 sleep 0.3
-RUN_PID="$(pgrep -f "$ROOT_DIR/scripts/desktop_wechat_collector.mjs.*--loop" | tail -n 1 || true)"
-if [[ -n "${RUN_PID:-}" ]] && kill -0 "$RUN_PID" 2>/dev/null; then
-  echo "$RUN_PID" >"$PID_FILE"
-else
-  echo "$LAUNCH_PID" >"$PID_FILE"
+if ! kill -0 "$RUN_PID" 2>/dev/null; then
+  echo "Collector failed to start. Check log: $LOG_FILE"
+  rm -f "$PID_FILE"
+  exit 1
 fi
 echo "Collector started."
 echo "PID: $(cat "$PID_FILE")"

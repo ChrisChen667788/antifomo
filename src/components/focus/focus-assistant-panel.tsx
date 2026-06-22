@@ -138,7 +138,7 @@ export function FocusAssistantPanel({
             </div>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {plan.actions.map((action) => (
               <div key={action.key} className="rounded-[24px] border border-slate-200 bg-white/75 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">

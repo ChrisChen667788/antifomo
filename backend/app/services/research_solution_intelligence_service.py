@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from app.schemas.research import (
+    ResearchEntityEvidenceOut,
     ResearchReportDocument,
     ResearchSolutionDeliveryPackOut,
 )
@@ -15,6 +16,7 @@ from app.services.delivery.solution_architecture import (
     build_solution_architect_workbench,
     build_solution_architecture_readiness,
 )
+from app.services.delivery.quantitative_models import build_quantitative_decision_model
 from app.services.delivery.solution_materials import (
     build_advisory_artifacts,
     build_solution_delivery_markdown,
@@ -43,6 +45,33 @@ def _scenario_from_report(report: ResearchReportDocument) -> str:
         if value.lower() in text.lower():
             return value
     return report.keyword
+
+
+def _delivery_evidence_links(report: ResearchReportDocument) -> list[ResearchEntityEvidenceOut]:
+    rows: list[ResearchEntityEvidenceOut] = []
+    seen_urls: set[str] = set()
+    for section in report.sections:
+        for link in section.evidence_links:
+            if not link.url or link.url in seen_urls:
+                continue
+            seen_urls.add(link.url)
+            rows.append(link)
+    for source in report.sources:
+        if not source.url or source.url in seen_urls:
+            continue
+        seen_urls.add(source.url)
+        rows.append(
+            ResearchEntityEvidenceOut(
+                title=source.title,
+                url=source.url,
+                source_label=source.source_label,
+                source_tier=source.source_tier,
+                anchor_text=source.search_query,
+                excerpt=source.snippet,
+                confidence_tone="high" if source.source_tier == "official" else "low",
+            )
+        )
+    return rows[:40]
 
 
 def build_solution_delivery_pack(
@@ -83,17 +112,18 @@ def build_solution_delivery_pack(
         ],
         limit=6,
     )
+    evidence_policy = (
+        "仅把已命中主题、客户或招采/技术参数的来源写成确定判断；其余内容保留为待核验假设。"
+        if market_pack.source_support_score < 70
+        else "当前来源可支撑初版方案大纲，正式对客前仍需确认预算、客户和交付边界。"
+    )
     outlines = build_solution_delivery_outlines(
         report,
         market_pack=market_pack,
         scenario=resolved_scenario,
         target_customer=resolved_customer,
         vertical_scene=resolved_scene,
-    )
-    evidence_policy = (
-        "仅把已命中主题、客户或招采/技术参数的来源写成确定判断；其余内容保留为待核验假设。"
-        if market_pack.source_support_score < 70
-        else "当前来源可支撑初版方案大纲，正式对客前仍需确认预算、客户和交付边界。"
+        evidence_policy=evidence_policy,
     )
     advisory_artifacts = build_advisory_artifacts(
         report,
@@ -102,6 +132,13 @@ def build_solution_delivery_pack(
         target_customer=resolved_customer,
         vertical_scene=resolved_scene,
         evidence_policy=evidence_policy,
+    )
+    quantitative_decision_model = build_quantitative_decision_model(
+        report,
+        market_pack=market_pack,
+        scenario=resolved_scenario,
+        target_customer=resolved_customer,
+        vertical_scene=resolved_scene,
     )
     pack = ResearchSolutionDeliveryPackOut(
         scenario=resolved_scenario,
@@ -119,6 +156,8 @@ def build_solution_delivery_pack(
         ),
         clarification_questions=clarification_questions,
         intelligence_summary=intelligence_summary,
+        compiled_documents=outlines.compiled_documents,
+        quantitative_decision_model=quantitative_decision_model,
         feasibility_outline=outlines.feasibility_outline,
         project_proposal_outline=outlines.project_proposal_outline,
         client_ppt_outline=outlines.client_ppt_outline,
@@ -142,7 +181,17 @@ def build_solution_delivery_pack(
             limit=6,
         ),
     )
-    pack = review_and_improve_solution_delivery_pack(pack)
+    pack = review_and_improve_solution_delivery_pack(
+        pack,
+        evidence_links=_delivery_evidence_links(report),
+        expected_entities=_dedupe_strings(
+            [
+                resolved_customer,
+                *report.target_accounts[:3],
+            ],
+            limit=4,
+        ),
+    )
     architecture_readiness = build_solution_architecture_readiness(
         report,
         market_pack=market_pack,

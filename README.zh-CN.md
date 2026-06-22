@@ -74,10 +74,16 @@ Anti-FOMO 关注的是整条工作链路：
 | `1.4.0` | LangGraph 影子编排：协议后置、可显式选择、可衡量确定性 parity，且不自动增加生产双跑成本。 | Opt-in LangGraph shadow orchestration behind the workflow protocol with measurable deterministic parity. |
 | `1.5.0` | 热点拆分与 UI 回归：后端 owner、前端 model owner、Vitest 回归和 Next.js 安全补丁。 | Hotspot decomposition, frontend owner tests, UI regression coverage, and a current Next.js security patch. |
 | `1.6.0` | 发布加固：Focus 共享运行时、首屏偏好引导、双主题生产截图、深色对比度兼容和废弃 facade 包装器清理。 | Release hardening with shared Focus runtime, pre-hydration preferences, dual-theme screenshots, dark contrast compatibility, and dead facade-wrapper retirement. |
+| `1.7.0` | LangGraph 生产切换：锁定 100 条评测集、零成本 deterministic/LangGraph 等价门禁、deterministic 回滚和安全 PostCSS 依赖覆盖。 | Production LangGraph orchestration with a locked 100-case evaluation set, zero-cost deterministic parity, deterministic rollback, and a safe PostCSS override. |
+| `1.7.1` | 评测治理：独立复核声明与内容摘要、真实评测预算规划、默认每批最多 5 条，以及缺失定价或超预算时的运行停止保护。 | Evaluation governance with independent-review attestations, content digests, live-run budget planning, five-case batch limits, and runtime spend stops. |
+| `1.7.2` | 专家意见范围修订：对 78 条评测用例补齐省级地区和明确研究主体，保持行为标签、答案锚点和来源域名不变。 | Expert-feedback scope refinement across 78 cases while preserving behavior labels, answer anchors, and source domains. |
+| `1.8.0` | 专业报告质量线：主张证据账本、语义挑战者、四类文档编译器、量化决策模型、真实业务黄金样本、原生 DOCX/PPTX/PDF 交付、Office 往返诊断和视觉基线。 | Professional-report quality line with claim/evidence ledgers, semantic challengers, four document compilers, quantitative models, real-business golden samples, native DOCX/PPTX/PDF delivery, Office round-trip diagnostics, and visual baselines. |
 
 ## 产品截图
 
 完整的发布级截图覆盖维护在 [功能界面截图覆盖清单](./docs/feature-screenshot-coverage.md)，历代大版本能力地图维护在 [版本历史与功能地图](./docs/release-history-and-feature-map.md)。
+
+当前截图基线于 `2026-06-19` 重新生成，共 30 张：15 个主功能界面均同时覆盖日间与夜间模式，包含分析进度、知识库、Collector、设置、专注和研究工作台的嵌套状态。
 
 <table>
   <tr>
@@ -129,8 +135,10 @@ Anti-FOMO 关注的是整条工作链路：
 - URL、纯文本、RSS、Newsletter、文件、YouTube transcript 输入
 - 微信收藏导出包 / `.url` / `.webloc` / 多文件 / 剪贴板 / 原始、转义或编码后的 `mp.weixin.qq.com` 链接列表一键预检和导入，自动去重并转成首页卡片处理流
 - 首页持久保留“本次微信收藏导入队列”，显示 ready / processing / failed / done 计数，支持一键重试失败条目，刷新页面后也能恢复批次，后台解析完成后自动进入卡片堆
+- 可选本机 `wechat-cli` 只读适配器会周期读取文章类收藏、提取新 URL 并自动提交；未安装或未完成本机授权时，设置页明确显示 `unavailable`，不会擅自安装、重签名或修改微信
 - 浏览器扩展快速采集当前页面
 - 微信 URL-first 采集、无头源采集、Collector 运维、按公众号源的健康度诊断，以及作为补充 URL 发现通道的 WeChat PC Agent 工具链
+- 微信正文提取会等待 `#js_content`，识别参数错误、验证、链接失效等壳页，并降级到后续提取链，避免把错误页生成摘要
 - 针对截图 OCR、markdown dump、论坛奖项噪声、弱 vendor 推进稿的清洗规则
 
 ### 2. 研究工作台
@@ -154,6 +162,7 @@ Anti-FOMO 关注的是整条工作链路：
 - canonical org linking、guarded backlog、低质量研报 rewrite / backfill
 - 近 3 年招投标/产品/技术参数情报包和 advisory-grade 方案交付包
 - 面向中国科技项目交付的解决方案/项目建议书质量自审、自修订和显式缺口提示
+- 研报生成采用“问题拆解 → 多视角检索 → 来源摘要 → 交叉验证 → 大纲 → 初稿 → 对抗式自审”，并为可研/建议书补齐方案比选、运营、综合影响、证据矩阵和假设台账
 - 离线回归评估新增解决方案通过率、项目建议书通过率和交付自修订增益率
 - 导出诊断新增历史趋势与相邻版本对比，能回看交付质量是否持续改善
 
@@ -205,7 +214,20 @@ npm run demo:start
 npm run demo:stop
 ```
 
-### 3. 回归基线
+### 3. 可选：微信收藏自动导入
+
+自动导入复用本机只读命令 `wechat-cli favorites --type article`。请先按
+[wechat-cli 官方说明](https://github.com/huohuoer/wechat-cli/blob/main/README_CN.md)
+自行完成本机安装与授权，再指定可执行文件：
+
+```bash
+export WECHAT_CLI_BIN=/absolute/path/to/wechat-cli
+npm run collector:start
+```
+
+该适配器默认增量去重并提交到与手动导入相同的持久化批次。由于不同微信版本可能涉及辅助功能、内存读取或应用签名限制，项目不会自动执行这些高权限操作。
+
+### 4. 回归基线
 
 ```bash
 cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
@@ -248,7 +270,10 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`1.6.0+20260613`
+- 当前版本：`1.8.0+20260622`
+- LangGraph 已作为默认研究工作流，deterministic 引擎保留为即时回滚路径
+- 100 条研究评测集已锁定为 `1.2.0`，离线 deterministic/LangGraph parity 为 `100/100`
+- 真实 provider 评测仍要求完成修订后的独立复核，并获得明确预算批准
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
 - 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面

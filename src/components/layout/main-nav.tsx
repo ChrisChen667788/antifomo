@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -27,6 +28,12 @@ function isActive(pathname: string, href: string): boolean {
 export function MainNav() {
   const pathname = usePathname();
   const { t } = useAppPreferences();
+  const navRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const activeItem = navRef.current?.querySelector<HTMLElement>("[data-active='true']");
+    activeItem?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-40 px-3 pt-3 md:px-6 md:pt-4">
@@ -36,7 +43,7 @@ export function MainNav() {
             Anti-FOMO
           </p>
         </div>
-        <nav className="flex flex-1 items-center justify-end gap-1.5 overflow-x-auto">
+        <nav ref={navRef} className="flex flex-1 items-center justify-start gap-1.5 overflow-x-auto md:justify-end">
           {navItems.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -46,6 +53,7 @@ export function MainNav() {
                 className={`af-btn af-nav-chip shrink-0 px-3 py-1.5 text-[13px] ${
                   active ? "af-nav-chip-active" : "af-nav-chip-idle"
                 }`}
+                data-active={active ? "true" : undefined}
               >
                 <AppIcon name={item.icon} className="h-3.5 w-3.5 shrink-0" />
                 {t(item.labelKey, item.fallback)}
@@ -65,7 +73,7 @@ export function MainNav() {
           >
             <AppIcon name="settings" className="h-4 w-4" />
           </Link>
-          <div className="af-glass-orb-badge ml-1">
+          <div className="af-glass-orb-badge ml-1" aria-label="Anti-FOMO badge">
             AF
           </div>
         </nav>

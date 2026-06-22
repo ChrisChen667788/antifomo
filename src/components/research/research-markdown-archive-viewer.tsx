@@ -245,7 +245,7 @@ function ArchiveFollowupImpactCard({
           <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">追问影响章节对照</h4>
         </div>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         {[
           { key: "current", label: "当前归档", tone: "sky", value: currentSummary },
           { key: "compare", label: "对照归档", tone: "amber", value: compareSummary },
@@ -455,7 +455,7 @@ function ArchiveComparisonSummary({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--af-text-tertiary)]">Shared Sections</p>
           <p className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">{comparison.sharedSectionCount}</p>
@@ -481,7 +481,7 @@ function ArchiveComparisonSummary({
       </div>
 
       {(currentSectionSummary || compareSectionSummary || currentFollowupSummary || compareFollowupSummary || currentOfflineSnapshot || compareOfflineSnapshot) ? (
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
           <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -489,7 +489,7 @@ function ArchiveComparisonSummary({
                 <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">章节风险对照</h4>
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-[20px] af-state-panel-info p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-info)]">当前归档</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
@@ -527,7 +527,7 @@ function ArchiveComparisonSummary({
                 <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">质量复核快照对照</h4>
               </div>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {[{
                 label: "当前归档",
                 value: currentOfflineSnapshot,
@@ -569,7 +569,7 @@ function ArchiveComparisonSummary({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] ">当前</span>
@@ -673,7 +673,7 @@ function ArchiveComparisonSummary({
                   </button>
                 </div>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-[20px] af-state-panel-success p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-success)]">当前新增</p>
                   {section.currentOnly.length ? (
@@ -985,7 +985,7 @@ export function ResearchMarkdownArchiveViewer({
       </section>
 
       {archiveDigest || compareArchiveDigest ? (
-        <section className="grid gap-4 xl:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <ArchiveDeliveryDigestCard
             archive={archive}
             title={compareArchive ? "当前归档交付信号" : undefined}
@@ -1028,7 +1028,7 @@ export function ResearchMarkdownArchiveViewer({
           </div>
         </div>
         {relatedArchives.length ? (
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {relatedArchives.map((item) => (
               <ArchiveCandidateCard
                 key={item.id}
@@ -1057,7 +1057,7 @@ export function ResearchMarkdownArchiveViewer({
           </div>
         </div>
         {compareArchive ? (
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span className="rounded-full af-chip af-chip-info px-2.5 py-1 text-[11px] ">当前归档</span>

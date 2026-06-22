@@ -15,6 +15,21 @@ from app.services.research_rag_quality_service import build_retrieval_correction
 
 
 _TENDER_TERMS = ("招标", "中标", "采购", "采购意向", "成交", "竞争性磋商", "公开招标", "公共资源", "预算", "标段")
+_TENDER_CLASSIFIER_TERMS = (
+    "招标",
+    "中标",
+    "采购意向",
+    "成交",
+    "竞争性磋商",
+    "公开招标",
+    "公共资源",
+    "标段",
+    "项目编号",
+    "招标编号",
+    "采购编号",
+    "中标候选人",
+    "最高限价",
+)
 _PRODUCT_TERMS = (
     "数字人",
     "AIGC",
@@ -174,6 +189,20 @@ def _source_relevance(source: object, text: str) -> int:
     return min(score, 100)
 
 
+def _looks_like_tender_source(source: object, text: str) -> bool:
+    source_type = str(getattr(source, "source_type", "") or "").lower()
+    if source_type in {"procurement", "tender_feed"}:
+        return True
+    if source_type in {"policy", "media", "news"} and not any(term in text for term in _TENDER_CLASSIFIER_TERMS):
+        return False
+    return any(term in text for term in _TENDER_CLASSIFIER_TERMS) or bool(
+        _BUYER_RE.search(text)
+        or _VENDOR_RE.search(text)
+        or _AGENCY_RE.search(text)
+        or _PROJECT_CODE_RE.search(text)
+    )
+
+
 def _tender_project_key(item: ResearchTenderProjectOut) -> str:
     project = normalize_text(item.project_name)
     project = re.sub(r"(公开招标公告|招标公告|中标成交公告|中标公告|成交公告|采购意向|结果公示)$", "", project)
@@ -256,6 +285,10 @@ def build_market_intelligence_pack(
     product_rows: dict[str, ResearchProductRequirementOut] = {}
     technical_rows: dict[str, ResearchProductRequirementOut] = {}
     tender_keywords = _dedupe_strings([*_TENDER_TERMS, report.keyword, scenario, vertical_scene], limit=12)
+    opportunity_keywords = _dedupe_strings(
+        [report.keyword, scenario, vertical_scene, "政策", "试点", "建设方案", "应用场景"],
+        limit=12,
+    )
     diagnostics = getattr(report, "source_diagnostics", None)
     scope_hints = {
         "regions": list(getattr(diagnostics, "scope_regions", []) or []),
@@ -278,11 +311,7 @@ def build_market_intelligence_pack(
         text = _source_text(source)
         if not text or not _date_in_window(text, start=start, end=end):
             continue
-        is_tender = any(term in text for term in _TENDER_TERMS) or str(source.source_type or "").lower() in {
-            "procurement",
-            "tender_feed",
-            "policy",
-        }
+        is_tender = _looks_like_tender_source(source, text)
         if source_url in rejected_urls and not is_tender:
             continue
         parameters = _extract_parameters(text)
@@ -351,7 +380,8 @@ def build_market_intelligence_pack(
             row.technical_parameters = _dedupe_strings([*row.technical_parameters, *parameters], limit=12)
             technical_rows[parameter_key] = row
 
-    if not tender_projects and (report.budget_signals or report.tender_timeline):
+    fallback_text = normalize_text("；".join([*report.budget_signals, *report.tender_timeline]))
+    if not tender_projects and fallback_text and any(term in fallback_text for term in _TENDER_CLASSIFIER_TERMS):
         tender_projects.append(
             ResearchTenderProjectOut(
                 project_name=f"{report.keyword} 近三年招采补证候选",
@@ -366,12 +396,19 @@ def build_market_intelligence_pack(
     tender_projects = _merge_tender_projects(tender_projects)
     tender_projects.sort(key=lambda item: (item.relevance_score, item.source_tier == "official"), reverse=True)
     source_scope = (
-        "覆盖公开网页、政府采购、公共资源交易、招投标公开平台、企业官网/产品页、行业媒体和当前已抓取来源；"
-        "不使用未授权登录库或付费墙数据。"
+        (
+            "覆盖公开网页、政府采购、公共资源交易、招投标公开平台、企业官网/产品页、行业媒体和当前已抓取来源；"
+            "不使用未授权登录库或付费墙数据。"
+        )
+        if tender_projects
+        else (
+            "覆盖政府/主管部门政策、公开通知、企业官网/产品页、行业媒体和当前已抓取来源；"
+            "不使用未授权登录库或付费墙数据。"
+        )
     )
     gaps = _dedupe_strings(
         [
-            "近三年明确招标/中标明细不足，建议继续跑政府采购、公共资源交易和招投标公开平台专项检索。"
+            "当前样本以政策/试点来源为主，尚未形成可引用交易明细；如需投标材料，应补公开交易来源。"
             if len(tender_projects) < 3
             else "",
             "产品清单或技术参数不足，建议补招标文件、产品白皮书、官网规格页和竞品交付案例。"
@@ -391,7 +428,7 @@ def build_market_intelligence_pack(
         ambiguous_source_count=correction_profile.ambiguous_source_count,
         rejected_source_count=correction_profile.rejected_source_count,
         tender_projects=tender_projects[:12],
-        tender_keywords=tender_keywords,
+        tender_keywords=tender_keywords if tender_projects else opportunity_keywords,
         product_catalog=list(product_rows.values())[:12],
         technical_parameter_catalog=list(technical_rows.values())[:10],
         external_source_queries=_dedupe_strings(

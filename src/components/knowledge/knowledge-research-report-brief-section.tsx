@@ -96,7 +96,7 @@ export function KnowledgeResearchReportBriefSection({
             ) : null}
           </div>
           <p className="mt-2 text-xs leading-5">{evidenceMode.note}</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             {diagnosticCards.map((card) => (
               <div key={card.title} className={`rounded-[18px] border px-3 py-3 ${card.tone}`}>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">
@@ -186,7 +186,7 @@ export function KnowledgeResearchReportBriefSection({
             </div>
           </div>
           {followupImpactedSections.length ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {followupImpactedSections.map((section) => (
                 <div key={`knowledge-followup-impact-${section.section_title}`} className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex items-center justify-between gap-2">

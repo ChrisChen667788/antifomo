@@ -42,6 +42,7 @@ def main() -> int:
                 "dataset_content_sha256": manifest.content_sha256,
                 "case_count": len(cases),
                 "review_status": artifact.review_status,
+                "scope_context_included": True,
             },
             ensure_ascii=False,
             indent=2,

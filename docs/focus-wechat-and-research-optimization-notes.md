@@ -1,5 +1,32 @@
 # Focus WeChat URL-first + Research Quality Optimization Notes
 
+## 2026-06-19 Implementation
+
+### Theme and extraction
+
+- Semantic light/dark surfaces now cover every primary route and nested state surface.
+- The research progress ring/card no longer carries component-local white backgrounds.
+- WeChat browser extraction waits for `#js_content`, preserves canonical URLs, and rejects parameter-error, verification, and expired-link shells.
+- Manual Favorites imports commit their batch before returning, so polling and refresh recovery use a durable batch ID.
+- Automatic Favorites import is available through an optional local `wechat-cli favorites --type article` adapter with incremental URL deduplication and visible daemon status. It intentionally does not install, re-sign, decrypt, or elevate permissions on the user's behalf.
+
+### Research and formal delivery
+
+The implementation borrows verified workflow patterns rather than vendoring an
+entire external agent framework:
+
+1. STORM-style perspective-guided problem decomposition before retrieval.
+2. GPT Researcher / open-deep-research-style multi-source collection and source-level summaries.
+3. Cross-source agreement, contradiction, negative-evidence, and source-authority checks before drafting.
+4. Outline-first drafting followed by an adversarial self-review and deterministic section repair.
+5. NDRC-aligned feasibility and project-proposal coverage for alternatives, implementation/operations, investment, impacts, risks, evidence matrices, and assumption ledgers.
+
+SkillHub, ModelScope, Hugging Face, and GitHub were reviewed for reusable
+building blocks. No unreviewed remote skill or heavyweight framework was
+silently installed; the current code integrates the transferable algorithms
+inside the existing deterministic/LangGraph workflow and keeps dependency and
+rollback risk bounded.
+
 ## 1. WeChat Collection: Chosen Direction
 
 Current practical order:
@@ -82,6 +109,20 @@ Key ideas adopted:
   - https://arxiv.org/abs/2401.18059
 - STORM:
   - https://github.com/stanford-oval/storm
+- GPT Researcher:
+  - https://github.com/assafelovic/gpt-researcher
+- Hugging Face open deep research:
+  - https://huggingface.co/spaces/agents-course/open_deep_research
+- ModelScope AgentScope:
+  - https://github.com/modelscope/agentscope
+- iFlytek DeepResearch:
+  - https://github.com/iflytek/DeepResearch
+- iFlytek SkillHub:
+  - https://github.com/iflytek/skillhub
+- NDRC 2023 feasibility-study outlines:
+  - https://www.ndrc.gov.cn/xxgk/zcfb/tz/202304/t20230407_1353354.html
+- wechat-cli Favorites adapter:
+  - https://github.com/huohuoer/wechat-cli/blob/main/README_CN.md
 - Browser-use:
   - https://github.com/browser-use/browser-use
 

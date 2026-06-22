@@ -629,7 +629,7 @@ export function ResearchCompareMatrix({
             </div>
           </div>
           {snapshotDetail.linked_report_diff.axes.length ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {snapshotDetail.linked_report_diff.axes.map((axis) => (
                 <article key={axis.key} className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -723,7 +723,7 @@ export function ResearchCompareMatrix({
             导出说明：旧快照已补齐复核信息，导出文件会沿用当前展示的快照内容。
           </div>
         ) : null}
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {roleStats.map((item) => (
             <div key={item.role} className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4 shadow-[var(--af-shadow-soft)]">
               <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{item.role}</p>
@@ -732,7 +732,7 @@ export function ResearchCompareMatrix({
           ))}
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr,0.95fr]">
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr,0.95fr]">
           <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 shadow-[var(--af-shadow-soft)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -743,7 +743,7 @@ export function ResearchCompareMatrix({
                 来源研报 · {effectiveSectionDiagnosticsSummary.sourceReportCount}
               </span>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-[20px] af-state-panel-warning p-3">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-warning)]">待核验章节</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--af-warning)]">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
@@ -814,7 +814,7 @@ export function ResearchCompareMatrix({
       </section>
 
       <section className="af-glass rounded-[30px] p-5">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1.4fr),repeat(3,minmax(0,0.8fr))]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.4fr),repeat(3,minmax(0,0.8fr))]">
           <div className="flex items-center gap-2 rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 shadow-[var(--af-shadow-soft)]">
             <AppIcon name="search" className="h-4 w-4 text-[var(--af-text-tertiary)]" />
             <input
@@ -889,7 +889,7 @@ export function ResearchCompareMatrix({
                   {t("research.compareOpenSource", "打开来源研报")}
                 </Link>
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-4">
                 <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.compareBudget", "预算信号")}</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.budgetSignal}</p>
@@ -910,7 +910,7 @@ export function ResearchCompareMatrix({
                   <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{row.competitionSignal}</p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 xl:grid-cols-5">
+              <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-5">
                 <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareDepartments", "高概率决策部门")}
@@ -1016,7 +1016,7 @@ export function ResearchCompareMatrix({
                   </div>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.1fr)]">
+              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr),minmax(0,1.1fr)]">
                 <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                     {t("research.compareBenchmarks", "标杆案例证据摘要")}

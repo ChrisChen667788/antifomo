@@ -307,6 +307,8 @@ def test_wechat_favorites_api_preview_import_and_restore_batch(monkeypatch) -> N
         assert imported.batch.status == "processing"
         assert imported.batch.processing == 1
         assert imported.batch.review_item_ids == imported.created_item_ids
+        db.expire_all()
+        assert db.get(CollectorImportBatch, imported.batch_id) is not None
 
         latest = collector_favorites_api.list_wechat_favorite_import_batches(limit=5, include_reviewed=False, db=db)
         assert latest.total == 1

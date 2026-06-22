@@ -52,6 +52,105 @@ export interface ApiResearchSolutionOutlineSection {
   bullets: string[];
 }
 
+export interface ApiResearchDeliveryCompiledSection {
+  title: string;
+  purpose: string;
+  bullets: string[];
+  evidence: string[];
+  assumptions: string[];
+  validation_actions: string[];
+}
+
+export interface ApiResearchDeliveryCompiledDocument {
+  framework:
+    | "solution_design_compiler_v1"
+    | "consulting_report_compiler_v1"
+    | "project_proposal_compiler_v1"
+    | "feasibility_study_compiler_v1";
+  document_kind: "solution_design" | "consulting_report" | "project_proposal" | "feasibility_study";
+  title: string;
+  audience: string;
+  purpose: string;
+  evidence_policy: string;
+  sections: ApiResearchDeliveryCompiledSection[];
+  assumptions: string[];
+  validation_actions: string[];
+  quality_gates: string[];
+  export_markdown: string;
+}
+
+export interface ApiResearchDecisionCriterionScore {
+  criterion_key: string;
+  label: string;
+  weight_percent: number;
+  score: number;
+  rationale: string;
+}
+
+export interface ApiResearchDecisionAlternativeOption {
+  option_id: string;
+  name: string;
+  summary: string;
+  weighted_score: number;
+  rank: number;
+  criterion_scores: ApiResearchDecisionCriterionScore[];
+  decision_rationale: string;
+  assumptions: string[];
+  validation_actions: string[];
+}
+
+export interface ApiResearchTenderScoreResponseItem {
+  score_item: string;
+  weight_percent: number;
+  response_strategy: string;
+  mapped_sections: string[];
+  evidence_refs: string[];
+  owner: string;
+  risk_level: "high" | "medium" | "low";
+  validation_action: string;
+}
+
+export interface ApiResearchFinancialScenario {
+  scenario_key: "pessimistic" | "base" | "optimistic";
+  label: string;
+  capex_cny?: number | null;
+  annual_opex_cny?: number | null;
+  annual_benefit_cny?: number | null;
+  tco_3y_cny?: number | null;
+  net_benefit_3y_cny?: number | null;
+  payback_months?: number | null;
+  npv_3y_cny?: number | null;
+  irr_percent?: number | null;
+  roi_percent?: number | null;
+  confidence: "high" | "medium" | "low";
+  assumptions: string[];
+}
+
+export interface ApiResearchSensitivityVariable {
+  variable_key: string;
+  label: string;
+  base_value?: number | null;
+  low_value?: number | null;
+  high_value?: number | null;
+  unit: string;
+  impact_summary: string;
+  validation_action: string;
+}
+
+export interface ApiResearchQuantitativeDecisionModel {
+  framework: "delivery_quantitative_decision_model_v1";
+  status: "ready" | "assumption_required" | "blocked";
+  recommended_option_id: string;
+  summary: string;
+  alternative_options: ApiResearchDecisionAlternativeOption[];
+  tender_score_response_matrix: ApiResearchTenderScoreResponseItem[];
+  financial_scenarios: ApiResearchFinancialScenario[];
+  sensitivity_variables: ApiResearchSensitivityVariable[];
+  assumptions: string[];
+  validation_actions: string[];
+  export_markdown: string;
+}
+
 export interface ApiResearchAdvisoryArtifact {
   artifact_type: "client_brief" | "bidding_prep_memo" | "execution_materials";
   title: string;
@@ -82,6 +181,109 @@ export interface ApiResearchDeliverySelfReview {
   notes: string[];
 }
 
+export interface ApiResearchDeliveryNumericFact {
+  metric: string;
+  raw_value: string;
+  normalized_value?: number | null;
+  normalized_unit: string;
+  context: string;
+}
+
+export interface ApiResearchDeliveryEvidenceAnchor {
+  evidence_id: string;
+  title: string;
+  url: string;
+  source_label?: string | null;
+  source_tier: "official" | "media" | "aggregate";
+  anchor_text: string;
+  excerpt: string;
+  document_ref: string;
+  entities: string[];
+  numeric_facts: ApiResearchDeliveryNumericFact[];
+}
+
+export interface ApiResearchDeliveryClaimEvidenceRelation {
+  evidence_id: string;
+  relation_type: "supports" | "conflicts" | "background" | "needs_validation";
+  score: number;
+  rationale: string;
+}
+
+export interface ApiResearchDeliveryClaim {
+  claim_id: string;
+  section_title: string;
+  claim_type: "fact" | "numeric" | "recommendation" | "procurement" | "compliance" | "assumption";
+  text: string;
+  confidence: "high" | "medium" | "low";
+  entities: string[];
+  numeric_facts: ApiResearchDeliveryNumericFact[];
+  evidence_relations: ApiResearchDeliveryClaimEvidenceRelation[];
+  verification_status: "supported" | "conflicted" | "background_only" | "needs_validation";
+}
+
+export interface ApiResearchDeliveryConsistencyIssue {
+  issue_id: string;
+  issue_type: "entity_role_conflict" | "entity_not_supported" | "numeric_conflict" | "numeric_unit_mismatch";
+  severity: "high" | "medium" | "low";
+  claim_ids: string[];
+  summary: string;
+  details: string[];
+}
+
+export interface ApiResearchDeliveryEvidenceLedger {
+  framework: "delivery_claim_evidence_ledger_v1";
+  claim_count: number;
+  evidence_count: number;
+  supported_claim_count: number;
+  conflicted_claim_count: number;
+  background_only_claim_count: number;
+  needs_validation_claim_count: number;
+  high_confidence_claim_count: number;
+  high_confidence_supported_count: number;
+  claim_coverage_percent: number;
+  high_confidence_coverage_percent: number;
+  entity_consistency_score: number;
+  numeric_consistency_score: number;
+  status: "pass" | "watch" | "fail";
+  claims: ApiResearchDeliveryClaim[];
+  evidence: ApiResearchDeliveryEvidenceAnchor[];
+  consistency_issues: ApiResearchDeliveryConsistencyIssue[];
+}
+
+export interface ApiResearchDeliverySemanticChallengeIssue {
+  issue_id: string;
+  issue_type:
+    | "scope_drift"
+    | "cross_section_conflict"
+    | "unsupported_high_confidence_claim"
+    | "source_contamination"
+    | "entity_conflict"
+    | "numeric_conflict"
+    | "template_language"
+    | "missing_gold_sample_review";
+  severity: "high" | "medium" | "low";
+  section_title: string;
+  claim_ids: string[];
+  summary: string;
+  evidence: string[];
+  suggested_action: string;
+}
+
+export interface ApiResearchDeliverySemanticChallenge {
+  framework: "delivery_semantic_challenger_v1";
+  status: "pass" | "watch" | "fail";
+  overall_score: number;
+  issue_count: number;
+  high_severity_count: number;
+  scope_drift_count: number;
+  cross_section_conflict_count: number;
+  golden_sample_id: string;
+  golden_sample_title: string;
+  golden_sample_alignment_score: number;
+  issues: ApiResearchDeliverySemanticChallengeIssue[];
+  recommended_actions: string[];
+}
+
 export interface ApiResearchDeliveryQualityProfile {
   framework: "china_tech_delivery_review_v1";
   framework_label: string;
@@ -93,6 +295,8 @@ export interface ApiResearchDeliveryQualityProfile {
   gaps: string[];
   required_axes: string[];
   missing_axes: string[];
+  evidence_ledger?: ApiResearchDeliveryEvidenceLedger;
+  semantic_challenge?: ApiResearchDeliverySemanticChallenge;
   self_review: ApiResearchDeliverySelfReview;
 }
 
@@ -198,10 +402,14 @@ export interface ApiResearchSolutionDeliveryPack {
   grounding_checks?: string[];
   clarification_questions: string[];
   intelligence_summary: string[];
+  compiled_documents?: ApiResearchDeliveryCompiledDocument[];
+  quantitative_decision_model?: ApiResearchQuantitativeDecisionModel;
   feasibility_outline: ApiResearchSolutionOutlineSection[];
   project_proposal_outline: ApiResearchSolutionOutlineSection[];
   client_ppt_outline: ApiResearchSolutionOutlineSection[];
   advisory_artifacts: ApiResearchAdvisoryArtifact[];
+  evidence_ledger?: ApiResearchDeliveryEvidenceLedger;
+  semantic_challenge?: ApiResearchDeliverySemanticChallenge;
   solution_quality_profile?: ApiResearchDeliveryQualityProfile;
   project_proposal_quality_profile?: ApiResearchDeliveryQualityProfile;
   architecture_readiness?: ApiResearchSolutionArchitectureReadiness;

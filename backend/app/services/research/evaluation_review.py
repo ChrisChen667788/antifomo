@@ -23,6 +23,8 @@ class ResearchEvaluationCaseReview(BaseModel):
     suite_id: str
     keyword: str
     research_focus: str
+    regions: list[str] = Field(default_factory=list)
+    entities: list[str] = Field(default_factory=list)
     expected_behavior: str
     reference_answer_terms: list[str]
     expected_source_domains: list[str]
@@ -86,6 +88,8 @@ def build_research_evaluation_review_template(
                 suite_id=case.suite_id,
                 keyword=case.keyword,
                 research_focus=case.research_focus,
+                regions=list(case.regions),
+                entities=list(case.entities),
                 expected_behavior=case.expected_behavior,
                 reference_answer_terms=list(case.reference_answer_terms),
                 expected_source_domains=list(case.expected_source_domains),
@@ -140,6 +144,8 @@ def validate_research_evaluation_review(
             case.suite_id,
             case.keyword,
             case.research_focus,
+            case.regions,
+            case.entities,
             case.expected_behavior,
             case.reference_answer_terms,
             case.expected_source_domains,
@@ -156,6 +162,8 @@ def validate_research_evaluation_review(
             case.suite_id,
             case.keyword,
             case.research_focus,
+            case.regions,
+            case.entities,
             case.expected_behavior,
             case.reference_answer_terms,
             case.expected_source_domains,

@@ -74,7 +74,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <article className="af-glass rounded-[28px] p-5">
           <p className="af-kicker">Why Now</p>
           <div className="mt-3 space-y-3">
@@ -82,7 +82,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
               account.why_now.map((reason) => (
                 <div
                   key={reason}
-                  className="rounded-[22px] border border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(240,249,255,0.84))] p-4 text-sm leading-6 text-slate-700"
+                  className="af-surface-info rounded-[22px] border p-4 text-sm leading-6 text-slate-700"
                 >
                   {sanitizeExternalDisplayText(reason)}
                 </div>
@@ -92,7 +92,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
             )}
           </div>
           {account.next_best_action ? (
-            <div className="mt-4 rounded-[22px] border border-emerald-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(236,253,245,0.84))] p-4">
+            <div className="af-surface-success mt-4 rounded-[22px] border p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Next Best Action</p>
               <p className="mt-2 text-sm leading-6 text-emerald-900">{sanitizeExternalDisplayText(account.next_best_action)}</p>
             </div>
@@ -101,7 +101,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
 
         <article className="af-glass rounded-[28px] p-5">
           <p className="af-kicker">组织与触达</p>
-          <div className="mt-3 grid gap-3">
+          <div className="mt-3 grid grid-cols-1 gap-3">
             <div className="rounded-[22px] border border-white/80 bg-white/84 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">关键部门</p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -148,7 +148,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
         </article>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.02fr_0.98fr]">
         <article className="af-glass rounded-[28px] p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -159,12 +159,12 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
               BD 工作台
             </span>
           </div>
-          <div className="mt-4 grid gap-3">
-            <div className="rounded-[22px] border border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(240,249,255,0.86))] p-4">
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            <div className="af-surface-info rounded-[22px] border p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Objective</p>
               <p className="mt-2 text-sm leading-6 text-slate-700">{sanitizeExternalDisplayText(account.account_plan.objective || "继续收敛账户目标与下一步动作。")}</p>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-[22px] border border-white/80 bg-white/84 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Relationship Goal</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">{sanitizeExternalDisplayText(account.account_plan.relationship_goal || "先建立业务 sponsor 与数字化接口人的映射。")}</p>
@@ -239,7 +239,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
         </article>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <article className="af-glass rounded-[28px] p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -254,7 +254,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
             {account.opportunities.map((opportunity) => (
               <article
                 key={`${opportunity.account_slug}-${opportunity.title}`}
-                className="rounded-[24px] border border-emerald-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(236,253,245,0.9))] p-4"
+                className="af-surface-success rounded-[24px] border p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-slate-900">{opportunity.title}</h3>
@@ -268,7 +268,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                   </div>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-700">{sanitizeExternalDisplayText(opportunity.next_best_action)}</p>
-                <div className="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-2">
                   <p>进入窗口：{sanitizeExternalDisplayText(opportunity.entry_window || "待补")}</p>
                   <p>标杆：{sanitizeExternalDisplayText(opportunity.benchmark_case || "待补")}</p>
                 </div>
@@ -347,7 +347,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
         </article>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
         <article className="af-glass rounded-[28px] p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -360,7 +360,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
           </div>
           <div className="mt-4 space-y-3">
             {account.close_plan.map((step, index) => (
-              <article key={`${step.title}-${index}`} className="rounded-[22px] border border-emerald-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(236,253,245,0.88))] p-4">
+              <article key={`${step.title}-${index}`} className="af-surface-success rounded-[22px] border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
                   <div className="flex flex-wrap gap-2 text-[11px]">

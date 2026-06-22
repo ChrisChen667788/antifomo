@@ -147,7 +147,7 @@ export function RecommenderTuner() {
 
       <section className="af-glass rounded-[30px] p-5 md:p-6">
         <p className="af-kicker">{t("tuner.featureScores", "Feature Scores (0-100)")}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <Slider label={t("tuner.topicPreference", "Topic Preference")} value={topic} onChange={setTopic} />
           <Slider label={t("tuner.sourcePreference", "Source Preference")} value={source} onChange={setSource} />
           <Slider label={t("tuner.itemQuality", "Item Quality")} value={quality} onChange={setQuality} />
@@ -178,7 +178,7 @@ export function RecommenderTuner() {
           {t("tuner.currentWeightTotal", "当前总权重")}：{result.totalWeight}（
           {t("tuner.weightTip", "页面会自动归一化后计算")}）
         </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <Slider label="w_topic" value={wTopic} onChange={setWTopic} max={60} />
           <Slider label="w_source" value={wSource} onChange={setWSource} max={40} />
           <Slider label="w_quality" value={wQuality} onChange={setWQuality} max={50} />
@@ -191,7 +191,7 @@ export function RecommenderTuner() {
 
       <section className="af-glass rounded-[30px] p-5 md:p-6">
         <p className="af-kicker">{t("tuner.result", "Result")}</p>
-        <div className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
           <p>
             {t("tuner.rawScore", "Raw Score")}: {result.scoreRaw}
           </p>

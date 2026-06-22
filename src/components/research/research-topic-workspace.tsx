@@ -167,7 +167,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
       />
 
       {latest ? (
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <article className="af-glass rounded-[28px] p-5">
             <p className="af-kicker">{t("research.latestVersion", "最新版本")}</p>
             <h3 className="mt-2 text-xl font-semibold text-slate-900">{latest.title}</h3>

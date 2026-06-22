@@ -473,18 +473,18 @@ export function KnowledgeList({ items }: { items: ApiKnowledgeEntry[] }) {
         {pinMessage ? <p className="mt-2 text-sm text-slate-500">{pinMessage}</p> : null}
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {filteredItems.map((item) => {
           const selected = selectedIds.includes(item.id);
           return (
             <div
               key={item.id}
-              className={`af-glass rounded-[28px] p-5 transition-transform duration-200 hover:-translate-y-0.5 ${
+              className={`af-glass min-w-0 max-w-full rounded-[28px] p-5 transition-transform duration-200 hover:-translate-y-0.5 ${
                 selected ? "ring-2 ring-blue-200" : ""
               }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                <div className="min-w-0 sm:flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {item.is_pinned ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
@@ -512,7 +512,7 @@ export function KnowledgeList({ items }: { items: ApiKnowledgeEntry[] }) {
                     {t("knowledge.createdAt", "创建时间")}：{new Date(item.created_at).toLocaleString()}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                   <button
                     type="button"
                     onClick={() => {

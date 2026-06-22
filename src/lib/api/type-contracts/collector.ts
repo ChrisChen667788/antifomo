@@ -54,6 +54,13 @@ export interface CollectorDaemonStatus {
   coverage_recommendation: string;
   poor_source_count: number;
   watch_source_count: number;
+  favorites_auto_status: "idle" | "disabled" | "unavailable" | "imported" | "error";
+  favorites_auto_available: boolean;
+  favorites_auto_last_at: string | null;
+  favorites_auto_discovered_count: number;
+  favorites_auto_imported_count: number;
+  favorites_auto_deduplicated_count: number;
+  favorites_auto_message: string;
   source_health: Array<{
     source_url: string;
     source_token: string;

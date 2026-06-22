@@ -5,16 +5,23 @@ from dataclasses import dataclass
 
 from app.schemas.research import (
     ResearchAdvisoryArtifactOut,
+    ResearchDeliveryCompiledDocumentOut,
     ResearchMarketIntelligencePackOut,
     ResearchReportDocument,
     ResearchSolutionDeliveryPackOut,
     ResearchSolutionOutlineSectionOut,
 )
 from app.services.content_extractor import normalize_text
+from app.services.delivery.document_compilers import (
+    build_delivery_compiled_documents,
+    compiled_document_to_outline_sections,
+    select_compiled_document,
+)
 
 
 @dataclass(slots=True)
 class SolutionDeliveryOutlines:
+    compiled_documents: list[ResearchDeliveryCompiledDocumentOut]
     feasibility_outline: list[ResearchSolutionOutlineSectionOut]
     project_proposal_outline: list[ResearchSolutionOutlineSectionOut]
     client_ppt_outline: list[ResearchSolutionOutlineSectionOut]
@@ -45,26 +52,41 @@ def build_solution_delivery_outlines(
     scenario: str,
     target_customer: str,
     vertical_scene: str,
+    evidence_policy: str = "",
 ) -> SolutionDeliveryOutlines:
-    feasibility_outline = [
-        _outline("一、项目概况", [f"项目/场景：{scenario}", f"建议客户/业主：{target_customer or '待确认'}", f"垂直场景：{vertical_scene or '待确认'}"]),
-        _outline("二、研究依据与近三年公开情报", [market_pack.source_scope_summary, *[item.project_name for item in market_pack.tender_projects[:4]], *market_pack.intelligence_gaps[:2]]),
-        _outline("三、建设必要性与需求分析", [report.consulting_angle, *report.leadership_focus[:2], *report.budget_signals[:2]]),
-        _outline("四、建设内容与技术方案", [*report.strategic_directions[:3], *[item.name for item in market_pack.product_catalog[:4]]]),
-        _outline("五、投资估算与效益分析", [*report.budget_signals[:3], "结合近三年同类招采金额、产品模块和交付范围形成分档预算。"]),
-        _outline("六、风险、边界与结论", [*report.technical_appendix.limitations[:3], *market_pack.intelligence_gaps[:2], report.commercial_summary.next_action]),
-    ]
-    project_proposal_outline = [
-        _outline("一、项目背景", [report.executive_summary, market_pack.source_scope_summary]),
-        _outline("二、建设目标", [f"围绕 {scenario} 建立可演示、可试点、可扩展的方案闭环。", *report.strategic_directions[:3]]),
-        _outline("三、建设内容", [*report.project_distribution[:3], *[item.name for item in market_pack.product_catalog[:5]]]),
-        _outline("四、实施计划", [*report.tender_timeline[:3], "建议分为调研确认、原型验证、试点上线、规模推广四阶段。"]),
-        _outline("五、投资测算", [*report.budget_signals[:3], "按软件平台、模型/算力、集成实施、运营运维、培训推广拆分。"]),
-        _outline("六、组织协同与风险控制", [*report.target_departments[:4], *report.competition_analysis[:3]]),
-    ]
+    resolved_policy = evidence_policy or (
+        "仅把已命中主题、客户或招采/技术参数的来源写成确定判断；其余内容保留为待核验假设。"
+        if market_pack.source_support_score < 70
+        else "当前来源可支撑初版方案大纲，正式对客前仍需确认预算、客户和交付边界。"
+    )
+    compiled_documents = build_delivery_compiled_documents(
+        report,
+        market_pack=market_pack,
+        scenario=scenario,
+        target_customer=target_customer,
+        vertical_scene=vertical_scene,
+        evidence_policy=resolved_policy,
+    )
+    feasibility_document = select_compiled_document(compiled_documents, "feasibility_study")
+    proposal_document = select_compiled_document(compiled_documents, "project_proposal")
+    feasibility_outline = (
+        compiled_document_to_outline_sections(feasibility_document)
+        if feasibility_document is not None
+        else []
+    )
+    project_proposal_outline = (
+        compiled_document_to_outline_sections(proposal_document)
+        if proposal_document is not None
+        else []
+    )
+    reference_title = (
+        "2. 外部趋势与近三年招采参考"
+        if market_pack.tender_projects
+        else "2. 外部趋势与公开政策/试点参考"
+    )
     client_ppt_outline = [
         _outline("1. 客户当前业务挑战", [report.executive_summary, vertical_scene]),
-        _outline("2. 外部趋势与近三年招采参考", [*[item.project_name for item in market_pack.tender_projects[:4]], *market_pack.tender_keywords[:5]]),
+        _outline(reference_title, [*[item.project_name for item in market_pack.tender_projects[:4]], *market_pack.tender_keywords[:5]]),
         _outline("3. 建设目标与总体架构", [*report.strategic_directions[:3], "业务层、智能中台层、模型/数据层、安全运维层。"]),
         _outline("4. 核心功能与产品清单", [*[item.name for item in market_pack.product_catalog[:6]]]),
         _outline("5. 技术参数与交付边界", [*[param for item in market_pack.technical_parameter_catalog[:3] for param in item.technical_parameters[:2]]]),
@@ -72,6 +94,7 @@ def build_solution_delivery_outlines(
         _outline("7. 下一步共创计划", [report.commercial_summary.next_action, "客户确认范围后输出正式可研、建议书和对客汇报稿。"]),
     ]
     return SolutionDeliveryOutlines(
+        compiled_documents=compiled_documents,
         feasibility_outline=feasibility_outline,
         project_proposal_outline=project_proposal_outline,
         client_ppt_outline=client_ppt_outline,
@@ -118,6 +141,20 @@ def build_advisory_artifacts(
         for item in market_pack.technical_parameter_catalog[:4]
         for param in item.technical_parameters[:2]
     ]
+    has_tender_projects = bool(market_pack.tender_projects)
+    prep_title = "招采与竞标准备" if has_tender_projects else "政策/试点与机会准备"
+    action_title = "投标准备动作" if has_tender_projects else "机会准备动作"
+    memo_title = "投标准备 memo" if has_tender_projects else "机会准备 memo"
+    memo_purpose = (
+        "用于招采前研判、评分点预判、材料责任分工。"
+        if has_tender_projects
+        else "用于政策、试点、申报或预算窗口研判、材料责任分工。"
+    )
+    prep_actions = (
+        ["建立招标文件预审清单。", "准备技术偏离表、商务条款风险表和评分点响应矩阵。"]
+        if has_tender_projects
+        else ["建立政策/试点申报材料预审清单。", "准备范围边界、证据矩阵、预算假设和责任分工表。"]
+    )
     client_sections = [
         _outline("客户场景与触发信号", [f"目标客户：{customer}", f"场景：{scene}", report.executive_summary, *report.budget_signals[:2]]),
         _outline("可交流方案主张", [*report.strategic_directions[:3], *[item.name for item in market_pack.product_catalog[:4]], report.commercial_summary.next_action]),
@@ -126,9 +163,9 @@ def build_advisory_artifacts(
     ]
     bidding_sections = [
         _outline("机会判断", [f"客户/业主：{customer}", f"场景：{scenario}", report.consulting_angle, *report.tender_timeline[:3]]),
-        _outline("招采与竞标准备", [*[item.project_name for item in market_pack.tender_projects[:4]], *report.competition_analysis[:3], *market_pack.tender_keywords[:5]]),
-        _outline("技术与资质关注", [*top_requirements, *report.technical_appendix.limitations[:2], "补齐投标资质、业绩案例、产品参数和安全合规说明。"]),
-        _outline("投标准备动作", ["建立招标文件预审清单。", "准备技术偏离表、商务条款风险表和评分点响应矩阵。", report.commercial_summary.next_action]),
+        _outline(prep_title, [*[item.project_name for item in market_pack.tender_projects[:4]], *report.competition_analysis[:3], *market_pack.tender_keywords[:5]]),
+        _outline("技术与资质关注", [*top_requirements, *report.technical_appendix.limitations[:2], "补齐资质、业绩案例、产品参数和安全合规说明。"]),
+        _outline(action_title, [*prep_actions, report.commercial_summary.next_action]),
     ]
     execution_sections = [
         _outline("交付拆解", [f"一期建议聚焦：{scene}", *report.project_distribution[:3], *report.target_departments[:4]]),
@@ -146,9 +183,9 @@ def build_advisory_artifacts(
         ),
         (
             "bidding_prep_memo",
-            f"{customer} {scenario} 投标准备 memo",
+            f"{customer} {scenario} {memo_title}",
             "售前、投标、解决方案和商务团队",
-            "用于招采前研判、评分点预判、材料责任分工。",
+            memo_purpose,
             bidding_sections,
         ),
         (
@@ -221,6 +258,40 @@ def build_solution_delivery_markdown(
         *[f"- {item}" for item in pack.clarification_questions],
         "",
     ]
+    if pack.compiled_documents:
+        lines.extend(["## 四类专用文档编译器"])
+        for document in pack.compiled_documents:
+            lines.extend(
+                [
+                    f"### {document.title}",
+                    f"- 类型: {document.document_kind}",
+                    f"- 编译器: {document.framework}",
+                    f"- 受众: {document.audience or '待确认'}",
+                    f"- 用途: {document.purpose or '待确认'}",
+                    f"- 章节数: {len(document.sections)}",
+                    f"- 质量门槛: {'；'.join(document.quality_gates[:2]) if document.quality_gates else '待补'}",
+                ]
+            )
+        lines.append("")
+    quantitative_model = pack.quantitative_decision_model
+    if (
+        quantitative_model.alternative_options
+        or quantitative_model.tender_score_response_matrix
+        or quantitative_model.financial_scenarios
+    ):
+        if quantitative_model.export_markdown:
+            lines.extend(["", quantitative_model.export_markdown, ""])
+        else:
+            lines.extend(
+                [
+                    "",
+                    "## 量化决策模型",
+                    f"- 状态: {quantitative_model.status}",
+                    f"- 推荐方案: {quantitative_model.recommended_option_id or '待确认'}",
+                    f"- 摘要: {quantitative_model.summary or '待补'}",
+                    "",
+                ]
+            )
     lines.extend(_outline_markdown("可行性研究报告大纲", pack.feasibility_outline))
     lines.append("")
     lines.extend(_outline_markdown("项目建议书大纲", pack.project_proposal_outline))
@@ -342,6 +413,63 @@ def build_solution_delivery_markdown(
                 f"- 自修订: {profile.self_review.before_score} -> {profile.self_review.after_score}；"
                 f"{'；'.join(profile.self_review.actions[:3])}"
             )
+    ledger = pack.evidence_ledger
+    lines.extend(
+        [
+            "",
+            "## 主张—证据账本与一致性检查",
+            f"- 账本状态: {ledger.status}",
+            f"- 稳定主张: {ledger.claim_count} 条",
+            f"- 证据锚点: {ledger.evidence_count} 个",
+            f"- 总体主张覆盖: {ledger.claim_coverage_percent}%",
+            f"- 高置信主张覆盖: {ledger.high_confidence_coverage_percent}%",
+            f"- 实体一致性: {ledger.entity_consistency_score}/100",
+            f"- 数字一致性: {ledger.numeric_consistency_score}/100",
+        ]
+    )
+    for claim in ledger.claims[:10]:
+        relation_ids = [
+            relation.evidence_id
+            for relation in claim.evidence_relations
+            if relation.relation_type in {"supports", "conflicts"}
+        ]
+        lines.append(
+            f"- {claim.claim_id} | {claim.verification_status} | {claim.text}"
+            + (f" | {'、'.join(relation_ids[:3])}" if relation_ids else "")
+        )
+    if ledger.consistency_issues:
+        lines.extend(["", "### 一致性问题"])
+        lines.extend(
+            [
+                f"- {issue.issue_id} | {issue.severity} | {issue.summary} | {'；'.join(issue.details[:3])}"
+                for issue in ledger.consistency_issues[:8]
+            ]
+        )
+    challenge = pack.semantic_challenge or pack.solution_quality_profile.semantic_challenge
+    lines.extend(
+        [
+            "",
+            "## 语义挑战者审查记录",
+            f"- 挑战者状态: {challenge.status}",
+            f"- 挑战者评分: {challenge.overall_score}/100",
+            f"- 问题总数: {challenge.issue_count}",
+            f"- 高严重度问题: {challenge.high_severity_count}",
+            f"- 范围漂移: {challenge.scope_drift_count}",
+            f"- 跨章节冲突: {challenge.cross_section_conflict_count}",
+            f"- 黄金样本: {challenge.golden_sample_title or '未匹配'}",
+            f"- 黄金样本对齐: {challenge.golden_sample_alignment_score}/100",
+        ]
+    )
+    if challenge.issues:
+        lines.extend(["", "### 挑战者问题"])
+        lines.extend(
+            [
+                f"- {issue.issue_id} | {issue.severity} | {issue.issue_type} | {issue.summary}"
+                for issue in challenge.issues[:8]
+            ]
+        )
+    if challenge.recommended_actions:
+        lines.extend(["", "### 挑战者修订动作", *[f"- {action}" for action in challenge.recommended_actions[:6]]])
     if market_pack is not None:
         lines.extend(["", "## 近三年公开情报附录", market_pack.export_markdown])
     return "\n".join(lines).strip()

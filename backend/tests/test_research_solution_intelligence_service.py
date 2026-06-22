@@ -98,6 +98,13 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert pack.target_customer == "某文旅集团"
     assert pack.feasibility_outline
     assert pack.project_proposal_outline
+    assert {document.document_kind for document in pack.compiled_documents} == {
+        "solution_design",
+        "consulting_report",
+        "project_proposal",
+        "feasibility_study",
+    }
+    assert all(document.sections for document in pack.compiled_documents)
     assert pack.client_ppt_outline
     assert {item.artifact_type for item in pack.advisory_artifacts} == {
         "client_brief",
@@ -109,10 +116,20 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert pack.source_support_score > 0
     assert pack.grounding_checks
     assert any("目标客户" in item for item in pack.clarification_questions)
+    assert pack.quantitative_decision_model.alternative_options
+    assert pack.quantitative_decision_model.tender_score_response_matrix
+    assert pack.quantitative_decision_model.financial_scenarios
     assert "Advisory-grade 交付产物" in pack.export_markdown
     assert "对客汇报 PPT 大纲" in pack.export_markdown
+    assert "量化决策模型" in pack.export_markdown
     assert pack.solution_quality_profile.overall_score > 0
     assert pack.project_proposal_quality_profile.overall_score > 0
+    assert pack.evidence_ledger.claim_count > 0
+    assert pack.evidence_ledger.evidence_count > 0
+    assert all(claim.claim_id.startswith("clm_") for claim in pack.evidence_ledger.claims)
+    assert all(item.evidence_id.startswith("ev_") for item in pack.evidence_ledger.evidence)
+    assert pack.semantic_challenge.issue_count >= 0
+    assert pack.semantic_challenge.golden_sample_alignment_score >= 0
     assert pack.architecture_readiness.overall_score > 0
     assert pack.architecture_readiness.blueprint_sections
     assert any(section.title == "模型、数据与集成层" for section in pack.architecture_readiness.blueprint_sections)
@@ -142,6 +159,9 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     )
     assert any("安全合规" in section.title for section in pack.project_proposal_outline)
     assert "交付质量自审" in pack.export_markdown
+    assert "主张—证据账本与一致性检查" in pack.export_markdown
+    assert "语义挑战者审查记录" in pack.export_markdown
+    assert "四类专用文档编译器" in pack.export_markdown
     assert "解决方案架构就绪度" in pack.export_markdown
     assert "架构蓝图" in pack.export_markdown
     assert "解决方案架构师工作台" in pack.export_markdown

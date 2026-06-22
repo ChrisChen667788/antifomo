@@ -73,9 +73,15 @@ def test_solution_materials_builds_outlines_and_advisory_artifacts_without_orche
         evidence_policy="仅把已命中公开来源的内容写成确定判断。",
     )
 
+    assert {document.document_kind for document in outlines.compiled_documents} == {
+        "solution_design",
+        "consulting_report",
+        "project_proposal",
+        "feasibility_study",
+    }
     assert [section.title for section in outlines.feasibility_outline][:2] == [
-        "一、项目概况",
-        "二、研究依据与近三年公开情报",
+        "一、项目概况、研究依据与范围边界",
+        "二、现状评价、需求预测与建设必要性",
     ]
     assert any("政务AI解决方案" in bullet for section in outlines.project_proposal_outline for bullet in section.bullets)
     assert any(section.title == "7. 下一步共创计划" for section in outlines.client_ppt_outline)
@@ -107,3 +113,7 @@ def test_solution_delivery_markdown_serializes_complete_pack_sections() -> None:
     assert "解决方案架构就绪度" in markdown
     assert "解决方案架构师工作台" in markdown
     assert "交付质量自审" in markdown
+    assert "语义挑战者审查记录" in markdown
+    assert "四类专用文档编译器" in markdown
+    assert "量化决策模型" in markdown
+    assert "可研财务三情景" in markdown

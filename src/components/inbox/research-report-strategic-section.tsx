@@ -119,7 +119,7 @@ export function ResearchReportStrategicSection({
   return (
     <>
       {hasStrategicPanels ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           {report.five_year_outlook.length ? (
             <article className="rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-info)]">
@@ -154,7 +154,7 @@ export function ResearchReportStrategicSection({
       ) : null}
 
       {rankedPanels.length ? (
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
           {rankedPanels.map((panel) => (
             <article
               key={panel.title}
@@ -177,7 +177,7 @@ export function ResearchReportStrategicSection({
                     </div>
                     <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{entity.reasoning}</p>
                     {entity.score_breakdown?.length ? (
-                      <div className="mt-3 grid gap-2">
+                      <div className="mt-3 grid grid-cols-1 gap-2">
                         {entity.score_breakdown.slice(0, 3).map((factor) => (
                           <div
                             key={`${entity.name}-${factor.label}`}
@@ -237,7 +237,7 @@ export function ResearchReportStrategicSection({
       ) : null}
 
       {(report.client_peer_moves.length || report.winner_peer_moves.length) ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           {report.client_peer_moves.length ? (
             <article className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">
@@ -272,7 +272,7 @@ export function ResearchReportStrategicSection({
       ) : null}
 
       {highlightPanels.length ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {highlightPanels.map((panel) => (
             <article
               key={panel.title}

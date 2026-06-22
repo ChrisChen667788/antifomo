@@ -32,7 +32,7 @@ export function KnowledgeResearchReportInsightsSection({
   return (
     <>
       {(report.five_year_outlook.length || report.competition_analysis.length) ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {report.five_year_outlook.length ? (
             <article className="rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">
@@ -67,7 +67,7 @@ export function KnowledgeResearchReportInsightsSection({
       ) : null}
 
       {(report.target_departments?.length || report.public_contact_channels?.length || report.account_team_signals?.length) ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {report.target_departments?.length ? (
             <article className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">
@@ -117,7 +117,7 @@ export function KnowledgeResearchReportInsightsSection({
       ) : null}
 
       {(report.client_peer_moves.length || report.winner_peer_moves.length) ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {report.client_peer_moves.length ? (
             <article className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">
@@ -152,7 +152,7 @@ export function KnowledgeResearchReportInsightsSection({
       ) : null}
 
       {rankedPanels.length ? (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {rankedPanels.map((panel) => (
             <article
               key={panel.title}
@@ -175,7 +175,7 @@ export function KnowledgeResearchReportInsightsSection({
                     </div>
                     <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">{entity.reasoning}</p>
                     {entity.score_breakdown?.length ? (
-                      <div className="mt-3 grid gap-2">
+                      <div className="mt-3 grid grid-cols-1 gap-2">
                         {entity.score_breakdown.slice(0, 3).map((factor) => (
                           <div
                             key={`${entity.name}-${factor.label}`}
@@ -241,7 +241,7 @@ export function KnowledgeResearchReportInsightsSection({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{copy.insightsTitle}</p>
             <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">{copy.insightsDesc}</p>
           </div>
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {report.sections.map((section) => {
               const tone = confidenceToneMeta(section.confidence_tone);
               return (

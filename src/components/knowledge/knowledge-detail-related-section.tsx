@@ -28,7 +28,7 @@ export function KnowledgeDetailRelatedSection({
               </p>
             </div>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3">
             {relatedEntries.map((related) => (
               <Link
                 key={related.id}

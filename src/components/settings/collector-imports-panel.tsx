@@ -104,7 +104,7 @@ export function CollectorImportsPanel() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-[1.6fr_1fr_auto]">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1.6fr_1fr_auto]">
         <input
           type="url"
           value={feedUrl}

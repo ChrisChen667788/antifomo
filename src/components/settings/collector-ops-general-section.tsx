@@ -87,7 +87,7 @@ export function CollectorOpsGeneralSection({
 
       <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-4">
         <p className="text-sm font-semibold text-[var(--af-text-primary)]">{text("statusTitle")}</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard label={text("total")} value={status?.last_24h_total ?? 0} />
           <StatCard label={text("ready")} value={status?.last_24h_ready ?? 0} />
           <StatCard label={text("pending")} value={status?.last_24h_processing ?? 0} />

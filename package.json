@@ -1,6 +1,6 @@
 {
   "name": "anti-fomo-demo",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3010",
@@ -24,6 +24,8 @@
     "demo:focus-e2e": "node scripts/focus_pause_resume_e2e.mjs",
     "repo:screenshots": "bash scripts/capture_release_screenshots.sh",
     "repo:screenshots:capture": "node scripts/capture_repo_screenshots.mjs",
+    "office:roundtrip": "backend/.venv311/bin/python scripts/validate_office_roundtrip.py",
+    "office:visual-baseline": "backend/.venv311/bin/python scripts/generate_formal_artifact_visual_baseline.py",
     "demo:wechat-test": "backend/.venv311/bin/python scripts/wechat_batch_test.py --file .tmp/wechat_urls.txt --min-count 30",
     "demo:simulate": "backend/.venv311/bin/python scripts/simulate_mvp_flow.py --file .tmp/wechat_urls_17.txt --report .tmp/mvp_simulation_report.md",
     "demo:plugin-validate": "backend/.venv311/bin/python scripts/plugin_batch_validate.py",

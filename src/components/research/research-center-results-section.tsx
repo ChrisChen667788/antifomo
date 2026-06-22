@@ -79,7 +79,7 @@ export function ResearchCenterResultsSection({
           ) : null}
 
           {!loading && !error ? (
-            <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
               {visibleItems.map((entry) => {
                 const isReport = entry.source_domain === "research.report";
                 const actionType = isReport ? null : getActionType(entry);
@@ -118,7 +118,7 @@ export function ResearchCenterResultsSection({
 
                     {isReport && diagnosticsMeta ? (
                       <div className="mt-4 space-y-3">
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">可信度</p>
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -220,11 +220,11 @@ export function ResearchCenterResultsSection({
                     ) : null}
 
                     {isReport && actionCards.length ? (
-                      <div className="mt-4 grid gap-3">
+                      <div className="mt-4 grid grid-cols-1 gap-3">
                         {actionCards.map((card) => (
                           <div key={`${entry.id}-${card.title}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                             <p className="break-words text-sm font-semibold leading-6 text-[var(--af-text-primary)]">{card.title}</p>
-                            <div className="mt-2 grid gap-2 break-words text-xs text-[var(--af-text-tertiary)]">
+                            <div className="mt-2 grid grid-cols-1 gap-2 break-words text-xs text-[var(--af-text-tertiary)]">
                               {card.target_persona ? (
                                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                                   <span className="font-medium text-[var(--af-text-secondary)]">{t("research.actionTarget", "优先对象")}：</span>
@@ -245,7 +245,7 @@ export function ResearchCenterResultsSection({
                               ) : null}
                             </div>
                             {parseActionPhases(card.recommended_steps).length ? (
-                              <div className="mt-3 grid gap-2">
+                              <div className="mt-3 grid grid-cols-1 gap-2">
                                 {parseActionPhases(card.recommended_steps).map((phase) => (
                                   <div key={`${card.title}-${phase.label}-${phase.content}`} className="min-w-0 overflow-hidden rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -301,7 +301,7 @@ export function ResearchCenterResultsSection({
                       ) : null}
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                         <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                           {t("research.centerCardCollection", "分组")}
@@ -327,7 +327,7 @@ export function ResearchCenterResultsSection({
                     </div>
 
                     {isReport && rankedPreview.length ? (
-                      <div className="mt-4 grid gap-3">
+                      <div className="mt-4 grid grid-cols-1 gap-3">
                         {rankedPreview.map((group) => (
                           <div key={`${entry.id}-${group.key}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{group.title}</p>

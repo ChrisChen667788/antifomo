@@ -1,15 +1,15 @@
 # Current Version, History, and Refactor Roadmap
 
-Updated: 2026-06-14
+Updated: 2026-06-21
 
-This document is the completion record and operating baseline for the modular architecture, measured research workflow, and day/night design-system work through `1.7.2`.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, day/night design-system work, and the `1.8.0` professional-report quality line through `2026-06-22`.
 
 ## Current State
 
 Current release metadata:
 
 - Previous major product baseline: `1.0.0+20260520`.
-- Current release: `1.7.2+20260615`, applying 78 expert scope corrections to the locked research evaluation set while retaining LangGraph parity, independent review, and live-budget controls.
+- Current release: `1.8.0+20260622`, completing the professional-report quality line through P2.7 while retaining LangGraph parity, independent review, live-budget controls, and the `1.7.2` expert scope corrections.
 - Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
@@ -37,14 +37,15 @@ Current completion status:
 - The current `research_service.py` wrapper-retirement line removed zero-call legacy private helpers, moved tender-detail/source-query/source-document/section-delivery coverage to owned research submodules, and reduced the facade from 8,528 to 3,739 lines.
 - Tracked miniapp config and documentation no longer publish the real WeChat Mini Program AppID; `miniapp/project.private.config.json` is ignored local-only config, and `npm run security:scan` is available as a pre-sync secret check.
 - Solution delivery packs include architecture readiness, solution architect workbench output, and architecture-review artifacts.
-- Release screenshots contain 19 accepted production captures: 15 light-mode routes plus 4 explicit dark-mode baselines, with theme-state and runtime-overlay assertions.
+- Release screenshots contain 30 accepted production captures: 15 light-mode routes plus 15 explicit dark-mode baselines, with theme-state and runtime-overlay assertions.
+- The active `1.8.0` professional-report line has completed P0.1/P0.2/P0.3/P1.1/P1.2/P1.3/P2.1/P2.2/P2.3/P2.4/P2.5/P2.6/P2.7 locally; formal feasibility/proposal exports now support native DOCX payloads, controlled PDF diagnostics, editable PPTX delivery output, Chinese proofreading checks, visual-regression fingerprints, local Office capability detection, non-GUI round-trip validation, customer brand templates, real-data chart asset ledgers, replaceable image asset slots, controlled headless-conversion strategy, DOCX complex style parts, PPTX native editable chart parts, embedded workbook data, explicit real-open validation gates, native DOCX/PPTX image media parts, PDF vector brand framing, native PDF image objects, configurable LibreOffice detection, and real-business artifact baseline manifests.
 
 Latest verified checks from the current work line:
 
-- `npm run check` passed: ESLint, 16 frontend tests, production build, and 298 backend tests.
+- `npm run check` passed: ESLint, 16 frontend tests, production build, and 345 backend tests.
 - `npm run security:scan` and `npm run security:scan:history` passed for the current tree and all local refs.
-- The research evaluation manifest validates all 100 draft cases; it remains intentionally ineligible for release gating until curation and locking are complete.
-- The screenshot manifest validates 19 accepted files across light and dark themes.
+- The research evaluation dataset is locked at `1.2.0`; all 100 cases pass the zero-cost deterministic/LangGraph parity gate. Live-provider evaluation remains blocked until the scope-corrected cases receive independent post-change approval and an explicit budget is approved.
+- The screenshot manifest validates 30 accepted files across light and dark themes; `npm run repo:screenshots` passed after P2.2.
 - `git diff --check` passed.
 
 ## Historical Version Lines
@@ -315,9 +316,240 @@ Completed in `1.7.2+20260615`:
 - Upgraded the evaluation dataset to `1.2.0`, removed all empty/national/global region scopes, and locked the result with a new digest.
 - Kept the independent post-change approval gate separate; applying feedback is not represented as reviewer approval of the replacement subjects.
 
+### `1.8.0`: Professional Report Compiler and Semantic Quality Gate
+
+Status: completed locally through P2.7; release candidate `1.8.0+20260622`.
+
+This version takes priority over the previous generic "Later" delivery-export
+enhancements because historical report review found that structural completeness
+could hide semantic noise and weak evidence traceability.
+
+Implementation order:
+
+1. Separate structural scoring from semantic scoring.
+2. Block pass status when report content contains source-page/navigation noise.
+3. Require concrete claim-to-evidence anchors instead of awarding credit for an
+   empty "evidence matrix" heading.
+4. Add a stable claim/evidence ledger and semantic challenger regression set.
+5. Split solution design, consulting report, project proposal, and feasibility
+   study into independent document compilers.
+6. Add alternatives matrices, tender-score response matrices, and feasibility
+   finance/sensitivity models.
+7. Validate the pipeline on source-backed real business golden themes before
+   formal delivery engineering.
+8. Add controlled DOCX/PPTX rendering and visual regression after semantic
+   quality is stable.
+
+First local implementation:
+
+- Added deterministic content-hygiene scoring for navigation, footer, login,
+  source-dump, and template contamination.
+- Added claim/evidence traceability scoring for amounts, percentages, duration,
+  benefit, and recommendation claims.
+- Added semantic hard caps: contaminated content remains fail; a structure-only
+  document without concrete URL/document/project/source/chunk anchors cannot pass.
+- Added regression tests for structure-only false positives, contaminated
+  delivery content, and fully traceable strong claims.
+- Completed the P0.2 claim/evidence ledger with stable `clm_*`, `ev_*`, and
+  `issue_*` identifiers, typed evidence relations, high-confidence coverage,
+  entity-role checks, and normalized amount/duration/percentage consistency.
+- Wired the ledger into solution packs, formal feasibility/proposal documents,
+  Markdown export, quality scoring, API contracts, and the delivery summary UI.
+- Completed the first P0.3 semantic challenger:
+  - stable `sch_*` issue IDs for scope drift, cross-section entity/numeric
+    conflict, source contamination, unsupported high-confidence claims,
+    template language, and golden-sample alignment gaps
+  - high-severity semantic findings cap delivery quality in the fail range
+  - versioned, de-identified real-project-style golden samples for government
+    AI service-center, tourism AIGC guide, and smart-manufacturing
+    quality-platform scenarios
+  - challenger output is visible in solution packs, formal document appendices,
+    Markdown export, API contracts, and the delivery summary UI
+- Completed the first P1.1 document compiler split:
+  - added separate `solution_design_compiler_v1`,
+    `consulting_report_compiler_v1`, `project_proposal_compiler_v1`, and
+    `feasibility_study_compiler_v1`
+  - solution design now covers business goals, use cases, capability
+    architecture, data/model/interface integration, NFR, security, delivery,
+    acceptance, evidence, and risk
+  - consulting report now covers SCQA, problem tree, hypotheses, insights,
+    counterarguments, strategic options, trade-offs, recommendation, and
+    30/60/90-day actions
+  - project proposal and feasibility study are adapted from their own compiler
+    outputs rather than from a shared generic section builder
+  - solution packs, formal Word/PDF exports, Markdown, API contracts, and the
+    delivery summary UI expose `compiled_documents`
+- Completed the first P1.2 quantitative decision model:
+  - added `delivery_quantitative_decision_model_v1` with weighted alternatives,
+    tender scoring response matrix, three-scenario finance, and sensitivity
+    variables
+  - alternatives compare status quo, phased pilot, and full build with weighted
+    strategic/evidence/complexity/investment/risk/value/scalability criteria
+  - feasibility finance computes CAPEX, OPEX, 3-year TCO, benefits, NPV, IRR,
+    ROI, and payback period when amount evidence exists
+  - missing finance inputs remain explicit assumptions instead of fabricated
+    numbers
+  - solution packs, formal Word/PDF appendices, Markdown, API contracts, and the
+    delivery summary UI expose the quantitative model
+- Completed the first real-business golden sample gate before P2:
+  - added `anti-fomo-real-business-delivery-golden-v1` with three source-backed
+    2026 topics: Shanghai medical AI, Shanghai culture-tourism AI, and Yangtze
+    River Delta government AI opportunities
+  - registered `shanghai-medical-ai-2026`,
+    `shanghai-culture-tourism-ai-2026`, and
+    `yangtze-delta-gov-ai-2026` as semantic-challenger golden samples
+  - policy and pilot sources no longer create fake tender projects; delivery
+    wording falls back to policy/pilot opportunity preparation when no real
+    tender evidence exists
+  - missing public project amounts keep the P1.2 finance model in
+    `assumption_required` instead of fabricating CAPEX/NPV/IRR/ROI
+  - targeted real-business validation passed locally `14/14`; full local
+    `npm run check` passed with backend `335/335`
+- Started P2 formal delivery engineering with a controlled rendering slice:
+  - feasibility-study and project-proposal Word-compatible `.doc` exports now
+    include A4 page CSS, metadata tables, table of contents, controlled section
+    tables, delivery layout-control checklist, Word header/footer hooks, and
+    PDF/Word round-trip checklist
+  - formal sections are renumbered through a stable numbering pass: main
+    sections use Chinese numerals and supplemental materials use Appendix A/B/C
+  - legacy section aliases and `data-plain` labels are preserved for text
+    search, existing export consumers, and later round-trip validators
+  - the simple PDF renderer accepts optional page headers/footers; formal PDF
+    previews now carry `Anti-FOMO 正式交付` headers and `P2 controlled export`
+    footers
+  - targeted formal-rendering validation passed locally `14/14`; full local
+    `npm run check` passed with backend `337/337`
+- Continued P2.2 formal delivery engineering:
+  - feasibility-study and project-proposal Word tasks now return native `.docx`
+    OpenXML artifacts through `content_base64`, while retaining HTML preview
+    content for the existing UI contract
+  - controlled PDF exports now share the same formal render payload and expose
+    round-trip, Chinese proofreading, and visual-regression diagnostics
+  - solution-delivery exports now include an editable `.pptx` task, WorkBuddy/API
+    task typing, and an Inbox button for customer-facing decks
+  - deterministic Chinese proofreading flags punctuation, unit, spacing,
+    bracket, overclaim, and unresolved validation issues before external send
+  - screenshot regression was refreshed through `npm run repo:screenshots`;
+    targeted P2.2 validation passed `18/18`; full local `npm run check` passed
+    with backend `341/341`
+- Continued P2.3 formal delivery engineering:
+  - DOCX exports now include a P2.3 professional template layer: executive
+    dashboard, Word-updatable TOC field, `word/settings.xml`, media/layout
+    placeholders, captions, stronger styles, and external-send layout checks
+  - PPTX exports now include a theme, professional color palette, key-takeaway
+    card, evidence card, editable chart placeholder, image placeholder, and
+    editable body text boxes
+  - `office_roundtrip.py` and `npm run office:roundtrip` validate DOCX/PPTX/PDF
+    artifacts without launching GUI apps; `--open-gui` is explicit for manual
+    Word/PowerPoint/Preview validation
+  - local capability detection found Microsoft Word and PowerPoint apps plus
+    macOS QuickLook, but no LibreOffice CLI; generated sample artifacts under
+    `/tmp/af-p23-office` passed structure validation and PDF QuickLook rendering
+  - targeted P2.3 validation passed `20/20`; full local `npm run check` passed
+    with backend `343/343`
+- Continued P2.4 formal delivery engineering:
+  - DOCX/PPTX/PDF/HTML formal exports now accept structured
+    `brand_template`, `chart_assets`, `image_assets`, and `renderer_strategy`
+    through the existing `delivery_supplement` API
+  - DOCX exports include customer brand rows, brand colors, logo text,
+    confidentiality label, `P2.4 可替换资产清单`, real-data chart rows,
+    replaceable image rows, source/unit/period/replacement-slot metadata, and
+    branded VML placeholder boxes
+  - PPTX exports include a customer-named theme, brand colors, editable brand
+    label, chart/image asset cards, and keep the P2.3 editable-template marker
+    for compatibility
+  - diagnostics now expose `brand_template`, `replaceable_assets`, and
+    `headless_conversion_strategy`; the chosen strategy is controlled in-repo
+    preview plus OpenXML/PDF structure validation, with LibreOffice headless or
+    GUI Office opening left as an explicit/manual external-send gate
+  - targeted affected validation passed `25/25`; full `npm run check` passed
+    with backend `345/345`
+- Continued P2.5 formal delivery engineering:
+  - Office roundtrip capability detection now exposes LibreOffice headless
+    conversion availability, explicit Word/PowerPoint/Preview manual-open gates,
+    native chart parts, embedded workbook parts, complex template parts, and PDF
+    professional-layout checks
+  - `office:roundtrip` supports `--libreoffice-convert` and `--manifest-out`;
+    GUI open remains explicit-only through `--open-gui`
+  - DOCX exports include `word/theme/theme1.xml`, `word/numbering.xml`,
+    theme/numbering relationships, multi-level numbering, and custom complex
+    styles (`AFBrandBand`, `AFChecklist`, `AFSmallNote`)
+  - PPTX exports include `ppt/charts/chart1.xml`,
+    `ppt/charts/_rels/chart1.xml.rels`, `ppt/embeddings/chart-data.xlsx`, and
+    slide `rIdChart1` references for a native editable chart object
+  - targeted affected validation passed `25/25`; sample artifacts under
+    `/tmp/af-p25-office` passed non-GUI DOCX/PPTX/PDF structure validation;
+    LibreOffice conversion skipped because no local LibreOffice CLI exists; PDF
+    QuickLook thumbnail validation passed
+  - explicit GUI launch gate passed and wrote
+    `/tmp/af-p25-office/gui-open-manifest.json`: Microsoft Word, Microsoft
+    PowerPoint, and Preview returned `status=launched`; final visual polish still
+    requires human inspection inside the opened apps
+- Continued P2.6 formal delivery engineering:
+  - DOCX exports now include `word/media/image1.png`, an `rIdImage1` image
+    relationship, and a visible DrawingML `原生图片嵌入` marker
+  - PPTX exports now include `ppt/media/image1.png`, slide `rIdImage1`, and a
+    native picture shape marker `原生图片嵌入`
+  - `office_roundtrip.py` now reports `native_image_parts`, `native_images`, PDF
+    `has_vector_layout`, and `vector_brand_frame_present`
+  - controlled PDF preview uses `p2.6-brand-media-grid`, with vector header band,
+    page frame, brand side bars, and guide rails
+  - added `scripts/generate_formal_artifact_visual_baseline.py` and
+    `npm run office:visual-baseline`; manifests include raw `sha256`, stable
+    `normalized_sha256`, preview hash, visual fingerprint, validation, and
+    optional PDF QuickLook thumbnail hashes
+  - generated all 3 real-business sample baselines under
+    `/tmp/af-p26-real-business-baseline`: 9 artifacts, 0 validation failures, 0
+    PDF QuickLook failures
+  - independent roundtrip over those 9 artifacts passed; DOCX/PPTX expose
+    native images, PPTX exposes native editable charts, PDF exposes vector
+    layout; LibreOffice conversion still skips because no local CLI is installed
+  - targeted affected validation passed `28/28`
+- Continued P2.7 formal delivery engineering:
+  - controlled PDF preview now embeds a native PDF Image XObject `/Im1` into the
+    media slot, so PDF validation checks both vector framing and native image
+    presence
+  - PDF diagnostics now expose
+    `professional_pdf_layout_version=p2.7-vector-brand-media-image-preview`,
+    `native_pdf_image_embedding=p2.7-pdf-image-xobject`, `has_native_image`, and
+    `native_pdf_image_present`
+  - LibreOffice detection now honors `ANTI_FOMO_LIBREOFFICE_CLI`,
+    `LIBREOFFICE_CLI`, `SOFFICE_PATH`, the macOS app bundle path, and common
+    Homebrew symlink paths before falling back to PATH
+  - attempted Homebrew LibreOffice install, but the local Homebrew/GitHub network
+    path failed during API download / `homebrew-core` clone; headless conversion
+    remains environment-blocked until `soffice` exists
+  - generated P2.7 real-business baselines under
+    `/tmp/af-p27-real-business-baseline`: 9 artifacts, 0 validation failures, 0
+    PDF QuickLook failures, PDFs expose native images
+  - representative GUI open gate launched Word, PowerPoint, and Preview for the
+    Shanghai medical sample; subjective visual polish still requires human
+    window inspection
+  - targeted formal-rendering validation passed `10/10`
+
+Release targets:
+
+- Reduce the historical low-quality flag rate from 30.3% to at most 10%.
+- Eliminate invalid report payloads.
+- Reach at least 90% evidence coverage for high-confidence claims.
+- Prevent known noisy reports from receiving a pass/high-quality score.
+- Require three-scenario feasibility analysis when financial inputs are sufficient.
+- Make every tender scoring criterion traceable to a section, evidence item, and owner.
+- Prevent policy-only real-business themes from being represented as fake
+  procurement projects or pseudo-financial estimates.
+- Preserve formal-document section numbering, tables, headers/footers, appendices,
+  and evidence anchors across Word-compatible and PDF-preview exports.
+
+Detailed scope and acceptance:
+
+- `docs/professional-report-quality-v1.8.0.md`
+- `docs/real-business-golden-samples-v1.8.0.md`
+
 ### Later
 
-- Add richer architecture-export formats: ADR table export, dependency workshop checklist, stakeholder brief, and customer technical workshop agenda.
+- Resume richer architecture-export formats after the `1.8.0` semantic quality
+  and document-compiler gates are stable: ADR table export, dependency workshop
+  checklist, stakeholder brief, and customer technical workshop agenda.
 - Add plugin/extensibility boundaries after core modules are stable.
 - Extend existing architecture checks when a new package boundary is introduced; do not add speculative checks without an enforceable dependency rule.
 

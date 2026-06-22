@@ -29,7 +29,7 @@ export function KnowledgeResearchReportSourceEvidenceSection({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{copy.sourceTitle}</p>
         <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">按来源类型查看原文入口，便于快速复核关键结论和动作依据。</p>
       </div>
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {groupedResearchSources.map((group) => (
           <article key={group.key} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{group.title}</p>

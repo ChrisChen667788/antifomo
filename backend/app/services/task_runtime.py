@@ -23,11 +23,16 @@ from app.services.session_service import (
 )
 from app.services.work_tasks.context import sanitize_task_context_payload
 from app.services.work_tasks.formal_documents import (
+    build_feasibility_study_docx_document,
     build_feasibility_study_pdf_document,
+    build_feasibility_study_pdf_document_with_diagnostics,
     build_feasibility_study_word_document,
+    build_project_proposal_docx_document,
     build_project_proposal_pdf_document,
+    build_project_proposal_pdf_document_with_diagnostics,
     build_project_proposal_word_document,
     build_research_market_intelligence_markdown,
+    build_research_solution_delivery_pptx_document,
     build_research_solution_delivery_markdown,
 )
 from app.services.work_task_service import (
@@ -485,6 +490,7 @@ def create_and_execute_task(
             "export_project_proposal_pdf",
             "export_research_market_intelligence_markdown",
             "export_research_solution_delivery_markdown",
+            "export_research_solution_delivery_pptx",
         }:
             if not isinstance(input_payload, dict) or not isinstance(input_payload.get("report"), dict):
                 raise ValueError(f"input_payload.report is required for {task_type}")
@@ -539,7 +545,7 @@ def create_and_execute_task(
                     },
                 )
             elif task_type == "export_feasibility_study_word":
-                filename, content, mime_type = build_feasibility_study_word_document(
+                filename, content, content_base64, mime_type, diagnostics = build_feasibility_study_docx_document(
                     input_payload["report"],
                     output_language=resolved_language,
                     delivery_supplement=delivery_supplement,
@@ -551,12 +557,14 @@ def create_and_execute_task(
                         "format": "word",
                         "filename": filename,
                         "mime_type": mime_type,
+                        "content_base64": content_base64,
                         "output_language": resolved_language,
                         "document_kind": "feasibility_study",
+                        "formal_rendering": diagnostics,
                     },
                 )
             elif task_type == "export_feasibility_study_pdf":
-                filename, preview_content, content_base64, mime_type = build_feasibility_study_pdf_document(
+                filename, preview_content, content_base64, mime_type, diagnostics = build_feasibility_study_pdf_document_with_diagnostics(
                     input_payload["report"],
                     output_language=resolved_language,
                     delivery_supplement=delivery_supplement,
@@ -571,10 +579,11 @@ def create_and_execute_task(
                         "content_base64": content_base64,
                         "output_language": resolved_language,
                         "document_kind": "feasibility_study",
+                        "formal_rendering": diagnostics,
                     },
                 )
             elif task_type == "export_project_proposal_word":
-                filename, content, mime_type = build_project_proposal_word_document(
+                filename, content, content_base64, mime_type, diagnostics = build_project_proposal_docx_document(
                     input_payload["report"],
                     output_language=resolved_language,
                     delivery_supplement=delivery_supplement,
@@ -586,8 +595,10 @@ def create_and_execute_task(
                         "format": "word",
                         "filename": filename,
                         "mime_type": mime_type,
+                        "content_base64": content_base64,
                         "output_language": resolved_language,
                         "document_kind": "project_proposal",
+                        "formal_rendering": diagnostics,
                     },
                 )
             elif task_type == "export_research_market_intelligence_markdown":
@@ -622,8 +633,27 @@ def create_and_execute_task(
                         "document_kind": "solution_delivery",
                     },
                 )
+            elif task_type == "export_research_solution_delivery_pptx":
+                filename, content, content_base64, mime_type, diagnostics = build_research_solution_delivery_pptx_document(
+                    input_payload["report"],
+                    output_language=resolved_language,
+                    delivery_supplement=delivery_supplement,
+                )
+                complete_task(
+                    task,
+                    content=content,
+                    extra_payload={
+                        "format": "pptx",
+                        "filename": filename,
+                        "mime_type": mime_type,
+                        "content_base64": content_base64,
+                        "output_language": resolved_language,
+                        "document_kind": "solution_delivery_pptx",
+                        "formal_rendering": diagnostics,
+                    },
+                )
             else:
-                filename, preview_content, content_base64, mime_type = build_project_proposal_pdf_document(
+                filename, preview_content, content_base64, mime_type, diagnostics = build_project_proposal_pdf_document_with_diagnostics(
                     input_payload["report"],
                     output_language=resolved_language,
                     delivery_supplement=delivery_supplement,
@@ -638,6 +668,7 @@ def create_and_execute_task(
                         "content_base64": content_base64,
                         "output_language": resolved_language,
                         "document_kind": "project_proposal",
+                        "formal_rendering": diagnostics,
                     },
                 )
         elif task_type == "export_exec_brief":

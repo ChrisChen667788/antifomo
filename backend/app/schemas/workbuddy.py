@@ -17,8 +17,13 @@ WorkBuddyTaskType = Literal[
     "export_research_report_markdown",
     "export_research_report_word",
     "export_research_report_pdf",
+    "export_feasibility_study_word",
+    "export_feasibility_study_pdf",
+    "export_project_proposal_word",
+    "export_project_proposal_pdf",
     "export_research_market_intelligence_markdown",
     "export_research_solution_delivery_markdown",
+    "export_research_solution_delivery_pptx",
 ]
 WorkBuddyEventType = Literal["ping", "create_task"]
 

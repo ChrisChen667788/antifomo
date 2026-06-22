@@ -272,7 +272,7 @@ export function FeedDeck({ items, onItemTriaged }: FeedDeckProps) {
           </div>
         </section>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-[1.3fr_1fr]">
+        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-[1.3fr_1fr]">
           <section className="af-subpanel p-4">
             <p className="af-kicker">
               {t("feed.deck.summary3line", "3 行摘要")}

@@ -54,6 +54,13 @@ def _to_daemon_status_response(status_obj: CollectorDaemonStatus) -> CollectorDa
         coverage_recommendation=status_obj.coverage_recommendation,
         poor_source_count=status_obj.poor_source_count,
         watch_source_count=status_obj.watch_source_count,
+        favorites_auto_status=status_obj.favorites_auto_status,
+        favorites_auto_available=status_obj.favorites_auto_available,
+        favorites_auto_last_at=status_obj.favorites_auto_last_at,
+        favorites_auto_discovered_count=status_obj.favorites_auto_discovered_count,
+        favorites_auto_imported_count=status_obj.favorites_auto_imported_count,
+        favorites_auto_deduplicated_count=status_obj.favorites_auto_deduplicated_count,
+        favorites_auto_message=status_obj.favorites_auto_message,
         source_health=[
             CollectorDaemonSourceHealthResponse(
                 source_url=source.source_url,

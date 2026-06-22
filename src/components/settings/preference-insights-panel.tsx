@@ -161,7 +161,7 @@ export function PreferenceInsightsPanel() {
         <p className="mt-4 text-sm text-slate-500">{t("common.loading", "加载中...")}</p>
       ) : summary ? (
         <div className="mt-5 space-y-4">
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="rounded-[24px] border border-white/80 bg-white/75 p-4">
               <p className="af-kicker">{t("preferences.feedbackTotal", "累计反馈")}</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{summary.feedback_total}</p>
@@ -193,7 +193,7 @@ export function PreferenceInsightsPanel() {
             <p className="mt-2 text-sm text-slate-700">{summary.preference_version}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <PreferenceList
               title={t("preferences.topTags", "主题偏好 Top")}
               entries={summary.top_tags}

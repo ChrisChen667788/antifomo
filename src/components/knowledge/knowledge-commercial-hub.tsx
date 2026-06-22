@@ -217,11 +217,11 @@ export function KnowledgeCommercialHub({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
         {summaryCards.slice(0, 4).map((card) => (
           <article
             key={card.label}
-            className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.78))] p-4"
+            className="af-surface-card rounded-[24px] border p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{card.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900">{card.value}</p>
@@ -230,11 +230,11 @@ export function KnowledgeCommercialHub({
         ))}
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {summaryCards.slice(4).map((card) => (
           <article
             key={card.label}
-            className="rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,245,249,0.78))] p-4"
+            className="af-surface-card rounded-[24px] border p-4"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{card.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900">{card.value}</p>
@@ -243,7 +243,7 @@ export function KnowledgeCommercialHub({
         ))}
       </div>
 
-      <section className="mt-6 rounded-[26px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.9))] p-4">
+      <section className="af-surface-card mt-6 rounded-[26px] border p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">经营动作流</p>
@@ -278,7 +278,7 @@ export function KnowledgeCommercialHub({
             ))}
           </div>
         </div>
-        <div className="mt-4 grid gap-3 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
           <article className="rounded-[20px] border border-white/90 bg-white/88 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Top Account</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{topAccount?.name || "待补对象"}</p>
@@ -319,7 +319,7 @@ export function KnowledgeCommercialHub({
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-[26px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.9))] p-4">
+      <section className="af-surface-card mt-6 rounded-[26px] border p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">检索与聚合工作台</p>
@@ -365,7 +365,7 @@ export function KnowledgeCommercialHub({
       </section>
 
       {(roleViews.length || filteredAlerts.length || filteredReviewQueue.length) ? (
-        <section className="mt-6 rounded-[26px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.88))] p-4">
+        <section className="af-surface-card mt-6 rounded-[26px] border p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">角色化仪表盘</p>
@@ -416,7 +416,7 @@ export function KnowledgeCommercialHub({
           ) : null}
 
           {activeRoleView ? (
-            <div className="mt-4 rounded-[22px] border border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,249,255,0.88))] p-4">
+            <div className="af-surface-info mt-4 rounded-[22px] border p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">{activeRoleView.label}</h3>
@@ -442,9 +442,9 @@ export function KnowledgeCommercialHub({
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
             {visibleModules.alerts && filteredAlerts.length ? (
-              <article className="rounded-[24px] border border-rose-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.88))] p-4">
+              <article className="af-surface-danger rounded-[24px] border p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">规则提醒</p>
@@ -482,7 +482,7 @@ export function KnowledgeCommercialHub({
             ) : null}
 
             {visibleModules.reviewQueue && filteredReviewQueue.length ? (
-              <article className="rounded-[24px] border border-amber-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.88))] p-4">
+              <article className="af-surface-warning rounded-[24px] border p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">待核验结论</p>
@@ -522,9 +522,9 @@ export function KnowledgeCommercialHub({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         {visibleModules.accounts ? (
-        <article className="rounded-[26px] border border-sky-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,249,255,0.9))] p-4">
+        <article className="af-surface-info rounded-[26px] border p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">高价值账户</p>
@@ -552,7 +552,7 @@ export function KnowledgeCommercialHub({
                     </span>
                   </div>
                 </div>
-                <div className="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-3">
                   <p>研报数 {account.report_count}</p>
                   <p>机会数 {account.opportunity_count}</p>
                   <p>可信度 {account.confidence_score}</p>
@@ -570,7 +570,7 @@ export function KnowledgeCommercialHub({
         ) : <div />}
 
         {visibleModules.opportunities ? (
-        <article className="rounded-[26px] border border-emerald-100/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.9))] p-4">
+        <article className="af-surface-success rounded-[26px] border p-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">优先商机</p>
             <p className="mt-2 text-sm text-slate-500">可直接转为会前简报、拜访策略或外联任务的条目。</p>

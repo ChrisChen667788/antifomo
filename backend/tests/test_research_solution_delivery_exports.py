@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from base64 import b64decode
 from datetime import datetime, timezone
+from io import BytesIO
+from zipfile import ZipFile
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -94,6 +97,16 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
                 "delivery_supplement": delivery_supplement,
             },
         )
+        pptx_task = create_and_execute_task(
+            db,
+            user_id=settings.single_user_id,
+            task_type="export_research_solution_delivery_pptx",
+            input_payload={
+                "output_language": "zh-CN",
+                "report": report.model_dump(mode="json"),
+                "delivery_supplement": delivery_supplement,
+            },
+        )
 
         assert intelligence_task.status == "done"
         assert intelligence_task.output_payload["document_kind"] == "market_intelligence"
@@ -112,6 +125,20 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
         assert "能力到架构矩阵" in str(solution_task.output_payload.get("content") or "")
         assert "ADR 架构决策记录" in str(solution_task.output_payload.get("content") or "")
         assert "集成依赖诊断" in str(solution_task.output_payload.get("content") or "")
+        assert "量化决策模型" in str(solution_task.output_payload.get("content") or "")
+        assert "可研财务三情景" in str(solution_task.output_payload.get("content") or "")
+        assert pptx_task.status == "done"
+        assert pptx_task.output_payload["document_kind"] == "solution_delivery_pptx"
+        assert pptx_task.output_payload["filename"].endswith(".pptx")
+        assert pptx_task.output_payload["mime_type"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        assert pptx_task.output_payload["formal_rendering"]["editable_text_boxes"] is True
+        assert pptx_task.output_payload["formal_rendering"]["office_roundtrip"]["status"] == "pass"
+        with ZipFile(BytesIO(b64decode(str(pptx_task.output_payload.get("content_base64") or "")))) as archive:
+            assert "ppt/presentation.xml" in archive.namelist()
+            slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
+        assert "<p:txBody>" in slide_xml
+        assert "Anti-FOMO P2.3 editable PPTX" in slide_xml
+        assert "图表占位" in slide_xml
     finally:
         db.close()
 

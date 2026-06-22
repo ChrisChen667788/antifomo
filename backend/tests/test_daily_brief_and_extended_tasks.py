@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from base64 import b64decode
 from datetime import datetime, timezone
 import uuid
 
@@ -317,23 +318,35 @@ def test_extended_export_tasks_generate_expected_outputs() -> None:
         assert isinstance(digest_task.output_payload.get("watchlist_context"), dict)
         assert feasibility_word_task.status == "done"
         assert feasibility_word_task.output_payload["document_kind"] == "feasibility_study"
+        assert feasibility_word_task.output_payload["filename"].endswith(".docx")
+        assert feasibility_word_task.output_payload["mime_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        assert b64decode(str(feasibility_word_task.output_payload.get("content_base64") or "")).startswith(b"PK")
+        assert feasibility_word_task.output_payload["formal_rendering"]["native_docx"] is True
+        assert feasibility_word_task.output_payload["formal_rendering"]["visual_regression"]["fingerprint"]
         assert "浏览器智能助手建设项目可行性研究报告" in str(feasibility_word_task.output_payload.get("content") or "")
-        assert "二、研究依据与交叉验证输入" in str(feasibility_word_task.output_payload.get("content") or "")
+        assert "需求预测与建设必要性" in str(feasibility_word_task.output_payload.get("content") or "")
+        assert "专用编译器质量门槛" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "4 月底可能发起二期可研评审" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "目标客户：浏览器客户A集团总部" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "项目/方案场景：AI营销平台" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "垂直场景：会员运营 AI 助手" in str(feasibility_word_task.output_payload.get("content") or "")
         assert "交付前质量审查与自修订记录" in str(feasibility_word_task.output_payload.get("content") or "")
+        assert "附：量化决策模型摘要" in str(feasibility_word_task.output_payload.get("content") or "")
+        assert "附：可研财务三情景与敏感性分析" in str(feasibility_word_task.output_payload.get("content") or "")
         assert proposal_pdf_task.status == "done"
         assert proposal_pdf_task.output_payload["document_kind"] == "project_proposal"
         assert proposal_pdf_task.output_payload["format"] == "pdf"
         assert proposal_pdf_task.output_payload.get("content_base64")
+        assert proposal_pdf_task.output_payload["formal_rendering"]["controlled_pdf_preview"] is True
+        assert proposal_pdf_task.output_payload["formal_rendering"]["visual_regression"]["fingerprint"]
         assert "项目建议书" in str(proposal_pdf_task.output_payload.get("content") or "")
-        assert "交叉验证附注" in str(proposal_pdf_task.output_payload.get("content") or "")
+        assert "立项必要性" in str(proposal_pdf_task.output_payload.get("content") or "")
+        assert "专用编译器质量门槛" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "交付前质量审查与自修订记录" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "目标客户：浏览器客户A集团总部" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "项目/方案场景：AI营销平台" in str(proposal_pdf_task.output_payload.get("content") or "")
         assert "垂直场景：会员运营 AI 助手" in str(proposal_pdf_task.output_payload.get("content") or "")
+        assert "附：量化决策模型摘要" in str(proposal_pdf_task.output_payload.get("content") or "")
     finally:
         db.close()
 

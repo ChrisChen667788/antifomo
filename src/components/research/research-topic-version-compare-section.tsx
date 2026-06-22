@@ -55,7 +55,7 @@ export function ResearchTopicVersionCompareSection({
                 {t("research.versionSideBySideDesc", "选择两个历史版本，对照执行摘要、质量等级与关键线索变化。")}
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex min-w-[210px] flex-col gap-1 text-xs text-[var(--af-text-tertiary)]">
                 <span>{t("research.versionBaseline", "基线版本")}</span>
                 <select
@@ -86,7 +86,7 @@ export function ResearchTopicVersionCompareSection({
               </label>
             </div>
           </div>
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
             {[
               {
                 key: "baseline",
@@ -140,7 +140,7 @@ export function ResearchTopicVersionCompareSection({
                         摘要 · {panel.followup.summaryResolution}
                       </span>
                     </div>
-                    <div className="mt-3 grid gap-2">
+                    <div className="mt-3 grid grid-cols-1 gap-2">
                       {panel.followup.impactedSections.length ? (
                         panel.followup.impactedSections.map((impact) => (
                           <div key={`${panel.key}-${impact.sectionTitle}`} className="rounded-[14px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3">
@@ -197,7 +197,7 @@ export function ResearchTopicVersionCompareSection({
                   );
                 })()}
                 {panel.blocks.length ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                     {panel.blocks.map((block) => (
                       <div key={`${panel.key}-${block.key}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                         <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{block.title}</p>
@@ -227,7 +227,7 @@ export function ResearchTopicVersionCompareSection({
       {diffHighlights.length ? (
         <section className="af-glass rounded-[30px] p-6">
           <p className="af-kicker">{t("research.versionDiffHighlights", "版本差异高亮")}</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             {diffHighlights.map((group) => (
               <article key={group.title} className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <p className="text-sm font-semibold text-[var(--af-text-primary)]">{group.title}</p>
@@ -255,7 +255,7 @@ export function ResearchTopicVersionCompareSection({
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3">
+          <div className="mt-5 grid grid-cols-1 gap-3">
             {fieldDiffRows.map((row) => (
               <article key={row.key} className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -283,7 +283,7 @@ export function ResearchTopicVersionCompareSection({
                     ) : null}
                   </div>
                 </div>
-                <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
                   <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{t("research.versionBaseline", "基线版本")}</p>
                     <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
@@ -325,12 +325,12 @@ export function ResearchTopicVersionCompareSection({
                   </div>
                 </div>
                 {(row.baselineEvidenceLinks.length || row.currentEvidenceLinks.length) ? (
-                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                         {t("research.versionBaselineEvidence", "基线版本证据")}
                       </p>
-                      <div className="mt-3 grid gap-2">
+                      <div className="mt-3 grid grid-cols-1 gap-2">
                         {(row.baselineEvidenceLinks.length ? row.baselineEvidenceLinks : []).map((link) => (
                           <a
                             key={`base-${row.key}-${link.url}`}
@@ -357,7 +357,7 @@ export function ResearchTopicVersionCompareSection({
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                         {t("research.versionCurrentEvidence", "对照版本证据")}
                       </p>
-                      <div className="mt-3 grid gap-2">
+                      <div className="mt-3 grid grid-cols-1 gap-2">
                         {(row.currentEvidenceLinks.length ? row.currentEvidenceLinks : []).map((link) => (
                           <a
                             key={`current-${row.key}-${link.url}`}
@@ -398,11 +398,11 @@ export function ResearchTopicVersionCompareSection({
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid grid-cols-1 gap-4">
             {scorePanels.map((panel) => (
               <article key={panel.key} className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
                 <h3 className="text-base font-semibold text-[var(--af-text-primary)]">{panel.title}</h3>
-                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                   {[
                     {
                       key: `${panel.key}-baseline`,
@@ -417,7 +417,7 @@ export function ResearchTopicVersionCompareSection({
                   ].map((column) => (
                     <div key={column.key} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{column.label}</p>
-                      <div className="mt-3 grid gap-3">
+                      <div className="mt-3 grid grid-cols-1 gap-3">
                         {(column.entities.length ? column.entities : []).map((entity) => (
                           <article key={`${column.key}-${entity.name}`} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -427,7 +427,7 @@ export function ResearchTopicVersionCompareSection({
                               </span>
                             </div>
                             {entity.reasoning ? <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">{entity.reasoning}</p> : null}
-                            <div className="mt-3 grid gap-2">
+                            <div className="mt-3 grid grid-cols-1 gap-2">
                               {(entity.score_breakdown.length ? entity.score_breakdown : []).map((factor) => (
                                 <div
                                   key={`${entity.name}-${factor.label}`}
@@ -451,7 +451,7 @@ export function ResearchTopicVersionCompareSection({
                               ) : null}
                             </div>
                             {entity.evidence_links.length ? (
-                              <div className="mt-3 grid gap-2">
+                              <div className="mt-3 grid grid-cols-1 gap-2">
                                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
                                   {t("research.evidenceLinks", "依据链接")}
                                 </p>
@@ -510,11 +510,11 @@ export function ResearchTopicVersionCompareSection({
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid grid-cols-1 gap-4">
             {sourceContributionPanels.map((panel) => (
               <article key={panel.key} className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
                 <h3 className="text-base font-semibold text-[var(--af-text-primary)]">{panel.title}</h3>
-                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                   {[
                     {
                       key: `${panel.key}-baseline`,
@@ -529,7 +529,7 @@ export function ResearchTopicVersionCompareSection({
                   ].map((column) => (
                     <div key={column.key} className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">{column.label}</p>
-                      <div className="mt-3 grid gap-3">
+                      <div className="mt-3 grid grid-cols-1 gap-3">
                         {(column.rows.length ? column.rows : []).map((row) => (
                           <div key={`${column.key}-${row.tier}`} className="rounded-[16px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                             <div className="flex items-center justify-between gap-3">

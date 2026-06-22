@@ -224,7 +224,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
         </div>
 
         <div className={activeView === "original" ? "mt-4 block" : "hidden"}>
-          <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[0.88fr_1.12fr]">
             <div className="space-y-4">
               <div className="rounded-[26px] border border-slate-200/80 bg-white/70 p-5">
                 <p className="af-kicker">{t("item.highlightKeywords", "原文关键词")}</p>
@@ -339,7 +339,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
         </div>
 
         <div className={activeView === "summary" ? "mt-4 block space-y-4" : "hidden"}>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <section className="rounded-[26px] border border-slate-200/80 bg-white/70 p-5">
               <p className="af-kicker">{t("item.shortSummary", "短摘要")}</p>
               <p className="mt-3 text-sm leading-7 text-slate-700">

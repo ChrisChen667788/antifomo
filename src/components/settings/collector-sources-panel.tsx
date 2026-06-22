@@ -355,7 +355,7 @@ export function CollectorSourcesPanel() {
       <p className="af-kicker">{i18n.title}</p>
       <p className="mt-2 text-sm text-slate-500">{i18n.description}</p>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="rounded-2xl border border-white/85 bg-white/55 p-4">
           <span className="text-sm font-semibold text-slate-700">{i18n.addSingle}</span>
           <input
@@ -419,8 +419,53 @@ export function CollectorSourcesPanel() {
 
       <div className="mt-4 rounded-2xl border border-white/80 bg-white/55 p-4">
         {sources.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs text-slate-600">
+          <>
+            <div className="space-y-3 sm:hidden">
+              {sources.map((source) => (
+                <article key={source.id} className="rounded-2xl border border-white/80 bg-white/70 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    {i18n.tableSource}
+                  </p>
+                  <a
+                    href={source.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 block break-all text-xs leading-5 text-slate-700 underline"
+                  >
+                    {source.source_url}
+                  </a>
+                  {source.note ? <p className="mt-1 text-[11px] leading-5 text-slate-400">{source.note}</p> : null}
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-slate-500">
+                    <div className="rounded-xl bg-white/70 px-2.5 py-2">
+                      <span className="font-semibold">{i18n.tableEnabled}</span> · {source.enabled ? i18n.enabled : i18n.disabled}
+                    </div>
+                    <div className="rounded-xl bg-white/70 px-2.5 py-2">
+                      <span className="font-semibold">{i18n.tableCollected}</span> · {formatTime(source.last_collected_at)}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void toggleSource(source)}
+                      disabled={updatingId === source.id}
+                      className="af-btn af-btn-secondary px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {updatingId === source.id ? "..." : i18n.toggle}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void removeSource(source)}
+                      disabled={deletingId === source.id}
+                      className="af-btn af-btn-secondary px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {deletingId === source.id ? "..." : i18n.remove}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto sm:block">
+            <table className="min-w-[560px] text-left text-xs text-slate-600">
               <thead>
                 <tr className="text-slate-500">
                   <th className="px-2 py-1">{i18n.tableSource}</th>
@@ -466,7 +511,8 @@ export function CollectorSourcesPanel() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         ) : (
           <p className="text-xs text-slate-500">{i18n.empty}</p>
         )}

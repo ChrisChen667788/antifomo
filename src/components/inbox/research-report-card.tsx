@@ -223,7 +223,7 @@ export function ResearchReportCard({
 
       {actionMessage ? <p className="mt-3 text-sm text-[var(--af-accent)]">{actionMessage}</p> : null}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">证据档位</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -282,7 +282,7 @@ export function ResearchReportCard({
         </article>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="af-report-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{summaryLabel}</p>
           <p className="mt-3 text-[15px] leading-7 text-[var(--af-text-secondary)]">{report.executive_summary}</p>
@@ -315,7 +315,7 @@ export function ResearchReportCard({
             </div>
           </div>
           {followupImpactedSections.length ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {followupImpactedSections.map((section) => (
                 <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -378,7 +378,7 @@ export function ResearchReportCard({
               </span>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             {[
               { label: "专业度", value: qualityProfile.professional_score },
               { label: "情报价值", value: qualityProfile.intelligence_value_score },
@@ -398,7 +398,7 @@ export function ResearchReportCard({
             })}
           </div>
           {(qualityProfile.gaps?.length || qualityProfile.next_actions?.length) ? (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {qualityProfile.gaps?.length ? (
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">质量缺口</p>
@@ -430,7 +430,7 @@ export function ResearchReportCard({
           {qualityProfile.section_evidence_packs?.length ? (
             <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">章节证据包</p>
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                 {qualityProfile.section_evidence_packs.slice(0, 4).map((pack) => (
                   <div key={`section-pack-${pack.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                     <div className="flex items-center justify-between gap-2">

@@ -19,7 +19,7 @@ export function KnowledgeResearchReportAppendixSection({
   return (
     <article className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{copy.appendixTitle}</p>
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3">
         {technicalAppendix.key_assumptions?.length ? (
           <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">关键假设</p>
@@ -36,7 +36,7 @@ export function KnowledgeResearchReportAppendixSection({
         {technicalAppendix.scenario_comparison?.length ? (
           <div className="rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">情景对比</p>
-            <div className="mt-3 grid gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3">
               {technicalAppendix.scenario_comparison.map((scenario) => (
                 <div key={`knowledge-scenario-${scenario.name}`} className="rounded-[16px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                   <p className="text-sm font-semibold text-[var(--af-text-primary)]">{scenario.name}</p>
@@ -50,7 +50,7 @@ export function KnowledgeResearchReportAppendixSection({
           </div>
         ) : null}
         {(technicalAppendix.limitations?.length || technicalAppendix.technical_appendix?.length) ? (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="rounded-[18px] border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_14%,var(--af-surface-muted))] p-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">限制条件</p>
               <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--af-warning)]">

@@ -268,8 +268,16 @@ export function FeedHomeClient() {
       try {
         if (storedImportBatchId) {
           setImportReview((prev) => ({ ...prev, active: true, batchId: storedImportBatchId }));
-          const restored = await refreshImportBatch(storedImportBatchId);
-          if (restored) return;
+          try {
+            const restored = await refreshImportBatch(storedImportBatchId);
+            if (restored) return;
+          } catch {
+            window.localStorage.removeItem(WECHAT_IMPORT_BATCH_KEY);
+            if (importIds.length) {
+              await refreshImportReview(importIds);
+              return;
+            }
+          }
         }
         if (importIds.length) {
           setImportReview((prev) => ({
@@ -293,12 +301,18 @@ export function FeedHomeClient() {
       await refreshFeed(nextMode, nextGoal);
     };
     void restore();
-  }, [applyImportBatch, refreshFeed, refreshImportBatch]);
+  }, [applyImportBatch, refreshFeed, refreshImportBatch, refreshImportReview]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (importReview.active && importReview.batchId) {
-        void refreshImportBatch(importReview.batchId);
+        void refreshImportBatch(importReview.batchId).catch(() => {
+          window.localStorage.removeItem(WECHAT_IMPORT_BATCH_KEY);
+          setImportReview((current) => ({ ...current, batchId: null }));
+          if (importReview.itemIds.length) {
+            void refreshImportReview(importReview.itemIds);
+          }
+        });
       } else {
         void refreshFeed(mode, goalText, importReview.active ? importReview.itemIds : undefined);
       }
@@ -312,6 +326,7 @@ export function FeedHomeClient() {
     importReview.itemIds,
     refreshFeed,
     refreshImportBatch,
+    refreshImportReview,
   ]);
 
   const switchMode = (nextMode: "normal" | "focus") => {

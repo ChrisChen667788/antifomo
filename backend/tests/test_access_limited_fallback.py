@@ -9,6 +9,7 @@ from app.services.llm_service import MockLLMService
 def test_contains_access_block_detects_wechat_verification_page() -> None:
     assert _contains_access_block("Warning: This page maybe requiring CAPTCHA")
     assert _contains_access_block("当前环境异常，完成验证后即可继续访问。")
+    assert _contains_access_block("参数错误，当前公众号文章链接已经失效。")
     assert not _contains_access_block("这是正常正文内容，无访问异常。")
 
 

@@ -493,7 +493,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard label={t("summary.metric.duration", "专注时长")} value={formatDuration(metrics.durationMinutes, t)} />
         <MetricCard label={t("summary.metric.newContent", "新增内容数")} value={`${metrics.newContentCount}`} />
         <MetricCard label={t("summary.metric.deepRead", "推荐深读数")} value={`${metrics.deepReadCount}`} />
@@ -525,7 +525,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               style={{ width: `${getBatchProgress(wechatBatchStatus)}%` }}
             />
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
             <MetricCard label={t("focus.collectorSubmittedNew", "真正新增")} value={`${wechatBatchStatus?.submitted_new || 0}`} />
             <MetricCard label={t("focus.collectorDedup", "历史去重")} value={`${wechatBatchStatus?.deduplicated_existing || 0}`} />
             <MetricCard label={t("focus.collectorSeen", "已跳过")} value={`${wechatBatchStatus?.skipped_seen || 0}`} />
@@ -691,7 +691,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               {t("summary.researchOpen", "打开研报中心")}
             </Link>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3">
             {researchRecommendations.map((entry) => (
               <Link
                 key={entry.id}
@@ -825,11 +825,11 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                 ) : null}
 
                 {entry.actionCards.length ? (
-                  <div className="mt-4 grid gap-2">
+                  <div className="mt-4 grid grid-cols-1 gap-2">
                     {entry.actionCards.map((card) => (
                         <div key={`${entry.id}-${card.title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
                           <div className="break-words text-sm font-semibold leading-6 text-[var(--af-text-primary)]">{card.title}</div>
-                          <div className="mt-2 grid gap-1.5 break-words text-[11px] text-[var(--af-text-tertiary)]">
+                          <div className="mt-2 grid grid-cols-1 gap-1.5 break-words text-[11px] text-[var(--af-text-tertiary)]">
                           {card.targetPersona ? (
                             <div>
                               <span className="font-semibold text-[var(--af-text-secondary)]">{t("research.actionTarget", "优先对象")}：</span>
@@ -850,11 +850,11 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                           ) : null}
                         </div>
                         {card.phases.length ? (
-                          <div className="mt-3 grid gap-2">
+                          <div className="mt-3 grid grid-cols-1 gap-2">
                             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
                               {t("research.actionTimeline", "推进节奏")}
                             </div>
-                            <div className="grid gap-2">
+                            <div className="grid grid-cols-1 gap-2">
                               {card.phases.map((phase) => (
                                 <div
                                   key={`${entry.id}-${card.title}-${phase.label}-${phase.content}`}
