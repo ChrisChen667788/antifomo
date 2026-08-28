@@ -222,6 +222,31 @@ class Settings(BaseSettings):
         "strategy_openai_input_cost_per_million",
         "strategy_openai_cached_input_cost_per_million",
         "strategy_openai_output_cost_per_million",
+        mode="before",
+    )
+    @classmethod
+    def normalize_empty_optional_pricing(cls, value: object) -> object:
+        """Treat documented blank optional prices as an unset value.
+
+        ``.env.example`` intentionally leaves provider prices blank rather than
+        inventing time-sensitive vendor numbers.  Pydantic receives those
+        values as empty strings, which must become ``None`` before float
+        parsing so a clean CI checkout can load Settings.
+        """
+
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator(
+        "openai_input_cost_per_million",
+        "openai_cached_input_cost_per_million",
+        "openai_output_cost_per_million",
+        "strategy_openai_input_cost_per_million",
+        "strategy_openai_cached_input_cost_per_million",
+        "strategy_openai_output_cost_per_million",
     )
     @classmethod
     def validate_non_negative_pricing(cls, value: float | None) -> float | None:
