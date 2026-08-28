@@ -265,9 +265,9 @@ function buildCaptures(workspace, knowledgeEntries) {
     {
       feature: "Research experiment orchestration",
       route: "/research",
-      waitText: "实验编排层",
+      waitText: "报告质量",
       scrollSelector: "[data-screenshot-anchor='research-experiment-control-plane']",
-      scrollText: "实验编排层",
+      scrollText: "策略发布",
       filename: "research-experiment-control-plane.png",
       description: "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics.",
     },
@@ -276,7 +276,7 @@ function buildCaptures(workspace, knowledgeEntries) {
           {
             feature: "Research archive viewer",
             route: `/research/archives/${archiveId}`,
-            waitText: "Markdown 归档",
+            waitText: "历史归档",
             filename: "research-archive-viewer.png",
             description: "Historical Markdown archive viewer with delivery digest, section links, and version context.",
           },
@@ -325,10 +325,10 @@ async function waitForPageContent(page, route) {
 async function waitForCaptureAnchor(page, selector) {
   if (!selector) return false;
   try {
-    await page.waitForSelector(selector, { timeout: 20000 });
+    await page.waitForSelector(selector, { timeout: 60000 });
     return true;
   } catch {
-    console.warn(`[screenshots] optional capture anchor not rendered: "${selector}"`);
+    console.warn(`[screenshots] capture anchor not rendered: "${selector}"`);
     return false;
   }
 }
@@ -432,7 +432,10 @@ async function capturePage(page, { baseUrl, route, theme, waitText, scrollSelect
   await waitForPageContent(page, route);
   await assertThemeApplied(page, theme, filePath);
   await waitForText(page, waitText);
-  await waitForCaptureAnchor(page, scrollSelector);
+  const anchorReady = await waitForCaptureAnchor(page, scrollSelector);
+  if (scrollSelector && !anchorReady) {
+    throw new Error(`Required capture anchor did not render for ${route}: ${scrollSelector}`);
+  }
   await scrollToSelector(page, scrollSelector);
   await scrollToText(page, scrollText);
   await assertNoRuntimeOverlay(page, filePath);
@@ -489,9 +492,12 @@ async function main() {
         await page.close();
       }
     }
+    const generatedAt = new Date();
+    const version = readPackageVersion();
     const manifest = {
-      version: readPackageVersion(),
-      generated_at: new Date().toISOString(),
+      version,
+      release_tag: `v${version}+${generatedAt.toISOString().slice(0, 10).replaceAll("-", "")}`,
+      generated_at: generatedAt.toISOString(),
       viewport: {
         width: 1600,
         height: 1100,

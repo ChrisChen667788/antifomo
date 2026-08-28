@@ -4,6 +4,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,6 +18,7 @@ from app.models.research_entities import (
     ResearchWatchlistChangeEvent,
 )
 from app.schemas.research import ResearchActionCardOut, ResearchNormalizedEntityOut, ResearchReportDocument
+from app.services import knowledge_intelligence_service
 from app.services.knowledge_intelligence_service import (
     _canonicalize_account_name,
     apply_review_queue_resolutions,
@@ -152,6 +154,51 @@ def _sample_report() -> ResearchReportDocument:
         },
         entity_graph={"entities": [], "target_entities": [], "competitor_entities": [], "partner_entities": []},
     )
+
+
+def test_commercial_dashboard_cache_reuses_a_signature_and_invalidates_on_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = _new_session()
+    try:
+        settings = get_settings()
+        db.add(User(id=uuid.UUID(str(settings.single_user_id)), name="demo"))
+        db.commit()
+        with knowledge_intelligence_service._COMMERCIAL_AGGREGATE_CACHE_LOCK:
+            knowledge_intelligence_service._COMMERCIAL_AGGREGATE_CACHE.clear()
+            knowledge_intelligence_service._COMMERCIAL_DASHBOARD_CACHE.clear()
+
+        original = knowledge_intelligence_service._aggregate_accounts_uncached
+        calls = 0
+
+        def tracked_aggregate(session: Session) -> dict[str, dict[str, object]]:
+            nonlocal calls
+            calls += 1
+            return original(session)
+
+        monkeypatch.setattr(knowledge_intelligence_service, "_aggregate_accounts_uncached", tracked_aggregate)
+        first = build_knowledge_commercial_dashboard(db)
+        second = build_knowledge_commercial_dashboard(db)
+        assert first == second
+        assert calls == 1
+
+        db.add(
+            KnowledgeEntry(
+                user_id=settings.single_user_id,
+                title="新增研报",
+                content="cache invalidation",
+                source_domain="research.report",
+                metadata_payload={},
+            )
+        )
+        db.commit()
+        build_knowledge_commercial_dashboard(db)
+        assert calls == 2
+    finally:
+        with knowledge_intelligence_service._COMMERCIAL_AGGREGATE_CACHE_LOCK:
+            knowledge_intelligence_service._COMMERCIAL_AGGREGATE_CACHE.clear()
+            knowledge_intelligence_service._COMMERCIAL_DASHBOARD_CACHE.clear()
+        db.close()
 
 
 def test_build_report_knowledge_intelligence_emits_accounts_and_opportunities() -> None:

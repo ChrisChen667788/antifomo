@@ -32,6 +32,7 @@ def workbuddy_health() -> dict[str, object]:
         gateway_health_url=settings.workbuddy_official_gateway_health_url,
         bearer_token=settings.workbuddy_official_gateway_bearer_token,
         timeout_seconds=settings.workbuddy_official_probe_timeout_seconds,
+        cli_model=settings.workbuddy_official_model,
     )
     requested_mode = str(settings.workbuddy_mode or "auto").strip().lower()
     if official_probe.gateway_reachable:
@@ -50,6 +51,7 @@ def workbuddy_health() -> dict[str, object]:
         "official_tencent_connected": bool(official_probe.gateway_reachable or official_probe.cli_authenticated),
         "provider_label": provider_label,
         "requested_mode": requested_mode,
+        "configured_model": settings.workbuddy_official_model,
         "official_cli_detected": official_probe.cli_detected,
         "official_cli_version": official_probe.cli_version,
         "official_cli_authenticated": official_probe.cli_authenticated,

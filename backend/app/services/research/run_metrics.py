@@ -125,6 +125,7 @@ class ResearchRunMetrics:
     gauges: dict[str, float] = field(default_factory=dict)
     nodes: dict[str, ResearchNodeMetric] = field(default_factory=dict)
     cost_ledger: CostLedger = field(default_factory=CostLedger)
+    billing: dict[str, object] = field(default_factory=dict)
     _active_stage: str = field(default="", init=False, repr=False)
     _active_stage_started: float = field(default=0.0, init=False, repr=False)
     _lock: RLock = field(default_factory=RLock, init=False, repr=False)
@@ -136,6 +137,10 @@ class ResearchRunMetrics:
     def set_gauge(self, key: str, value: float) -> None:
         with self._lock:
             self.gauges[key] = float(value)
+
+    def set_billing(self, payload: dict[str, object]) -> None:
+        with self._lock:
+            self.billing = dict(payload)
 
     def record_node(self, name: str, *, latency_ms: int, succeeded: bool, error: str = "") -> None:
         with self._lock:
@@ -216,6 +221,7 @@ class ResearchRunMetrics:
                 "gauges": dict(sorted(self.gauges.items())),
                 "nodes": nodes,
                 "cost_ledger": self.cost_ledger.snapshot(),
+                "billing": dict(self.billing),
             }
 
 
@@ -253,8 +259,10 @@ class MeteredLLMService:
         self._service = service
         self._metrics = metrics
         self._role = role
+        self.last_run_result: LLMRunResult | None = None
 
     def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+        self.last_run_result = None
         started = time.perf_counter()
         provider, model = _service_metadata(self._service)
         try:
@@ -270,6 +278,7 @@ class MeteredLLMService:
                 result = run_result(prompt_name, variables)
                 if not isinstance(result, LLMRunResult):
                     raise RuntimeError("LLM result service returned an invalid result")
+                self.last_run_result = result
                 output = result.content
             else:
                 result = None

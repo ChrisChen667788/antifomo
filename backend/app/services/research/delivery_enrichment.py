@@ -6,7 +6,25 @@ from typing import Any
 
 from app.schemas.research import ResearchReportResponse
 from app.services.content_extractor import normalize_text
+from app.services.research.delivery_truth import apply_delivery_truth
 from app.services.research.source_documents import SourceDocument
+
+
+_READINESS_SUMMARY_NOTES = (
+    "当前版本适合候选推进，关键预算、官方源或组织入口仍需继续核验。",
+    "当前版本更适合作为待核验清单，不建议直接作为最终商业判断。",
+)
+_READINESS_ANGLE_NOTES = (
+    "建议按轻量推进处理，并同步补关键证据。",
+    "建议先补关键证据，再决定是否进入正式推进。",
+)
+
+
+def _without_readiness_notes(value: str, notes: tuple[str, ...]) -> str:
+    cleaned = normalize_text(value)
+    for note in notes:
+        cleaned = normalize_text(cleaned.replace(note, ""))
+    return cleaned.rstrip("。.!！")
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,10 +41,18 @@ class DeliveryEnrichmentDependencies:
     build_solution_delivery_pack: Callable[[ResearchReportResponse], Any]
     enrich_followup_diagnostics: Callable[[ResearchReportResponse], ResearchReportResponse]
     apply_report_readiness_guardrails: Callable[[ResearchReportResponse], ResearchReportResponse]
+    build_account_pursuit_pack: Callable[[ResearchReportResponse], Any] | None = None
+    build_commercial_bid_pack: Callable[[ResearchReportResponse], Any] | None = None
 
 
 def apply_report_readiness_guardrails(report: ResearchReportResponse) -> ResearchReportResponse:
     readiness = report.report_readiness
+    report = report.model_copy(
+        update={
+            "executive_summary": _without_readiness_notes(report.executive_summary, _READINESS_SUMMARY_NOTES),
+            "consulting_angle": _without_readiness_notes(report.consulting_angle, _READINESS_ANGLE_NOTES),
+        }
+    )
     if readiness.status == "ready":
         return report
     if normalize_text(report.report_title).endswith(("待核验清单与补证路径", "待核驗清單與補證路徑", "Verification Backlog and Evidence Path")):
@@ -34,11 +60,11 @@ def apply_report_readiness_guardrails(report: ResearchReportResponse) -> Researc
     executive_summary = normalize_text(report.executive_summary)
     consulting_angle = normalize_text(report.consulting_angle)
     if readiness.status == "degraded":
-        summary_note = "当前版本适合候选推进，关键预算、官方源或组织入口仍需继续核验。"
-        angle_note = "建议按轻量推进处理，并同步补关键证据。"
+        summary_note = _READINESS_SUMMARY_NOTES[0]
+        angle_note = _READINESS_ANGLE_NOTES[0]
     else:
-        summary_note = "当前版本更适合作为待核验清单，不建议直接作为最终商业判断。"
-        angle_note = "建议先补关键证据，再决定是否进入正式推进。"
+        summary_note = _READINESS_SUMMARY_NOTES[1]
+        angle_note = _READINESS_ANGLE_NOTES[1]
 
     def append_guardrail_note(text: str, note: str) -> str:
         normalized = normalize_text(text)
@@ -67,10 +93,20 @@ def enrich_report_for_delivery(
 ) -> ResearchReportResponse:
     readiness = deps.build_report_readiness(report)
     staged = report.model_copy(update={"report_readiness": readiness})
+    if deps.build_account_pursuit_pack:
+        account_pursuit_pack = deps.build_account_pursuit_pack(staged)
+        staged = staged.model_copy(update={"account_pursuit_pack": account_pursuit_pack})
+    staged = apply_delivery_truth(staged)
+    commercial_bid_pack = (
+        deps.build_commercial_bid_pack(staged)
+        if deps.build_commercial_bid_pack
+        else staged.commercial_bid_pack
+    )
     commercial_summary = deps.build_commercial_summary(staged)
     enriched = staged.model_copy(
         update={
             "commercial_summary": commercial_summary,
+            "commercial_bid_pack": commercial_bid_pack,
         }
     )
     enriched = enriched.model_copy(

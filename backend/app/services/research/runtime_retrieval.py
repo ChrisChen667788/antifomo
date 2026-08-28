@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.services.content_extractor import normalize_text
+from app.services.research.entity_policy import INDUSTRY_SCOPE_ALIASES
+from app.services.research.scope_hints import REGION_SCOPE_ALIASES
 from app.services.research.source_documents import SourceDocument
 from app.services.research_retrieval_index_service import (
     ResearchRetrievalIndex,
@@ -22,6 +24,7 @@ def source_documents_to_runtime_retrieval_chunks(
 ) -> list[ResearchRetrievalIndexChunk]:
     regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
     industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+    scope_namespace = normalize_text(str(scope_hints.get("research_scope_namespace") or ""))
     now = datetime.now(timezone.utc)
     chunks: list[ResearchRetrievalIndexChunk] = []
     for index, source in enumerate(sources, start=1):
@@ -55,6 +58,7 @@ def source_documents_to_runtime_retrieval_chunks(
                 metadata={
                     "source_type": normalize_text(source.source_type),
                     "content_status": normalize_text(source.content_status),
+                    "scope_namespace": scope_namespace,
                 },
             )
         )
@@ -85,7 +89,45 @@ def load_runtime_research_retrieval_index(
         base_index = ResearchRetrievalIndex(chunks=[], built_at=datetime.now(timezone.utc), source_counts={})
 
     runtime_chunks = source_documents_to_runtime_retrieval_chunks(sources, scope_hints=scope_hints)
-    combined_chunks = [*runtime_chunks, *base_index.chunks]
+    regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
+    industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
+    specific_industries = [item for item in industries if item not in {"大模型", "人工智能", "信息化"}]
+
+    def compatible(chunk: ResearchRetrievalIndexChunk) -> bool:
+        haystack = normalize_text(
+            " ".join(
+                [
+                    chunk.region,
+                    chunk.industry,
+                    chunk.title,
+                    chunk.text,
+                    str(chunk.metadata.get("region_filter") or ""),
+                    str(chunk.metadata.get("industry_filter") or ""),
+                ]
+            )
+        ).casefold()
+        if regions:
+            region_terms = [
+                normalize_text(alias).casefold()
+                for region in regions[:2]
+                for alias in (region, *REGION_SCOPE_ALIASES.get(region, ()))
+                if normalize_text(alias)
+            ]
+            if region_terms and not any(term in haystack for term in region_terms):
+                return False
+        if specific_industries:
+            industry_terms = [
+                normalize_text(alias).casefold()
+                for industry in specific_industries[:2]
+                for alias in (industry, *INDUSTRY_SCOPE_ALIASES.get(industry, ()))
+                if normalize_text(alias)
+            ]
+            if industry_terms and not any(term in haystack for term in industry_terms):
+                return False
+        return True
+
+    scoped_base_chunks = [chunk for chunk in base_index.chunks if compatible(chunk)]
+    combined_chunks = [*runtime_chunks, *scoped_base_chunks]
     return ResearchRetrievalIndex(
         chunks=combined_chunks,
         built_at=datetime.now(timezone.utc),

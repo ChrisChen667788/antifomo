@@ -85,6 +85,10 @@ def apply_corrective_expansion(
         if sources
         else 0.0
     )
+    minimum_source_count = 8 if research_mode == "deep" else 4
+    minimum_official_count = 3 if research_mode == "deep" else 1
+    minimum_domain_count = 5 if research_mode == "deep" else 3
+    provisional_official_count = sum(source.source_tier == "official" for source in sources)
     provisional_retrieval_quality = deps.retrieval_quality_band(
         strict_match_ratio=(strict_topic_source_count / len(sources)) if sources else 0.0,
         official_source_ratio=provisional_official_ratio,
@@ -100,7 +104,9 @@ def apply_corrective_expansion(
         corrective_query_limit=int(runtime.get("corrective_query_limit", 6)),
     )
     should_expand = (
-        len(sources) == 0
+        len(sources) < minimum_source_count
+        or provisional_official_count < minimum_official_count
+        or provisional_unique_domain_count < minimum_domain_count
         or strict_topic_source_count == 0
         or company_convergence_weak
         or provisional_retrieval_quality == "low"

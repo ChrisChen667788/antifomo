@@ -16,6 +16,10 @@ from app.services.llm_parser import ResearchReportResult, parse_research_strateg
 from app.services.research.source_documents import SourceDocument
 
 
+def _outline_timeout_seconds(llm_timeout_seconds: int) -> int:
+    return max(14, min(int(llm_timeout_seconds), 90))
+
+
 def build_partial_report_result(
     *,
     keyword: str,
@@ -81,7 +85,7 @@ def build_partial_report_result(
                     "followup_diagnostics": followup_diagnostics,
                     "source_intelligence": json.dumps(source_intelligence, ensure_ascii=False),
                     "industry_methodology_context": render_industry_methodology_context(scope_hints),
-                    "__timeout_seconds": str(max(14, min(llm_timeout_seconds, 24))),
+                    "__timeout_seconds": str(_outline_timeout_seconds(llm_timeout_seconds)),
                 },
             )
             outline = parse_research_strategy_refine_response(raw)

@@ -45,9 +45,9 @@ export function ResearchCenterWatchlistSection({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">{t("research.watchlistKicker", "Watchlists")}</p>
+                <p className="af-kicker">{t("research.watchlistKicker", "长期监控")}</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
-                  {t("research.watchlistTitle", "长期监控 Watchlist")}
+                  {t("research.watchlistTitle", "长期监控")}
                 </h3>
                 <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                   {sanitizeExternalDisplayText(t("research.watchlistDesc", "将专题刷新结果沉淀为变化摘要，集中查看当日新增内容。"))}
@@ -69,7 +69,7 @@ export function ResearchCenterWatchlistSection({
                 >
                   {runningDueWatchlists
                     ? t("research.watchlistRunDueRunning", "执行中...")
-                    : t("research.watchlistRunDue", "执行到期 Watchlist")}
+                    : t("research.watchlistRunDue", "刷新到期项")}
                 </button>
               </div>
             </div>
@@ -182,7 +182,7 @@ export function ResearchCenterWatchlistSection({
                   {watchlistAutomation?.loaded
                     ? t("research.watchlistAutomationLoaded", "本地自动巡检已加载")
                     : watchlistAutomation?.installed
-                      ? t("research.watchlistAutomationInstalled", "已安装，等待 launchd 加载")
+                      ? t("research.watchlistAutomationInstalled", "已安装，等待启动")
                       : t("research.watchlistAutomationMissing", "尚未安装本地自动巡检")}
                 </span>
                 <span className={`rounded-full px-2.5 py-1 font-medium ${watchlistAutomationStatusTone(watchlistAutomation?.last_run_status)}`}>
@@ -214,11 +214,11 @@ export function ResearchCenterWatchlistSection({
                           onClick={() =>
                             void copyWatchlistOpsText(
                               watchlistAutomation.recommended_run_due_command,
-                              "手动重跑命令",
+                              "手动刷新指引",
                             )
                           }
                         >
-                          复制重跑命令
+                          复制刷新指引
                         </button>
                       ) : null}
                       {watchlistAutomation?.recommended_status_command ? (
@@ -228,11 +228,11 @@ export function ResearchCenterWatchlistSection({
                           onClick={() =>
                             void copyWatchlistOpsText(
                               watchlistAutomation.recommended_status_command,
-                              "巡检状态命令",
+                              "状态检查指引",
                             )
                           }
                         >
-                          复制状态命令
+                          复制状态指引
                         </button>
                       ) : null}
                     </div>
@@ -264,7 +264,7 @@ export function ResearchCenterWatchlistSection({
                   <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">{watchlistAutomation?.last_failed_count ?? 0}</p>
                 </div>
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">日志大小</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">记录大小</p>
                   <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">
                     {watchlistAutomation?.last_log_size_bytes
                       ? `${Math.max(1, Math.round(watchlistAutomation.last_log_size_bytes / 1024))} KB`
@@ -272,21 +272,21 @@ export function ResearchCenterWatchlistSection({
                   </p>
                 </div>
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">状态新鲜度</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">更新状态</p>
                   <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">
                     {watchlistAutomation?.last_checked_at
                       ? `${formatWatchlistAge(watchlistAutomation.state_age_seconds)} 前`
                       : "—"}
                   </p>
                   <p className={`mt-1 text-[11px] ${watchlistAutomation?.state_stale ? "text-[var(--af-danger)]" : "text-[var(--af-text-tertiary)]"}`}>
-                    {watchlistAutomation?.state_stale ? "状态已过期" : "状态仍在刷新窗口内"}
+                    {watchlistAutomation?.state_stale ? "需要更新" : "正常更新"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">最近请求失败</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">近期失败</p>
                   <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">{watchlistAutomation?.recent_request_failure_count ?? 0}</p>
                   <p className="mt-1 text-[11px] text-[var(--af-text-tertiary)]">
-                    连续失败 {watchlistAutomation?.consecutive_request_failure_count ?? 0}
+                    连续 {watchlistAutomation?.consecutive_request_failure_count ?? 0}
                   </p>
                 </div>
               </div>
@@ -295,7 +295,7 @@ export function ResearchCenterWatchlistSection({
                   ? sanitizeExternalDisplayText(watchlistAutomation.last_summary)
                   : t(
                     "research.watchlistAutomationHint",
-                    "建议把本地 watchlist 调度交给 launchd，每小时触发一次，脚本只刷新已到期 watchlist 并写回提醒状态。",
+                    "建议开启本机定时检查，系统会按时刷新到期提醒。",
                   )}
               </p>
               {watchlistAutomation?.last_failure_hint ? (
@@ -345,7 +345,7 @@ export function ResearchCenterWatchlistSection({
                 <div className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">Run history</p>
+                      <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">最近记录</p>
                       <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">最近 {watchlistRunHistory.length} 条运行记录</p>
                     </div>
                     <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
@@ -362,7 +362,7 @@ export function ResearchCenterWatchlistSection({
                           </span>
                         </div>
                         <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
-                          {formatWatchlistTime(run.created_at)} · 尝试 {run.attempt_count} · 重试 {run.retry_count} · 变化 {run.change_count}
+                          {formatWatchlistTime(run.created_at)} · 执行 {run.attempt_count} · 重试 {run.retry_count} · 变化 {run.change_count}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[var(--af-text-secondary)]">
                           {sanitizeExternalDisplayText(run.error || run.summary || "无摘要")}
@@ -372,126 +372,49 @@ export function ResearchCenterWatchlistSection({
                   </div>
                 </div>
               ) : null}
-              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">重跑命令</p>
+              <details className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--af-text-secondary)]">
+                  高级操作
+                </summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    {
+                      label: "复制刷新指引",
+                      value: watchlistAutomation?.recommended_run_due_command || "npm run research:watchlists:run-due",
+                    },
+                    {
+                      label: "复制状态指引",
+                      value: watchlistAutomation?.recommended_status_command || "npm run research:watchlists:automation:status",
+                    },
+                    {
+                      label: "复制安装指引",
+                      value: watchlistAutomation?.recommended_install_command || "npm run research:watchlists:automation:install",
+                    },
+                    {
+                      label: "复制停用指引",
+                      value: watchlistAutomation?.recommended_uninstall_command || "npm run research:watchlists:automation:uninstall",
+                    },
+                  ].map((item) => (
                     <button
+                      key={item.label}
                       type="button"
                       className="af-btn af-btn-secondary border px-2.5 py-1 text-[11px]"
-                      onClick={() =>
-                        void copyWatchlistOpsText(
-                          watchlistAutomation?.recommended_run_due_command || "npm run research:watchlists:run-due",
-                          "重跑命令",
-                        )
-                      }
+                      onClick={() => void copyWatchlistOpsText(item.value, item.label)}
                     >
-                      {t("common.copy", "复制")}
+                      {item.label}
                     </button>
-                  </div>
-                  <code className="mt-2 block overflow-x-auto rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-3 py-2 text-[11px] leading-5 text-[var(--af-text-primary)]">
-                    {watchlistAutomation?.recommended_run_due_command || "npm run research:watchlists:run-due"}
-                  </code>
+                  ))}
                 </div>
-                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">状态命令</p>
-                    <button
-                      type="button"
-                      className="af-btn af-btn-secondary border px-2.5 py-1 text-[11px]"
-                      onClick={() =>
-                        void copyWatchlistOpsText(
-                          watchlistAutomation?.recommended_status_command || "npm run research:watchlists:automation:status",
-                          "状态命令",
-                        )
-                      }
-                    >
-                      {t("common.copy", "复制")}
-                    </button>
-                  </div>
-                  <code className="mt-2 block overflow-x-auto rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-3 py-2 text-[11px] leading-5 text-[var(--af-text-primary)]">
-                    {watchlistAutomation?.recommended_status_command || "npm run research:watchlists:automation:status"}
-                  </code>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
-                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">安装命令</p>
-                    <button
-                      type="button"
-                      className="af-btn af-btn-secondary border px-2.5 py-1 text-[11px]"
-                      onClick={() =>
-                        void copyWatchlistOpsText(
-                          watchlistAutomation?.recommended_install_command ||
-                            "npm run research:watchlists:automation:install",
-                          "安装命令",
-                        )
-                      }
-                    >
-                      {t("common.copy", "复制")}
-                    </button>
-                  </div>
-                  <code className="mt-2 block overflow-x-auto rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-3 py-2 text-[11px] leading-5 text-[var(--af-text-primary)]">
-                    {watchlistAutomation?.recommended_install_command || "npm run research:watchlists:automation:install"}
-                  </code>
-                </div>
-                <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">卸载命令</p>
-                    <button
-                      type="button"
-                      className="af-btn af-btn-secondary border px-2.5 py-1 text-[11px]"
-                      onClick={() =>
-                        void copyWatchlistOpsText(
-                          watchlistAutomation?.recommended_uninstall_command ||
-                            "npm run research:watchlists:automation:uninstall",
-                          "卸载命令",
-                        )
-                      }
-                    >
-                      {t("common.copy", "复制")}
-                    </button>
-                  </div>
-                  <code className="mt-2 block overflow-x-auto rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-inset)] px-3 py-2 text-[11px] leading-5 text-[var(--af-text-primary)]">
-                    {watchlistAutomation?.recommended_uninstall_command || "npm run research:watchlists:automation:uninstall"}
-                  </code>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
-                {[
-                  { label: "launchd plist", value: watchlistAutomation?.plist_path || "" },
-                  { label: "状态文件", value: watchlistAutomation?.state_path || "" },
-                  { label: "运行日志", value: watchlistAutomation?.log_path || "" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">{item.label}</p>
-                      {item.value ? (
-                        <button
-                          type="button"
-                          className="af-btn af-btn-secondary border px-2.5 py-1 text-[11px]"
-                          onClick={() => void copyWatchlistOpsText(item.value, `${item.label}路径`)}
-                        >
-                          {t("common.copy", "复制")}
-                        </button>
-                      ) : null}
-                    </div>
-                    <p className="mt-2 break-all text-[11px] leading-5 text-[var(--af-text-secondary)]">
-                      {item.value || "当前未返回路径"}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              </details>
               {watchlistAutomation?.failed_items?.length ? (
                 <div className="mt-3 space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">最近失败样本</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">最近失败项</p>
                   {watchlistAutomation.failed_items.map((item) => (
                     <div key={`${item.watchlist_id || item.name}-failed`} className="rounded-2xl af-state-panel-danger px-3 py-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-[var(--af-text-primary)]">{item.name}</p>
                         <span className="rounded-full af-chip af-chip-danger px-2 py-1 text-[11px] ">
-                          {item.change_count ? `changes ${item.change_count}` : "failed"}
+                          {item.change_count ? `变化 ${item.change_count}` : "失败"}
                         </span>
                       </div>
                       <p className="mt-1 text-sm leading-6 text-[var(--af-text-secondary)]">{sanitizeExternalDisplayText(item.error || item.summary)}</p>
@@ -556,8 +479,8 @@ export function ResearchCenterWatchlistSection({
                           {watchlistActionKey === `${watchlist.id}-status`
                             ? "处理中..."
                             : watchlist.status === "paused"
-                              ? "恢复 Watchlist"
-                              : "暂停 Watchlist"}
+                              ? "恢复监控"
+                              : "暂停监控"}
                         </button>
                         <button
                           type="button"
@@ -567,13 +490,13 @@ export function ResearchCenterWatchlistSection({
                         >
                           {refreshingWatchlistId === watchlist.id
                             ? t("research.watchlistRefreshing", "刷新中...")
-                            : t("research.watchlistRefresh", "刷新 Watchlist")}
+                            : t("research.watchlistRefresh", "刷新")}
                         </button>
                       </div>
                     </div>
                     {watchlist.status === "paused" ? (
                       <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
-                        当前已暂停自动刷新，仍可手动执行一次 Watchlist。
+                        当前已暂停自动刷新，仍可手动执行一次。
                       </p>
                     ) : null}
                     <div className="mt-3 space-y-2">
@@ -589,7 +512,7 @@ export function ResearchCenterWatchlistSection({
                       ))}
                       {!watchlist.latest_changes?.length ? (
                         <p className="text-sm text-[var(--af-text-tertiary)]">
-                          {t("research.watchlistEmpty", "还没有变化摘要，可先刷新一次 Watchlist。")}
+                          {t("research.watchlistEmpty", "还没有变化摘要，可先刷新一次。")}
                         </p>
                       ) : null}
                     </div>
@@ -597,7 +520,7 @@ export function ResearchCenterWatchlistSection({
                 ))
               ) : (
                 <p className="text-sm text-[var(--af-text-tertiary)]">
-                  {t("research.watchlistEmpty", "还没有变化摘要，可先刷新一次 Watchlist。")}
+                  {t("research.watchlistEmpty", "还没有变化摘要，可先刷新一次。")}
                 </p>
               )}
             </div>

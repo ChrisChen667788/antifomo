@@ -249,9 +249,9 @@ export function ResearchTopicVersionCompareSection({
         <section className="af-glass rounded-[30px] p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="af-kicker">{t("research.versionFieldDiff", "字段级正式 Diff")}</p>
+              <p className="af-kicker">{t("research.versionFieldDiff", "关键变化")}</p>
               <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                {t("research.versionFieldDiffDesc", "按字段对照基线版本与对照版本的核心线索，明确新增、减少与当前保留项。")}
+                {t("research.versionFieldDiffDesc", "对照两个版本的新增、减少和保留线索。")}
               </p>
             </div>
           </div>
@@ -392,9 +392,9 @@ export function ResearchTopicVersionCompareSection({
         <section className="af-glass rounded-[30px] p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="af-kicker">{t("research.scorePanelTitle", "Top 3 评分拆解")}</p>
+              <p className="af-kicker">{t("research.scorePanelTitle", "Top 3 候选")}</p>
               <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                {t("research.scorePanelDesc", "对照初始版本与当前版本的 Top 3 候选，拆开显示评分因素和依据。")}
+                {t("research.scorePanelDesc", "查看两个版本的重点候选变化。")}
               </p>
             </div>
           </div>
@@ -504,9 +504,9 @@ export function ResearchTopicVersionCompareSection({
         <section className="af-glass rounded-[30px] p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="af-kicker">{t("research.sourceContributionTitle", "来源类型贡献占比")}</p>
+              <p className="af-kicker">{t("research.sourceContributionTitle", "来源结构")}</p>
               <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                {t("research.sourceContributionDesc", "按官方源、媒体源和聚合源，估算 Top 3 得分的来源贡献结构。")}
+                {t("research.sourceContributionDesc", "查看官方、媒体和聚合来源的占比。")}
               </p>
             </div>
           </div>

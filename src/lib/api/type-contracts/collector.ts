@@ -61,6 +61,24 @@ export interface CollectorDaemonStatus {
   favorites_auto_imported_count: number;
   favorites_auto_deduplicated_count: number;
   favorites_auto_message: string;
+  favorites_clipboard_auto_enabled: boolean;
+  favorites_clipboard_adapter_available: boolean;
+  favorites_clipboard_last_message: string;
+  favorites_export_directory_auto_enabled: boolean;
+  favorites_export_directory_path: string;
+  favorites_export_directory_adapter_available: boolean;
+  favorites_export_directory_last_message: string;
+  favorites_export_directory_last_processed_count: number;
+  favorites_wechat_cli_adapter_available: boolean;
+  favorites_wechat_cli_last_message: string;
+  browser_extension_path: string;
+  browser_extension_manifest_present: boolean;
+  browser_extension_readme_path: string;
+  browser_extension_pipeline_script: string;
+  browser_extension_last_verification_at: string | null;
+  browser_extension_last_verification_ok: boolean;
+  browser_extension_last_verification_message: string;
+  browser_extension_last_verification_report: string;
   source_health: Array<{
     source_url: string;
     source_token: string;
@@ -87,6 +105,22 @@ export interface CollectorDaemonStatus {
     note: string | null;
   }>;
   log_tail: string[];
+}
+
+export interface CollectorDaemonConfig {
+  wechat_clipboard_auto_import: boolean;
+  wechat_export_directory_auto_import: boolean;
+  wechat_export_directory_path: string;
+  config_file: string;
+  updated_at: string | null;
+}
+
+export interface CollectorBrowserExtensionVerifyResult {
+  ok: boolean;
+  verified_at: string;
+  message: string;
+  output: string;
+  report_file: string;
 }
 
 export interface CollectorDaemonCommandResult {
@@ -150,12 +184,16 @@ export interface WechatAgentBatchStatus {
   submitted_url_direct: number;
   submitted_url_share_copy: number;
   submitted_url_resolved: number;
+  submitted_url_tab_copy_link: number;
+  submitted_url_tab_browser_open: number;
   submitted_ocr: number;
   deduplicated_existing: number;
   deduplicated_existing_url: number;
   deduplicated_existing_url_direct: number;
   deduplicated_existing_url_share_copy: number;
   deduplicated_existing_url_resolved: number;
+  deduplicated_existing_url_tab_copy_link: number;
+  deduplicated_existing_url_tab_browser_open: number;
   deduplicated_existing_ocr: number;
   skipped_invalid_article: number;
   skipped_seen: number;
@@ -187,6 +225,8 @@ export interface WechatAgentBatchStatus {
   live_report_submitted_url_direct: number;
   live_report_submitted_url_share_copy: number;
   live_report_submitted_url_resolved: number;
+  live_report_submitted_url_tab_copy_link: number;
+  live_report_submitted_url_tab_browser_open: number;
   live_report_submitted_ocr: number;
   live_report_skipped_seen: number;
   live_report_skipped_invalid_article: number;

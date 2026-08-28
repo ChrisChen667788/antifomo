@@ -49,6 +49,14 @@ class EvidenceExpansionResult:
     expansion_triggered: bool
 
 
+def _requires_company_convergence(scope_hints: dict[str, object]) -> bool:
+    return bool(
+        scope_hints.get("prefer_company_entities")
+        or scope_hints.get("company_anchors")
+        or scope_hints.get("clients")
+    )
+
+
 def apply_evidence_expansion(
     *,
     keyword: str,
@@ -59,6 +67,7 @@ def apply_evidence_expansion(
     search_hits: list[SearchHit],
     source_intelligence: dict[str, list[str]],
     input_scope_hints: dict[str, object],
+    explicit_scope_hints: dict[str, object] | None,
     scope_hints: dict[str, object],
     theme_terms: list[str],
     company_anchor_terms: list[str],
@@ -92,10 +101,22 @@ def apply_evidence_expansion(
         target_rows=source_intelligence.get("target_accounts", []),
         competitor_rows=source_intelligence.get("competitor_profiles", []),
     )
+    company_focus_required = _requires_company_convergence(
+        explicit_scope_hints if explicit_scope_hints is not None else input_scope_hints
+    )
+    minimum_source_count = 8 if research_mode == "deep" else 4
+    minimum_official_count = 3 if research_mode == "deep" else 1
+    minimum_domain_count = 5 if research_mode == "deep" else 3
+    official_source_count = sum(source.source_tier == "official" for source in sources)
+    unique_domain_count = len(
+        {normalize_text(source.domain or "").casefold() for source in sources if normalize_text(source.domain or "")}
+    )
     should_expand = bool(runtime["enable_expansion"]) and (
-        len(sources) < int(runtime["expansion_min_sources"])
-        or concrete_dimension_count < int(runtime["expansion_min_dimensions"])
-        or company_convergence_weak
+        len(sources) < max(int(runtime["expansion_min_sources"]), minimum_source_count)
+        or official_source_count < minimum_official_count
+        or unique_domain_count < minimum_domain_count
+        or (company_focus_required and concrete_dimension_count < int(runtime["expansion_min_dimensions"]))
+        or (company_focus_required and company_convergence_weak)
         or deps.official_coverage_is_weak(
             sources,
             min_ratio=0.35 if bool(scope_hints.get("prefer_company_entities")) else (0.25 if research_mode == "fast" else 0.35),

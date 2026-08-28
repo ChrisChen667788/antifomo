@@ -1,10 +1,30 @@
 # Anti-FOMO Version Iteration Plan
 
-Updated: 2026-06-14
+Updated: 2026-07-13
 
 Status note: this file preserves the original sequencing decisions. The authoritative current release map is `docs/release-history-and-feature-map.md`; the modular refactor and day/night work below were completed across `1.1.0`, `1.5.0`, and `1.6.0`, while the `1.2.0` and `1.3.0` version numbers were subsequently assigned to the LangChain adapter and executable evaluation baseline.
 
 Version rule: use `MAJOR.MINOR.PATCH+YYYYMMDD`, for example `0.3.1+20260423`.
+
+## Next Version Stability Baseline: Core Subfunction Availability
+
+Added: 2026-06-24.
+
+Goal: treat service availability and subfunction stability as a release gate, not a manual afterthought. The immediate trigger was a Safari test where the frontend was running on `3010` but the backend research API on `8000` was not listening, causing the research card to show “研究服务暂时不可用”.
+
+Scope:
+
+- Add fast backend API smoke coverage for page-backing endpoints: feed items, knowledge, collector, research workspace, source settings, daily brief, retrieval status, watchlists, and focus session lifecycle.
+- Add live running-service smoke coverage for the same read surfaces so “frontend up, backend down” fails explicitly without polluting local data.
+- Keep long-running or paid research generation out of the default smoke path; validate that with existing research evaluation commands after budget/credentials are confirmed.
+- Make Safari manual testing start with backend health and stability smoke checks.
+
+Acceptance:
+
+- `npm run test:backend` includes the new API stability smoke regression.
+- Default read-only `npm run stability:smoke` passes before handing the app to the user for quick UI testing.
+- `npm run test:backend` covers the small write-path stability regression against an isolated in-memory database; live write smoke is optional via `npm run stability:smoke -- --include-write`.
+- Any 5xx or connection failure on a core page-backing endpoint blocks the release until fixed or explicitly documented.
 
 Delivery note: the originally staged `0.3.2+20260424`, `0.3.3+20260425`, and `0.4.0+YYYYMMDD` work was implemented in order and shipped together as `0.4.0+20260423` because the actual implementation date is 2026-04-23.
 
@@ -392,3 +412,196 @@ Acceptance:
 - Night mode has a visibly distinct design language with readable hierarchy and no major light-surface leakage.
 - Text, badges, buttons, panels, forms, and selected/hover/disabled/focus states remain readable in both modes.
 - Production build, lint, and screenshot checks pass before release.
+
+## Next Priority Insert: Financial-Scope Guardrails and China IT Delivery Artifacts
+
+Goal: raise generated solution decks and consulting documents to a China tech/IT pre-sales delivery baseline, while preventing cross-industry leakage such as medical/culture-tourism accounts appearing in finance-topic reports.
+
+Status: inserted after the current stability/UI cleanup line; backend finance-scope guardrails and first UI detail fixes started in the next working version.
+
+External references reviewed:
+
+- GitHub `PptxGenJS`: native editable PPTX generation from JavaScript with charts, tables, images, shapes, templates, and OOXML-compatible output. Candidate for replacing screenshot-like deck output with editable corporate slides.
+- GitHub `python-pptx`: Python library for creating, reading, and updating PowerPoint files. Candidate for backend-side PPTX inspection and compatibility regression tests.
+- GitHub `python-docx-template/docxtpl`: Jinja2-style DOCX template rendering. Candidate for China IT proposal/feasibility report templates where section structure and Word styles must be controlled.
+- GitHub `Gotenberg`: Docker PDF conversion API with Chromium and LibreOffice included. Candidate for Office-to-PDF roundtrip tests once local/container dependency is available.
+- ModelScope `MinerU`: PDF/DOCX/PPTX/XLSX/image to Markdown/JSON extraction. Candidate for imported reference proposals and generated artifact QA.
+- ModelScope `FinGPT` and BGE/Qwen rerankers: candidates for finance-domain source reranking and finance-language consistency checks.
+- Skill-style PPT workflows from MiniMax-AI/skills, anthropics/skills, and community Office skills: useful process patterns are template analysis, outline JSON, slide content JSON, OOXML edit/pack, overlap validation, and machine-readable QA gates.
+
+Current gaps observed:
+
+- UI detail debt: long evidence/quality rows wrap with inconsistent bullet alignment; some small badges look like floating debug remnants; repeated classes and dense helper text create noise.
+- Scope debt: industry scope is not yet a first-class guard in every report merge path. Region conflict exists, but finance reports can still retain medical/culture-tourism rows if LLM output or fallback intelligence provides them.
+- Delivery artifact debt: solution delivery markdown and PPTX still expose internal workbench language, placeholders, weak evidence snippets, and generic outline terms; generated structure does not yet match common China IT proposal/可研/项目建议书 conventions.
+
+Implementation order:
+
+1. P0 guardrails: add scope-aware industry conflict filtering for final report fields, ranked fallback entities, public contacts, account team rows, source-intelligence fallback rows, and stored-report rewrite.
+2. P0 regression: add finance-topic tests asserting `申康医院发展中心`、`上海市卫生健康委`、`上海市文化和旅游局` cannot survive in finance target/contact/team fields, while `上海市委金融办`、`上海证券交易所` remain valid.
+3. P1 UI cleanup: align bullet wrapping, replace floating/vertical micro badges with conventional pills, remove duplicated class noise, and continue a full pass over visible customer-facing copy.
+4. P1 document compiler: define China IT artifact schemas:
+   - 解决方案: 封面、目录、背景与痛点、建设目标、总体架构、业务场景、能力清单、实施路径、项目组织、风险与保障、投资与收益、附录证据。
+   - 项目建议书: 项目概况、必要性、建设内容、实施计划、投资估算、效益分析、风险控制、结论建议。
+   - 可行性研究报告: 编制依据、现状需求、目标范围、方案比选、推荐方案、投资估算、经济/社会效益、实施组织、风险、结论。
+   - 客户 PPT: 1页结论、3页问题与机会、3页方案与架构、2页实施与价值、1页下一步。
+5. P1 rendering: add editable PPTX layout tokens, master-slide-like constants, chart/table primitives, and text-overlap guards; keep existing export API but route new decks through the stricter compiler.
+6. P2 QA: add Office roundtrip checks, PDF preview baselines, generated artifact text extraction, placeholder/noise scanner, and finance/medical/tourism cross-scope fixtures.
+
+Acceptance:
+
+- Finance-topic reports do not show medical/culture-tourism targets, public contacts, team rows, or deck/customer-facing sections unless the user explicitly asks for a cross-industry comparison.
+- Generated artifacts avoid internal labels such as compiler/debug/workbench terms in customer-facing sections.
+- PPTX is editable, uses consistent Chinese corporate layout, and passes no-overlap, no-placeholder, no-cross-scope, and basic Office/PDF roundtrip checks.
+- DOCX/PDF outputs keep A4/Chinese font assumptions explicit and include artifact visual/text regression coverage.
+
+## Next Quality Line: Evidence-Closed Research and Decision-Grade Solutions
+
+Goal: fix the current topic leakage and evidence insufficiency before further model or document-polish upgrades, then make solution design traceable to measurable architecture decisions.
+
+Status: engineering implementation is complete locally through `1.9.1` on 2026-07-13. Release promotion remains blocked by the real 100+30 expert-calibration, three-industry blind-evaluation, and customer-acceptance gates; deterministic fixtures are implementation evidence, not human approval. Detailed research, metrics, hard-negative evidence, and source links are maintained in `docs/professional-report-quality-v1.8.0.md` under `2026-07-13 外部调研结论与后续质量路线`.
+
+Why now:
+
+- The latest Shanghai medical-AI job retained only two unrelated Codex/OpenAI sources while reporting `strict_match_ratio=1.0`, then generated a polished but off-topic solution pack.
+- This is a fail-closed and evaluation problem first. A stronger model or more elaborate template cannot repair evidence that never matched the question.
+
+Implementation order:
+
+| Version | Priority | Delivery focus | Release gate |
+| --- | --- | --- | --- |
+| `1.8.2` | P0 | Real research data binding, scope contract, source acceptance ledger, semantic reranking, index isolation, evidence minimums | Known medical hard-negative is blocked; source precision >=95%; critical cross-industry leakage = 0 |
+| `1.8.3` | P0 | Question-tree research, adaptive corrective retrieval, atomic claims, counter-evidence, citation-at-draft-time | Critical claim coverage = 100%; citation support >=95%; no zero-evidence top-level question |
+| `1.8.4` | P0/P1 | Multi-dimensional evaluation, hard score caps, 100-case independent review, expert calibration and baseline A/B | Undeliverable recall >=95%; no hard failure can be promoted by aggregate score |
+| `1.9.0` | P1 | QAW quality-attribute scenarios, ATAM tradeoffs, ADR evidence, C4 views, Well-Architected and NIST AI risk review | Requirements-to-test traceability = 100%; no orphan component or unmeasured critical NFR |
+| `1.9.1` | P1 | Proof-of-architecture artifacts, executable validation actions, customer/internal evidence split, readiness integration | Every high-risk decision has real validation evidence; medical/finance/tourism end-to-end blind review passes |
+
+Local delivery record:
+
+- `1.8.2`: implemented in the default research workflow with scope contracts, source admissions, evidence minimums, index/archive isolation, medical/financial routing, evidence-gap output, and hard-negative regression coverage.
+- `1.8.3`: implemented with a six-axis question tree, bounded corrective retrieval, atomic claim/citation gates, fail-closed solution delivery, and release-readiness integration.
+- `1.8.4`: implemented with a 100-primary/30-dual blind-review calibration workflow, arbitration and bias/recall metrics, plus one shared 20/40/59 hard-failure policy; real expert fields remain pending.
+- `1.9.0`: implemented with measurable QAW scenarios, complete ATAM finding classes, three-option ADRs, five C4 views, cloud-neutral/NIST AI review, 100% traceability, and zero-orphan checks.
+- `1.9.1`: implemented with machine-readable proof checks, a digest-verified three-domain minimum simulator, customer/internal evidence separation, and release-readiness gates; real blind/customer evidence remains pending.
+- Promotion state: blocked until the pending expert reviewers and customer owners complete the required artifacts; the low-quality queue is 6/68 with zero invalid payloads, and machine stability, architecture, simulator, and Office gates are recorded separately from human approval.
+
+Cross-version rules:
+
+- A research result that fails topic, minimum-evidence, reranker, source-diversity, or citation gates produces an evidence-gap brief only. It must not produce a client-ready report or full solution blueprint.
+- The solution pipeline consumes only accepted claims from the claim-evidence ledger; it must not read raw unfiltered chunks as customer-facing facts.
+- Aggregate quality scores cannot override hard failures. Runtime/API/UI/diagnostics/release-readiness must expose the same blocking reason.
+- Model upgrades are benchmarked per module and rolled out in shadow mode, then 5%, 25%, and 100% stages. “Strongest model” routing is not a substitute for retrieval and evidence gates.
+
+## Post-1.9.1 Product Line: Source-Grounded Knowledge and Decision Documents
+
+Status: locally implemented through `2.0.6-development` on 2026-07-16. The engineering contracts, APIs, migrations, tests, and `/studio` surface below are present, but none of these versions is release-approved. The existing `1.8.4-1.9.1` expert, blind-review, customer, Office, visual, and release-readiness blocks remain authoritative, and the new human-qrels, production-signing, permission-leakage, performance, recovery, and cross-artifact acceptance gates remain open.
+
+Competitive and open-source research, code-level gap analysis, schemas, APIs, metrics, license boundaries, and per-version acceptance criteria are maintained in `docs/knowledge-product-competitive-research-and-roadmap-2026-07-16.md`.
+
+Positioning:
+
+- Do not compete as a generic chat knowledge base. Preserve the product chain: WeChat/Web/file signals -> controlled evidence -> China-specific research/solution/feasibility/project-proposal artifacts -> executable architecture and acceptance evidence.
+- Adopt NotebookLM-style source selection and passage click-back, Notion-style permission-aware knowledge governance, WorkBuddy-style governed task/artifact flow, and ima-style low-friction China content intake without bypassing the current fail-closed evidence model.
+
+Implementation order:
+
+| Version | Priority | Delivery focus | Engineering status | Release gate |
+| --- | --- | --- | --- | --- |
+| `1.9.2` | P0 | True Chinese semantic retrieval, document parser adapters, source revisions, passage citations, Sources/Chat/Studio Notebook | Implemented locally; production-model artifact and human qrels pending | 300-query human qrels; nDCG@10 >=0.78 and >=15% above hash baseline; Recall@20 >=0.90; citation click-back >=98%; excluded-source leakage = 0 |
+| `1.9.3` | P0 | Versioned China decision-document contracts, 2023 government/enterprise feasibility policy packs, field-state and formula lineage | Implemented locally; real expert document samples pending | Applicable official-outline coverage = 100%; unsourced generated numbers = 0; formula/export consistency = 100%; real expert samples remain mandatory |
+| `1.9.4` | P0/P1 | Claim graph, bounded chapter writers, consistency challenger, dependency DAG and incremental section rebuild | Implemented locally; large-corpus rebuild benchmark pending | Critical claim citation = 100%; critical cross-chapter conflicts = 0; >=90% unaffected sections avoid rebuild |
+| `1.9.5` | P1 | Knowledge spaces, document ACL, verified owner/expiry, review threads, controlled connectors and artifact backflow | Implemented locally; cross-surface permission matrix pending | Permission leakage = 0 across search/chat/cache/export/deep-link tests; revoked or expired evidence cannot support new critical claims |
+| `1.9.6` | P1 | Signed Skill registry, permission manifest, quarantine/dry-run/benchmark, governed MCP and first-party research/document skills | Implemented locally; production signing key and real benchmarks pending | Unsigned/unlicensed/over-privileged Skills cannot be approved; prompt-injection fixtures produce zero undeclared actions |
+| `2.0.0` | P1 | Evidence-bound audio brief, mind map, data table, slide/infographic Studio plus commercial performance/security readiness | Implemented as development line; commercial promotion blocked | Cross-artifact critical consistency = 100%; all existing human/customer/Office/visual/security gates pass before promotion |
+
+Implementation evidence added in this line:
+
+- `backend/app/services/decision_studio/` owns parsing, embeddings, Notebook/source revisions, formal-document contracts, Claim/section compilation, Knowledge Space governance, Skills, artifacts, and readiness.
+- `/api/decision-studio` exposes the workflow through typed FastAPI requests; `/studio` is the operational Next.js surface.
+- Alembic revision `20260716_0026` is forward/backward tested on an isolated SQLite baseline.
+- Deterministic tests cover source selection leakage, passage click-back, stale citation blocking, formula lineage, conflict blocking, incremental compilation, ACL, connector/Skill permission rejection, artifact consistency, and inherited release blocking.
+
+Cross-version rules for this line:
+
+- The existing deterministic hash vector remains a reproducible baseline but must not be presented as production semantic retrieval after `1.9.2`.
+- Every citation stores an immutable source revision and passage coordinate; a URL alone is not a sufficient citation anchor.
+- Every formal-document field is explicit evidence, calculated data, assumption, missing information, or not applicable. Models must not silently turn missing fields into facts.
+- Every artifact is built from accepted claims and carries source, policy, model, parser, and Skill revisions. A dependency change marks affected artifacts stale.
+- Third-party parsers, models, frameworks, and Skills require provenance, pinned revision, license snapshot, security review, benchmark evidence, and rollback before production use.
+
+## 2.0.1-2.0.6 Release Program Extension
+
+Status: locally implemented on 2026-07-16. These versions complete the engineering paths and acceptance calculators; they do not change the authoritative `blocked` commercial status.
+
+| Version | Engineering delivery | Current acceptance state |
+| --- | --- | --- |
+| `2.0.1` | Existing knowledge/report activation, three-domain qrel calculator, parser fidelity calculator | Blocked pending 300 human qrels and 100 real parser samples |
+| `2.0.2` | Three formal-document calibration contract and Claim/incremental-compiler acceptance | Blocked pending 60 expert documents and raw compiler benchmark artifact |
+| `2.0.3` | 100-report independent-review and 500-entity authenticity calculators | Blocked pending independent reviewer artifacts and attestations |
+| `2.0.4` | Cross-surface permission matrix and five-Skill security benchmark contract | Blocked pending production security review and raw matrix/benchmark artifacts |
+| `2.0.5` | Six-form consistency contract and Office/Studio visual acceptance | Blocked pending Office roundtrip and independent light/dark visual approval |
+| `2.0.6` | Performance/cost plus queue/backup/audit/external-volume recovery contracts | Blocked pending production-like load, backup restore, and failure-injection evidence |
+
+All suites append immutable evidence to `decision_validation_runs`; the aggregate uses each suite's latest run and preserves all inherited human, expert, blind-review, customer, Office, and visual blockers. See `docs/decision-studio-release-program-v2.0.1-v2.0.6.md` for exact thresholds and operator commands.
+
+## 2.0.7-2.2.0 Competitive-Informed Decision Program
+
+Status: locally implemented through `2.2.0-development` on 2026-07-18 under an explicitly authorized non-release development branch. The roadmap is based on the official-source comparison in `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md`. Engineering completion does not mark any version release-approved: the immutable RC, human qrels, parser corpus, independent Office review, enterprise connector matrix, vertical expert artifacts, and three customer signoffs remain blocked until real evidence is submitted.
+
+Strategic correction:
+
+- Deep research with citations, internal-knowledge search, connectors, and multiform artifacts are now broadly available across domestic and international products. They are necessary capabilities, not a durable differentiator by themselves.
+- Preserve the differentiated chain: controlled source snapshot -> Claim Graph -> Chinese formal decision-document compiler -> architecture tradeoffs -> executable acceptance evidence.
+- Do not start broad feature expansion while the existing real human, customer, Office, visual, security, performance, and recovery gates remain blocked.
+
+Implementation order:
+
+| Version | Priority | Delivery focus | Required release gate |
+| --- | --- | --- | --- |
+| `2.0.7` | P0 | Release Evidence Closure: freeze the RC digest and complete human qrels, parser samples, expert documents, independent report/entity review, three-industry blind review, customer acceptance, permission/Skill security, Office/visual, load/cost, backup/recovery, and external-volume evidence | Every inherited and Decision Studio suite passes against the same immutable digest; invalid payloads = 0; low-quality flagged rate <=10%; no fixture counted as external approval |
+| `2.1.0` | P0 | Research Control Room: approved brief/question tree, source candidate inbox, accept/reject/lock, frozen source bundles, live steering, budget/progress, pause/resume, and run comparison | Approved-plan conformance >=95% on 30 real tasks; rejected-source leakage = 0; restart recovery preserves snapshot, budget, claims, and audit |
+| `2.1.1` | P0 | Retrieval and Parsing Quality: hybrid retrieval, measured reranking, Docling/MinerU shadow routing, table/formula/image coordinates, drift and resource monitoring | >=600 adjudicated qrels; nDCG@10 >=0.82; Recall@20 >=0.92; critical cross-industry false positive <=1%; citation click-back >=99% on >=200 documents |
+| `2.1.2` | P1 | Evidence-Aware Decision Document Editor: structured editing, source/claim/formula/policy side panel, human-edit preservation, comments/approval, editable charts/tables, partial rebuild, and Office profiles | Unsupported numbers = 0; formula and critical-claim coverage = 100%; unaffected edit preservation >=99%; independent Office and visual gates pass |
+| `2.1.3` | P1 | Enterprise Identity and Connectors: OIDC/OAuth/SSO, tenant roles, read-only Feishu/Tencent Docs/Notion/Microsoft 365 pilots, native ACL sync, revocation/deletion, writeback preview, retention and audit | Permission leakage = 0 across every surface; revocation meets documented SLA; credentials never enter logs/prompts/traces/exports; connector failure matrix passes |
+| `2.1.4` | P1 | Governed Agent Operations: durable runs, checkpoints, idempotency, schedules, budgets, approval nodes, production signatures, dry-run effects, replay and rollback | Undeclared actions = 0 across >=100 injection/confused-deputy cases; every high-risk action has exact human approval; restart creates no duplicate effects |
+| `2.1.5` | P1 | Vertical Evidence Packs: healthcare, finance, and culture-tourism official/licensed source registries, ontologies, document contracts, formulas, risks, hard negatives and expert rubrics | Each sector has >=100 benchmark tasks and >=30 expert-reviewed artifacts; critical official-source coverage >=95%; entity precision >=98%; cross-industry leakage = 0 |
+| `2.2.0` | P0 commercial | Commercial Team Decision OS: multi-user decisions/reviews, deployment/admin/retention/DR/SLA/billing, and three complete vertical pilots | All inherited gates pass; >=3 real customer pilots complete the full evidence-to-acceptance workflow; no critical security/evidence/Office/visual/recovery/customer issue remains open |
+
+Engineering completion map:
+
+| Version | Implemented contract | Acceptance state |
+| --- | --- | --- |
+| `2.0.7` | Immutable release-candidate digest, suite binding, external-attestation validation, blocker snapshot | `blocked` until every suite binds the same digest and expert/blind/customer artifacts are real |
+| `2.1.0` | Editable draft brief/question/source plan, approval hash, frozen source snapshot, budget, checkpoint, pause/resume/cancel/compare | `blocked` until representative real-run conformance and recovery evidence passes |
+| `2.1.1` | Semantic/lexical/hybrid-RRF retrieval modes and immutable retrieval/parser/model/vertical benchmark records | `blocked` until 600 qrels and 200-document locked corpus meet thresholds |
+| `2.1.2` | Evidence-aware blocks, optimistic revision lock, human-edit preservation, differential rebuild, DOCX/PPTX and independent visual confirmation | `blocked` until independent Office/visual artifacts and expert document reviews pass |
+| `2.1.3` | Fingerprint-only enterprise identity profiles, Microsoft 365/SharePoint connector types, idempotent ACL sync snapshots and delete propagation | `blocked` until production identity, leakage, revocation, failure and recovery matrices pass |
+| `2.1.4` | Durable Agent plans, budgets, checkpoints, idempotency, high-risk approvals, schedule/pause/resume/cancel and internal rollback | `blocked` until production signing and >=100 adversarial cases prove no undeclared or duplicate effects |
+| `2.1.5` | Versioned medical, finance and tourism source/ontology/contract/hard-negative/rubric packs | `blocked` until each pack has >=100 tasks and >=30 real expert-reviewed artifacts |
+| `2.2.0` | Space-bound customer Pilot workflow, deployment/SLA/evidence bundle, inherited readiness and customer signoff | `blocked` until accepted Pilots cover medical, finance and tourism with all inherited gates passing |
+
+The implementation and operator contract is recorded in `docs/decision-program-v2.0.7-v2.2.0.md`.
+
+Cross-version rules:
+
+- The sequence is gate-driven, not calendar-driven. Merging code does not authorize the next commercial stage.
+- `2.0.7` permits defect fixes discovered by evidence collection, but not broad connector, agent, editor, or artifact expansion.
+- BGE-M3 remains the retrieval incumbent until a challenger wins the same human-qrel, latency, memory, cost, license, and rollback benchmark. Do not select an 8B reranker only because its public leaderboard is stronger.
+- Third-party parsers and frameworks enter through quarantine, provenance/license snapshots, pinned revisions, representative benchmarks, shadow runs, and rollback proof.
+- Build only the evidence-aware editor needed for decision artifacts; integrate with existing collaboration suites instead of recreating a general workspace.
+- Build a small set of first-party governed Skills before considering any marketplace.
+- No aggregate score, model upgrade, source count, report length, or visual polish can override a hard evidence, permission, formal-contract, or acceptance failure.
+
+## 2.2.1-2.3.1 Research Recovery and UX Closure
+
+Status: engineering implementation complete locally on 2026-07-26 after user testing exposed two P0 usability defects: evidence gaps terminated without an effective clarification loop, and the default report surface exposed excessive internal governance and runtime terminology. Real-task and customer acceptance remain blocked. This is release-hardening work discovered through product use, not authorization to weaken evidence gates or mark the product release-ready.
+
+| Version | Priority | Delivery focus | Required release gate |
+| --- | --- | --- | --- |
+| `2.2.1` | P0 | Evidence Recovery Contract: user-facing interaction states, bounded automatic recovery, near-threshold provisional output, structured clarification packets, and formal-export protection | At least 60 cross-industry evidence-gap cases always produce recovery, a bounded draft, or actionable questions; blank terminal output = 0; hard-gate bypass = 0 |
+| `2.2.2` | P0 | Guided Clarification and Resume: typed questions, URL/file/text supplementation, accepted-snapshot reuse, idempotent continuation, parent/child lineage, delta rebuild, and provenance audit | Clarification-to-field mapping >=95%; accepted-source preservation = 100%; duplicate effects = 0; user-supplied provenance = 100% |
+| `2.2.3` | P0 UX | Progressive Disclosure Research UI: result-first layout, immediate recovery card, plain-language states, advanced diagnostics drawer, mobile/accessibility and visual baselines | Default UI exposes zero raw enum/version/reranker/scope-gate terms; unassisted next-action comprehension >=90%; desktop/mobile visual and accessibility gates pass |
+| `2.3.0` | P0 release closure | Human-in-the-loop Research Experience RC across preflight clarification, post-search recovery, resumable updates, telemetry, experiments, and release-readiness | At least 120 real tasks across six industries; evidence-gap-to-usable conversion >=75%; median questions <=3; abandonment improves >=30%; unsupported critical claims and gate bypasses = 0 |
+| `2.3.1` | P0 operations | Clarification Quality and Operations: feedback capture, stale recovery, idempotent replay, source-provenance and gate-bypass telemetry, degraded-system retry, and release-readiness integration | >=30 human feedback records; average score >=4.0; technical-copy feedback <=10%; stale recovery <=15%; formal bypass and missing provenance = 0 |
+
+The product, API, frontend, provenance, test, and measurement contract is recorded in `docs/research-clarification-and-progressive-disclosure-roadmap-2026-07-26.md`. The `2.2.1-2.9.5` engineering slices are implemented locally, including entity-role truth, source topology, unified delivery truth, account pursuit, customer architecture traceability, calibration templates, a read-only Assurance Command Center, a 15-round retrieval-assurance and controlled-promotion chain, and a 15-round retrieval evidence-operations chain. Their external acceptance gates remain blocked, and all inherited independent expert, customer, Office, visual, security, performance, recovery, and immutable-RC blockers continue to apply.

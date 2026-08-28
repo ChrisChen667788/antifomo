@@ -366,7 +366,7 @@ export function useResearchTopicWorkspaceController({
     const bundle = buildVersionRecapBundle(generatedAt);
     if (!bundle) return;
     triggerFileDownload(bundle.markdownFilename, bundle.markdown, "text/markdown;charset=utf-8");
-    setActionMessage(t("research.topicVersionRecapExported", "版本复盘 Markdown 已导出"));
+    setActionMessage(t("research.topicVersionRecapExported", "版本复盘已导出"));
   };
 
   const handleExportVersionRecapPdf = () => {
@@ -382,7 +382,7 @@ export function useResearchTopicWorkspaceController({
     const bundle = buildVersionRecapBundle(generatedAt);
     if (!bundle) return;
     triggerFileDownload(bundle.execBriefFilename, bundle.execBrief, "text/markdown;charset=utf-8");
-    setActionMessage(t("research.topicVersionRecapExecBriefExported", "Topic Exec Brief 已导出"));
+    setActionMessage(t("research.topicVersionRecapExecBriefExported", "专题简报已导出"));
   };
 
   const handleSaveVersionRecapArchive = async () => {
@@ -399,7 +399,7 @@ export function useResearchTopicWorkspaceController({
     const summary =
       compareSummary[0] ||
       diffHighlights[0]?.items?.[0] ||
-      `${compareLeftVersion?.title || "基线版本"} vs ${compareRightVersion?.title || "对照版本"}`;
+      `${compareLeftVersion?.title || "初始版本"} 与 ${compareRightVersion?.title || "对照版本"}`;
     setSavingArchive(true);
     try {
       const saved = await createResearchMarkdownArchive({
@@ -424,9 +424,9 @@ export function useResearchTopicWorkspaceController({
           offline_evaluation_snapshot: bundle.offlineEvaluationSnapshot || {},
         },
       });
-      setActionMessage(t("research.topicArchiveSaved", `已保存 Markdown 归档：${saved.name}`));
+      setActionMessage(t("research.topicArchiveSaved", `已保存历史归档：${saved.name}`));
     } catch {
-      setActionMessage(t("research.topicArchiveSaveFailed", "保存 Markdown 归档失败，请稍后重试"));
+      setActionMessage(t("research.topicArchiveSaveFailed", "保存历史归档失败，请稍后重试"));
     } finally {
       setSavingArchive(false);
     }

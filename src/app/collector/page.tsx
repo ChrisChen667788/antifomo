@@ -7,7 +7,7 @@ export default function CollectorPage() {
   return (
     <PageShell
       title="Collector"
-      description="管理电脑端采集器、OCR 补录、积压处理和日报导出。"
+      description="管理自动采集、重试和日报。"
       titleKey="page.collector.title"
       descriptionKey="page.collector.description"
     >

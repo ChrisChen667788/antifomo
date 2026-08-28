@@ -16,7 +16,11 @@ def render_prompt(prompt_name: str, variables: dict[str, str]) -> str:
     template = load_prompt(prompt_name)
     rendered = template
     for key, value in variables.items():
-        rendered = rendered.replace(f"{{{{{key}}}}}", str(value))
+        rendered = re.sub(
+            rf"\{{\{{\s*{re.escape(key)}\s*\}}\}}",
+            lambda _match, replacement=str(value): replacement,
+            rendered,
+        )
     # Remove placeholders not explicitly provided.
-    rendered = re.sub(r"\{\{[a-zA-Z0-9_]+\}\}", "", rendered)
+    rendered = re.sub(r"\{\{\s*[a-zA-Z0-9_]+\s*\}\}", "", rendered)
     return rendered

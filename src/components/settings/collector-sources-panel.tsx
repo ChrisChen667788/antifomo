@@ -77,13 +77,13 @@ export function CollectorSourcesPanel() {
     description: textByLanguage(
       language,
       {
-        "zh-CN": "管理采集器监控的公众号链接（文章页、目录页或聚合页均可）。",
-        "zh-TW": "管理採集器監控的公眾號連結（文章頁、目錄頁或聚合頁皆可）。",
-        en: "Manage collector source links (article page, index page, or aggregation page).",
+        "zh-CN": "管理需要持续关注的公众号链接。",
+        "zh-TW": "管理需要持續關注的公眾號連結。",
+        en: "Manage WeChat links to monitor.",
         ja: "収集対象リンクを管理します（記事/一覧/集約ページ）。",
         ko: "수집 대상 링크를 관리합니다(기사/목록/집계 페이지).",
       },
-      "管理采集器监控的公众号链接。",
+      "管理需要持续关注的公众号链接。",
     ),
     addSingle: textByLanguage(
       language,
@@ -123,7 +123,7 @@ export function CollectorSourcesPanel() {
       {
         "zh-CN": "批量导入（每行一个 URL）",
         "zh-TW": "批量導入（每行一個 URL）",
-        en: "Batch Import (one URL per line)",
+        en: "Import links (one per line)",
         ja: "一括インポート（1行1URL）",
         ko: "일괄 가져오기 (줄당 URL 1개)",
       },

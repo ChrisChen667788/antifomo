@@ -27,10 +27,10 @@ export function ResearchCenterLowQualityReviewSection({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">Review Queue</p>
-                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">低质量研报审计队列</h3>
+                <p className="af-kicker">待复核</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">待优化报告</h3>
                 <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                  {sanitizeExternalDisplayText("将低质量条目沉淀为可审查队列，支持先查看修订差异，再决定接受或回退。")}
+                  {sanitizeExternalDisplayText("查看需复核的报告，并决定是否采用修订。")}
                 </p>
               </div>
               <div className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1.5 text-xs text-[var(--af-text-tertiary)]">
@@ -39,14 +39,14 @@ export function ResearchCenterLowQualityReviewSection({
             </div>
             <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
               <span className="rounded-full af-chip px-2.5 py-1 ">
-                扫描研报 {lowQualityQueue?.total_reports ?? 0}
+                报告 {lowQualityQueue?.total_reports ?? 0}
               </span>
               <span className="rounded-full af-chip af-chip-danger px-2.5 py-1 ">
-                队列样本 {lowQualityQueue?.items.length ?? 0}
+                待复核 {lowQualityQueue?.items.length ?? 0}
               </span>
               {(lowQualityQueue?.invalid_payloads ?? 0) > 0 ? (
                 <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 ">
-                  schema 异常 {lowQualityQueue?.invalid_payloads ?? 0}
+                  异常 {lowQualityQueue?.invalid_payloads ?? 0}
                 </span>
               ) : null}
             </div>

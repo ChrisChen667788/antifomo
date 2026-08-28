@@ -18,10 +18,19 @@ def prune_industry_hints(values: Iterable[str]) -> list[str]:
         if dominant in pruned:
             pruned = [item for item in pruned if item == dominant or item not in suppressed]
     generic_hints = {"大模型", "人工智能", "信息化"}
-    if any(item not in generic_hints for item in pruned):
-        pruned = [item for item in pruned if item not in generic_hints] + [
-            item for item in pruned if item in generic_hints
-        ]
+    specific_hints = [item for item in pruned if item not in generic_hints]
+    if specific_hints:
+        pruned = specific_hints
+    pruned = [
+        item
+        for item in pruned
+        if not any(
+            item != other
+            and len(other) > len(item)
+            and item.casefold() in other.casefold()
+            for other in pruned
+        )
+    ]
     return dedupe_strings(pruned, 4)
 
 

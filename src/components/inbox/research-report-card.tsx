@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import type { ApiResearchReport } from "@/lib/api/types";
+import type { ApiResearchReport, ApiResearchRunMetrics } from "@/lib/api/types";
 import { ResearchReportAppendixSection } from "@/components/inbox/research-report-appendix-section";
 import { ResearchReportDeliverySection } from "@/components/inbox/research-report-delivery-section";
+import { ResearchReportDeliveryTruthSection } from "@/components/inbox/research-report-delivery-truth-section";
 import { ResearchReportInsightsSection } from "@/components/inbox/research-report-insights-section";
 import { ResearchReportReadinessSection } from "@/components/inbox/research-report-readiness-section";
 import { ResearchReportReviewQueueSection } from "@/components/inbox/research-report-review-queue-section";
@@ -50,7 +51,9 @@ type ResearchReportCardProps = {
   onExportWord?: () => void;
   onExportPdf?: () => void;
   hideSources?: boolean;
+  formalDeliveryAllowed?: boolean;
   actionCardSlot?: ReactNode;
+  runMetrics?: ApiResearchRunMetrics | null;
 };
 
 
@@ -82,7 +85,9 @@ export function ResearchReportCard({
   onExportWord,
   onExportPdf,
   hideSources = false,
+  formalDeliveryAllowed = true,
   actionCardSlot,
+  runMetrics,
 }: ResearchReportCardProps) {
   const {
     architectureReadiness,
@@ -97,8 +102,6 @@ export function ResearchReportCard({
     evidenceMode,
     followupDiagnostics,
     followupImpactedSections,
-    followupSummaryResolution,
-    followupTitleResolution,
     groupedSources,
     guardedBacklog,
     guardedReasonLabels,
@@ -135,8 +138,15 @@ export function ResearchReportCard({
     verificationValue,
     weakSections,
   } = buildResearchReportCardViewModel(report);
+  const measuredCostCny = runMetrics?.billing?.estimated_cost_cny;
+  const totalTokens = runMetrics?.cost_ledger?.total_tokens;
   return (
     <section data-testid="research-report-card" className="af-report-card">
+      {!formalDeliveryAllowed ? (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          受限草稿：当前结果未通过正式交付门禁，保存、Word/PDF 和行动计划均已禁用。请补齐证据或恢复正式模型后重跑。
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="af-kicker">{titleLabel}</p>
@@ -154,6 +164,19 @@ export function ResearchReportCard({
             <span className={`rounded-full px-2.5 py-1 ${qualityTone(report.source_quality)}`}>
               来源质量 · {qualityLabel(report.source_quality)}
             </span>
+            {typeof totalTokens === "number" && totalTokens > 0 ? (
+              <span className="af-chip rounded-full px-2.5 py-1">
+                模型用量 · {totalTokens.toLocaleString()} tokens
+              </span>
+            ) : null}
+            {typeof measuredCostCny === "number" ? (
+              <span
+                className="af-chip rounded-full px-2.5 py-1"
+                title="按网关账户额度前后差量估算；并发请求会共同计入。"
+              >
+                估算成本 · ¥{measuredCostCny.toFixed(4)}
+              </span>
+            ) : null}
             {guardedBacklog ? (
               <span className="af-chip af-chip-warning rounded-full px-2.5 py-1">
                 待复核
@@ -167,7 +190,7 @@ export function ResearchReportCard({
             <button
               type="button"
               onClick={onSave}
-              disabled={saving}
+              disabled={saving || !formalDeliveryAllowed}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? `${saveLabel}...` : saveLabel}
@@ -177,7 +200,7 @@ export function ResearchReportCard({
             <button
               type="button"
               onClick={onSaveAsFocus}
-              disabled={savingAsFocus}
+              disabled={savingAsFocus || !formalDeliveryAllowed}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingAsFocus ? `${focusSaveLabel}...` : focusSaveLabel}
@@ -187,7 +210,7 @@ export function ResearchReportCard({
             <button
               type="button"
               onClick={onExport}
-              disabled={exporting}
+              disabled={exporting || !formalDeliveryAllowed}
               className="af-btn af-btn-primary px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exporting ? `${exportLabel}...` : exportLabel}
@@ -197,7 +220,7 @@ export function ResearchReportCard({
             <button
               type="button"
               onClick={onExportWord}
-              disabled={exportingWord}
+              disabled={exportingWord || !formalDeliveryAllowed}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exportingWord ? `${exportWordLabel}...` : exportWordLabel}
@@ -207,19 +230,25 @@ export function ResearchReportCard({
             <button
               type="button"
               onClick={onExportPdf}
-              disabled={exportingPdf}
+              disabled={exportingPdf || !formalDeliveryAllowed}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {exportingPdf ? `${exportPdfLabel}...` : exportPdfLabel}
             </button>
           ) : null}
-          {knowledgeHref ? (
+          {knowledgeHref && formalDeliveryAllowed ? (
             <Link href={knowledgeHref} className="af-btn af-btn-secondary border px-4 py-2">
               {savedLabel}
             </Link>
           ) : null}
         </div>
       </div>
+
+      {!formalDeliveryAllowed ? (
+        <p className="mt-3 rounded-md border border-[color-mix(in_srgb,var(--af-warning)_35%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_8%,var(--af-surface-muted))] px-3 py-2 text-sm text-[var(--af-text-secondary)]">
+          当前是受限草稿。补齐证据并通过交付检查后，才能保存、生成行动卡或正式导出。
+        </p>
+      ) : null}
 
       {actionMessage ? <p className="mt-3 text-sm text-[var(--af-accent)]">{actionMessage}</p> : null}
 
@@ -249,14 +278,14 @@ export function ResearchReportCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">交叉验证</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-              官方源 {Math.round((diagnostics?.official_source_ratio || 0) * 100)}%
+              官方来源 {Math.round((diagnostics?.official_source_ratio || 0) * 100)}%
             </span>
             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-              严格命中 {Math.round((diagnostics?.strict_match_ratio || 0) * 100)}%
+              主题匹配 {Math.round((diagnostics?.strict_match_ratio || 0) * 100)}%
             </span>
             {diagnostics?.unique_domain_count ? (
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                域名 {diagnostics.unique_domain_count}
+                来源 {diagnostics.unique_domain_count}
               </span>
             ) : null}
           </div>
@@ -298,20 +327,10 @@ export function ResearchReportCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-warning)]">补充信息影响</p>
-              <h4 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
-                只更新受影响的章节
-              </h4>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">已纳入补充信息</h4>
               <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {followupDiagnostics.summary || "补充信息已用于更新相关章节。"}
               </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupTitleResolution.className}`}>
-                标题 · {followupTitleResolution.label}
-              </span>
-              <span className={`rounded-full border px-2.5 py-1 font-semibold ${followupSummaryResolution.className}`}>
-                摘要 · {followupSummaryResolution.label}
-              </span>
             </div>
           </div>
           {followupImpactedSections.length ? (
@@ -329,13 +348,13 @@ export function ResearchReportCard({
                             : "bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]"
                       }`}
                     >
-                      影响度 {section.impact_score}
+                      {section.impact_label === "high" ? "重点" : section.impact_label === "medium" ? "更新" : "参考"}
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[var(--af-text-secondary)]">{section.reason}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-tertiary)]">
-                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">状态 · {sectionStatusMeta(section.status).label}</span>
-                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">命中 {section.retrieval_hit_count}</span>
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">{sectionStatusMeta(section.status).label}</span>
+                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">来源 {section.retrieval_hit_count}</span>
                     <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1">官方 {section.official_hit_count}</span>
                   </div>
                   {section.matched_inputs?.length ? (
@@ -352,7 +371,7 @@ export function ResearchReportCard({
               ))}
             </div>
           ) : (
-            <p className="mt-4 text-sm leading-6 text-[var(--af-text-tertiary)]">当前追问还没有形成明确的章节级改写焦点，建议继续补充更具体的客户、预算或场景约束。</p>
+            <p className="mt-4 text-sm leading-6 text-[var(--af-text-tertiary)]">当前补充信息还不够明确，可以继续补客户、预算或场景约束。</p>
           )}
         </article>
       ) : null}
@@ -404,9 +423,9 @@ export function ResearchReportCard({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-warning)]">质量缺口</p>
                   <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                     {qualityProfile.gaps.slice(0, 4).map((value) => (
-                      <li key={`quality-gap-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-warning)]" />
-                        <span>{value}</span>
+                      <li key={`quality-gap-${value}`} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                        <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-warning)]" />
+                        <span className="min-w-0 break-words">{value}</span>
                       </li>
                     ))}
                   </ul>
@@ -417,9 +436,9 @@ export function ResearchReportCard({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-success)]">下一轮提质动作</p>
                   <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                     {qualityProfile.next_actions.slice(0, 4).map((value) => (
-                      <li key={`quality-action-${value}`} className="flex gap-2">
-                        <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-success)]" />
-                        <span>{value}</span>
+                      <li key={`quality-action-${value}`} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                        <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-success)]" />
+                        <span className="min-w-0 break-words">{value}</span>
                       </li>
                     ))}
                   </ul>
@@ -443,7 +462,7 @@ export function ResearchReportCard({
                       证据 {pack.evidence_count} 条，官方 {pack.official_evidence_count} 条{pack.quota_gap ? `，缺口 ${pack.quota_gap}` : ""}
                     </p>
                     {pack.risks?.length ? (
-                      <p className="mt-2 text-xs leading-5 text-[var(--af-warning)]">{pack.risks.slice(0, 2).join(" / ")}</p>
+                      <p className="mt-2 break-words text-xs leading-5 text-[var(--af-warning)]">{pack.risks.slice(0, 2).join(" / ")}</p>
                     ) : null}
                   </div>
                 ))}
@@ -468,6 +487,8 @@ export function ResearchReportCard({
         valueBucket={valueBucket}
       />
 
+      <ResearchReportDeliveryTruthSection report={report} />
+
       <ResearchReportReadinessSection
         readiness={readiness}
         commercialSummary={commercialSummary}
@@ -478,7 +499,7 @@ export function ResearchReportCard({
         sectionStatusMeta={sectionStatusMeta}
       />
 
-      {actionCardSlot ? <div className="mt-5">{actionCardSlot}</div> : null}
+      {actionCardSlot && formalDeliveryAllowed ? <div className="mt-5">{actionCardSlot}</div> : null}
 
       <ResearchReportStrategicSection
         report={report}

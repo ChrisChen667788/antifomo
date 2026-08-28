@@ -83,12 +83,12 @@ export function ResearchCenterMarkdownArchivesSection({
     <section className="af-glass rounded-[30px] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="af-kicker">{t("research.markdownArchiveKicker", "Markdown Archives")}</p>
+          <p className="af-kicker">{t("research.markdownArchiveKicker", "历史归档")}</p>
           <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
             {t("research.markdownArchiveTitle", "历史归档中心")}
           </h3>
           <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-            {t("research.markdownArchiveDesc", "收口 compare 导出和版本复盘报告，方便后续回看、下载和继续跳转到对应工作台。")}
+            {t("research.markdownArchiveDesc", "查看、下载和对比历史结果。")}
           </p>
         </div>
         <div className="grid min-w-[260px] gap-3 sm:grid-cols-2">
@@ -227,19 +227,19 @@ export function ResearchCenterMarkdownArchivesSection({
                     onClick={() => void onDownloadMarkdownArchive(archive)}
                     className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                   >
-                    {t("research.markdownArchiveDownload", "下载 Markdown")}
+                    {t("research.markdownArchiveDownload", "下载归档")}
                   </button>
                   {archive.archive_kind === "archive_diff_recap" ? (
                     <ResearchArchiveSectionLinkPopover
                       archiveId={archive.id}
-                      buttonLabel="变化深链"
+                      buttonLabel="复制定位链接"
                       buttonClassName="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                       onCopyMessage={onArchiveLinkMessage}
                     />
                   ) : null}
                   {archive.compare_snapshot_id ? (
                     <Link href={buildCompareSnapshotHref(archive.compare_snapshot_id)} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-                      {t("research.compareOpenSnapshot", "打开快照")}
+                      {t("research.compareOpenSnapshot", "打开对比")}
                     </Link>
                   ) : null}
                   {archive.tracking_topic_id ? (
@@ -253,7 +253,7 @@ export function ResearchCenterMarkdownArchivesSection({
           })
         ) : (
           <p className="text-sm text-[var(--af-text-tertiary)]">
-            {t("research.markdownArchiveEmpty", "还没有 Markdown 归档，先在对比矩阵或专题工作台里保存一次导出结果。")}
+            {t("research.markdownArchiveEmpty", "还没有归档，先保存一次导出结果。")}
           </p>
         )}
       </div>

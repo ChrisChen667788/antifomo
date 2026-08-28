@@ -21,7 +21,7 @@ const COMMERCIAL_ACTION_LABELS: Record<CommercialActionTaskType, string> = {
   export_exec_brief: "Exec Brief",
   export_sales_brief: "Sales Brief",
   export_outreach_draft: "Outreach Draft",
-  export_watchlist_digest: "Watchlist Digest",
+  export_watchlist_digest: "监控摘要",
 };
 
 function downloadCommercialTask(task: Awaited<ReturnType<typeof createTask>>) {
@@ -166,7 +166,7 @@ export function KnowledgeCommercialHub({
     { label: "机会对象", value: dashboard.opportunity_count, hint: "已对象化的商机条目" },
     { label: "高可信研报", value: dashboard.high_confidence_report_count, hint: "可信度较高的研报" },
     { label: "标杆案例", value: dashboard.benchmark_case_count, hint: "可用于客户教育与对标" },
-    { label: "规则提醒", value: topAlerts.length, hint: "需优先关注的 Watchlist / 风险 / 审查项" },
+    { label: "规则提醒", value: topAlerts.length, hint: "需优先关注的监控、风险和审查项" },
     { label: "审查队列", value: reviewQueue.length, hint: "建议优先人工复核的结论" },
   ];
 
@@ -201,10 +201,10 @@ export function KnowledgeCommercialHub({
         <div>
           <p className="af-kicker">商业情报工作台</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">
-            把知识卡片升维成账户、机会和下一步动作
+            账户、机会和下一步动作
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
-            当前知识库已经不只是文档列表。这里把研报里的甲方、预算窗口、标杆案例和行动建议沉淀成可持续跟进的对象。
+            从研报中提取可跟进的客户、线索和行动。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -248,7 +248,7 @@ export function KnowledgeCommercialHub({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">经营动作流</p>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-              把当前账户、机会、提醒和审查队列直接转成管理层简报、销售简报、外联草稿和 Watchlist 摘要。
+              一键生成常用交付材料。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -287,21 +287,21 @@ export function KnowledgeCommercialHub({
             </p>
           </article>
           <article className="rounded-[20px] border border-white/90 bg-white/88 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Top Opportunity</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">重点机会</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{topOpportunity?.title || "待补商机"}</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {sanitizeExternalDisplayText(topOpportunity?.next_best_action || topOpportunity?.account_name || "当前没有高优先级商机动作。")}
             </p>
           </article>
           <article className="rounded-[20px] border border-white/90 bg-white/88 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Watchlist Alert</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">监控提醒</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{topAlert?.title || "暂无高优先提醒"}</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {sanitizeExternalDisplayText(topAlert?.recommended_action || topAlert?.summary || "当前没有需要立刻升级的 Watchlist 提醒。")}
+              {sanitizeExternalDisplayText(topAlert?.recommended_action || topAlert?.summary || "当前没有需要立刻升级的监控提醒。")}
             </p>
           </article>
           <article className="rounded-[20px] border border-white/90 bg-white/88 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Review Queue</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">待复核</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">{topReviewItem?.title || "暂无待核验结论"}</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {sanitizeExternalDisplayText(topReviewItem?.recommended_action || topReviewItem?.summary || "当前没有需要额外核验的审查项。")}
@@ -322,9 +322,9 @@ export function KnowledgeCommercialHub({
       <section className="af-surface-card mt-6 rounded-[26px] border p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">检索与聚合工作台</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">筛选</p>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              {sanitizeExternalDisplayText("用统一多视图和聚合筛选，将账户、机会、提醒和审查队列纳入同一组筛选维度。")}
+              {sanitizeExternalDisplayText("按账户、机会、提醒和审查项快速收窄。")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-[11px]">
@@ -368,9 +368,9 @@ export function KnowledgeCommercialHub({
         <section className="af-surface-card mt-6 rounded-[26px] border p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">角色化仪表盘</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">角色视图</p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                {sanitizeExternalDisplayText("用角色视图和规则提醒，将同一组账户与机会切换为不同职责视图。")}
+                {sanitizeExternalDisplayText("按不同职责查看同一组账户与机会。")}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -448,7 +448,7 @@ export function KnowledgeCommercialHub({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">规则提醒</p>
-                    <p className="mt-2 text-sm text-slate-500">集中汇总 Watchlist 变化、推进风险和重点异常。</p>
+                    <p className="mt-2 text-sm text-slate-500">集中汇总监控变化、推进风险和重点异常。</p>
                   </div>
                   <span className="rounded-full bg-white/84 px-2.5 py-1 text-xs text-slate-600">{filteredAlerts.length} 条</span>
                 </div>

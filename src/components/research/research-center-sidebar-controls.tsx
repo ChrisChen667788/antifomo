@@ -54,10 +54,10 @@ export function ResearchCenterSidebarControls({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">Daily Brief</p>
+                <p className="af-kicker">今日摘要</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">今日研究摘要</h3>
                 <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                  {sanitizeExternalDisplayText("优先查看当日重点增量与 Watchlist 变化，再决定是否刷新专题。")}
+                  {sanitizeExternalDisplayText("先看今日重点，再决定是否刷新专题。")}
                 </p>
               </div>
               <button
@@ -75,7 +75,7 @@ export function ResearchCenterSidebarControls({
               <div className="mt-4 space-y-3">
                 <div className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                   <p className="text-sm font-semibold text-[var(--af-text-primary)]">
-                    {sanitizeExternalDisplayText(dailyBrief.headline || "今天优先处理 Watchlist 变化和新增高价值内容。")}
+                    {sanitizeExternalDisplayText(dailyBrief.headline || "今天优先处理监控变化和新增高价值内容。")}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                     {sanitizeExternalDisplayText(dailyBrief.summary || "今天暂无新的高价值内容，建议刷新专题或继续处理稍后读。")}
@@ -103,7 +103,7 @@ export function ResearchCenterSidebarControls({
                 ) : null}
                 {dailyBrief.watchlist_changes?.length ? (
                   <div className="rounded-[22px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">Watchlist 变化</p>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">监控变化</p>
                     <div className="mt-2 space-y-2">
                       {dailyBrief.watchlist_changes.slice(0, 2).map((change) => (
                         <div key={change.id} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
@@ -118,7 +118,7 @@ export function ResearchCenterSidebarControls({
                 ) : null}
               </div>
             ) : (
-              <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前没有 Daily Brief，可先刷新一次。</p>
+              <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前还没有今日摘要，可先刷新一次。</p>
             )}
             {dailyBriefError ? <p className="mt-3 text-sm text-[var(--af-danger)]">{dailyBriefError}</p> : null}
           </section>

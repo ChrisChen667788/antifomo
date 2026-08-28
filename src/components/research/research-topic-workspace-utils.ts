@@ -77,9 +77,9 @@ export function qualityLabel(value: string) {
 export function timelineArchiveKindLabel(
   kind: ApiResearchTrackingTopicTimelineEvent["markdown_archive_kind"] | undefined | null,
 ) {
-  if (kind === "archive_diff_recap") return "差异复盘";
+  if (kind === "archive_diff_recap") return "变化复盘";
   if (kind === "topic_version_recap") return "版本复盘";
-  return "Markdown 归档";
+  return "历史归档";
 }
 
 export function timelineEventTone(eventType: ApiResearchTrackingTopicTimelineEvent["event_type"]) {
@@ -174,7 +174,7 @@ export function buildCandidateProfileSummary(report: ApiResearchReport | null) {
 
 export function followupResolutionDisplay(value: string | null | undefined) {
   if (value === "corrected") return "已按追问纠偏";
-  if (value === "reused") return "沿用基线";
+  if (value === "reused") return "沿用初始版本";
   if (value === "baseline") return "初始版本";
   return String(value || "").trim() || "无";
 }

@@ -18,6 +18,7 @@ Anti-FOMO is an open-source AI research workspace for solution architects, indus
 Start here:
 - [Quick Start](#quick-start)
 - [Public roadmap](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [2026 competitive landscape and post-2.0.6 roadmap](./docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md)
 - [Good first issue](https://github.com/ChrisChen667788/antifomo/issues/2)
 - [Help wanted: WeChat collection reliability](https://github.com/ChrisChen667788/antifomo/issues/3)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
@@ -78,6 +79,10 @@ Each public version line below includes both an English product summary and a Ch
 | `1.7.0` | Production LangGraph orchestration with a locked 100-case evaluation set, a zero-cost deterministic parity gate, deterministic rollback, and a safe PostCSS transitive override while Next.js stable catches up. | LangGraph 生产编排：锁定 100 条评测集、零成本确定性等价门禁、deterministic 回滚，以及等待 Next.js 稳定版升级期间的安全 PostCSS 传递依赖覆盖。 |
 | `1.7.1` | Evaluation governance with independent-review attestations and content digests, live-run budget planning, five-case batch limits, and runtime spend stops. | 评测治理：独立复核声明与内容摘要、真实评测预算规划、每批最多五条及运行时费用停止保护。 |
 | `1.7.2` | Expert-feedback scope refinement across 78 evaluation cases, replacing national/global scopes with concrete regions and named research subjects while preserving approved behaviors, answer anchors, and source domains. | 专家意见范围修订：对 78 条评测用例补齐省级地区和明确研究主体，保持已通过的行为标签、答案锚点和来源域名不变。 |
+| `1.8.0` - `1.9.1` | Professional-report quality, release hardening, evidence governance, expert-calibration workflows, QAW/ATAM/ADR/C4, and executable acceptance evidence; real expert, blind, and customer gates remain blocked. | 专业报告质量、发布加固、证据治理、专家校准工作流、QAW/ATAM/ADR/C4 与可执行验收证据；真实专家、盲测和客户验收仍保持阻断。 |
+| `1.9.2` - `2.0.0` | Decision Studio development line with real semantic Notebooks, immutable source revisions, Chinese document contracts, Claim Graph, Knowledge Space/ACL, signed Skills, governed MCP, and evidence-bound multi-form outputs. Commercial promotion remains blocked. | Decision Studio 开发线：真实语义 Notebook、来源修订、中国正式文档合同、Claim Graph、Knowledge Space/ACL、签名 Skill、受控 MCP 和证据绑定多形态产物；商业发布未放行。 |
+| `2.0.1` - `2.0.6` | Release-program line with real-data activation, server-calculated retrieval/document/report/security/visual/performance/recovery suites, immutable evidence runs, hash-chain audit, and a six-version release console. Human and customer acceptance remain blocked. | 发布程序开发线：真实数据激活、服务端计算的检索/文档/研报/安全/视觉/性能/恢复套件、不可变证据运行、哈希链审计和六版本发布控制台；人工与客户验收仍阻断。 |
+| `2.0.7` - `2.2.0` | Decision Program engineering line: immutable RC evidence, research control, hybrid retrieval/parser benchmarks, evidence-aware editing, enterprise identity/connectors, governed agents, vertical packs, and customer Pilots. External acceptance remains blocked. | Decision Program 工程线：不可变 RC 证据、研究控制、混合检索/解析基准、证据感知编辑、企业身份/连接器、受控 Agent、行业包与客户 Pilot；外部验收仍阻断。 |
 
 ## Product screenshots
 
@@ -185,7 +190,8 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
 ### 1. One-time setup
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+git clone https://github.com/ChrisChen667788/antifomo.git
+cd antifomo
 npm run demo:setup
 ```
 
@@ -194,7 +200,7 @@ This installs frontend dependencies, backend Python dependencies, and creates `b
 ### 2. One-command start
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+cd antifomo
 npm run demo:start
 ```
 
@@ -212,7 +218,7 @@ npm run demo:stop
 ### 3. Validate the baseline
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+cd antifomo
 npm run check
 npm run demo:smoke
 ```
@@ -252,10 +258,20 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current version: `1.7.2+20260615`
+- current development version: `2.9.5+20260814` (retrieval assurance and evidence-operations lane)
+- `2.10.0-development` Competitive Capability Observatory is locally implemented; it records vendor claims, local implementation state, and proposed backlog separately, without changing release semver, the production default, or release-readiness
+- `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
+- current local engineering slice: `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
+- release promotion remains blocked until the real cross-industry clarification tasks and feedback, pending human qrels, 100+30 expert calibration, three-industry blind review, customer acceptance, production Skill governance, and final Office/visual/security evidence are complete
 - web build passes
 - frontend and backend test suites pass via `npm run check`
-- release screenshots cover every primary feature surface through `npm run repo:screenshots`
+- the existing screenshot baseline covers the 1.9.1 surfaces; `/studio` light/dark capture and human visual confirmation remain a 2.0.5 blocker
+- the complete 2.0.1-2.0.6 validation contract is documented in `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`
+- the researched roadmap and completed engineering contracts are documented in `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md` and `docs/decision-program-v2.0.7-v2.2.0.md`; external acceptance remains blocked
+- the `2.2.1-2.9.5` evidence-recovery, progressive-disclosure, entity/source truth, account-pursuit, calibration, retrieval-assurance, and evidence-operations contract is documented in `docs/research-clarification-and-progressive-disclosure-roadmap-2026-07-26.md`
+- the post-`2.9.5` competitive research, decisions, and acceptance boundaries are documented in `docs/competitive-capability-observatory-v2.10.0.md`
+- the approved-context scope, revision/audit contract, and hard non-authorization gates are documented in `docs/reviewable-decision-context-packets-v2.10.1.md`
+- the HOLD-only delivery-artifact acceptance, field-level revision-diff, and Office/visual evidence boundary is documented in `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
 - major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
 - product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`
 - public repository sanitized for open-source release

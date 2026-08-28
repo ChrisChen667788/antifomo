@@ -5,3 +5,5 @@ export type * from "@/lib/api/type-contracts/research-watchlists";
 export type * from "@/lib/api/type-contracts/research-evaluation";
 export type * from "@/lib/api/type-contracts/research-experiments";
 export type * from "@/lib/api/type-contracts/research-retrieval";
+export type * from "@/lib/api/type-contracts/research-upgrade";
+export type * from "@/lib/api/type-contracts/research-assurance";

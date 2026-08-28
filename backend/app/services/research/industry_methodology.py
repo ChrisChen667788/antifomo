@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+import re
 
 from app.services.content_extractor import normalize_text
 from app.services.research.entity_policy import INDUSTRY_SCOPE_ALIASES
@@ -47,6 +48,28 @@ INDUSTRY_METHODOLOGY_PROFILES: dict[str, IndustryMethodologyProfile] = {
         bidding_lenses=("采购意向前置布局", "总包与分包角色", "资质与案例匹配", "续建项目壁垒"),
         outreach_lenses=("数据局/信息中心优先", "财政与招采并行摸排", "总包伙伴联动"),
         ecosystem_lenses=("本地集成商", "云资源伙伴", "咨询可研单位", "运维服务商"),
+    ),
+    "文旅文博": IndustryMethodologyProfile(
+        key="文旅文博",
+        authority_label="文旅文博场景与公共文化项目调研框架",
+        framework="游客与公共文化场景 -> 内容和资产数据 -> 运营服务 -> 招采建设 -> 商业价值",
+        primary_questions=(
+            "需求来自景区运营、博物馆公共文化服务、内容生产还是营销转化场景",
+            "文旅主管部门、场馆或景区运营方、信息化部门和采购部门的决策链如何分布",
+            "是否已有数字导览、智慧景区、文物数字化、公共文化平台或内容生产项目的预算与招采信号",
+            "AI 能力如何接入票务、导览、藏品内容、游客服务和运营分析，并形成可验证的投入产出",
+        ),
+        query_templates=(
+            "{region} 文旅 文博 人工智能",
+            "{region} 景区 博物馆 数字化 招标 预算",
+            "\"{client}\" {keyword} 导览 运营 采购",
+        ),
+        source_preferences=("文化和旅游主管部门官网", "场馆/景区官网", "政府采购与公共资源交易平台", "项目招投标公告", "上市文旅企业年报"),
+        solution_lenses=("游客服务闭环", "内容与资产数据治理", "导览和运营系统集成", "试点到多场馆复制"),
+        sales_lenses=("主管部门与运营主体双线", "预算和项目节点核验", "场景价值量化", "区域样板复制"),
+        bidding_lenses=("采购意向前置布局", "软硬件与内容边界", "数据版权和安全", "本地实施与持续运营"),
+        outreach_lenses=("文旅主管部门/场馆运营方 -> 信息化部门 -> 业务运营 -> 财务采购", "以可参观、可量化样板切入"),
+        ecosystem_lenses=("文旅规划咨询", "票务与导览平台", "内容数字化团队", "本地集成与运营伙伴"),
     ),
     "医疗": IndustryMethodologyProfile(
         key="医疗",
@@ -183,6 +206,32 @@ INDUSTRY_METHODOLOGY_PROFILES: dict[str, IndustryMethodologyProfile] = {
 }
 
 
+def build_generic_industry_methodology_profile(industry: str) -> IndustryMethodologyProfile:
+    label = normalize_text(industry) or "目标行业"
+    return IndustryMethodologyProfile(
+        key=label,
+        authority_label=f"{label}通用决策调研框架",
+        framework="需求场景 -> 政策与市场 -> 采购和投资 -> 竞争与生态 -> 交付与风险",
+        primary_questions=(
+            f"{label}的核心需求、使用场景和决策主体分别是什么",
+            f"{label}当前有哪些政策、市场规模、预算或投资信号",
+            f"{label}的采购路径、项目窗口、代表客户和决策链如何分布",
+            f"{label}的主要方案、竞争者、生态伙伴、交付约束和反证风险是什么",
+        ),
+        query_templates=(
+            "{region} {keyword} 政策 市场 需求 数据",
+            "{region} {keyword} 采购 招标 中标 投资",
+            "{region} {keyword} 客户 案例 解决方案 竞争",
+        ),
+        source_preferences=("行业主管部门官网", "政府采购与公共资源交易平台", "企业官网与年报", "行业协会/研究机构", "高质量行业媒体"),
+        solution_lenses=("需求场景闭环", "数据与系统边界", "试点到规模化", "交付与合规"),
+        sales_lenses=("决策主体识别", "预算与采购窗口", "价值量化", "标杆复制"),
+        bidding_lenses=("采购意向前置", "资格与案例要求", "总分包边界", "实施和运维约束"),
+        outreach_lenses=("业务部门与信息化部门并行", "预算、采购和使用部门交叉核验"),
+        ecosystem_lenses=("行业咨询与研究机构", "平台和技术厂商", "本地集成交付伙伴", "运营与合规伙伴"),
+    )
+
+
 def pick_industry_methodology_profile(
     industries: Iterable[str],
     *,
@@ -190,8 +239,10 @@ def pick_industry_methodology_profile(
     research_focus: str | None,
 ) -> IndustryMethodologyProfile | None:
     candidates = [normalize_text(str(item)) for item in industries if normalize_text(str(item))]
+    generic_candidates = {"大模型", "人工智能", "信息化"}
     priority_order = (
         "政务云",
+        "文旅文博",
         "医疗",
         "教育",
         "金融",
@@ -203,11 +254,26 @@ def pick_industry_methodology_profile(
         "大模型",
         "人工智能",
     )
+    specific_candidates = [candidate for candidate in candidates if candidate not in generic_candidates]
+    custom_candidates = [
+        candidate
+        for candidate in specific_candidates
+        if candidate not in INDUSTRY_METHODOLOGY_PROFILES
+    ]
+    if custom_candidates:
+        return build_generic_industry_methodology_profile(max(custom_candidates, key=len))
     sorted_candidates = sorted(
-        candidates,
+        specific_candidates,
         key=lambda candidate: priority_order.index(candidate) if candidate in priority_order else len(priority_order),
     )
     for candidate in sorted_candidates:
+        profile = INDUSTRY_METHODOLOGY_PROFILES.get(candidate)
+        if profile is not None:
+            return profile
+        return build_generic_industry_methodology_profile(candidate)
+    for candidate in candidates:
+        if candidate not in generic_candidates:
+            continue
         profile = INDUSTRY_METHODOLOGY_PROFILES.get(candidate)
         if profile is not None:
             return profile
@@ -220,7 +286,20 @@ def pick_industry_methodology_profile(
             return profile
     if any(token in lowered_seed for token in ("ai", "人工智能", "大模型", "生成式")):
         return INDUSTRY_METHODOLOGY_PROFILES.get("大模型")
-    return None
+    topic_seed = strip_query_noise(keyword, deps=scope_term_dependencies()) or normalize_text(keyword)
+    topic_seed = normalize_text(
+        re.sub(
+            r"^(?:20\d{2}年|全国|国内|中国|全球|华东|华南|华北|西南|西北|东北|长三角|京津冀|粤港澳|成渝|地区)+",
+            "",
+            topic_seed,
+        )
+    )
+    topic_match = re.search(
+        r"([A-Za-z0-9\u4e00-\u9fa5]{2,16}?)(?:市场|趋势|格局|需求|机会|商机|研究|调研|分析)",
+        topic_seed,
+    )
+    topic_label = normalize_text(topic_match.group(1) if topic_match else topic_seed[:16])
+    return build_generic_industry_methodology_profile(topic_label or "通用主题")
 
 
 def format_methodology_query_templates(
@@ -235,8 +314,33 @@ def format_methodology_query_templates(
     if profile is None:
         return []
     scope_deps = scope_term_dependencies()
+    keyword_seed = strip_query_noise(keyword, deps=scope_deps) or normalize_text(keyword)
+    if profile.authority_label.endswith("通用决策调研框架"):
+        keyword_seed = normalize_text(
+            " ".join(
+                dedupe_strings(
+                    [
+                        profile.key,
+                        "人工智能" if any(token in keyword.lower() for token in ("ai", "人工智能", "大模型", "生成式")) else "",
+                    ],
+                    3,
+                )
+            )
+        )
+    elif len(keyword_seed) > 24:
+        keyword_seed = normalize_text(
+            " ".join(
+                dedupe_strings(
+                    [
+                        *(industries[:1] or [profile.key]),
+                        "人工智能" if any(token in keyword.lower() for token in ("ai", "人工智能", "大模型", "生成式")) else "",
+                    ],
+                    3,
+                )
+            )
+        )
     replacements = {
-        "keyword": strip_query_noise(keyword, deps=scope_deps) or normalize_text(keyword),
+        "keyword": keyword_seed,
         "focus": strip_query_noise(research_focus or "", deps=scope_deps) or normalize_text(research_focus or ""),
         "region": normalize_text(regions[0]) if regions else "",
         "industry": normalize_text(industries[0]) if industries else profile.key,
@@ -244,6 +348,8 @@ def format_methodology_query_templates(
     }
     queries: list[str] = []
     for template in profile.query_templates:
+        if "{client}" in template and not replacements["client"]:
+            continue
         try:
             rendered = template.format(**replacements)
         except (KeyError, ValueError):

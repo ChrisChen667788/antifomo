@@ -153,7 +153,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="af-kicker">Account Plan</p>
-              <p className="mt-2 text-sm text-slate-500">按账户规划工作流，将目标、关系和价值假设沉淀为统一账户计划。</p>
+              <p className="mt-2 text-sm text-slate-500">整理目标、关系和价值假设。</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
               BD 工作台
@@ -207,7 +207,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="af-kicker">Stakeholder Map</p>
-              <p className="mt-2 text-sm text-slate-500">将关键部门、公开入口和潜在 gatekeeper 整理为角色地图。</p>
+              <p className="mt-2 text-sm text-slate-500">整理关键部门、联系人和影响角色。</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
               {account.stakeholder_map.length} 人/角色
@@ -352,7 +352,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="af-kicker">Close Plan</p>
-              <p className="mt-2 text-sm text-slate-500">将进入路径、预算确认和交付物按阶段拆解为 Close Plan。</p>
+              <p className="mt-2 text-sm text-slate-500">拆解进入路径、预算确认和交付物。</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
               {account.close_plan.length} 步
@@ -378,7 +378,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="af-kicker">Pipeline Risk</p>
-              <p className="mt-2 text-sm text-slate-500">将预算、证据、联系人和标杆缺口整理为可执行的风险缓释列表。</p>
+              <p className="mt-2 text-sm text-slate-500">查看预算、证据、联系人和标杆缺口。</p>
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
               {account.pipeline_risks.length} 项
@@ -411,7 +411,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="af-kicker">账户时间线</p>
-            <p className="mt-2 text-sm text-slate-500">将研报、机会、Watchlist 变化和冲突审查状态统一到同一条推进时间线。</p>
+            <p className="mt-2 text-sm text-slate-500">查看研报、机会和提醒的推进记录。</p>
           </div>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
             {account.timeline.length} 条
@@ -438,7 +438,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                               : "bg-slate-100 text-slate-600"
                         }`}
                       >
-                        {item.kind === "watchlist" ? "Watchlist" : item.kind === "opportunity" ? "机会" : item.kind === "review_queue" ? "审查" : "研报"}
+                        {item.kind === "watchlist" ? "监控" : item.kind === "opportunity" ? "机会" : item.kind === "review_queue" ? "审查" : "研报"}
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 ${
@@ -497,7 +497,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
               </article>
             ))
           ) : (
-            <p className="text-sm text-slate-500">当前账户还没有形成连续时间线，建议继续补 Watchlist 或保存更多研报。</p>
+            <p className="text-sm text-slate-500">当前还没有时间线，保存更多研报后会自动生成。</p>
           )}
         </div>
       </section>

@@ -1,0 +1,128 @@
+{
+  "benchmark_id": "industry-knowledge-retrieval-ranking-ab-v1",
+  "version": "v1",
+  "description": "固定本地行业资料库检索排序评测集。相关文档和引用词均来自已完成内容解析的资料，不代表公开事实核验。",
+  "retrieval_limit": 10,
+  "cases": [
+    {
+      "case_id": "government-public-data-open-utilization",
+      "query": "地方公共数据开放利用平台与授权运营评估",
+      "industries": ["government_public"],
+      "document_types": ["policy_standard"],
+      "relevant_document_ids": ["doc_d63cb14e6fe0dd45"],
+      "relevance_by_document_id": {"doc_d63cb14e6fe0dd45": 3},
+      "expected_citation_terms": ["公共数据", "开放平台", "开放利用"],
+      "review_note": "核验政务报告是否可引用地方数据开放平台覆盖与利用治理要点。"
+    },
+    {
+      "case_id": "manufacturing-smart-factory",
+      "query": "白酒行业智能工厂安全质量低碳效益方案",
+      "industries": ["manufacturing_supply_chain"],
+      "document_types": ["academic_technical"],
+      "relevant_document_ids": ["doc_393ffbd269b9056c"],
+      "relevance_by_document_id": {"doc_393ffbd269b9056c": 3},
+      "expected_citation_terms": ["智能工厂", "安全", "质量", "低碳"],
+      "review_note": "核验方案是否取得制造业全价值链与工艺场景支撑。"
+    },
+    {
+      "case_id": "financial-bank-internal-audit",
+      "query": "商业银行内审监管规则人工智能风险关注事项",
+      "industries": ["financial_services"],
+      "document_types": ["policy_standard"],
+      "relevant_document_ids": ["doc_0b769de4e6cab4cc"],
+      "relevance_by_document_id": {"doc_0b769de4e6cab4cc": 3},
+      "expected_citation_terms": ["内部审计", "监管", "人工智能"],
+      "review_note": "核验金融方案是否能定位监管变化与内审关注事项。"
+    },
+    {
+      "case_id": "energy-electricity-market",
+      "query": "全国统一电力市场新能源数字化监管建设重点",
+      "industries": ["energy_industry"],
+      "document_types": ["policy_standard"],
+      "relevant_document_ids": ["doc_77740f80e8014ee9"],
+      "relevance_by_document_id": {"doc_77740f80e8014ee9": 3},
+      "expected_citation_terms": ["全国统一电力市场", "数字化监管", "新能源"],
+      "review_note": "核验能源研究是否能支撑市场建设和监管数字化表述。"
+    },
+    {
+      "case_id": "automotive-intelligent-driving",
+      "query": "智能驾驶功能体验与技术方案研究",
+      "industries": ["automotive_mobility"],
+      "document_types": ["academic_technical"],
+      "relevant_document_ids": ["doc_a1cff1f3fd6f318d"],
+      "relevance_by_document_id": {"doc_a1cff1f3fd6f318d": 3},
+      "expected_citation_terms": ["智能驾驶", "功能体验", "技术方案"],
+      "review_note": "核验出行方案是否能取得智能驾驶用户体验与技术路线材料。"
+    },
+    {
+      "case_id": "healthcare-spd-supply-chain",
+      "query": "医院SPD供应链精细化管理采购配送方案",
+      "industries": ["healthcare_life_sciences"],
+      "document_types": ["policy_standard"],
+      "relevant_document_ids": ["doc_3b4be3dce62ea1b1"],
+      "relevance_by_document_id": {"doc_3b4be3dce62ea1b1": 3},
+      "expected_citation_terms": ["SPD", "采购管理", "配送管理"],
+      "review_note": "核验医疗方案是否能取得院内供应链三环节的可引用依据。"
+    },
+    {
+      "case_id": "agriculture-green-circulation",
+      "query": "绿色种养循环农业乡村振兴政策实施要点",
+      "industries": ["agriculture_food"],
+      "document_types": ["policy_standard"],
+      "relevant_document_ids": ["doc_405f632f66a7ee20"],
+      "relevance_by_document_id": {"doc_405f632f66a7ee20": 3},
+      "expected_citation_terms": ["绿色种养循环农业", "乡村振兴", "政策"],
+      "review_note": "核验农业建议书是否能获得政策衔接与落地实施依据。"
+    },
+    {
+      "case_id": "ai-agent-llm-solution",
+      "query": "企业大模型智能体多轮搜索文档速读解决方案",
+      "industries": ["artificial_intelligence"],
+      "document_types": ["academic_technical"],
+      "relevant_document_ids": ["doc_f67009da6f309994"],
+      "relevance_by_document_id": {"doc_f67009da6f309994": 3},
+      "expected_citation_terms": ["智能体", "多轮搜索", "文档速读"],
+      "review_note": "核验 AI 方案是否能支撑检索、提问和文档处理能力描述。"
+    },
+    {
+      "case_id": "tourism-ai-application",
+      "query": "旅游行业AI应用游客体验与企业落地趋势",
+      "industries": ["tourism_hospitality"],
+      "document_types": ["academic_technical"],
+      "relevant_document_ids": ["doc_a207393692403e71"],
+      "relevance_by_document_id": {"doc_a207393692403e71": 3},
+      "expected_citation_terms": ["旅游", "AI", "B端企业"],
+      "review_note": "核验文旅研报是否同时覆盖消费者体验和企业应用实践。"
+    },
+    {
+      "case_id": "retail-content-seeding",
+      "query": "电商内容种草数字化经营解决方案",
+      "industries": ["retail_ecommerce_consumer"],
+      "document_types": ["industry_report"],
+      "relevant_document_ids": ["doc_00e4a443c0d201af"],
+      "relevance_by_document_id": {"doc_00e4a443c0d201af": 3},
+      "expected_citation_terms": ["电商", "内容种草", "数字化"],
+      "review_note": "核验消费行业方案是否能取得数字化运营与交付能力材料。"
+    },
+    {
+      "case_id": "real-estate-home-improvement",
+      "query": "中国家居家装行业发展趋势与数字化机会",
+      "industries": ["real_estate_construction"],
+      "document_types": ["industry_report"],
+      "relevant_document_ids": ["doc_c92791b9fa1271de"],
+      "relevance_by_document_id": {"doc_c92791b9fa1271de": 3},
+      "expected_citation_terms": ["家居家装", "行业", "发展"],
+      "review_note": "核验不动产相关方案是否能取得家装行业趋势材料。"
+    },
+    {
+      "case_id": "telecom-satellite-security",
+      "query": "卫星通信网络安全标准化研究",
+      "industries": ["telecom_network"],
+      "document_types": ["academic_technical"],
+      "relevant_document_ids": ["doc_0b6fd9e8e3264033"],
+      "relevance_by_document_id": {"doc_0b6fd9e8e3264033": 3},
+      "expected_citation_terms": ["卫星通信", "网络安全", "标准化"],
+      "review_note": "核验通信方案是否能取得卫星网络安全与标准化依据。"
+    }
+  ]
+}

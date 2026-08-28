@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.db.session import get_db
+from app.schemas.system import (
+    InternalSkillGovernanceSnapshotOut,
+    ModelControlPlaneSnapshotOut,
+    ReleaseReadinessSnapshotOut,
+    StrongestModelUpgradeOut,
+    SupportedModelScanOut,
+)
+from app.services.internal_skill_registry import build_internal_skill_governance_snapshot
 from app.services.llm_parser import (
     parse_insight_response,
     parse_research_report_response,
@@ -15,7 +25,15 @@ from app.services.llm_parser import (
     parse_tags_response,
 )
 from app.services.llm_service import build_llm_service, run_llm_prompt_result
+from app.services.model_control_plane_service import (
+    build_model_control_plane_snapshot,
+    scan_supported_models,
+    upgrade_to_strongest_models,
+)
 from app.services.prompt_loader import render_prompt
+from app.services.release_readiness_service import build_release_readiness_snapshot
+from app.services.strategy_model_qualification_service import run_strategy_model_qualification
+from app.services.research_job_store import research_job_worker_status
 
 
 router = APIRouter(prefix="/api/system", tags=["system"])
@@ -45,6 +63,7 @@ def get_llm_config() -> dict:
     return {
         "llm_provider": settings.llm_provider,
         "llm_fallback_to_mock": settings.llm_fallback_to_mock,
+        "research_llm_fallback_to_mock": settings.research_llm_fallback_to_mock,
         "llm_max_retries": settings.llm_max_retries,
         "langchain_structured_output_method": settings.langchain_structured_output_method,
         "langchain_structured_output_fallback_method": settings.langchain_structured_output_fallback_method,
@@ -78,7 +97,52 @@ def get_llm_config() -> dict:
             "cached_input": settings.strategy_openai_cached_input_cost_per_million,
             "output": settings.strategy_openai_output_cost_per_million,
         },
+        "report_cost_accounting": {
+            "enabled": settings.gateway_usage_meter_enabled,
+            "mode": "gateway_quota_delta" if settings.gateway_usage_meter_enabled else "disabled",
+            "currency": "CNY",
+            "quota_units_per_cny": settings.gateway_quota_units_per_cny,
+        },
     }
+
+
+@router.get("/llm/control-plane", response_model=ModelControlPlaneSnapshotOut)
+def get_model_control_plane() -> dict:
+    return build_model_control_plane_snapshot(settings)
+
+
+@router.post("/llm/models/scan", response_model=SupportedModelScanOut)
+def scan_llm_models() -> dict:
+    return scan_supported_models(settings)
+
+
+@router.post("/llm/models/upgrade-strongest", response_model=StrongestModelUpgradeOut)
+def upgrade_llm_models_to_strongest() -> dict:
+    return upgrade_to_strongest_models(settings)
+
+
+@router.post("/llm/models/strategy-ab")
+def qualify_strategy_model(candidate_model: str = "claude-opus-5") -> dict:
+    return run_strategy_model_qualification(
+        settings,
+        baseline_model=settings.strategy_openai_model,
+        candidate_model=candidate_model,
+    )
+
+
+@router.get("/internal-skills", response_model=InternalSkillGovernanceSnapshotOut)
+def get_internal_skill_governance_snapshot() -> dict:
+    return build_internal_skill_governance_snapshot()
+
+
+@router.get("/release-readiness", response_model=ReleaseReadinessSnapshotOut)
+def get_release_readiness_snapshot(db: Session = Depends(get_db)) -> dict:
+    return build_release_readiness_snapshot(db)
+
+
+@router.get("/research-job-worker")
+def get_research_job_worker_status() -> dict:
+    return research_job_worker_status()
 
 
 def _parse_by_prompt_name(prompt_name: str, raw: str) -> dict:
@@ -128,7 +192,11 @@ def llm_dry_run(payload: LLMDryRunRequest) -> LLMDryRunResponse:
         # Validate template is renderable before remote call.
         _ = render_prompt(prompt_name, merged_variables)
         result = run_llm_prompt_result(service, prompt_name, merged_variables)
-        fallback_used = result.status == "fallback" or result.provider != requested
+        fallback_used = (
+            result.status == "fallback"
+            or result.provider != requested
+            or bool(result.metadata.get("fallback_api_key_used"))
+        )
         missing_key = requested != "mock" and not settings.openai_api_key
         return LLMDryRunResponse(
             provider_requested=requested,

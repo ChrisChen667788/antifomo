@@ -21,7 +21,7 @@ export function useResearchCenterDailyBriefController() {
       .catch(() => {
         if (!active) return;
         setDailyBrief(null);
-        setDailyBriefError("Daily Brief 加载失败，请稍后重试。");
+        setDailyBriefError("今日摘要加载失败，请稍后重试。");
       })
       .finally(() => {
         if (!active) return;
@@ -39,7 +39,7 @@ export function useResearchCenterDailyBriefController() {
       const brief = await getResearchDailyBrief(true);
       setDailyBrief(brief);
     } catch {
-      setDailyBriefError("Daily Brief 刷新失败，请稍后重试。");
+      setDailyBriefError("今日摘要刷新失败，请稍后重试。");
     } finally {
       setDailyBriefRefreshing(false);
       setDailyBriefLoading(false);

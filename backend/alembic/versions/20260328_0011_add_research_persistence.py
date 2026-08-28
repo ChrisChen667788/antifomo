@@ -116,18 +116,17 @@ def upgrade() -> None:
         unique=False,
     )
 
-    op.add_column(
-        "research_tracking_topics",
-        sa.Column("last_report_version_id", postgresql.UUID(as_uuid=True), nullable=True),
-    )
-    op.create_foreign_key(
-        "fk_research_tracking_topics_last_report_version_id_research_report_versions",
-        "research_tracking_topics",
-        "research_report_versions",
-        ["last_report_version_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
+    with op.batch_alter_table("research_tracking_topics") as batch_op:
+        batch_op.add_column(
+            sa.Column("last_report_version_id", postgresql.UUID(as_uuid=True), nullable=True),
+        )
+        batch_op.create_foreign_key(
+            "fk_research_tracking_topics_last_report_version_id_research_report_versions",
+            "research_report_versions",
+            ["last_report_version_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
 
     op.create_table(
         "research_jobs",
@@ -166,12 +165,12 @@ def downgrade() -> None:
     op.drop_index("idx_research_jobs_user_created_at", table_name="research_jobs")
     op.drop_table("research_jobs")
 
-    op.drop_constraint(
-        "fk_research_tracking_topics_last_report_version_id_research_report_versions",
-        "research_tracking_topics",
-        type_="foreignkey",
-    )
-    op.drop_column("research_tracking_topics", "last_report_version_id")
+    with op.batch_alter_table("research_tracking_topics") as batch_op:
+        batch_op.drop_constraint(
+            "fk_research_tracking_topics_last_report_version_id_research_report_versions",
+            type_="foreignkey",
+        )
+        batch_op.drop_column("last_report_version_id")
 
     op.drop_index("idx_research_report_versions_topic_created_at", table_name="research_report_versions")
     op.drop_table("research_report_versions")

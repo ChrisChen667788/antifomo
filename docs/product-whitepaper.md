@@ -1,6 +1,8 @@
 # Anti-FOMO Product Whitepaper
 
-Version: `1.7.2+20260615`
+Development version: `2.9.5+20260814`
+
+Release promotion: `blocked` pending real cross-industry clarification tasks and feedback, human retrieval qrels, real 100+30 expert review/calibration, three-industry blind evaluation, customer acceptance, production Skill governance, and final Office/visual/security evidence.
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
@@ -12,7 +14,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 1.7.2 line keeps the local-first and framework-neutral workflow contract while operating LangGraph as the production default. The locked 100-case dataset now incorporates 78 concrete scope corrections from reviewer comments, while review governance and explicit budget gates prevent scope-resolution work from being misrepresented as approval of the revised cases or from triggering an unbounded live-provider run.
+The 2.9.5 development line keeps the local-first and framework-neutral workflow contract while adding retrieval evidence operations on top of fixed-evidence assurance and controlled candidate promotion. The product now inventories, binds, ages, and independently hands off the fixed benchmark, complete-report review, approval, shadow/drift, incident, and rollback records; `baseline_hybrid` remains the default until external evidence is complete. Research and formal documents still fail closed behind scope, source admission, current-revision passage citations, trusted critical sources, Claim consistency, and material-gap gates.
 
 ## Problem
 

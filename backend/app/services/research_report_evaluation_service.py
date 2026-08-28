@@ -15,6 +15,7 @@ from app.schemas.research import (
     ResearchReviewQueueItemOut,
 )
 from app.services.content_extractor import normalize_text
+from app.services.research.hard_failure_policy import evaluate_research_hard_failures
 
 
 _TERM_RE = re.compile(r"[a-z0-9][a-z0-9._/-]{1,}|[\u4e00-\u9fff]{2,}", flags=re.IGNORECASE)
@@ -683,6 +684,8 @@ def evaluate_research_report(
         + scores.get("citation_quality", 0) * 0.08
         + scores.get("actionability", 0) * 0.08
     )
+    hard_failure = evaluate_research_hard_failures(report)
+    overall = hard_failure.cap_score(overall)
     status = "pass" if overall >= 75 and all(metric.score >= 58 for metric in metrics) else "watch" if overall >= 58 else "fail"
     corrective_queries = _build_corrective_queries(
         report=report,

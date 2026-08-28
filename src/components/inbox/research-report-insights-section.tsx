@@ -30,16 +30,24 @@ export function ResearchReportInsightsSection({
   qualityLabel: (value: string) => string;
   sourceTierLabel: (value: string) => string;
 }) {
+  const userFacingSections = sections.filter((section) => {
+    const title = String(section.title || "").trim();
+    if (/检索诊断|候选证据复核|来源准入|证据门诊断|source admission/i.test(title)) {
+      return false;
+    }
+    return !section.items.some((item) => /^(accepted|ambiguous|rejected)\s*[|｜]/i.test(String(item).trim()));
+  });
+
   return (
     <>
-      {sections.length > 0 ? (
+      {userFacingSections.length > 0 ? (
         <div className="mt-5">
           <div className="mb-3">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{insightsTitle}</p>
             <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">{insightsDesc}</p>
           </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {sections.map((section) => {
+          {userFacingSections.map((section) => {
             const tone = confidenceToneMeta(section.confidence_tone);
             const statusMeta = sectionStatusMeta(section.status);
             return (

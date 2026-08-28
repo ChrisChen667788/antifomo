@@ -77,6 +77,7 @@ export interface WorkBuddyHealth {
   official_tencent_connected?: boolean;
   provider_label?: string;
   requested_mode?: string;
+  configured_model?: string | null;
   official_cli_detected?: boolean;
   official_cli_version?: string | null;
   official_cli_authenticated?: boolean;

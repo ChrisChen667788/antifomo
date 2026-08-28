@@ -568,6 +568,10 @@ class ResearchJob(Base):
     __table_args__ = (
         Index("idx_research_jobs_user_created_at", "user_id", "created_at"),
         Index("idx_research_jobs_status", "status"),
+        Index("idx_research_jobs_parent_job_id", "parent_job_id"),
+        Index("idx_research_jobs_interaction_state", "interaction_state"),
+        Index("idx_research_jobs_worker_lease", "worker_id", "lease_expires_at"),
+        UniqueConstraint("user_id", "idempotency_key", name="uq_research_jobs_user_idempotency"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=new_uuid)
@@ -596,6 +600,22 @@ class ResearchJob(Base):
     report_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     timeline_payload: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     metrics_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    request_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    interaction_state: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="recovering", server_default="recovering"
+    )
+    clarification_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    recovery_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    experience_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    parent_job_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    root_job_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    resumed_child_job_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    recovery_attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    accepted_snapshot_digest: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="")
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    worker_id: Mapped[str] = mapped_column(String(80), nullable=False, default="", server_default="")
+    lease_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    execution_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

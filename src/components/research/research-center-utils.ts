@@ -556,13 +556,13 @@ export function exportDeltaTrendTone(status: string) {
 }
 
 export function experimentPlanStatusLabel(status: ApiResearchExperimentPlan["status"]) {
-  if (status === "cohort_frozen") return "Cohort 已冻结";
-  if (status === "baseline_locked") return "Baseline 已锁定";
-  if (status === "gate_allowed") return "Gate 放行";
-  if (status === "gate_hold") return "Gate 待观察";
-  if (status === "gate_blocked") return "Gate 阻塞";
-  if (status === "rollout_promoted") return "Rollout 已确认";
-  if (status === "rollout_revoked") return "Rollout 已撤回";
+  if (status === "cohort_frozen") return "样本已冻结";
+  if (status === "baseline_locked") return "版本已锁定";
+  if (status === "gate_allowed") return "已放行";
+  if (status === "gate_hold") return "待观察";
+  if (status === "gate_blocked") return "已阻塞";
+  if (status === "rollout_promoted") return "已确认";
+  if (status === "rollout_revoked") return "已撤回";
   return "草稿";
 }
 
@@ -578,8 +578,8 @@ export function experimentPlanStatusTone(status: ApiResearchExperimentPlan["stat
 }
 
 export function experimentGateDecisionLabel(decision?: string | null) {
-  if (decision === "allow") return "允许 rollout";
-  if (decision === "block") return "阻塞 rollout";
+  if (decision === "allow") return "允许发布";
+  if (decision === "block") return "暂不发布";
   if (decision === "hold") return "继续观察";
   return "尚未判定";
 }

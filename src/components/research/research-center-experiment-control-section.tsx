@@ -69,25 +69,25 @@ export function ResearchCenterExperimentControlSection({
       <section className="af-glass rounded-[30px] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-3xl">
-            <p className="af-kicker">质量复核</p>
-            <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">质量复核评估</h3>
+            <p className="af-kicker">质量概览</p>
+            <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">报告质量</h3>
             <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
-              将检索、账户支撑、章节依据和方案/项目建议书交付质量集中展示，方便每轮修订后快速回看质量变化。
+              查看报告质量、待补项和近期变化。
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--af-text-tertiary)]">
-              扫描研报 · {offlineEvaluation?.total_reports ?? 0}
+              全部 · {offlineEvaluation?.total_reports ?? 0}
             </div>
             <div className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--af-text-tertiary)]">
-              可评估 · {offlineEvaluation?.evaluated_reports ?? 0}
+              已评估 · {offlineEvaluation?.evaluated_reports ?? 0}
             </div>
             <div className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--af-text-tertiary)]">
-              Follow-up · {followupDeltaEvaluation?.followup_reports ?? 0}
+              更新 · {followupDeltaEvaluation?.followup_reports ?? 0}
             </div>
             {(offlineEvaluation?.invalid_payloads ?? 0) > 0 ? (
               <div className="rounded-full border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))] px-3 py-1 text-xs font-medium text-[var(--af-warning)]">
-                schema 异常 · {offlineEvaluation?.invalid_payloads ?? 0}
+                异常 · {offlineEvaluation?.invalid_payloads ?? 0}
               </div>
             ) : null}
             <button
@@ -104,7 +104,7 @@ export function ResearchCenterExperimentControlSection({
               disabled={controlPlaneRefreshing}
               className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
             >
-              {controlPlaneRefreshing ? "刷新中..." : "刷新控制面"}
+              {controlPlaneRefreshing ? "刷新中..." : "刷新状态"}
             </button>
           </div>
         </div>
@@ -120,9 +120,9 @@ export function ResearchCenterExperimentControlSection({
             <div className="mt-4 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">Retrieval index 增量重建</p>
+                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">资料索引</p>
                   <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                    统一查看 rebuild / cache / recovery 的运行时状态，辅助断点续建和异常恢复。
+                    查看资料准备进度，必要时继续重建。
                   </p>
                 </div>
                 <span
@@ -161,12 +161,12 @@ export function ResearchCenterExperimentControlSection({
               </div>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
                 {[
-                  { label: "断点状态", value: retrievalIndexStatus?.checkpoint_status || "idle" },
-                  { label: "已持久化", value: String(retrievalIndexStatus?.persisted_chunk_count ?? 0) },
-                  { label: "父块路由", value: String(retrievalIndexStatus?.parent_link_count ?? 0) },
-                  { label: "孤儿子块", value: String(retrievalIndexStatus?.orphan_child_count ?? 0) },
+                  { label: "状态", value: retrievalIndexStatus?.checkpoint_status || "idle" },
+                  { label: "已保存", value: String(retrievalIndexStatus?.persisted_chunk_count ?? 0) },
+                  { label: "已关联", value: String(retrievalIndexStatus?.parent_link_count ?? 0) },
+                  { label: "待关联", value: String(retrievalIndexStatus?.orphan_child_count ?? 0) },
                   { label: "待处理", value: String(retrievalIndexStatus?.remaining_chunks ?? 0) },
-                  { label: "缓存复用", value: `${retrievalIndexStatus?.persisted_reuse_percent ?? 0}%` },
+                  { label: "复用率", value: `${retrievalIndexStatus?.persisted_reuse_percent ?? 0}%` },
                 ].map((item) => (
                   <div key={item.label} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">{item.label}</p>
@@ -177,7 +177,7 @@ export function ResearchCenterExperimentControlSection({
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 text-xs text-[var(--af-text-tertiary)]">
                   <span>
-                    {retrievalIndexStatus?.indexed_chunks ?? 0}/{retrievalIndexStatus?.total_chunks ?? 0} chunks
+                    {retrievalIndexStatus?.indexed_chunks ?? 0}/{retrievalIndexStatus?.total_chunks ?? 0}
                   </span>
                   <span>{retrievalIndexStatus?.progress_percent ?? 0}%</span>
                 </div>
@@ -190,13 +190,13 @@ export function ResearchCenterExperimentControlSection({
               </div>
               <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-3 text-xs leading-5 text-[var(--af-text-secondary)]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-[var(--af-text-primary)]">Recovery</span>
+                  <span className="font-semibold text-[var(--af-text-primary)]">恢复状态</span>
                   <span className="rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 font-medium text-[var(--af-text-secondary)]">
                     {retrievalIndexStatus?.recovery_mode || "none"}
                   </span>
                   {retrievalIndexStatus?.checkpoint_resume_ready ? (
                     <span className="rounded-full bg-[color-mix(in_srgb,var(--af-info)_12%,var(--af-surface-muted))] px-2 py-0.5 font-medium text-[var(--af-info)]">
-                      resume ready
+                      可继续
                     </span>
                   ) : null}
                 </div>
@@ -212,12 +212,12 @@ export function ResearchCenterExperimentControlSection({
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">Query / routing / reranker A/B 控制面</p>
+                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">策略对比</p>
                     <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                      同屏比较 shadow cohort 与同样本 reranker 离线对照，方便判断下一轮默认策略。
+                      比较候选策略效果，辅助选择默认方案。
                     </p>
                   </div>
-                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Control Plane</span>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">策略</span>
                 </div>
                 {controlPlaneLoading ? (
                   <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</p>
@@ -238,7 +238,7 @@ export function ResearchCenterExperimentControlSection({
                           {[lane.baseline, lane.candidate].map((arm) => (
                             <div key={arm.key} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
-                                {arm.role === "baseline" ? "Baseline" : "Candidate"}
+                                {arm.role === "baseline" ? "当前" : "候选"}
                               </p>
                               <p className="mt-1 text-sm font-semibold text-[var(--af-text-primary)]">{arm.label}</p>
                               <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">{arm.percent}%</p>
@@ -249,8 +249,8 @@ export function ResearchCenterExperimentControlSection({
                           ))}
                         </div>
                         <p className="mt-3 text-xs leading-5 text-[var(--af-text-secondary)]">
-                          候选相对基线 {lane.uplift_points >= 0 ? "+" : ""}
-                          {lane.uplift_points} pt。{lane.interpretation}
+                          候选提升 {lane.uplift_points >= 0 ? "+" : ""}
+                          {lane.uplift_points} 分。{lane.interpretation}
                         </p>
                       </div>
                     ))}
@@ -263,12 +263,12 @@ export function ResearchCenterExperimentControlSection({
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">Follow-up delta 离线评估</p>
+                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">更新质量</p>
                     <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                      检查标题/摘要 delta、影响章节路由和官方证据支撑是否真正闭环。
+                      检查补充信息是否有效更新结论。
                     </p>
                   </div>
-                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Delta Eval</span>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">更新</span>
                 </div>
                 {controlPlaneLoading ? (
                   <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</p>
@@ -283,14 +283,14 @@ export function ResearchCenterExperimentControlSection({
                           <p className="text-sm font-semibold">{metric.label}</p>
                           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{metric.percent}%</p>
                           <p className="mt-1 text-xs">
-                            当前 {metric.numerator}/{metric.denominator} · 基准 {Math.round(metric.benchmark * 100)}%
+                            当前 {metric.numerator}/{metric.denominator} · 目标 {Math.round(metric.benchmark * 100)}%
                           </p>
                         </div>
                       ))}
                     </div>
                     {followupDeltaEvaluation.weakest_reports?.length ? (
                       <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">待补样本</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">待补报告</p>
                         <div className="mt-2 space-y-2">
                           {followupDeltaEvaluation.weakest_reports.slice(0, 3).map((item) => (
                             <div key={item.entry_id} className="text-sm leading-6 text-[var(--af-text-secondary)]">
@@ -303,7 +303,7 @@ export function ResearchCenterExperimentControlSection({
                     ) : null}
                   </>
                 ) : (
-                  <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前暂无 follow-up delta 样本。</p>
+                  <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前暂无更新样本。</p>
                 )}
               </div>
             </div>
@@ -314,20 +314,20 @@ export function ResearchCenterExperimentControlSection({
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">实验编排层</p>
+                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">策略发布</p>
                   <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                    固化 cohort、锁定版本 baseline，并用 rollout gate 决定候选策略是否进入默认路径。
+                    确认候选策略是否进入默认流程。
                   </p>
                 </div>
-                <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Orchestration</span>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">发布</span>
               </div>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-5 xl:grid-cols-10">
                 {[
-                  { label: "实验计划", value: String(experimentOrchestration?.total_plans ?? 0) },
+                  { label: "策略计划", value: String(experimentOrchestration?.total_plans ?? 0) },
                   { label: "已冻结", value: String(experimentOrchestration?.frozen_plan_count ?? 0) },
                   { label: "已锁定", value: String(experimentOrchestration?.locked_plan_count ?? 0) },
-                  { label: "Gate 放行", value: String(experimentOrchestration?.allowed_plan_count ?? 0) },
-                  { label: "Gate 阻塞", value: String(experimentOrchestration?.blocked_plan_count ?? 0) },
+                  { label: "已放行", value: String(experimentOrchestration?.allowed_plan_count ?? 0) },
+                  { label: "已阻塞", value: String(experimentOrchestration?.blocked_plan_count ?? 0) },
                   { label: "待观察", value: String(experimentOrchestration?.hold_plan_count ?? 0) },
                   { label: "已确认", value: String(experimentOrchestration?.promoted_plan_count ?? 0) },
                   { label: "已撤回", value: String(experimentOrchestration?.revoked_plan_count ?? 0) },
@@ -343,7 +343,7 @@ export function ResearchCenterExperimentControlSection({
 
               <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
                 <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">新实验计划</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">新策略计划</p>
                   <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
                       计划名称
@@ -351,20 +351,20 @@ export function ResearchCenterExperimentControlSection({
                         value={experimentPlanName}
                         onChange={(event) => setExperimentPlanName(event.target.value)}
                         className="af-input mt-1 w-full bg-[var(--af-surface-elevated)]"
-                        placeholder="例：CrossEncoder reranker rollout"
+                        placeholder="例：新版来源排序策略"
                       />
                     </label>
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
-                      候选策略标签
+                      候选策略名称
                       <input
                         value={experimentCandidateLabel}
                         onChange={(event) => setExperimentCandidateLabel(event.target.value)}
                         className="af-input mt-1 w-full bg-[var(--af-surface-elevated)]"
-                        placeholder="例：cross-encoder-v1"
+                        placeholder="例：官方来源优先"
                       />
                     </label>
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
-                      Lane
+                      应用场景
                       <select
                         value={experimentLaneKey}
                         onChange={(event) => {
@@ -380,21 +380,21 @@ export function ResearchCenterExperimentControlSection({
                         }}
                         className="af-input mt-1 w-full bg-[var(--af-surface-elevated)]"
                       >
-                        <option value="query_recovery">Query recovery</option>
-                        <option value="routing_followup">Routing follow-up</option>
-                        <option value="reranker_official_recall">Reranker official recall</option>
+                        <option value="query_recovery">补充检索</option>
+                        <option value="routing_followup">追问处理</option>
+                        <option value="reranker_official_recall">官方来源优先</option>
                       </select>
                     </label>
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
-                      策略族
+                      策略类型
                       <select
                         value={experimentStrategyFamily}
                         onChange={(event) => setExperimentStrategyFamily(event.target.value as ApiResearchExperimentPlan["strategy_family"])}
                         className="af-input mt-1 w-full bg-[var(--af-surface-elevated)]"
                       >
-                        <option value="query_plan">Query plan</option>
-                        <option value="routing_policy">Routing policy</option>
-                        <option value="reranker">Reranker</option>
+                        <option value="query_plan">检索计划</option>
+                        <option value="routing_policy">处理策略</option>
+                        <option value="reranker">来源排序</option>
                       </select>
                     </label>
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
@@ -409,7 +409,7 @@ export function ResearchCenterExperimentControlSection({
                       />
                     </label>
                     <label className="block text-xs font-medium text-[var(--af-text-secondary)]">
-                      最小 uplift
+                      最小提升
                       <input
                         type="number"
                         min={-100}
@@ -449,19 +449,19 @@ export function ResearchCenterExperimentControlSection({
                   )}
                   {experimentOrchestration?.active_policies?.length ? (
                     <div className="mt-3 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">Active policy registry</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">当前策略</p>
                       {experimentOrchestration.active_policies.map((policy) => (
                         <div key={`${policy.lane_key}-${policy.plan_id}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-sm font-semibold text-[var(--af-text-primary)]">{sanitizeExternalDisplayText(policy.candidate_label)}</p>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${policy.conflict_plan_ids.length ? "af-chip af-chip-danger" : "af-chip af-chip-success"}`}>
-                              {policy.conflict_plan_ids.length ? "同 lane 冲突" : "当前生效"}
+                              {policy.conflict_plan_ids.length ? "存在冲突" : "已生效"}
                             </span>
                           </div>
                           <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                            {policy.lane_key} · {policy.promoted_version_label || "local-dev"} · {policy.candidate_percent}% · uplift{" "}
+                            {policy.candidate_percent}% · 提升{" "}
                             {policy.observed_uplift_points >= 0 ? "+" : ""}
-                            {policy.observed_uplift_points} pt
+                            {policy.observed_uplift_points} 分
                           </p>
                         </div>
                       ))}
@@ -471,7 +471,7 @@ export function ResearchCenterExperimentControlSection({
                     <div className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
-                          Runtime strategy snapshot
+                          运行状态
                         </p>
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeSnapshot.status)}`}>
                           {experimentRuntimeStatusLabel(experimentRuntimeSnapshot.status)}
@@ -487,19 +487,19 @@ export function ResearchCenterExperimentControlSection({
                           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
                             {[
                               {
-                                label: "report query",
-                                value: String(queryRuntime["query_recovery_enabled"] ?? false),
+                                label: "报告检索",
+                                value: queryRuntime["query_recovery_enabled"] ? "开启" : "关闭",
                               },
                               {
-                                label: "corrective",
+                                label: "补充次数",
                                 value: String(queryRuntime["corrective_query_limit"] ?? 0),
                               },
                               {
-                                label: "source reranker",
-                                value: String(rerankerRuntime["reranker_adapter"] ?? "local_rrf"),
+                                label: "来源排序",
+                                value: "已启用",
                               },
                               {
-                                label: "top k",
+                                label: "召回数",
                                 value: String(rerankerRuntime["recall_at_k"] ?? 5),
                               },
                             ].map((item) => (
@@ -514,17 +514,13 @@ export function ResearchCenterExperimentControlSection({
                       {experimentRuntimeSnapshot.strategies.length ? (
                         <div className="mt-2 space-y-2">
                           {experimentRuntimeSnapshot.strategies.slice(0, 3).map((strategy) => {
-                            const configPreview = Object.entries(strategy.runtime_config)
-                              .slice(0, 4)
-                              .map(([key, value]) => `${key}: ${String(value)}`)
-                              .join(" / ");
                             return (
                               <div key={`${strategy.lane_key}-${strategy.plan_id}`} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <p className="text-sm font-semibold text-[var(--af-text-primary)]">{sanitizeExternalDisplayText(strategy.candidate_label)}</p>
-                                  <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">{strategy.lane_key}</span>
+                                  <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">已应用</span>
                                 </div>
-                                <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">{sanitizeExternalDisplayText(configPreview)}</p>
+                                <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">策略参数已在后台生效。</p>
                               </div>
                             );
                           })}
@@ -534,7 +530,7 @@ export function ResearchCenterExperimentControlSection({
                         <div className="mt-2 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
-                              Effective retrieval config
+                              检索设置
                             </p>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeConfig.status)}`}>
                               {experimentRuntimeStatusLabel(experimentRuntimeConfig.status)}
@@ -543,22 +539,22 @@ export function ResearchCenterExperimentControlSection({
                           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                             {[
                               {
-                                label: "parent boost",
+                                label: "关联增强",
                                 value: String(experimentRuntimeConfig.effective_config["parent_block_boost"] ?? "1"),
                               },
                               {
-                                label: "official bias",
-                                value: String(experimentRuntimeConfig.effective_config["official_source_bias"] ?? true),
+                                label: "官方优先",
+                                value: experimentRuntimeConfig.effective_config["official_source_bias"] ? "开启" : "关闭",
                               },
                               {
-                                label: "reranker",
-                                value: String(experimentRuntimeConfig.effective_config["reranker_adapter"] ?? "local_rrf"),
+                                label: "来源排序",
+                                value: "已启用",
                               },
                               {
-                                label: "applied lanes",
+                                label: "应用策略",
                                 value: experimentRuntimeConfig.applied_lanes.length
-                                  ? experimentRuntimeConfig.applied_lanes.join(" / ")
-                                  : "fallback",
+                                  ? `${experimentRuntimeConfig.applied_lanes.length} 个`
+                                  : "默认",
                               },
                             ].map((item) => (
                               <div key={item.label} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-2">
@@ -579,7 +575,7 @@ export function ResearchCenterExperimentControlSection({
                           <div className="mt-2 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
-                                Report generation runtime
+                                报告生成设置
                               </p>
                               <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${experimentRuntimeStatusTone(experimentRuntimeAllConfig.status)}`}>
                                 {experimentRuntimeStatusLabel(experimentRuntimeAllConfig.status)}
@@ -588,19 +584,19 @@ export function ResearchCenterExperimentControlSection({
                             <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                               {[
                                 {
-                                  label: "query recovery",
-                                  value: String(queryRuntime["query_recovery_enabled"] ?? false),
+                                  label: "补充检索",
+                                  value: queryRuntime["query_recovery_enabled"] ? "开启" : "关闭",
                                 },
                                 {
-                                  label: "corrective limit",
+                                  label: "补充次数",
                                   value: String(queryRuntime["corrective_query_limit"] ?? 0),
                                 },
                                 {
-                                  label: "source reranker",
-                                  value: String(rerankerRuntime["reranker_adapter"] ?? "local_rrf"),
+                                  label: "来源排序",
+                                  value: "已启用",
                                 },
                                 {
-                                  label: "reranker top k",
+                                  label: "召回数",
                                   value: String(rerankerRuntime["recall_at_k"] ?? 5),
                                 },
                               ].map((item) => (
@@ -645,7 +641,7 @@ export function ResearchCenterExperimentControlSection({
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-[var(--af-text-primary)]">{sanitizeExternalDisplayText(plan.name)}</p>
                             <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                              {sanitizeExternalDisplayText(plan.candidate_label)} · {plan.lane_key} · {plan.strategy_family}
+                              {sanitizeExternalDisplayText(plan.candidate_label)}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -659,11 +655,11 @@ export function ResearchCenterExperimentControlSection({
                         </div>
                         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
                           {[
-                            { label: "Cohort", value: `${plan.cohort_size} 条` },
-                            { label: "Baseline", value: plan.baseline_version_label || "未锁定" },
+                            { label: "样本", value: `${plan.cohort_size} 条` },
+                            { label: "当前版本", value: plan.baseline_version_label || "未锁定" },
                             { label: "候选表现", value: latestGate ? `${latestGate.candidate_percent}%` : `${plan.baseline_lane?.candidate.percent ?? 0}%` },
-                            { label: "Uplift", value: latestGate ? `${latestGate.observed_uplift_points >= 0 ? "+" : ""}${latestGate.observed_uplift_points} pt` : "未判定" },
-                            { label: "Gate 历史", value: `${plan.gate_history_count} 次` },
+                            { label: "提升", value: latestGate ? `${latestGate.observed_uplift_points >= 0 ? "+" : ""}${latestGate.observed_uplift_points} 分` : "未判定" },
+                            { label: "判断次数", value: `${plan.gate_history_count} 次` },
                           ].map((item) => (
                             <div key={item.label} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">{item.label}</p>
@@ -673,12 +669,12 @@ export function ResearchCenterExperimentControlSection({
                         </div>
                         {plan.cohort_preview_titles.length ? (
                           <p className="mt-3 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                            样本预览：{plan.cohort_preview_titles.map(sanitizeExternalDisplayText).join(" / ")}
+                            样本：{plan.cohort_preview_titles.map(sanitizeExternalDisplayText).join(" / ")}
                           </p>
                         ) : null}
                         {latestGate?.reasons?.length ? (
                           <div className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">Gate reason</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">判断依据</p>
                             <p className="mt-1 text-sm leading-6 text-[var(--af-text-secondary)]">
                               {latestGate.reasons.map(sanitizeExternalDisplayText).join("；")}
                             </p>
@@ -688,17 +684,17 @@ export function ResearchCenterExperimentControlSection({
                           <div className="mt-3 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--af-text-tertiary)]">
-                                Rollout manifest
+                                发布记录
                               </p>
                               <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${plan.rollout_manifest.decision === "promoted" ? "af-chip af-chip-success" : "af-chip"}`}>
                                 {plan.rollout_manifest.decision === "promoted" ? "已确认" : "已撤回"}
                               </span>
                             </div>
                             <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
-                              {sanitizeExternalDisplayText(plan.rollout_manifest.promoted_version_label || "local-dev")} ·{" "}
-                              {plan.rollout_manifest.candidate_percent}% · uplift{" "}
+                              {sanitizeExternalDisplayText(plan.rollout_manifest.promoted_version_label || "本地策略")} ·{" "}
+                              {plan.rollout_manifest.candidate_percent}% · 提升{" "}
                               {plan.rollout_manifest.observed_uplift_points >= 0 ? "+" : ""}
-                              {plan.rollout_manifest.observed_uplift_points} pt · 样本 {plan.rollout_manifest.sample_size}
+                              {plan.rollout_manifest.observed_uplift_points} 分 · 样本 {plan.rollout_manifest.sample_size}
                             </p>
                             <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
                               {plan.rollout_manifest.revoked_at
@@ -716,7 +712,7 @@ export function ResearchCenterExperimentControlSection({
                             className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                             disabled={!canFreeze || actionBusy}
                           >
-                            冻结 cohort
+                            冻结样本
                           </button>
                           <button
                             type="button"
@@ -724,7 +720,7 @@ export function ResearchCenterExperimentControlSection({
                             className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                             disabled={!canLock || actionBusy}
                           >
-                            锁定 baseline
+                            锁定版本
                           </button>
                           <button
                             type="button"
@@ -732,7 +728,7 @@ export function ResearchCenterExperimentControlSection({
                             className="af-btn af-btn-primary px-3 py-1.5 text-xs"
                             disabled={!canEvaluate || actionBusy}
                           >
-                            判定 rollout gate
+                            判断发布
                           </button>
                           <button
                             type="button"
@@ -740,7 +736,7 @@ export function ResearchCenterExperimentControlSection({
                             className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                             disabled={!canPromote || actionBusy}
                           >
-                            确认 rollout
+                            确认发布
                           </button>
                           <button
                             type="button"
@@ -748,10 +744,10 @@ export function ResearchCenterExperimentControlSection({
                             className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                             disabled={!canRevoke || actionBusy}
                           >
-                            撤回 rollout
+                            撤回发布
                           </button>
                           <span className="text-xs text-[var(--af-text-tertiary)]">
-                            {plan.baseline_locked_at ? `锁定于 ${formatWatchlistTime(plan.baseline_locked_at)}` : "baseline 锁定后 cohort 不再变更"}
+                            {plan.baseline_locked_at ? `锁定于 ${formatWatchlistTime(plan.baseline_locked_at)}` : "锁定后记录不再变更"}
                           </span>
                         </div>
                       </div>
@@ -759,19 +755,19 @@ export function ResearchCenterExperimentControlSection({
                   })}
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前暂无实验计划。</p>
+                <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">当前暂无策略计划。</p>
               )}
             </div>
 
             <div className="mt-4 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">Delivery export diagnostics</p>
+                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">导出质量趋势</p>
                   <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                    汇总导出归档的质量快照、追问影响摘要和相邻版本差异，观察趋势而不是只看单点结果。
+                    查看导出文件的质量变化。
                   </p>
                 </div>
-                <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Export Trend</span>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">趋势</span>
               </div>
               {controlPlaneLoading ? (
                 <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">{t("common.loading", "加载中")}</p>
@@ -781,7 +777,7 @@ export function ResearchCenterExperimentControlSection({
                     {[
                       { label: "导出归档", value: String(deliveryExportDiagnostics.total_archives) },
                       { label: "可比较样本", value: String(deliveryExportDiagnostics.analyzed_archives) },
-                      { label: "质量快照", value: String(deliveryExportDiagnostics.archives_with_quality_snapshot) },
+                      { label: "质量记录", value: String(deliveryExportDiagnostics.archives_with_quality_snapshot) },
                       { label: "追问摘要", value: String(deliveryExportDiagnostics.archives_with_followup_summary) },
                     ].map((item) => (
                       <div key={item.label} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
@@ -808,7 +804,7 @@ export function ResearchCenterExperimentControlSection({
                           </div>
                         ))}
                         {!deliveryExportDiagnostics.trend_points.length ? (
-                          <p className="text-sm text-[var(--af-text-tertiary)]">当前暂无带诊断字段的导出归档。</p>
+                          <p className="text-sm text-[var(--af-text-tertiary)]">当前暂无导出记录。</p>
                         ) : null}
                       </div>
                     </div>
@@ -828,14 +824,14 @@ export function ResearchCenterExperimentControlSection({
                           </div>
                         ))}
                         {!deliveryExportDiagnostics.version_deltas.length ? (
-                          <p className="text-sm text-[var(--af-text-tertiary)]">至少需要两份带诊断的导出归档，才能形成版本对比。</p>
+                          <p className="text-sm text-[var(--af-text-tertiary)]">至少需要两份导出记录，才能形成对比。</p>
                         ) : null}
                       </div>
                     </div>
                   </div>
                 </>
               ) : (
-                <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">导出诊断暂时无法读取。</p>
+                <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">导出质量暂时无法读取。</p>
               )}
             </div>
 
@@ -854,7 +850,7 @@ export function ResearchCenterExperimentControlSection({
                     </div>
                     <p className="mt-3 text-3xl font-semibold tracking-[-0.05em]">{metric.percent}%</p>
                     <p className="mt-2 text-xs text-[var(--af-text-tertiary)]">
-                      当前 {metric.numerator}/{metric.denominator} · 基准 {Math.round(metric.benchmark * 100)}%
+                      当前 {metric.numerator}/{metric.denominator} · 目标 {Math.round(metric.benchmark * 100)}%
                     </p>
                     <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
                       {sanitizeExternalDisplayText(metric.summary)}
@@ -869,8 +865,8 @@ export function ResearchCenterExperimentControlSection({
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">回归摘要</p>
-                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">Regression Notes</span>
+                  <p className="text-sm font-semibold text-[var(--af-text-primary)]">质量摘要</p>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">摘要</span>
                 </div>
                 {offlineEvaluation?.summary_lines?.length ? (
                   <div className="mt-3 space-y-2">
@@ -888,8 +884,8 @@ export function ResearchCenterExperimentControlSection({
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">弱样本回归列表</p>
-                    <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">优先处理目标账户缺支撑、章节配额未达标、检索命中偏弱和交付质量未过线的旧报告。</p>
+                    <p className="text-sm font-semibold text-[var(--af-text-primary)]">待优化报告</p>
+                    <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">优先处理证据不足、来源偏弱或交付质量未达标的报告。</p>
                   </div>
                   <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">
                     Top {Math.min(offlineEvaluation?.weakest_reports?.length ?? 0, 4)}
@@ -912,24 +908,24 @@ export function ResearchCenterExperimentControlSection({
                               </p>
                             </div>
                             <span className="rounded-full bg-[color-mix(in_srgb,var(--af-danger)_12%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] font-medium text-[var(--af-danger)]">
-                              弱度 {item.weakness_score}
+                              待补 {item.weakness_score}
                             </span>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-secondary)]">
                             <span className={`rounded-full px-2.5 py-1 font-medium ${item.retrieval_hit ? "af-chip af-chip-success" : "af-chip af-chip-danger"}`}>
-                              {item.retrieval_hit ? "检索命中已过线" : "检索命中偏弱"}
+                              {item.retrieval_hit ? "来源覆盖良好" : "来源覆盖偏弱"}
                             </span>
                             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
                               目标支撑 {item.supported_target_accounts}/{item.supported_target_accounts + item.unsupported_target_accounts}
                             </span>
                             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
-                              章节配额 {item.quota_passed_section_count}/{item.quota_total_section_count}
+                              章节完整度 {item.quota_passed_section_count}/{item.quota_total_section_count}
                             </span>
                             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
                               官方源 {Math.round(item.official_source_ratio * 100)}%
                             </span>
                             <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
-                              严格命中 {Math.round(item.strict_match_ratio * 100)}%
+                              主题匹配 {Math.round(item.strict_match_ratio * 100)}%
                             </span>
                             <span className={`rounded-full px-2.5 py-1 ${
                               item.delivery_quality_status === "pass"
@@ -953,7 +949,7 @@ export function ResearchCenterExperimentControlSection({
                               ) : null}
                               {item.failing_sections.length ? (
                                 <p className="text-sm leading-6 text-[var(--af-text-secondary)]">
-                                  未过配额章节 · {sanitizeExternalDisplayText(item.failing_sections.join(" / "))} {quotaGap > 0 ? `(${quotaGap} 处待补)` : ""}
+                                  待补章节 · {sanitizeExternalDisplayText(item.failing_sections.join(" / "))} {quotaGap > 0 ? `(${quotaGap} 处待补)` : ""}
                                 </p>
                               ) : null}
                               {item.delivery_missing_axes.length ? (
@@ -968,7 +964,7 @@ export function ResearchCenterExperimentControlSection({
                     })}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">当前没有需要优先回归的弱样本。</p>
+                  <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">当前没有需要优先处理的报告。</p>
                 )}
               </div>
             </div>

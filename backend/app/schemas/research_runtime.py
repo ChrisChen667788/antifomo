@@ -38,3 +38,4 @@ class ResearchRunMetricsOut(BaseModel):
     gauges: dict[str, float] = Field(default_factory=dict)
     nodes: dict[str, ResearchRunNodeMetricOut] = Field(default_factory=dict)
     cost_ledger: ResearchRunCostLedgerOut = Field(default_factory=ResearchRunCostLedgerOut)
+    billing: dict[str, object] = Field(default_factory=dict)

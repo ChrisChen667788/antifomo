@@ -38,7 +38,7 @@ export default async function KnowledgeAccountsPage() {
   return (
     <PageShell
       title="账户情报"
-      description="把研报中的甲方、预算窗口和下一步动作沉淀成连续可跟进的账户对象。"
+      description="查看客户、机会和下一步动作。"
     >
       <KnowledgeCommercialHub
         dashboard={data.dashboard}

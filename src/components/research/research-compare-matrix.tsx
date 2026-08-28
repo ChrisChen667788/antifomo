@@ -49,8 +49,8 @@ function diffStatusTone(status: string) {
 
 function diffStatusLabel(status: string, t: (key: string, fallback: string) => string) {
   if (status === "aligned") return t("research.compareSnapshotDiffAligned", "主线一致");
-  if (status === "expanded") return t("research.compareSnapshotDiffExpanded", "快照扩展");
-  if (status === "trimmed") return t("research.compareSnapshotDiffTrimmed", "快照收敛");
+  if (status === "expanded") return t("research.compareSnapshotDiffExpanded", "当前扩展");
+  if (status === "trimmed") return t("research.compareSnapshotDiffTrimmed", "当前收敛");
   if (status === "mixed") return t("research.compareSnapshotDiffMixed", "双向差异");
   return t("research.compareSnapshotDiffUnavailable", "无法比较");
 }
@@ -300,7 +300,7 @@ export function ResearchCompareMatrix({
       .catch(() => {
         if (!active) return;
         setSnapshotDetail(null);
-        setSnapshotError(t("research.compareSnapshotLoadFailed", "保存的对比快照加载失败，请返回工作台重试"));
+        setSnapshotError(t("research.compareSnapshotLoadFailed", "保存的对比加载失败，请返回工作台重试"));
       })
       .finally(() => {
         if (!active) return;
@@ -426,7 +426,7 @@ export function ResearchCompareMatrix({
     const bundle = buildExportBundle(generatedAt);
     triggerFileDownload(bundle.markdownFilename, bundle.markdown, "text/markdown;charset=utf-8");
     setStatusTone("success");
-    setStatusNotice(t("research.compareExported", "对比矩阵 Markdown 已导出"));
+    setStatusNotice(t("research.compareExported", "对比原文已导出"));
   };
 
   const handleExportPdf = () => {
@@ -442,7 +442,7 @@ export function ResearchCompareMatrix({
     const bundle = buildExportBundle(generatedAt);
     triggerFileDownload(bundle.execBriefFilename, bundle.execBrief, "text/markdown;charset=utf-8");
     setStatusTone("success");
-    setStatusNotice(t("research.compareExecBriefExported", "Compare Exec Brief 已导出"));
+    setStatusNotice(t("research.compareExecBriefExported", "对比简报已导出"));
   };
 
   const handleArchiveMarkdown = async () => {
@@ -450,8 +450,8 @@ export function ResearchCompareMatrix({
     const generatedAt = new Date();
     const bundle = buildExportBundle(generatedAt);
     const defaultName = snapshotDetail?.name
-      ? `${snapshotDetail.name} · Markdown 归档`
-      : `${query.trim() || "对比矩阵"} · Markdown 归档`;
+      ? `${snapshotDetail.name} · 历史归档`
+      : `${query.trim() || "对比矩阵"} · 历史归档`;
     const name = window.prompt(
       t("research.compareArchivePrompt", "输入一个归档名称，便于在商机情报中心回看"),
       defaultName,
@@ -490,10 +490,10 @@ export function ResearchCompareMatrix({
         },
       });
       setStatusTone("success");
-      setStatusNotice(t("research.compareArchiveSaved", `已保存 Markdown 归档：${saved.name}`));
+      setStatusNotice(t("research.compareArchiveSaved", `已保存历史归档：${saved.name}`));
     } catch {
       setStatusTone("error");
-      setStatusNotice(t("research.compareArchiveSaveFailed", "保存 Markdown 归档失败，请稍后重试"));
+      setStatusNotice(t("research.compareArchiveSaveFailed", "保存历史归档失败，请稍后重试"));
     } finally {
       setArchivingMarkdown(false);
     }
@@ -503,7 +503,7 @@ export function ResearchCompareMatrix({
     if (!visibleRows.length) return;
     const defaultName = `${query.trim() || snapshotDetail?.name || "对比矩阵"} · ${new Date().toLocaleDateString()}`;
     const name = window.prompt(
-      t("research.compareSnapshotPrompt", "输入一个快照名称，便于后续回访"),
+      t("research.compareSnapshotPrompt", "输入一个名称，便于后续回访"),
       defaultName,
     )?.trim();
     if (!name) return;
@@ -532,13 +532,13 @@ export function ResearchCompareMatrix({
         },
       });
       setStatusTone("success");
-      setStatusNotice(t("research.compareSnapshotSaved", `已保存对比快照：${saved.name}`));
+      setStatusNotice(t("research.compareSnapshotSaved", `已保存对比：${saved.name}`));
       const params = new URLSearchParams({ snapshot: saved.id });
       if (activeTopicId) params.set("topicId", activeTopicId);
       router.replace(`/research/compare?${params.toString()}`);
     } catch {
       setStatusTone("error");
-      setStatusNotice(t("research.compareSnapshotSaveFailed", "保存对比快照失败，请稍后重试"));
+      setStatusNotice(t("research.compareSnapshotSaveFailed", "保存对比失败，请稍后重试"));
     } finally {
       setSavingSnapshot(false);
     }
@@ -550,10 +550,10 @@ export function ResearchCompareMatrix({
         <section className="af-glass rounded-[30px] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="af-kicker">{t("research.compareSnapshotKicker", "Saved Snapshot")}</p>
+              <p className="af-kicker">{t("research.compareSnapshotKicker", "已保存对比")}</p>
               <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">{snapshotDetail.name}</h3>
               <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
-                {snapshotDetail.summary || t("research.compareSnapshotDesc", "当前正在查看已保存的对比结果快照，内容不会随实时研报刷新自动变化。")}
+                {snapshotDetail.summary || t("research.compareSnapshotDesc", "当前查看的是已保存结果。")}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full af-chip px-2.5 py-1 ">
@@ -577,19 +577,19 @@ export function ResearchCompareMatrix({
                 ) : null}
                 {isLegacyBackfilledSnapshot ? (
                   <span className="rounded-full af-chip af-chip-warning px-2.5 py-1 ">
-                    旧快照已补齐复核信息
+                    历史结果已更新
                   </span>
                 ) : hasFrozenSnapshotMetadata ? (
                   <span className="rounded-full af-chip af-chip-success px-2.5 py-1 ">
-                    指标时点已冻结
+                    结果已固定
                   </span>
                 ) : null}
               </div>
               {isLegacyBackfilledSnapshot ? (
                 <div className="mt-4 rounded-[22px] af-state-panel-warning px-4 py-3 text-sm leading-6 text-[var(--af-warning)]">
-                  旧快照已补齐复核信息：该快照原始信息不完整，已
+                  历史结果已补齐必要信息，已
                   {snapshotMetadataBackfilledAtLabel ? `于 ${snapshotMetadataBackfilledAtLabel} ` : ""}
-                  补充章节依据检查和质量复核；当前页面和导出文件都会固定使用这份复核结果。
+                  完成复核；当前页面和导出文件都会使用这份结果。
                 </div>
               ) : null}
             </div>
@@ -611,7 +611,7 @@ export function ResearchCompareMatrix({
         <section className="af-glass rounded-[30px] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="af-kicker">{t("research.compareSnapshotDiffKicker", "Snapshot vs Version")}</p>
+              <p className="af-kicker">{t("research.compareSnapshotDiffKicker", "关联版本变化")}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <h3 className="text-xl font-semibold text-[var(--af-text-primary)]">{snapshotDetail.linked_report_diff.headline}</h3>
                 <span className={`rounded-full px-2.5 py-1 text-xs ${diffStatusTone(snapshotDetail.linked_report_diff.status)}`}>
@@ -635,17 +635,17 @@ export function ResearchCompareMatrix({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-[var(--af-text-primary)]">{axis.label}</p>
                     <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
-                      {axis.snapshot_count} vs {axis.linked_count}
+                      当前 {axis.snapshot_count} · 版本 {axis.linked_count}
                     </span>
                   </div>
                   <div className="mt-3 space-y-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                     <p>
-                      快照独有: {axis.snapshot_only.length ? axis.snapshot_only.join(" / ") : "无"}
+                      当前独有：{axis.snapshot_only.length ? axis.snapshot_only.join(" / ") : "无"}
                     </p>
                     <p>
-                      关联版本独有: {axis.linked_only.length ? axis.linked_only.join(" / ") : "无"}
+                      关联版本独有：{axis.linked_only.length ? axis.linked_only.join(" / ") : "无"}
                     </p>
-                    <p>交集: {axis.overlap_count}</p>
+                    <p>重合：{axis.overlap_count}</p>
                   </div>
                 </article>
               ))}
@@ -657,14 +657,14 @@ export function ResearchCompareMatrix({
       <section className="af-glass rounded-[34px] p-5 md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="af-kicker">{t("research.compareKicker", "Compare Matrix")}</p>
+            <p className="af-kicker">{t("research.compareKicker", "对比矩阵")}</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)] md:text-[2rem]">
               {t("research.compareTitle", "甲方 / 中标方 / 竞品 / 伙伴 对比矩阵")}
             </h2>
             <p className="mt-3 text-sm leading-6 text-[var(--af-text-tertiary)] md:text-[15px]">
               {t(
                 "research.compareDesc",
-                "把多份研报里的甲方、中标方、竞品和伙伴线索拉平对比，优先看预算、项目、战略和竞争压力。",
+                "比较客户、项目、竞品和合作线索。",
               )}
             </p>
           </div>
@@ -677,7 +677,7 @@ export function ResearchCompareMatrix({
             >
               {savingSnapshot
                 ? t("research.compareSavingSnapshot", "保存中...")
-                : t("research.compareSaveSnapshot", "保存对比快照")}
+                : t("research.compareSaveSnapshot", "保存对比")}
             </button>
             <button
               type="button"
@@ -695,7 +695,7 @@ export function ResearchCompareMatrix({
               disabled={!visibleRows.length}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {t("research.compareExport", "导出 Markdown")}
+              {t("research.compareExport", "导出原文")}
             </button>
             <button
               type="button"
@@ -711,7 +711,7 @@ export function ResearchCompareMatrix({
               disabled={!visibleRows.length}
               className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {t("research.compareExportExecBrief", "导出 Exec Brief")}
+              {t("research.compareExportExecBrief", "导出简报")}
             </button>
             <Link href="/research" className="af-btn af-btn-secondary border px-4 py-2">
               {t("research.compareBack", "返回商机情报中心")}
@@ -720,7 +720,7 @@ export function ResearchCompareMatrix({
         </div>
         {isLegacyBackfilledSnapshot ? (
           <div className="mt-5 rounded-[24px] af-state-panel-warning p-4 text-sm leading-6 text-[var(--af-warning)]">
-            导出说明：旧快照已补齐复核信息，导出文件会沿用当前展示的快照内容。
+            导出文件会使用当前展示的结果。
           </div>
         ) : null}
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -736,8 +736,8 @@ export function ResearchCompareMatrix({
           <article className="rounded-[26px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 shadow-[var(--af-shadow-soft)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">章节检查</p>
-                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">章节依据检查</h3>
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">章节质量</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">重点章节检查</h3>
               </div>
               <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
                 来源研报 · {effectiveSectionDiagnosticsSummary.sourceReportCount}
@@ -749,11 +749,11 @@ export function ResearchCompareMatrix({
                 <p className="mt-2 text-2xl font-semibold text-[var(--af-warning)]">{effectiveSectionDiagnosticsSummary.weakSectionCount}</p>
               </div>
               <div className="rounded-[20px] af-state-panel-danger p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-danger)]">配额风险</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-danger)]">待补章节</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--af-danger)]">{effectiveSectionDiagnosticsSummary.quotaRiskSectionCount}</p>
               </div>
               <div className="rounded-[20px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">矛盾章节</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">冲突提醒</p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--af-text-primary)]">{effectiveSectionDiagnosticsSummary.contradictionSectionCount}</p>
               </div>
             </div>
@@ -767,7 +767,7 @@ export function ResearchCompareMatrix({
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">质量复核</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
-                  {isLegacyBackfilledSnapshot ? "旧快照复核" : hasFrozenSnapshotMetadata ? "快照复核" : "当前复核"}
+                  {isLegacyBackfilledSnapshot ? "历史复核" : hasFrozenSnapshotMetadata ? "保存时复核" : "当前复核"}
                 </h3>
               </div>
               <span className="rounded-full af-chip px-2.5 py-1 text-xs ">
@@ -793,17 +793,17 @@ export function ResearchCompareMatrix({
                 </div>
                 {effectiveOfflineEvaluation.weakest_reports.length ? (
                   <p className="mt-4 text-sm leading-6 text-[var(--af-text-secondary)]">
-                    弱样本 · {effectiveOfflineEvaluation.weakest_reports.slice(0, 3).map((item) => item.report_title || item.entry_title).join(" / ")}
+                    待优化 · {effectiveOfflineEvaluation.weakest_reports.slice(0, 3).map((item) => item.report_title || item.entry_title).join(" / ")}
                   </p>
                 ) : null}
                 <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
                   {isLegacyBackfilledSnapshot
-                    ? `旧快照已补齐复核信息；该面板展示当时的复核结果${
+                    ? `展示保存时的复核结果${
                         snapshotMetadataBackfilledAtLabel ? `（${snapshotMetadataBackfilledAtLabel}）` : ""
                       }。`
                     : hasFrozenSnapshotMetadata
-                      ? "该面板优先展示快照保存时的复核结果。"
-                      : "该面板展示当前复核结果；旧快照若未保存完整信息，会读取当前值。"}
+                      ? "展示保存时的复核结果。"
+                      : "展示当前复核结果。"}
                 </p>
               </>
             ) : (

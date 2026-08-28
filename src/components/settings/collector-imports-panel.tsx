@@ -93,10 +93,10 @@ export function CollectorImportsPanel() {
     <section className="af-glass rounded-[30px] p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="af-kicker">Multi-format Intake</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-900">RSS / 文件输入层</h3>
+          <p className="af-kicker">多格式导入</p>
+          <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-900">RSS 与文件</h3>
           <p className="mt-2 text-sm text-slate-500">
-            管理多格式导入入口，先把 RSS 源同步进统一 Item 流，再让 Inbox 或研究流程继续处理。
+            管理常用来源，并同步到收件箱继续处理。
           </p>
         </div>
         <button type="button" onClick={() => void handlePull()} disabled={saving} className="af-btn af-btn-secondary">

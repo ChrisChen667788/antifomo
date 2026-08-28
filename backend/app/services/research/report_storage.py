@@ -55,7 +55,7 @@ def report_sources_to_source_documents(
         )
         snippet = truncate_text(
             clean_source_text_for_analysis(source.snippet or "") or clean_source_text_for_analysis(title),
-            180,
+            1200,
         )
         documents.append(
             SourceDocument(
@@ -69,7 +69,11 @@ def report_sources_to_source_documents(
                 excerpt=snippet,
                 source_label=source_label,
                 source_tier=source_tier,
-                source_origin="adapter" if source_label else "search",
+                source_origin=(
+                    source.source_origin
+                    if source.source_origin in {"search", "adapter", "snapshot_cache", "user_supplied"}
+                    else ("adapter" if source_label else "search")
+                ),
             )
         )
     return dedupe_sources(documents)

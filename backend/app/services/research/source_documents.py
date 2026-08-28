@@ -24,6 +24,9 @@ class SourceDocument:
 
 
 SOURCE_ARTIFACT_TOKENS = (
+    "错误页面",
+    "页面错误",
+    "error page",
     "header_",
     "deal/deallist.html",
     "交易公开-全国公共资源交易平台",
@@ -55,6 +58,10 @@ SOURCE_ARTIFACT_TOKENS = (
     "客服中心 隐私声明 登录 注册",
     "公司简介 愿景及使命 发展历程 业务架构",
     "工作环境 员工活动 esg 环境 社会",
+    "省级层面 ",
+    "yahoo search",
+    "bing search",
+    "360 搜索",
 )
 
 SOURCE_AWARD_NOISE_TOKENS = (
@@ -109,6 +116,14 @@ SOURCE_MARKDOWN_DUMP_TOKENS = (
 MARKDOWN_IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!\!)\[([^\]]+)\]\(([^)]+)\)")
 RAW_MEDIA_URL_PATTERN = re.compile(r"https?://\S+\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?\S*)?", re.IGNORECASE)
+TRAILING_ENGLISH_DATE_PATTERN = re.compile(
+    r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},\s+20\d{2}$",
+    re.IGNORECASE,
+)
+SOURCE_LABEL_FRAGMENT_PATTERN = re.compile(
+    r"^(?:中国政府采购网|全国公共资源交易平台|政府采购网|公共资源交易平台)\s+(?:其|该|主办单位|网站)",
+    re.IGNORECASE,
+)
 SOURCE_TEXT_SPLIT_PATTERN = re.compile(r"[。！？!?；;\n]+|\s+[|｜]\s+|\s+-\s+|(?<=\S)\s+·\s+(?=\S)")
 SOURCE_DUMP_PREFIX_PATTERN = re.compile(
     r"^(?:source|sources|source url|source link|来源|圖片來源|图片来源|图源|原图|封面图|image source)[:：-]",
@@ -123,6 +138,14 @@ def looks_like_source_artifact_text(value: str) -> bool:
     if not normalized:
         return False
     if any(token in lowered for token in SOURCE_ARTIFACT_TOKENS):
+        return True
+    if normalized.startswith((".", "…")) or "**" in normalized:
+        return True
+    if normalized.count("_") >= 2:
+        return True
+    if TRAILING_ENGLISH_DATE_PATTERN.search(normalized):
+        return True
+    if SOURCE_LABEL_FRAGMENT_PATTERN.search(normalized):
         return True
     if "http://" in lowered or "https://" in lowered:
         if any(token in lowered for token in ("[", "](", "javascript:", "deal/deallist", "ggzy.gov.cn/deal")):
@@ -197,15 +220,22 @@ def source_document_text(source: SourceDocument) -> str:
 
 @lru_cache(maxsize=4096)
 def source_document_text_cached(title: str, snippet: str, excerpt: str) -> str:
-    return normalize_text(
-        " ".join(
-            [
-                clean_source_text_for_analysis(title),
-                clean_source_text_for_analysis(snippet),
-                clean_source_text_for_analysis(excerpt),
-            ]
-        )
-    )
+    parts: list[str] = []
+    for value in (title, snippet, excerpt):
+        cleaned = clean_source_text_for_analysis(value)
+        if cleaned and cleaned not in parts:
+            parts.append(cleaned)
+    return normalize_text("。".join(parts))
+
+
+def _research_source_output_snippet(source: SourceDocument) -> str:
+    snippet = clean_source_text_for_analysis(source.snippet)
+    excerpt = clean_source_text_for_analysis(source.excerpt)
+    if excerpt and (len(snippet) < 80 or len(excerpt) > len(snippet) + 40):
+        value = excerpt
+    else:
+        value = snippet or excerpt
+    return normalize_text(value)[:1600].rstrip()
 
 
 def source_documents_to_research_source_outputs(sources: list[SourceDocument]) -> list[ResearchSourceOut]:
@@ -214,12 +244,17 @@ def source_documents_to_research_source_outputs(sources: list[SourceDocument]) -
             title=source.title,
             url=source.url,
             domain=source.domain,
-            snippet=source.snippet,
+            snippet=_research_source_output_snippet(source),
             search_query=source.search_query,
             source_type=source.source_type,
             content_status=source.content_status,
             source_label=source.source_label,
             source_tier=source.source_tier if source.source_tier in {"official", "media", "aggregate"} else "media",
+            source_origin=(
+                source.source_origin
+                if source.source_origin in {"search", "adapter", "snapshot_cache", "user_supplied"}
+                else "search"
+            ),
         )
         for source in sources
     ]

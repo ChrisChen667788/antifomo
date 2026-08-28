@@ -15,7 +15,13 @@
 
 # next.js
 /.next/
+/.next-*/
+/.next-screenshots/
 /out/
+/output/
+
+# local working notes and reconstruction material; keep user/session paths out of releases
+docs/development-history-reconstruction-2026-06-18-to-2026-06-28.md
 
 # production
 /build

@@ -15,6 +15,8 @@ from app.services.research.report_delivery_runtime import (
     merge_result_with_intelligence,
     source_quality_level,
 )
+from app.services.llm_parser import ResearchReportResult
+from app.services.research.entity_policy import text_has_industry_conflict
 from app.services.research.report_delivery_runtime_dependencies import (
     build_sections,
     enrich_report_for_delivery,
@@ -65,6 +67,7 @@ from app.services.research.scope_entity_runtime_dependencies import (
     scope_term_dependencies,
 )
 from app.services.research.scope_terms import build_theme_terms, theme_labels_from_scope
+from app.services.research.source_documents import SourceDocument
 from app.services.research.source_intelligence_runtime import build_source_intelligence
 
 
@@ -108,6 +111,49 @@ def test_scope_entity_runtime_functions_preserve_owner_behavior() -> None:
         assert runtime.sanitize_entity_row(field_key, row) == sanitize_entity_row(field_key, row, deps=field_deps)
 
 
+def test_culture_tourism_scope_uses_specific_methodology_without_fake_client_queries() -> None:
+    scope_hints = infer_input_scope_hints(
+        "2026年长三角文旅文博行业AI潜在需求及商机情报调研分析",
+        None,
+    )
+
+    assert scope_hints["regions"] == ["长三角"]
+    assert scope_hints["industries"][0] == "文旅文博"
+    assert scope_hints["industry_methodology_profile"] == "文旅文博"
+    assert scope_hints["clients"] == []
+    assert all('""' not in query for query in scope_hints["strategy_query_expansions"])
+    assert any("景区" in query and "博物馆" in query for query in scope_hints["strategy_query_expansions"])
+
+    refined = merge_scope_hints(scope_hints, {"clients": ["市场规模与格局"]})
+    assert refined["clients"] == []
+
+
+def test_source_inference_cannot_replace_explicit_culture_tourism_scope() -> None:
+    keyword = "2026年长三角文旅文博行业AI潜在需求及商机情报调研分析"
+    scope_hints = infer_input_scope_hints(keyword, None)
+    source = SourceDocument(
+        title="徐州市云龙区数据局智慧文旅项目招标公告",
+        url="https://ggzy.zwb.xz.gov.cn/project/1.html",
+        domain="ggzy.zwb.xz.gov.cn",
+        snippet="系统及徐州政府采购网发布项目公告，浙江案例作为背景资料。",
+        search_query="长三角 文旅 招标",
+        source_type="procurement",
+        content_status="snippet",
+        excerpt="徐州市云龙区数据局智慧文旅项目公开招标，浙江案例作为背景资料。",
+        source_label="地方公共资源交易平台",
+        source_tier="official",
+    )
+
+    refined = merge_scope_hints(scope_hints, infer_scope_hints(keyword, None, [source]))
+
+    assert refined["regions"] == ["长三角"]
+    assert refined["industries"] == ["文旅文博"]
+    assert refined["clients"] == []
+    assert refined["company_anchors"] == []
+    assert refined["industry_methodology_profile"] == "文旅文博"
+    assert any("景区运营" in question for question in refined["industry_methodology_questions"])
+
+
 def test_report_runtime_dependencies_use_scope_entity_factory_functions() -> None:
     scope_hints = {"industries": ["AI漫剧"], "clients": ["爱奇艺"]}
     scope_deps = scope_term_dependencies()
@@ -149,6 +195,76 @@ def test_report_runtime_dependencies_use_scope_entity_factory_functions() -> Non
         [row],
         deps=field_deps,
     )
+
+
+def test_finance_scope_rejects_medical_and_tourism_entity_leaks() -> None:
+    scope_hints = {
+        "regions": ["上海"],
+        "industries": ["金融"],
+        "anchor_text": "2026年上海市金融行业AI需求研判和潜在商机",
+    }
+
+    assert text_has_industry_conflict("申康医院发展中心：智慧医院 AI 项目采购线索", scope_hints=scope_hints)
+    assert text_has_industry_conflict("上海市卫生健康委：公开业务联系方式", scope_hints=scope_hints)
+    assert text_has_industry_conflict("上海市文化和旅游局：AIGC 导览平台建设", scope_hints=scope_hints)
+    assert not text_has_industry_conflict("上海市委金融办：金融行业 AI 监管与试点推进", scope_hints=scope_hints)
+    assert not text_has_industry_conflict("上海证券交易所：金融科技与智能风控应用", scope_hints=scope_hints)
+
+
+def test_merge_result_with_intelligence_filters_cross_industry_rows_for_finance_scope() -> None:
+    parsed = ResearchReportResult(
+        report_title="2026年上海市金融行业AI需求研判",
+        executive_summary="聚焦金融行业 AI 需求。",
+        target_accounts=[
+            "上海市委金融办：金融 AI 监管和试点统筹",
+            "申康医院发展中心：智慧医院 AI 采购线索",
+        ],
+        public_contact_channels=[
+            "上海市卫生健康委：官网/公开入口 https://wsjkw.sh.gov.cn",
+            "上海市委金融办：官网/公开入口 https://jrj.sh.gov.cn",
+        ],
+        account_team_signals=[
+            "上海市文化和旅游局：文旅 AIGC 团队动态",
+            "上海证券交易所：金融科技创新团队公开动态",
+        ],
+    )
+    intelligence = {
+        "target_accounts": [
+            "上海市文化和旅游局：景区导览项目预算",
+            "上海证券交易所：金融科技与智能风控试点",
+        ],
+        "public_contact_channels": [
+            "申康医院发展中心：官网/公开入口 https://www.shdc.org.cn",
+            "上海证券交易所：官网/公开入口 https://www.sse.com.cn",
+        ],
+        "account_team_signals": [
+            "上海市卫生健康委：医疗信息化团队线索",
+            "上海市委金融办：金融 AI 专项推进公开动态",
+        ],
+    }
+
+    merged = merge_result_with_intelligence(
+        parsed,
+        intelligence,
+        scope_hints={
+            "regions": ["上海"],
+            "industries": ["金融"],
+            "anchor_text": "2026年上海市金融行业AI需求研判和潜在商机",
+        },
+    )
+    combined_rows = "\n".join(
+        [
+            *merged.target_accounts,
+            *merged.public_contact_channels,
+            *merged.account_team_signals,
+        ]
+    )
+
+    assert "上海市委金融办" in combined_rows
+    assert "上海证券交易所" in combined_rows
+    assert "申康医院" not in combined_rows
+    assert "卫生健康" not in combined_rows
+    assert "文化和旅游" not in combined_rows
 
 
 def test_report_runtime_owner_ports_are_grouped_and_use_migrated_owners() -> None:

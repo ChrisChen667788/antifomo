@@ -5,7 +5,7 @@ export default function FocusPage() {
   return (
     <PageShell
       title="Focus"
-      description="选择 25/50 分钟专注时段，输入本次目标并开始倒计时。"
+      description="设定目标，开始专注。"
       titleKey="page.focus.title"
       descriptionKey="page.focus.description"
     >

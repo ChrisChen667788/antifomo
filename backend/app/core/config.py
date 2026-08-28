@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     single_user_id: UUID = UUID("00000000-0000-0000-0000-000000000001")
     llm_provider: str = "mock"
     llm_fallback_to_mock: bool = True
+    research_llm_fallback_to_mock: bool = False
     llm_max_retries: int = 1
     langchain_structured_output_method: str = "json_schema"
     langchain_structured_output_fallback_method: str | None = "json_mode"
@@ -55,14 +56,19 @@ class Settings(BaseSettings):
     strategy_openai_temperature: float = 0.1
     strategy_openai_timeout_seconds: int = 90
     strategy_llm_max_retries: int = 1
+    strategy_model_qualification_required: bool = True
+    strategy_model_qualification_max_age_days: int = 30
     strategy_openai_input_cost_per_million: float | None = None
     strategy_openai_cached_input_cost_per_million: float | None = None
     strategy_openai_output_cost_per_million: float | None = None
     item_llm_timeout_seconds: int = 6
+    wechat_favorites_llm_role: str = "strategy"
+    wechat_favorites_llm_timeout_seconds: int = 45
     ocr_item_llm_timeout_seconds: int = 3
     ocr_openai_timeout_seconds: int = 8
     interpret_llm_timeout_seconds: int = 8
-    research_llm_timeout_seconds: int = 180
+    research_llm_timeout_seconds: int = 300
+    research_llm_max_output_tokens: int = 7000
     openai_organization: str | None = None
     openai_project: str | None = None
     openai_verify_ssl: bool = True
@@ -79,15 +85,39 @@ class Settings(BaseSettings):
     research_max_search_results: int = 12
     research_max_sources: int = 14
     research_source_excerpt_chars: int = 900
+    research_snapshot_recovery_enabled: bool = True
+    research_snapshot_recovery_max_age_hours: int = 48
     research_cross_encoder_rerank_enabled: bool = False
     research_cross_encoder_backend: str = "auto"  # auto / sentence_transformers / local
-    research_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    research_cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     research_cross_encoder_top_k: int = 20
+    research_cross_encoder_cache_dir: str | None = None
+    research_cross_encoder_device: str = "auto"
+    decision_embedding_enabled: bool = True
+    decision_embedding_provider: str = "sentence_transformers"
+    decision_embedding_model: str = "BAAI/bge-m3"
+    decision_embedding_batch_size: int = 16
+    decision_embedding_cache_dir: str | None = None
+    decision_embedding_xet_cache_dir: str | None = None
+    decision_embedding_disable_symlinks: bool = False
+    decision_embedding_device: str = "auto"
+    decision_docling_enabled: bool = False
+    decision_skill_signing_key: str | None = None
+    decision_connector_allowed_domains: str = ""
     research_quality_expansion_enabled: bool = True
     research_quality_expansion_min_score: int = 82
     research_quality_expansion_max_rounds: int = 2
     research_quality_expansion_query_limit: int = 8
     research_workflow_engine: str = "langgraph"
+    research_job_worker_enabled: bool = True
+    research_job_worker_poll_seconds: float = 1.0
+    research_job_lease_seconds: int = 1800
+    research_job_recover_running_on_startup: bool = True
+    research_job_recovery_max_age_hours: int = 24
+    gateway_usage_meter_enabled: bool = False
+    gateway_usage_url: str | None = None
+    gateway_quota_units_per_cny: int = 500_000
+    gateway_usage_timeout_seconds: int = 6
     wechat_agent_auto_start: bool = False
     pending_item_recovery_enabled: bool = True
     pending_item_recovery_interval_seconds: int = 8
@@ -104,6 +134,7 @@ class Settings(BaseSettings):
     workbuddy_callback_bearer_token: str | None = None
     workbuddy_callback_timeout_seconds: int = 12
     workbuddy_official_cli_command: str = "codebuddy"
+    workbuddy_official_model: str = "glm-5.2"
     workbuddy_official_gateway_url: str | None = None
     workbuddy_official_gateway_health_url: str | None = None
     workbuddy_official_gateway_webhook_url: str | None = None
@@ -138,6 +169,38 @@ class Settings(BaseSettings):
             raise ValueError("Research workflow engine must be deterministic or langgraph")
         return normalized
 
+    @field_validator("decision_embedding_provider", mode="before")
+    @classmethod
+    def normalize_decision_embedding_provider(cls, value: object) -> str:
+        normalized = str(value or "sentence_transformers").strip().lower().replace("-", "_")
+        if normalized not in {"sentence_transformers", "disabled"}:
+            raise ValueError("Decision embedding provider must be sentence_transformers or disabled")
+        return normalized
+
+    @field_validator("decision_embedding_device", mode="before")
+    @classmethod
+    def normalize_decision_embedding_device(cls, value: object) -> str:
+        normalized = str(value or "auto").strip().lower()
+        if normalized not in {"auto", "cpu", "mps", "cuda"}:
+            raise ValueError("Decision embedding device must be auto, cpu, mps, or cuda")
+        return normalized
+
+    @field_validator("research_cross_encoder_device", mode="before")
+    @classmethod
+    def normalize_cross_encoder_device(cls, value: object) -> str:
+        normalized = str(value or "auto").strip().lower()
+        if normalized not in {"auto", "cpu", "mps", "cuda"}:
+            raise ValueError("Cross encoder device must be auto, cpu, mps, or cuda")
+        return normalized
+
+    @field_validator("wechat_favorites_llm_role", mode="before")
+    @classmethod
+    def normalize_wechat_favorites_llm_role(cls, value: object) -> str:
+        normalized = str(value or "strategy").strip().lower().replace("-", "_")
+        if normalized not in {"generation", "strategy"}:
+            raise ValueError("WeChat Favorites LLM role must be generation or strategy")
+        return normalized
+
     @field_validator(
         "langchain_structured_output_method",
         "langchain_structured_output_fallback_method",
@@ -167,7 +230,7 @@ class Settings(BaseSettings):
         return value
 
     model_config = SettingsConfigDict(
-        env_file=BACKEND_DIR / ".env",
+        env_file=(BACKEND_DIR / ".env", BACKEND_DIR / ".env.local"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

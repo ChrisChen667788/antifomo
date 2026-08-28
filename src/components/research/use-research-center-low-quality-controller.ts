@@ -89,7 +89,7 @@ export function useResearchCenterLowQualityController({
         setLowQualityMessage("已接受当前修订结果。");
       }
     } catch {
-      setLowQualityError(action === "accept" ? "接受修订结果失败，请稍后重试。" : "回退失败，当前记录缺少可恢复快照。");
+      setLowQualityError(action === "accept" ? "接受修订结果失败，请稍后重试。" : "恢复失败，当前记录缺少可恢复版本。");
     } finally {
       setLowQualityActionKey("");
     }

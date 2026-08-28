@@ -7,6 +7,12 @@ import { ResearchCenterExperimentControlSection } from "@/components/research/re
 import { ResearchCenterLowQualityReviewSection } from "@/components/research/research-center-low-quality-review-section";
 import { ResearchCenterSourceSettingsSection } from "@/components/research/research-center-source-settings-section";
 import { ResearchCenterSidebarControls } from "@/components/research/research-center-sidebar-controls";
+import { ResearchCenterReleaseReadinessSection } from "@/components/research/research-center-release-readiness-section";
+import { ResearchCenterAssuranceSection } from "@/components/research/research-center-assurance-section";
+import { ResearchCenterUpgradeDiagnosticsSection } from "@/components/research/research-center-upgrade-diagnostics-section";
+import { ResearchIndustryKnowledgeRetrievalRankingSection } from "@/components/research/research-industry-knowledge-retrieval-ranking-section";
+import { ResearchIndustryKnowledgeRetrievalAssuranceSection } from "@/components/research/research-industry-knowledge-retrieval-assurance-section";
+import { ResearchIndustryKnowledgeRetrievalEvidenceOperationsSection } from "@/components/research/research-industry-knowledge-retrieval-evidence-operations-section";
 import { ResearchCenterResultsSection } from "@/components/research/research-center-results-section";
 import { ResearchCenterWatchlistSection } from "@/components/research/research-center-watchlist-section";
 import { ResearchCenterWorkspaceSections } from "@/components/research/research-center-workspace-sections";
@@ -30,7 +36,7 @@ export function ResearchCenter() {
             <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)] md:text-[15px]">
               {t(
                 "research.centerDesc",
-                "统一查看保存过的情报简报、推荐动作和 Focus 参考，快速回到客户推进、投标排期与生态协同。",
+                "查看情报、动作和重点提醒。",
               )}
             </p>
           </div>
@@ -53,6 +59,12 @@ export function ResearchCenter() {
 
         <ResearchCenterSourceSettingsSection {...controller.sourceSettingsSectionProps} />
 
+        <ResearchCenterReleaseReadinessSection t={t} />
+
+        <ResearchCenterAssuranceSection t={t} />
+
+        <ResearchCenterUpgradeDiagnosticsSection t={t} />
+
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {controller.heroProps.overviewStats.map((stat) => (
             <div key={stat.label} className="rounded-[26px] border border-white/60 bg-white/60 p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
@@ -68,6 +80,10 @@ export function ResearchCenter() {
       <ResearchConsolePanel {...controller.consolePanelProps} />
 
       <ResearchCenterExperimentControlSection {...controller.experimentControlSectionProps} />
+
+      <ResearchIndustryKnowledgeRetrievalRankingSection t={t} />
+      <ResearchIndustryKnowledgeRetrievalAssuranceSection t={t} />
+      <ResearchIndustryKnowledgeRetrievalEvidenceOperationsSection t={t} />
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[300px,minmax(0,1fr)]">
         <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">

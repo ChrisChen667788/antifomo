@@ -226,8 +226,16 @@ def filter_sources_by_theme_relevance(
             if any(term in deps.source_text(source).lower() or term in normalize_text(source.title).lower() for term in strict_theme_terms)
         ]
         if strict_sources:
-            sources = strict_sources
-    company_terms = [normalize_text(item) for item in company_anchor_terms or [] if normalize_text(item)]
+            strict_source_ids = {id(source) for source in strict_sources}
+            sources = [
+                *strict_sources,
+                *(source for source in sources if id(source) not in strict_source_ids),
+            ]
+    company_terms = (
+        [normalize_text(item) for item in company_anchor_terms or [] if normalize_text(item)]
+        if prefer_company_entities
+        else []
+    )
     scored_sources = [
         (
             source,

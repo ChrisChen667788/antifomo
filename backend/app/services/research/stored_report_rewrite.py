@@ -70,6 +70,8 @@ class StoredReportRewriteOrchestrationDependencies:
     source_quality_level: Callable[[list[SourceDocument]], str]
     source_documents_to_research_source_outputs: Callable[[list[SourceDocument]], list[Any]]
     enrich_report_for_delivery: Callable[[ResearchReportResponse], ResearchReportResponse]
+    sanitize_report_result_entities: Callable[..., tuple[ResearchReportResult, dict[str, object]]]
+    enforce_report_entity_authenticity: Callable[..., ResearchReportResponse]
     is_low_signal_execution_report: Callable[[ResearchReportResponse], bool]
     theme_labels_from_scope: Callable[..., list[str]]
     source_supports_target_account: Callable[..., bool]
@@ -401,6 +403,7 @@ def build_guarded_stored_research_report(
     _source_quality_level = deps.source_quality_level
     _to_research_source_outputs = deps.source_documents_to_research_source_outputs
     _enrich_report_for_delivery = deps.enrich_report_for_delivery
+    _enforce_report_entity_authenticity = deps.enforce_report_entity_authenticity
 
     theme_labels = _theme_labels_from_scope(scope_hints, keyword=report.keyword, research_focus=report.research_focus)
     sanitized_departments = _sanitize_report_field_rows("target_departments", report.target_departments)
@@ -447,11 +450,15 @@ def build_guarded_stored_research_report(
     unsupported_accounts = _dedupe_strings(
         [
             normalize_text(str(item))
-            for item in (
-                unsupported_target_accounts
-                if unsupported_target_accounts is not None
-                else source_diagnostics.unsupported_target_accounts
-            )
+            for item in [
+                *(
+                    unsupported_target_accounts
+                    if unsupported_target_accounts is not None
+                    else source_diagnostics.unsupported_target_accounts
+                ),
+                *(normalize_text(str(item)) for item in scope_hints.get("clients", []) or []),
+                *report.target_accounts,
+            ]
             if normalize_text(str(item)) and normalize_text(str(item)) not in supported_accounts
         ],
         4,
@@ -624,7 +631,11 @@ def build_guarded_stored_research_report(
         entity_graph=entity_graph,
         generated_at=report.generated_at,
     )
-    return _enrich_report_for_delivery(guarded_report)
+    return _enforce_report_entity_authenticity(
+        _enrich_report_for_delivery(guarded_report),
+        source_documents=source_documents,
+        scope_hints=guarded_scope_hints,
+    )
 
 
 def rewrite_stored_research_report(
@@ -667,6 +678,8 @@ def rewrite_stored_research_report(
     _source_quality_level = deps.source_quality_level
     _to_research_source_outputs = deps.source_documents_to_research_source_outputs
     _enrich_report_for_delivery = deps.enrich_report_for_delivery
+    _sanitize_report_result_entities = deps.sanitize_report_result_entities
+    _enforce_report_entity_authenticity = deps.enforce_report_entity_authenticity
     _is_low_signal_execution_report = deps.is_low_signal_execution_report
     SOURCE_MAX_AGE_YEARS = deps.source_max_age_years
 
@@ -678,7 +691,43 @@ def rewrite_stored_research_report(
     output_language = report.output_language
     source_documents = _report_sources_to_source_documents(report.sources)
     diagnostics = report.source_diagnostics if getattr(report, "source_diagnostics", None) else ResearchSourceDiagnosticsOut()
+    stored_unverified_target_inputs = _dedupe_strings(
+        [
+            *(normalize_text(item) for item in diagnostics.scope_clients if normalize_text(item)),
+            *(normalize_text(item.name) for item in report.top_target_accounts if normalize_text(item.name)),
+            *(normalize_text(item.name) for item in report.pending_target_candidates if normalize_text(item.name)),
+            *(normalize_text(item) for item in report.target_accounts if normalize_text(item)),
+        ],
+        6,
+    )
     base_scope_hints = _infer_input_scope_hints(keyword, research_focus)
+    stored_input_result = _stored_report_to_result(report).model_copy(
+        update={
+            "target_accounts": [
+                *report.target_accounts,
+                *(item.name for item in report.top_target_accounts),
+                *(item.name for item in report.pending_target_candidates),
+            ],
+            "competitor_profiles": [
+                *report.competitor_profiles,
+                *(item.name for item in report.top_competitors),
+                *(item.name for item in report.pending_competitor_candidates),
+            ],
+            "ecosystem_partners": [
+                *report.ecosystem_partners,
+                *(item.name for item in report.top_ecosystem_partners),
+                *(item.name for item in report.pending_partner_candidates),
+            ],
+            "client_peer_moves": list(report.client_peer_moves),
+            "winner_peer_moves": list(report.winner_peer_moves),
+        }
+    )
+    _, stored_input_entity_audit = _sanitize_report_result_entities(
+        stored_input_result,
+        sources=source_documents,
+        scope_hints=base_scope_hints,
+        output_language=output_language,
+    )
     report = _canonicalize_stored_report_entities(
         report,
         scope_hints=base_scope_hints,
@@ -704,6 +753,7 @@ def rewrite_stored_research_report(
         4,
     )
     stored_scope_hints = {
+        "input_scope_locked": True,
         "regions": _dedupe_strings([normalize_text(item) for item in diagnostics.scope_regions if normalize_text(item)], 3),
         "industries": _dedupe_strings([normalize_text(item) for item in diagnostics.scope_industries if normalize_text(item)], 3),
         "clients": stored_clients,
@@ -804,6 +854,17 @@ def rewrite_stored_research_report(
         source_documents=source_documents,
         scope_hints=scope_hints,
     )
+    unsupported_target_accounts = _dedupe_strings(
+        [
+            *unsupported_target_accounts,
+            *(
+                item
+                for item in stored_unverified_target_inputs
+                if item not in supported_target_accounts
+            ),
+        ],
+        6,
+    )
     source_diagnostics = _apply_guarded_rewrite_diagnostics(
         source_diagnostics,
         output_language=output_language,
@@ -850,7 +911,7 @@ def rewrite_stored_research_report(
                 [*(combined_intelligence.get(key, []) or []), *values],
             )
 
-    parsed = _merge_result_with_intelligence(base_result, combined_intelligence)
+    parsed = _merge_result_with_intelligence(base_result, combined_intelligence, scope_hints=scope_hints)
     parsed = _apply_topic_specific_overrides(
         parsed,
         keyword=keyword,
@@ -863,6 +924,13 @@ def rewrite_stored_research_report(
         parsed,
         scope_hints=scope_hints,
         source_documents=source_documents,
+    )
+    parsed, entity_authenticity_audit = _sanitize_report_result_entities(
+        parsed,
+        sources=source_documents,
+        scope_hints=scope_hints,
+        output_language=output_language,
+        prior_audit=stored_input_entity_audit,
     )
 
     theme_terms = _build_theme_terms(keyword, research_focus, scope_hints)
@@ -889,6 +957,7 @@ def rewrite_stored_research_report(
                 ),
                 output_language=output_language,
                 limit=5,
+                scope_hints=scope_hints,
             ),
             *parsed.public_contact_channels,
         ],
@@ -954,7 +1023,12 @@ def rewrite_stored_research_report(
         entity_graph=entity_graph,
         generated_at=report.generated_at,
     )
-    enriched_report = _enrich_report_for_delivery(rewritten_report)
+    enriched_report = _enforce_report_entity_authenticity(
+        _enrich_report_for_delivery(rewritten_report),
+        source_documents=source_documents,
+        scope_hints=scope_hints,
+        prior_audit=entity_authenticity_audit,
+    )
     if (
         not normalize_text(enriched_report.report_title).endswith(("待核验清单与补证路径", "待核驗清單與補證路徑", "Verification Backlog and Evidence Path"))
         and _is_low_signal_execution_report(enriched_report)

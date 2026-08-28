@@ -14,6 +14,7 @@ FRONTEND_URL="http://127.0.0.1:${FRONTEND_PORT}"
 API_BASE="${SCREENSHOT_API_BASE:-http://127.0.0.1:8000}"
 LOG_DIR="$ROOT_DIR/.tmp"
 FRONTEND_LOG="$LOG_DIR/repo-screenshot-frontend.log"
+SCREENSHOT_DIST_DIR="${SCREENSHOT_DIST_DIR:-.next-screenshots}"
 
 mkdir -p "$LOG_DIR"
 
@@ -32,8 +33,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd "$ROOT_DIR"
-NEXT_PUBLIC_API_BASE_URL="$API_BASE" npm run build
-NEXT_PUBLIC_API_BASE_URL="$API_BASE" node node_modules/next/dist/bin/next start --port "$FRONTEND_PORT" >"$FRONTEND_LOG" 2>&1 &
+NEXT_DIST_DIR="$SCREENSHOT_DIST_DIR" NEXT_PUBLIC_API_BASE_URL="$API_BASE" npm run build
+NEXT_DIST_DIR="$SCREENSHOT_DIST_DIR" NEXT_PUBLIC_API_BASE_URL="$API_BASE" node node_modules/next/dist/bin/next start --port "$FRONTEND_PORT" >"$FRONTEND_LOG" 2>&1 &
 FRONTEND_PID=$!
 
 for _ in {1..60}; do

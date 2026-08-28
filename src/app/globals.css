@@ -142,6 +142,7 @@ html[data-af-font="mono"] {
 html,
 body {
   min-height: 100%;
+  overflow-x: clip;
   scroll-behavior: smooth;
 }
 

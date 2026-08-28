@@ -12,6 +12,7 @@ from app.schemas.research import (
     ResearchSectionEvidencePackOut,
 )
 from app.services.content_extractor import normalize_text
+from app.services.research.hard_failure_policy import evaluate_research_hard_failures
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +50,26 @@ def _dedupe_strings(values: Iterable[str], limit: int = 8) -> list[str]:
 
 _METHODOLOGIES: tuple[_MethodologySpec, ...] = (
     _MethodologySpec(
+        industry_key="culture_tourism_ai",
+        industry_label="文旅文博 / 智慧文旅",
+        framework_name="场景-内容资产-游客运营-招采建设-商业价值-复制风险六段式",
+        summary="围绕景区与公共文化场景、内容资产、游客运营、招采建设、商业价值和区域复制风险做交叉验证。",
+        match_tokens=("文旅文博", "文旅", "文博", "文化旅游", "智慧旅游", "景区", "博物馆", "文物", "数字导览"),
+        axes=(
+            _MethodologyAxisSpec("scene", "场景与客群", ("景区/场馆场景", "游客或公众需求", "服务痛点"), ("景区", "场馆", "博物馆", "游客", "公众", "服务", "场景")),
+            _MethodologyAxisSpec("content_assets", "内容与文化资产", ("文化资源", "数字内容生产", "版权与审核"), ("文化", "文物", "展陈", "内容", "数字化", "版权", "审核")),
+            _MethodologyAxisSpec("visitor_operations", "游客与运营", ("导览/服务触点", "客流与运营数据", "体验成效"), ("导览", "讲解", "游客", "客流", "运营", "体验", "服务")),
+            _MethodologyAxisSpec("procurement_delivery", "招采与建设", ("业主与主管部门", "预算/招标窗口", "系统集成交付"), ("文旅局", "文物局", "业主", "预算", "采购", "招标", "中标", "集成")),
+            _MethodologyAxisSpec("business_value", "商业与公共价值", ("增收或降本", "公共文化效益", "可测指标"), ("收入", "消费", "降本", "效益", "指标", "转化", "服务质量")),
+            _MethodologyAxisSpec("scale_risk", "复制与风险", ("区域复制路径", "数据与内容合规", "持续运营风险"), ("复制", "推广", "区域", "合规", "数据安全", "风险", "持续运营")),
+        ),
+        recommended_questions=(
+            "目标是提升游客体验、公共文化服务，还是形成可量化的运营收益？",
+            "文旅主管部门、景区或场馆业主与采购归口分别是谁？",
+            "内容版权、数据合规、系统集成和持续运营会如何约束复制路径？",
+        ),
+    ),
+    _MethodologySpec(
         industry_key="government_cloud",
         industry_label="政务云 / 数字政府",
         framework_name="政策-预算-招采-部门-生态-风险六段式",
@@ -66,6 +87,46 @@ _METHODOLOGIES: tuple[_MethodologySpec, ...] = (
             "是否有官方政策、预算或采购意向能支撑该账户进入窗口？",
             "业务牵头部门和采购归口是否被公开来源确认？",
             "现有中标方、运营商或本地伙伴是否影响切入路径？",
+        ),
+    ),
+    _MethodologySpec(
+        industry_key="medical_ai",
+        industry_label="医疗 / 医院 AI",
+        framework_name="临床场景-组织决策-系统集成-合规安全-投入产出-复制扩容六段式",
+        summary="优先确认临床或运营价值、医院决策链、HIS/PACS/EMR 集成、数据合规、试点投入产出和院级复制路径。",
+        match_tokens=("医疗", "医院", "卫健", "临床", "医务", "医保", "医共体", "电子病历"),
+        axes=(
+            _MethodologyAxisSpec("clinical_value", "临床与运营价值", ("临床/运营场景", "业务痛点", "可测成效"), ("临床", "医务", "运营", "科研", "教学", "效率", "成效")),
+            _MethodologyAxisSpec("buyer_org", "医院决策链", ("信息科/医务处", "财务与采购", "业务科室"), ("信息科", "医务处", "采购办", "财务处", "科室", "医院")),
+            _MethodologyAxisSpec("integration", "系统与数据集成", ("HIS/PACS/EMR", "数据接口", "部署边界"), ("HIS", "PACS", "EMR", "电子病历", "接口", "集成", "部署")),
+            _MethodologyAxisSpec("compliance", "医疗合规安全", ("患者数据", "隐私安全", "审计留痕"), ("患者", "数据安全", "隐私", "合规", "审计", "等保")),
+            _MethodologyAxisSpec("economics", "投入产出", ("试点预算", "效率/质量收益", "实施周期"), ("预算", "成本", "收益", "ROI", "周期", "采购")),
+            _MethodologyAxisSpec("scale", "复制与扩容", ("科室试点", "院级复制", "医院集团/医共体扩展"), ("试点", "复制", "扩容", "医院集团", "医共体", "推广")),
+        ),
+        recommended_questions=(
+            "需求来自临床、医务、运营还是科研教学，成效如何量化？",
+            "信息科、医务处、财务处和采购办分别承担什么决策责任？",
+            "患者数据、既有系统集成和院级复制的硬约束是什么？",
+        ),
+    ),
+    _MethodologySpec(
+        industry_key="financial_ai",
+        industry_label="金融科技 / 金融 AI",
+        framework_name="监管-场景-数据-风控-投入产出-机构复制六段式",
+        summary="围绕监管要求、业务场景、数据治理、模型风险、投入产出和总分支机构复制做交叉验证。",
+        match_tokens=("金融", "银行", "证券", "保险", "资管", "风控", "监管", "审计"),
+        axes=(
+            _MethodologyAxisSpec("regulation", "监管约束", ("监管口径", "模型治理", "审计要求"), ("监管", "合规", "审计", "可解释", "模型风险")),
+            _MethodologyAxisSpec("scenario", "业务场景", ("营销/客服", "风控/运营", "投研场景"), ("营销", "客服", "风控", "运营", "投研", "场景")),
+            _MethodologyAxisSpec("data", "数据治理", ("数据来源", "权限边界", "质量与血缘"), ("数据", "权限", "血缘", "质量", "隐私")),
+            _MethodologyAxisSpec("technology", "技术与风控", ("模型与平台", "安全控制", "人工复核"), ("模型", "平台", "安全", "人工复核", "监控")),
+            _MethodologyAxisSpec("economics", "投入产出", ("预算", "成本收益", "实施周期"), ("预算", "采购", "成本", "收益", "ROI", "周期")),
+            _MethodologyAxisSpec("scale", "机构复制", ("总分行", "科技子公司", "条线复制"), ("总行", "分行", "子公司", "条线", "复制", "推广")),
+        ),
+        recommended_questions=(
+            "监管、审计和模型可解释性要求会否改变方案边界？",
+            "需求由科技条线还是业务条线牵引，预算如何归口？",
+            "试点能否复制到更多分支机构或业务条线？",
         ),
     ),
     _MethodologySpec(
@@ -174,9 +235,19 @@ def _report_text(report: ResearchReportDocument) -> str:
 
 def _select_methodology(report: ResearchReportDocument) -> _MethodologySpec:
     diagnostics = report.source_diagnostics
+    contract = getattr(report, "research_scope_contract", None)
     haystack = _report_text(report)
     scoped_text = normalize_text(
-        "；".join([*diagnostics.scope_industries, *diagnostics.matched_theme_labels, report.keyword, report.research_focus or ""])
+        "；".join(
+            [
+                *diagnostics.scope_industries,
+                *diagnostics.matched_theme_labels,
+                normalize_text(str(getattr(contract, "industry_methodology", "") or "")),
+                *(getattr(contract, "industries", []) or []),
+                report.keyword,
+                report.research_focus or "",
+            ]
+        )
     )
     scored: list[tuple[int, _MethodologySpec]] = []
     for spec in _METHODOLOGIES:
@@ -431,6 +502,10 @@ def build_research_quality_profile(report: ResearchReportDocument) -> ResearchQu
         + scores.get("actionability", 0) * 0.22
         + scores.get("evidence_strength", 0) * 0.18
     )
+    evidence_gate = getattr(report, "research_evidence_gate", None)
+    citation_gate = getattr(report, "research_citation_gate", None)
+    hard_failure = evaluate_research_hard_failures(report)
+    overall = hard_failure.cap_score(overall)
     if overall >= 78 and all(score >= 65 for score in scores.values()):
         status = "high_value"
         headline = "当前研报具备较高专业度和情报推进价值，可进入正式打单/方案设计使用。"
@@ -440,6 +515,12 @@ def build_research_quality_profile(report: ResearchReportDocument) -> ResearchQu
     else:
         status = "needs_evidence"
         headline = "当前研报稳定性尚可，但专业支撑和情报价值不足，建议先补关键证据。"
+    if evidence_gate and evidence_gate.enforced and not evidence_gate.passed:
+        status = "needs_evidence"
+        headline = "研究证据门已阻断正式交付；当前结果只能作为补证清单。"
+    elif citation_gate and citation_gate.enforced and not citation_gate.passed:
+        status = "needs_evidence"
+        headline = "主张引用门未通过；关键结论补证前不能进入客户版方案。"
     strengths = _dedupe_strings(
         [
             dimension.summary

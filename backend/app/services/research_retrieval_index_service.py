@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, desc, select
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, desc, exists, func, select
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
 from app.models.entities import KnowledgeEntry
@@ -1628,22 +1628,44 @@ def get_persistent_research_retrieval_index_status(
         .where(ResearchRetrievalIndexBuildCheckpoint.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
         .where(ResearchRetrievalIndexBuildCheckpoint.backend == "sqlite")
     )
-    rows = db.execute(
-        select(
-            ResearchRetrievalIndexChunkRecord.chunk_key,
-            ResearchRetrievalIndexChunkRecord.parent_chunk_id,
-            ResearchRetrievalIndexChunkRecord.document_type,
-        )
-        .where(ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id)
-        .where(ResearchRetrievalIndexChunkRecord.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
-    ).all()
-    chunk_keys = {str(row.chunk_key or "") for row in rows}
-    parent_link_count = sum(1 for row in rows if _safe_text(row.parent_chunk_id))
-    orphan_child_count = sum(
-        1 for row in rows if _safe_text(row.parent_chunk_id) and str(row.parent_chunk_id) not in chunk_keys
+    chunk_filters = (
+        ResearchRetrievalIndexChunkRecord.user_id == resolved_user_id,
+        ResearchRetrievalIndexChunkRecord.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION,
     )
-    document_type_counts = dict(Counter(_safe_text(row.document_type) or "unknown" for row in rows))
-    persisted_chunk_count = len(rows)
+    persisted_chunk_count = int(
+        db.scalar(select(func.count(ResearchRetrievalIndexChunkRecord.id)).where(*chunk_filters)) or 0
+    )
+    parent_link_count = int(
+        db.scalar(
+            select(func.count(ResearchRetrievalIndexChunkRecord.id))
+            .where(*chunk_filters)
+            .where(ResearchRetrievalIndexChunkRecord.parent_chunk_id != "")
+        )
+        or 0
+    )
+    document_type_counts = {
+        str(document_type or "unknown"): int(count or 0)
+        for document_type, count in db.execute(
+            select(ResearchRetrievalIndexChunkRecord.document_type, func.count(ResearchRetrievalIndexChunkRecord.id))
+            .where(*chunk_filters)
+            .group_by(ResearchRetrievalIndexChunkRecord.document_type)
+        ).all()
+    }
+    parent_record = aliased(ResearchRetrievalIndexChunkRecord)
+    orphan_child_count = int(
+        db.scalar(
+            select(func.count(ResearchRetrievalIndexChunkRecord.id))
+            .where(*chunk_filters)
+            .where(ResearchRetrievalIndexChunkRecord.parent_chunk_id != "")
+            .where(
+                ~exists()
+                .where(parent_record.user_id == resolved_user_id)
+                .where(parent_record.schema_version == RESEARCH_RETRIEVAL_INDEX_SCHEMA_VERSION)
+                .where(parent_record.chunk_key == ResearchRetrievalIndexChunkRecord.parent_chunk_id)
+            )
+        )
+        or 0
+    )
 
     checkpoint_payload = checkpoint.checkpoint_payload if checkpoint and isinstance(checkpoint.checkpoint_payload, dict) else {}
     checkpoint_source_counts = checkpoint_payload.get("source_counts") if isinstance(checkpoint_payload, dict) else {}

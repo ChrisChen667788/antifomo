@@ -44,6 +44,8 @@ class CodeBuddyExecutionResult:
     output: str | None
     detail: str | None
     exit_code: int | None
+    requested_model: str | None = None
+    effective_model: str | None = None
 
 
 def detect_codebuddy_cli(command: str = "codebuddy") -> tuple[bool, str | None]:
@@ -78,17 +80,50 @@ def _looks_like_auth_required(text: str) -> bool:
     )
 
 
+def _parse_codebuddy_json_output(raw: str) -> tuple[str, str | None]:
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return raw, None
+    rows = payload if isinstance(payload, list) else [payload]
+    effective_model: str | None = None
+    result_text = ""
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        provider_data = row.get("providerData")
+        if isinstance(provider_data, dict) and provider_data.get("model"):
+            effective_model = str(provider_data["model"]).strip() or effective_model
+        if row.get("type") == "result" and isinstance(row.get("result"), str):
+            result_text = str(row["result"]).strip() or result_text
+        content = row.get("content")
+        if isinstance(content, list):
+            output_parts = [
+                str(part.get("text") or "").strip()
+                for part in content
+                if isinstance(part, dict) and part.get("type") == "output_text"
+            ]
+            if any(output_parts):
+                result_text = "\n".join(part for part in output_parts if part)
+    return result_text or raw, effective_model
+
+
 def probe_codebuddy_cli_auth(
     command: str = "codebuddy",
     *,
     timeout_seconds: int = 8,
+    model: str | None = None,
 ) -> tuple[bool, str | None]:
     executable = _resolve_codebuddy_executable(command)
     if not executable:
         return False, "cli_not_found"
     try:
+        command_args = [executable, "-p", "--output-format", "text"]
+        if str(model or "").strip():
+            command_args.extend(["--model", str(model).strip()])
+        command_args.append("Reply with OK only.")
         completed = subprocess.run(
-            [executable, "-p", "--output-format", "text", "Reply with OK only."],
+            command_args,
             capture_output=True,
             text=True,
             timeout=max(5, min(int(timeout_seconds or 8), 30)),
@@ -143,6 +178,7 @@ def probe_official_gateway(
     gateway_health_url: str | None = None,
     bearer_token: str | None = None,
     timeout_seconds: int = 6,
+    cli_model: str | None = None,
 ) -> OfficialGatewayProbeResult:
     cli_detected, cli_version = detect_codebuddy_cli(cli_command)
     cli_authenticated = False
@@ -151,6 +187,7 @@ def probe_official_gateway(
         cli_authenticated, cli_auth_detail = probe_codebuddy_cli_auth(
             cli_command,
             timeout_seconds=timeout_seconds,
+            model=cli_model,
         )
     candidates = _normalize_probe_candidates(gateway_url, gateway_health_url)
     if not candidates:
@@ -216,6 +253,7 @@ def run_codebuddy_prompt(
     command: str = "codebuddy",
     timeout_seconds: int = 90,
     output_format: str = "text",
+    model: str | None = None,
 ) -> CodeBuddyExecutionResult:
     executable = _resolve_codebuddy_executable(command)
     if not executable:
@@ -225,10 +263,16 @@ def run_codebuddy_prompt(
             output=None,
             detail="cli_not_found",
             exit_code=None,
+            requested_model=model,
         )
     try:
+        wire_output_format = "json" if str(model or "").strip() else output_format
+        command_args = [executable, "-p", "--output-format", wire_output_format]
+        if str(model or "").strip():
+            command_args.extend(["--model", str(model).strip()])
+        command_args.append(str(prompt))
         completed = subprocess.run(
-            [executable, "-p", "--output-format", output_format, str(prompt)],
+            command_args,
             capture_output=True,
             text=True,
             timeout=max(10, min(int(timeout_seconds or 90), 600)),
@@ -241,6 +285,7 @@ def run_codebuddy_prompt(
             output=None,
             detail="execution_timeout",
             exit_code=None,
+            requested_model=model,
         )
     except Exception as exc:  # pragma: no cover - runtime path
         return CodeBuddyExecutionResult(
@@ -249,15 +294,22 @@ def run_codebuddy_prompt(
             output=None,
             detail=str(exc),
             exit_code=None,
+            requested_model=model,
         )
-    output = (completed.stdout or completed.stderr or "").strip()
-    if _looks_like_auth_required(output):
+    raw_output = (completed.stdout or completed.stderr or "").strip()
+    output, effective_model = (
+        _parse_codebuddy_json_output(raw_output)
+        if str(model or "").strip() and completed.returncode == 0
+        else (raw_output, None)
+    )
+    if _looks_like_auth_required(raw_output):
         return CodeBuddyExecutionResult(
             ok=False,
             authenticated=False,
             output=None,
-            detail=output[:300] or "authentication_required",
+            detail=raw_output[:300] or "authentication_required",
             exit_code=completed.returncode,
+            requested_model=model,
         )
     if completed.returncode == 0:
         return CodeBuddyExecutionResult(
@@ -266,6 +318,8 @@ def run_codebuddy_prompt(
             output=output[:12000] or "",
             detail="ok",
             exit_code=0,
+            requested_model=model,
+            effective_model=effective_model,
         )
     return CodeBuddyExecutionResult(
         ok=False,
@@ -273,6 +327,7 @@ def run_codebuddy_prompt(
         output=output[:4000] or None,
         detail=output[:300] or f"exit_{completed.returncode}",
         exit_code=completed.returncode,
+        requested_model=model,
     )
 
 

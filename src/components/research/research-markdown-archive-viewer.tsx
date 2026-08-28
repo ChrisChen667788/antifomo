@@ -173,7 +173,7 @@ function ArchiveMetaChips({ archive }: { archive: ApiResearchMarkdownArchive }) 
       ) : null}
       {archive.compare_snapshot_name ? (
         <span className="rounded-full af-chip af-chip-info px-2.5 py-1 ">
-          快照 · {archive.compare_snapshot_name}
+          已保存对比 · {archive.compare_snapshot_name}
         </span>
       ) : null}
     </div>
@@ -272,7 +272,7 @@ function ArchiveFollowupImpactCard({
                 </p>
                 {(item.value.baselineTitleResolution || item.value.baselineSummaryResolution || item.value.baselineImpactedSections.length) ? (
                   <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                    基线参考 · 标题 {followupResolutionLabel(item.value.baselineTitleResolution)} / 摘要 {followupResolutionLabel(item.value.baselineSummaryResolution)} / 章节 {item.value.baselineImpactedSections.length ? item.value.baselineImpactedSections.slice(0, 3).join(" / ") : "无"}
+                    初始参考 · 标题 {followupResolutionLabel(item.value.baselineTitleResolution)} / 摘要 {followupResolutionLabel(item.value.baselineSummaryResolution)} / 章节 {item.value.baselineImpactedSections.length ? item.value.baselineImpactedSections.slice(0, 3).join(" / ") : "无"}
                   </p>
                 ) : null}
               </>
@@ -310,7 +310,7 @@ function ArchiveCandidateCard({
       </div>
       <h3 className="mt-3 text-sm font-semibold text-[var(--af-text-primary)]">{archive.name}</h3>
       <p className="mt-2 text-xs leading-6 text-[var(--af-text-tertiary)]">
-        {archive.summary || archive.preview_text || "归档已保存，可作为当前文档的对照基线。"}
+        {archive.summary || archive.preview_text || "归档已保存，可作为当前文档的对照版本。"}
       </p>
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-tertiary)]">
         <span className="rounded-full bg-[var(--af-surface-muted)] px-2 py-1">
@@ -385,12 +385,12 @@ function ArchiveComparisonSummary({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="af-kicker">Archive Compare</p>
+          <p className="af-kicker">版本对照</p>
           <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">
-            当前归档 vs 对照归档
+            当前归档与对照归档
           </h3>
           <p className="mt-2 text-sm leading-6 text-[var(--af-text-tertiary)]">
-            用统一的 section 和要点切片对照两个 Markdown 版本，优先展示结构变化和新增结论。
+            对比两份历史结果，优先展示结构变化和新增结论。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -403,13 +403,13 @@ function ArchiveComparisonSummary({
             {savingRecap ? "保存中..." : "保存差异复盘"}
           </button>
           <button type="button" onClick={onExportRecapMarkdown} className="af-btn af-btn-secondary border px-4 py-2 text-sm">
-            导出 Markdown
+            导出原文
           </button>
           <button type="button" onClick={onExportRecapPdf} className="af-btn af-btn-secondary border px-4 py-2 text-sm">
             导出 PDF
           </button>
           <button type="button" onClick={onExportRecapExecBrief} className="af-btn af-btn-secondary border px-4 py-2 text-sm">
-            导出 Exec Brief
+            导出简报
           </button>
           <Link href={buildMarkdownArchiveHref(compareArchive.id, archive.id)} className="af-btn af-btn-secondary border px-4 py-2 text-sm">
             交换当前/对照
@@ -422,7 +422,7 @@ function ArchiveComparisonSummary({
 
       {summaryLines.length ? (
         <div className="mt-5 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5">
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">Diff Summary</p>
+          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">变化摘要</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
             {summaryLines.map((line, index) => (
               <li key={`summary-line-${index}`} className="flex gap-2">
@@ -486,7 +486,7 @@ function ArchiveComparisonSummary({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">章节检查</p>
-                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">章节风险对照</h4>
+                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">章节质量对照</h4>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -494,8 +494,8 @@ function ArchiveComparisonSummary({
                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-info)]">当前归档</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   待核验 {currentSectionSummary?.mode === "compare" ? currentSectionSummary.weakSectionCount : currentSectionSummary?.currentWeakSectionCount || 0}
-                  {" / "}配额风险 {currentSectionSummary?.quotaRiskSectionCount || 0}
-                  {" / "}矛盾 {currentSectionSummary?.contradictionSectionCount || 0}
+                  {" / "}待补 {currentSectionSummary?.quotaRiskSectionCount || 0}
+                  {" / "}冲突 {currentSectionSummary?.contradictionSectionCount || 0}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   重点章节 · {currentSectionSummary?.highlightedSections?.length ? currentSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
@@ -505,8 +505,8 @@ function ArchiveComparisonSummary({
                 <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--af-warning)]">对照归档</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   待核验 {compareSectionSummary?.mode === "compare" ? compareSectionSummary.weakSectionCount : compareSectionSummary?.currentWeakSectionCount || 0}
-                  {" / "}配额风险 {compareSectionSummary?.quotaRiskSectionCount || 0}
-                  {" / "}矛盾 {compareSectionSummary?.contradictionSectionCount || 0}
+                  {" / "}待补 {compareSectionSummary?.quotaRiskSectionCount || 0}
+                  {" / "}冲突 {compareSectionSummary?.contradictionSectionCount || 0}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                   重点章节 · {compareSectionSummary?.highlightedSections?.length ? compareSectionSummary.highlightedSections.slice(0, 4).join(" / ") : "无"}
@@ -524,7 +524,7 @@ function ArchiveComparisonSummary({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">质量复核</p>
-                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">质量复核快照对照</h4>
+                <h4 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">质量记录对照</h4>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -560,7 +560,7 @@ function ArchiveComparisonSummary({
                       ) : null}
                     </>
                   ) : (
-                    <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">没有可用回归快照。</p>
+                    <p className="mt-3 text-sm text-[var(--af-text-tertiary)]">没有可用质量记录。</p>
                   )}
                 </div>
               ))}
@@ -762,7 +762,7 @@ export function ResearchMarkdownArchiveViewer({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(archive.content);
-      setMessage("Markdown 已复制到剪贴板");
+      setMessage("原文已复制到剪贴板");
     } catch {
       setMessage("复制失败，请稍后重试");
     }
@@ -770,7 +770,7 @@ export function ResearchMarkdownArchiveViewer({
 
   const handleDownload = () => {
     triggerFileDownload(archive.filename, archive.content, "text/markdown;charset=utf-8");
-    setMessage("Markdown 文件已下载");
+    setMessage("原文已下载");
   };
 
   const buildCompareRecapBundle = (generatedAt: Date) => {
@@ -804,7 +804,7 @@ export function ResearchMarkdownArchiveViewer({
     const bundle = buildCompareRecapBundle(generatedAt);
     if (!bundle) return;
     triggerFileDownload(bundle.markdownFilename, bundle.markdown, "text/markdown;charset=utf-8");
-    setMessage("归档差异复盘 Markdown 已下载");
+    setMessage("归档变化复盘已下载");
   };
 
   const handleExportCompareRecapPdf = () => {
@@ -820,7 +820,7 @@ export function ResearchMarkdownArchiveViewer({
     const bundle = buildCompareRecapBundle(generatedAt);
     if (!bundle) return;
     triggerFileDownload(bundle.execBriefFilename, bundle.execBrief, "text/markdown;charset=utf-8");
-    setMessage("归档差异复盘 Exec Brief 已下载");
+    setMessage("归档变化简报已下载");
   };
 
   const handleSaveCompareRecap = async () => {
@@ -828,7 +828,7 @@ export function ResearchMarkdownArchiveViewer({
     const generatedAt = new Date();
     const bundle = buildCompareRecapBundle(generatedAt);
     if (!bundle) return;
-    const defaultName = `${archive.name} vs ${compareArchive.name} · 差异复盘`;
+    const defaultName = `${archive.name} 与 ${compareArchive.name} · 变化复盘`;
     const name = window.prompt("输入一个差异复盘归档名称，便于后续回看", defaultName)?.trim();
     if (!name) return;
     const summary = bundle.summary;
@@ -911,9 +911,9 @@ export function ResearchMarkdownArchiveViewer({
       const url = new URL(window.location.href);
       url.hash = anchorId;
       await navigator.clipboard.writeText(url.toString());
-      setMessage(`${sectionTitle} 深链已复制`);
+      setMessage(`${sectionTitle} 定位链接已复制`);
     } catch {
-      setMessage("复制 section 深链失败，请稍后重试");
+      setMessage("复制定位链接失败，请稍后重试");
     }
   };
 
@@ -923,7 +923,7 @@ export function ResearchMarkdownArchiveViewer({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="af-kicker">Markdown Archive</p>
+              <p className="af-kicker">历史归档</p>
               <span className={`rounded-full px-2.5 py-1 text-[11px] ${archiveKindTone(archive.archive_kind)}`}>
                 {archiveKindLabel(archive.archive_kind)}
               </span>
@@ -935,7 +935,7 @@ export function ResearchMarkdownArchiveViewer({
             </div>
             <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--af-text-primary)]">{archive.name}</h2>
             <p className="mt-3 text-sm leading-6 text-[var(--af-text-secondary)]">
-              {archive.summary || archive.preview_text || "当前归档已保存到历史中心，可在线查看、下载或作为版本对照基线。"}
+              {archive.summary || archive.preview_text || "当前归档已保存到历史中心，可在线查看、下载或用于版本对照。"}
             </p>
             <ArchiveMetaChips archive={archive} />
           </div>
@@ -945,14 +945,14 @@ export function ResearchMarkdownArchiveViewer({
               onClick={handleCopy}
               className="af-btn af-btn-secondary border px-4 py-2 text-sm"
             >
-              复制 Markdown
+              复制原文
             </button>
             <button
               type="button"
               onClick={handleDownload}
               className="af-btn af-btn-secondary border px-4 py-2 text-sm"
             >
-              下载 Markdown
+              下载原文
             </button>
             <Link href="/research" className="af-btn af-btn-secondary border px-4 py-2 text-sm">
               返回商机情报中心
@@ -962,7 +962,7 @@ export function ResearchMarkdownArchiveViewer({
         <div className="mt-4 flex flex-wrap gap-2">
           {archive.compare_snapshot_id ? (
             <Link href={buildCompareSnapshotHref(archive.compare_snapshot_id)} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-              打开关联快照
+              打开关联对比
             </Link>
           ) : null}
           {archive.tracking_topic_id ? (
@@ -1021,9 +1021,9 @@ export function ResearchMarkdownArchiveViewer({
       <section className="af-glass rounded-[30px] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="af-kicker">Related Archives</p>
+            <p className="af-kicker">相关归档</p>
             <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-              优先按同专题、同归档类型和相近版本排序，可快速切换对照基线。
+              按专题、类型和时间排序，便于快速选择对照版本。
             </p>
           </div>
         </div>
@@ -1040,7 +1040,7 @@ export function ResearchMarkdownArchiveViewer({
           </div>
         ) : (
           <div className="mt-5 rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-5 text-sm text-[var(--af-text-tertiary)]">
-            当前还没有足够接近的历史归档可供对照。先从 compare 导出或专题复盘报告继续沉淀版本。
+            当前还没有可对照的历史归档。保存更多结果后可在这里比较。
           </div>
         )}
       </section>
@@ -1048,11 +1048,11 @@ export function ResearchMarkdownArchiveViewer({
       <section className="af-glass rounded-[30px] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="af-kicker">{compareArchive ? "Side-by-Side Preview" : "Archive Preview"}</p>
+            <p className="af-kicker">{compareArchive ? "并排预览" : "归档预览"}</p>
             <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
               {compareArchive
-                ? "左右并排查看当前归档和对照归档的正文结构，适合做快速复盘。"
-                : "当前为应用内轻量预览，保留标题、列表和链接结构，适合快速复盘。"}
+                ? "并排查看两份归档的正文结构。"
+                : "查看归档正文，保留标题、列表和链接。"}
             </p>
           </div>
         </div>
@@ -1083,7 +1083,7 @@ export function ResearchMarkdownArchiveViewer({
       <section className="af-glass rounded-[30px] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="af-kicker">Raw Markdown</p>
+            <p className="af-kicker">原文</p>
             <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
               保留原始内容，方便复制到外部文档或继续交给别的系统处理。
             </p>

@@ -5,11 +5,18 @@ import type {
   ApiResearchActionCard,
   ApiResearchActionPlan,
   ApiResearchActionSaveResponse,
+  ApiResearchAssuranceSnapshot,
   ApiResearchCompareSnapshot,
   ApiResearchCompareSnapshotDetail,
+  ApiResearchClarificationPacket,
+  ApiResearchClarificationSubmitPayload,
+  ApiResearchClarificationSubmitResponse,
   ApiResearchConversation,
   ApiResearchDeliveryExportDiagnostics,
   ApiResearchEntityDetail,
+  ApiResearchExperienceFeedback,
+  ApiResearchExperienceMetrics,
+  ApiResearchExperienceReadiness,
   ApiResearchExperimentActivePolicy,
   ApiResearchExperimentControlPlane,
   ApiResearchExperimentEffectiveRuntimeConfig,
@@ -20,6 +27,15 @@ import type {
   ApiResearchExperimentRuntimeSnapshot,
   ApiResearchFollowupDeltaEvaluation,
   ApiResearchGoldenEvaluation,
+  ApiResearchIndustryKnowledgeRetrievalBenchmark,
+  ApiResearchIndustryKnowledgeRetrievalApprovalTemplate,
+  ApiResearchIndustryKnowledgeRetrievalAssuranceSnapshot,
+  ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshot,
+  ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplates,
+  ApiResearchIndustryKnowledgeRetrievalEvidenceTemplates,
+  ApiResearchIndustryKnowledgeDeliveryReview,
+  ApiResearchIndustryKnowledgeSearch,
+  ApiResearchIndustrySkillLibrary,
   ApiResearchJob,
   ApiResearchJobTimelineEvent,
   ApiResearchLowQualityReviewActionResponse,
@@ -31,6 +47,7 @@ import type {
   ApiResearchRetrievalIndexRebuildResult,
   ApiResearchRetrievalIndexSearchResult,
   ApiResearchRetrievalIndexStatus,
+  ApiResearchUpgradeDiagnostics,
   ApiResearchSaveResponse,
   ApiResearchSavedView,
   ApiResearchSectionRetrievalPack,
@@ -94,6 +111,51 @@ export function getResearchJob(jobId: string): Promise<ApiResearchJob> {
   return request<ApiResearchJob>(`/api/research/jobs/${jobId}`, {
     method: "GET",
   });
+}
+
+export function getResearchJobClarification(jobId: string): Promise<ApiResearchClarificationPacket> {
+  return request<ApiResearchClarificationPacket>(`/api/research/jobs/${jobId}/clarification`, {
+    method: "GET",
+  });
+}
+
+export function submitResearchJobClarification(
+  jobId: string,
+  payload: ApiResearchClarificationSubmitPayload,
+): Promise<ApiResearchClarificationSubmitResponse> {
+  return request<ApiResearchClarificationSubmitResponse>(`/api/research/jobs/${jobId}/clarification`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitResearchExperienceFeedback(
+  jobId: string,
+  payload: {
+    score: number;
+    reason:
+      | "helpful"
+      | "missing_sources"
+      | "question_unclear"
+      | "too_technical"
+      | "recovery_failed"
+      | "result_quality"
+      | "other";
+    comment?: string;
+  },
+): Promise<ApiResearchExperienceFeedback> {
+  return request<ApiResearchExperienceFeedback>(`/api/research/jobs/${jobId}/experience-feedback`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getResearchExperienceMetrics(): Promise<ApiResearchExperienceMetrics> {
+  return request<ApiResearchExperienceMetrics>("/api/research/experience/metrics");
+}
+
+export function getResearchExperienceReadiness(): Promise<ApiResearchExperienceReadiness> {
+  return request<ApiResearchExperienceReadiness>("/api/research/experience/readiness");
 }
 
 export function getResearchJobTimeline(jobId: string): Promise<ApiResearchJobTimelineEvent[]> {
@@ -408,6 +470,108 @@ export function getResearchDeliveryExportDiagnostics(trendLimit = 8): Promise<Ap
   }));
 }
 
+export function getResearchUpgradeDiagnosticsPreview(): Promise<ApiResearchUpgradeDiagnostics> {
+  return request<ApiResearchUpgradeDiagnostics>("/api/research/upgrade-diagnostics/preview", {
+    method: "GET",
+  });
+}
+
+export function getResearchAssurancePreview(): Promise<ApiResearchAssuranceSnapshot> {
+  return request<ApiResearchAssuranceSnapshot>("/api/research/assurance/preview", {
+    method: "GET",
+  });
+}
+
+export function getResearchIndustrySkills(query = "", limit = 8): Promise<ApiResearchIndustrySkillLibrary> {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set("query", query.trim());
+  params.set("limit", String(limit));
+  return request<ApiResearchIndustrySkillLibrary>(`/api/research/industry-skills?${params.toString()}`, {
+    method: "GET",
+  });
+}
+
+export function searchResearchIndustryKnowledge(payload: {
+  query: string;
+  industries?: string[];
+  documentTypes?: string[];
+  limit?: number;
+  strategy?: "baseline_hybrid" | "prefilter_weighted_hybrid" | "prefilter_weighted_rerank";
+}): Promise<ApiResearchIndustryKnowledgeSearch> {
+  const params = new URLSearchParams({ query: payload.query.trim(), limit: String(payload.limit || 6) });
+  if (payload.industries?.length) params.set("industries", payload.industries.join(","));
+  if (payload.documentTypes?.length) params.set("document_types", payload.documentTypes.join(","));
+  if (payload.strategy) params.set("strategy", payload.strategy);
+  return request<ApiResearchIndustryKnowledgeSearch>(`/api/research/industry-skills/retrieve?${params.toString()}`, {
+    method: "GET",
+  });
+}
+
+export function getResearchIndustryKnowledgeRetrievalBenchmark(): Promise<ApiResearchIndustryKnowledgeRetrievalBenchmark> {
+  return request<ApiResearchIndustryKnowledgeRetrievalBenchmark>(
+    "/api/research/industry-skills/retrieval-ranking-benchmark",
+    { method: "GET" },
+  );
+}
+
+export function runResearchIndustryKnowledgeRetrievalBenchmark(): Promise<ApiResearchIndustryKnowledgeRetrievalBenchmark> {
+  return request<ApiResearchIndustryKnowledgeRetrievalBenchmark>(
+    "/api/research/industry-skills/retrieval-ranking-benchmark/run",
+    { method: "POST" },
+  );
+}
+
+export function getResearchIndustryKnowledgeRetrievalAssurance(): Promise<ApiResearchIndustryKnowledgeRetrievalAssuranceSnapshot> {
+  return request<ApiResearchIndustryKnowledgeRetrievalAssuranceSnapshot>(
+    "/api/research/industry-skills/retrieval-ranking-assurance",
+    { method: "GET" },
+  );
+}
+
+export function exportResearchIndustryKnowledgeRetrievalApprovalTemplate(): Promise<ApiResearchIndustryKnowledgeRetrievalApprovalTemplate> {
+  return request<ApiResearchIndustryKnowledgeRetrievalApprovalTemplate>(
+    "/api/research/industry-skills/retrieval-ranking-assurance/approval-template",
+    { method: "POST" },
+  );
+}
+
+export function exportResearchIndustryKnowledgeRetrievalEvidenceTemplates(): Promise<ApiResearchIndustryKnowledgeRetrievalEvidenceTemplates> {
+  return request<ApiResearchIndustryKnowledgeRetrievalEvidenceTemplates>(
+    "/api/research/industry-skills/retrieval-ranking-assurance/evidence-templates",
+    { method: "POST" },
+  );
+}
+
+export function getResearchIndustryKnowledgeRetrievalEvidenceOperations(): Promise<ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshot> {
+  return request<ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshot>(
+    "/api/research/industry-skills/retrieval-evidence-operations",
+    { method: "GET" },
+  );
+}
+
+export function exportResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplates(): Promise<ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplates> {
+  return request<ApiResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplates>(
+    "/api/research/industry-skills/retrieval-evidence-operations/templates",
+    { method: "POST" },
+  );
+}
+
+export function buildResearchIndustryKnowledgeDeliveryReview(payload: {
+  case_id: string;
+  report: ApiResearchReport;
+  scenario?: string;
+  target_customer?: string;
+  vertical_scene?: string;
+  supplemental_context?: string;
+  use_industry_skills?: boolean;
+  industry_skill_ids?: string[];
+}): Promise<ApiResearchIndustryKnowledgeDeliveryReview> {
+  return request<ApiResearchIndustryKnowledgeDeliveryReview>(
+    "/api/research/industry-skills/retrieval-ranking-benchmark/delivery-review",
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
 export function buildResearchSectionRetrievalPacks(payload: {
   report: ApiResearchReport;
   limit_per_section?: number;
@@ -425,6 +589,9 @@ export function buildResearchSolutionDeliveryPack(payload: {
   target_customer?: string;
   vertical_scene?: string;
   supplemental_context?: string;
+  use_industry_skills?: boolean;
+  industry_skill_ids?: string[];
+  industry_knowledge_retrieval_strategy?: "baseline_hybrid" | "prefilter_weighted_hybrid" | "prefilter_weighted_rerank";
   detail_level?: "outline" | "review_draft" | "final";
 }): Promise<ApiResearchSolutionDeliveryPack> {
   return request<ApiResearchSolutionDeliveryPack>("/api/research/solution-delivery-pack", {
@@ -439,6 +606,9 @@ export function refreshResearchSolutionIntelligence(payload: {
   target_customer?: string;
   vertical_scene?: string;
   supplemental_context?: string;
+  use_industry_skills?: boolean;
+  industry_skill_ids?: string[];
+  industry_knowledge_retrieval_strategy?: "baseline_hybrid" | "prefilter_weighted_hybrid" | "prefilter_weighted_rerank";
   detail_level?: "outline" | "review_draft" | "final";
 }): Promise<ApiResearchReport> {
   return request<ApiResearchReport>("/api/research/solution-intelligence/refresh", {

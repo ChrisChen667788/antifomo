@@ -13,6 +13,8 @@ from app.services.research.delivery_enrichment import (
     apply_report_readiness_guardrails,
     enrich_report_for_delivery as enrich_report_with_dependencies,
 )
+from app.services.research.account_pursuit import build_account_pursuit_pack
+from app.services.research.commercial_bid_engineering import build_commercial_bid_pack
 from app.services.research.delivery_materials import (
     DeliveryMaterialsDependencies,
     build_commercial_summary,
@@ -206,6 +208,8 @@ def delivery_enrichment_dependencies() -> DeliveryEnrichmentDependencies:
     impact_deps = followup_impact_dependencies()
     return DeliveryEnrichmentDependencies(
         build_report_readiness=lambda report: build_report_readiness(report, deps=readiness_deps),
+        build_account_pursuit_pack=build_account_pursuit_pack,
+        build_commercial_bid_pack=build_commercial_bid_pack,
         build_commercial_summary=lambda report: build_commercial_summary(report, deps=materials_deps),
         build_technical_appendix=lambda report: build_technical_appendix(report, deps=materials_deps),
         build_review_queue=lambda report: build_review_queue(report, deps=materials_deps),

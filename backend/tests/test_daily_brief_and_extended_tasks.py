@@ -11,7 +11,13 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.models import FocusSession, Item, KnowledgeEntry, SessionItem, User
 from app.models.research_entities import ResearchWatchlist, ResearchWatchlistChangeEvent
-from app.schemas.research import ResearchReportDocument, ResearchReportSectionOut
+from app.schemas.research import (
+    ResearchCitationGateOut,
+    ResearchEvidenceGateOut,
+    ResearchReportReadinessOut,
+    ResearchReportResponse,
+    ResearchReportSectionOut,
+)
 from app.services import daily_brief_service, task_runtime
 from app.services.knowledge_intelligence_service import build_research_report_metadata
 from app.services.task_runtime import create_and_execute_task
@@ -157,7 +163,7 @@ def test_extended_export_tasks_generate_expected_outputs() -> None:
         db.flush()
         db.add(SessionItem(session_id=session.id, item_id=item.id))
 
-        report = ResearchReportDocument(
+        report = ResearchReportResponse(
             keyword="浏览器赛道甲方推进",
             research_focus="补预算窗口、组织入口和公开联系人",
             followup_context={
@@ -203,6 +209,41 @@ def test_extended_export_tasks_generate_expected_outputs() -> None:
             strategic_directions=["优先切入浏览器智能助手与会员运营"],
             tender_timeline=["本季度完成内部立项，下季度启动采购"],
             source_count=4,
+            research_evidence_gate=ResearchEvidenceGateOut(
+                enforced=True,
+                status="evidence_ready",
+                passed=True,
+                formal_report_allowed=True,
+                solution_delivery_allowed=True,
+                minimum_source_count=4,
+                minimum_official_source_count=1,
+                minimum_unique_domain_count=1,
+                minimum_question_coverage_percent=60,
+                candidate_source_count=4,
+                accepted_source_count=4,
+                official_source_count=1,
+                unique_domain_count=4,
+                question_coverage_percent=100,
+            ),
+            research_citation_gate=ResearchCitationGateOut(
+                enforced=True,
+                status="pass",
+                passed=True,
+                claim_count=1,
+                supported_claim_count=1,
+                critical_claim_count=1,
+                supported_critical_claim_count=1,
+                citation_completeness_percent=100,
+                critical_claim_coverage_percent=100,
+                citation_support_percent=100,
+            ),
+            report_readiness=ResearchReportReadinessOut(
+                status="ready",
+                score=90,
+                actionable=True,
+                evidence_gate_passed=True,
+            ),
+            generated_at=datetime.now(timezone.utc),
         )
         db.add(
             KnowledgeEntry(

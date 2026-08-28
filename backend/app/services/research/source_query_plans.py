@@ -6,6 +6,41 @@ from dataclasses import dataclass
 from app.services.content_extractor import normalize_text
 
 
+_LONG_TASK_TOKEN_MARKERS = ("调研", "研究", "分析", "搜集", "收集", "情报", "研报", "报告")
+_QUERY_POISON_MARKERS = (
+    "潜在投标人",
+    "递交投标文件",
+    "投标文件截止时间",
+    "公共资源交易网",
+    "登录交易平台",
+    "请登录",
+    "招标文件获取",
+)
+
+
+def _compact_search_query(query: str, *, max_chars: int = 96) -> str:
+    normalized = normalize_text(query)
+    parts = normalized.split()
+    compact_parts: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        token = normalize_text(part)
+        key = token.casefold()
+        if not token or key in seen:
+            continue
+        if len(token) > 24 and any(marker in token for marker in _LONG_TASK_TOKEN_MARKERS):
+            continue
+        candidate = normalize_text(" ".join([*compact_parts, token]))
+        if compact_parts and len(candidate) > max_chars:
+            continue
+        compact_parts.append(token)
+        seen.add(key)
+    compact = normalize_text(" ".join(compact_parts))
+    if not compact:
+        compact = normalized
+    return compact if len(compact) <= max_chars else compact[:max_chars].rstrip()
+
+
 @dataclass(frozen=True, slots=True)
 class SourceQueryPlanDependencies:
     strip_query_noise: Callable[[str], str]
@@ -26,14 +61,91 @@ def _dedupe_queries(queries: Iterable[str], *, limit: int, exclusions: Iterable[
     deduped: list[str] = []
     seen: set[str] = set()
     for query in queries:
-        normalized = normalize_text(query)
-        if not normalized or normalized in seen:
+        raw_normalized = normalize_text(query)
+        if not raw_normalized:
             continue
-        if any(exclusion in normalized for exclusion in exclusion_terms):
+        if any(marker in raw_normalized for marker in _QUERY_POISON_MARKERS):
+            continue
+        if any(exclusion in raw_normalized for exclusion in exclusion_terms):
+            continue
+        normalized = _compact_search_query(raw_normalized)
+        if not normalized or normalized in seen:
             continue
         seen.add(normalized)
         deduped.append(normalized)
     return deduped[:limit]
+
+
+def _compact_keyword_for_search(
+    keyword: str,
+    *,
+    industries: list[str],
+    topic_anchors: list[str],
+    deps: SourceQueryPlanDependencies,
+) -> str:
+    if len(keyword) <= 24:
+        return keyword
+    compact_terms = deps.dedupe_strings(
+        [
+            *industries[:1],
+            "人工智能" if "AI" in keyword.upper() else "",
+            *[
+                anchor
+                for anchor in topic_anchors
+                if 2 <= len(anchor) <= 12 and anchor not in industries
+            ][:4],
+        ],
+        3,
+    )
+    return normalize_text(" ".join(compact_terms or industries[:2])) or keyword
+
+
+def _build_recall_query_ladder(
+    normalized_keyword: str,
+    *,
+    scope_hints: dict[str, object],
+    deps: SourceQueryPlanDependencies,
+) -> list[str]:
+    regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) if normalize_text(str(item))]
+    industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
+    expanded_regions = deps.expand_region_scope_terms(regions[:1])
+    region = regions[0] if regions else ""
+    concrete_regions = [item for item in expanded_regions if item != region][:2]
+    methodology_profile = normalize_text(str(scope_hints.get("industry_methodology_profile") or ""))
+    industry = industries[0] if industries else methodology_profile
+    clients = [normalize_text(str(item)) for item in scope_hints.get("clients", []) if normalize_text(str(item))]
+    technology = (
+        "人工智能"
+        if any(token in normalized_keyword.lower() for token in ("ai", "人工智能", "大模型", "生成式"))
+        else ""
+    )
+    if industry == "政务云":
+        broad_topic = normalize_text(" ".join(["数字政府", technology, "政务服务"]))
+        procurement_topic = normalize_text(" ".join([industry, technology]))
+    else:
+        broad_topic = normalize_text(" ".join([industry, technology])) or normalized_keyword
+        procurement_topic = broad_topic
+    queries = [normalize_text(" ".join([region, broad_topic]))]
+    if clients:
+        queries.extend(
+            [
+                normalize_text(" ".join([f'"{clients[0]}"', normalized_keyword])),
+                normalize_text(" ".join(["site:gov.cn", f'"{clients[0]}"', broad_topic])),
+            ]
+        )
+    else:
+        queries.extend(
+            normalize_text(" ".join([concrete_region, broad_topic]))
+            for concrete_region in concrete_regions
+        )
+        for official_region in concrete_regions or [region]:
+            queries.extend(
+                [
+                    normalize_text(" ".join(["site:gov.cn", official_region, broad_topic])),
+                    normalize_text(" ".join(["site:ccgp.gov.cn", official_region, procurement_topic])),
+                ]
+            )
+    return _dedupe_queries(queries, limit=5)
 
 
 def build_scoped_official_query_expansions(
@@ -51,6 +163,13 @@ def build_scoped_official_query_expansions(
     regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) if normalize_text(str(item))]
     industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
     buyers = [normalize_text(str(item)) for item in scope_hints.get("clients", []) if normalize_text(str(item))]
+    topic_anchors = deps.extract_topic_anchor_terms(normalized_keyword, normalized_focus)
+    normalized_keyword = _compact_keyword_for_search(
+        normalized_keyword,
+        industries=industries,
+        topic_anchors=topic_anchors,
+        deps=deps,
+    )
     topic_anchors = deps.extract_topic_anchor_terms(normalized_keyword, normalized_focus)
     expanded_regions = deps.expand_region_scope_terms(regions[:1])[:3]
     official_regions = expanded_regions or regions[:1]
@@ -158,6 +277,13 @@ def build_query_plan(
     scope_industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
     scope_clients = [normalize_text(str(item)) for item in scope_hints.get("clients", []) if normalize_text(str(item))]
     topic_anchors = deps.extract_topic_anchor_terms(normalized_keyword, normalized_focus)
+    normalized_keyword = _compact_keyword_for_search(
+        normalized_keyword,
+        industries=scope_industries,
+        topic_anchors=topic_anchors,
+        deps=deps,
+    )
+    topic_anchors = deps.extract_topic_anchor_terms(normalized_keyword, normalized_focus)
     strategy_query_expansions = [
         normalize_text(str(item))
         for item in scope_hints.get("strategy_query_expansions", [])
@@ -176,9 +302,26 @@ def build_query_plan(
         for label, aliases in deps.industry_scope_aliases.items()
         if any(alias in f"{normalized_keyword} {normalized_focus}" for alias in aliases)
     ]
+    theme_official_queries = [
+        template.format(keyword=normalized_keyword)
+        for label in matched_theme_labels
+        for template in deps.theme_official_query_templates.get(label, ())[:3]
+    ]
     scoped_prefix = normalize_text(" ".join([*scope_regions[:1], *scope_industries[:1], *scope_clients[:1]]))
     scoped_keyword = normalize_text(" ".join([scoped_prefix, normalized_keyword])) if scoped_prefix else normalized_keyword
-    queries = [scoped_keyword]
+    recall_query_ladder = _build_recall_query_ladder(
+        normalized_keyword,
+        scope_hints=scope_hints,
+        deps=deps,
+    )
+    queries = [
+        *recall_query_ladder,
+        *theme_official_queries[:1],
+        *strategy_query_expansions,
+        *theme_official_queries[1:],
+        *scoped_official_queries,
+        scoped_keyword,
+    ]
     scoped_region_expansions = deps.expand_region_scope_terms(scope_regions[:1])[:4]
     if scope_clients:
         queries.append(f"\"{scope_clients[0]}\" {normalized_keyword}")
@@ -191,8 +334,6 @@ def build_query_plan(
         queries.append(f"\"{topic_anchors[0]}\"")
         if normalized_focus:
             queries.append(f"\"{topic_anchors[0]}\" {normalize_text(' '.join([scoped_prefix, normalized_focus])) or normalized_focus}")
-    queries.extend(strategy_query_expansions)
-    queries.extend(scoped_official_queries)
     for label in matched_theme_labels:
         for template in deps.theme_query_expansion_templates.get(label, ()):
             queries.append(template.format(keyword=scoped_keyword))
@@ -251,6 +392,13 @@ def build_corrective_query_plan(
     queries: list[str] = []
     industries = [normalize_text(str(item)) for item in scope_hints.get("industries", []) or [] if normalize_text(str(item))]
     regions = [normalize_text(str(item)) for item in scope_hints.get("regions", []) or [] if normalize_text(str(item))]
+    topic_anchors = deps.extract_topic_anchor_terms(keyword, research_focus)
+    keyword_seed = _compact_keyword_for_search(
+        deps.strip_query_noise(keyword) or normalize_text(keyword),
+        industries=industries,
+        topic_anchors=topic_anchors,
+        deps=deps,
+    )
     strategy_query_expansions = [
         normalize_text(str(item))
         for item in scope_hints.get("strategy_query_expansions", []) or []
@@ -259,7 +407,7 @@ def build_corrective_query_plan(
     queries.extend(strategy_query_expansions)
     queries.extend(
         build_scoped_official_query_expansions(
-            keyword,
+            keyword_seed,
             research_focus,
             scope_hints=scope_hints,
             include_wechat=include_wechat,
@@ -270,30 +418,30 @@ def build_corrective_query_plan(
     seed_companies = deps.collect_theme_seed_companies(keyword=keyword, research_focus=research_focus, scope_hints=scope_hints)
     for industry in industries:
         for template in deps.theme_official_query_templates.get(industry, ()):
-            queries.append(template.format(keyword=keyword))
+            queries.append(template.format(keyword=keyword_seed))
     for company in seed_companies[:6]:
         queries.extend(
             [
-                f"{company} {keyword} 官网 合作 平台",
-                f"{company} {keyword} 投资者关系 合作 战略",
-                f"{company} {keyword} 联系我们 商务合作",
-                f"{company} {keyword} 团队 业务 负责人",
+                f"{company} {keyword_seed} 官网 合作 平台",
+                f"{company} {keyword_seed} 投资者关系 合作 战略",
+                f"{company} {keyword_seed} 联系我们 商务合作",
+                f"{company} {keyword_seed} 团队 业务 负责人",
             ]
         )
     if regions:
         region = regions[0]
         queries.extend(
             [
-                f"{region} {keyword} 采购意向 项目 招标",
-                f"{region} {keyword} 场景 合作 平台 内容",
+                f"{region} {keyword_seed} 采购意向 项目 招标",
+                f"{region} {keyword_seed} 场景 合作 平台 内容",
             ]
         )
     if include_wechat:
-        queries.append(f"site:mp.weixin.qq.com {keyword} 平台 合作 内容 AIGC")
+        queries.append(f"site:mp.weixin.qq.com {keyword_seed} 平台 合作 内容 AIGC")
         for account in deps.dedupe_strings(preferred_wechat_accounts or [], 2):
-            queries.append(f'site:mp.weixin.qq.com "{account}" {keyword}')
+            queries.append(f'site:mp.weixin.qq.com "{account}" {keyword_seed}')
             if research_focus:
-                queries.append(f'site:mp.weixin.qq.com "{account}" {keyword} {normalize_text(research_focus)}')
+                queries.append(f'site:mp.weixin.qq.com "{account}" {keyword_seed} {normalize_text(research_focus)}')
     exclusions = [normalize_text(str(item)) for item in scope_hints.get("strategy_exclusion_terms", []) or [] if normalize_text(str(item))]
     return _dedupe_queries(queries, limit=limit, exclusions=exclusions)
 
@@ -308,11 +456,17 @@ def build_expanded_query_plan(
     limit: int,
     deps: SourceQueryPlanDependencies,
 ) -> list[str]:
-    keyword_seed = deps.strip_query_noise(keyword) or keyword
+    raw_keyword_seed = deps.strip_query_noise(keyword) or keyword
     regions = [normalize_text(item) for item in scope_hints.get("regions", []) if normalize_text(str(item))]
     industries = [normalize_text(item) for item in scope_hints.get("industries", []) if normalize_text(str(item))]
     clients = [normalize_text(item) for item in scope_hints.get("clients", []) if normalize_text(str(item))]
     focus = deps.sanitize_research_focus_text(research_focus)
+    keyword_seed = _compact_keyword_for_search(
+        raw_keyword_seed,
+        industries=industries,
+        topic_anchors=deps.extract_topic_anchor_terms(raw_keyword_seed, focus),
+        deps=deps,
+    )
     topic_anchors = deps.extract_topic_anchor_terms(keyword_seed, focus)
     expanded_regions = deps.expand_region_scope_terms(regions[:1])[:4]
     strategy_query_expansions = [
@@ -328,11 +482,10 @@ def build_expanded_query_plan(
         limit=max(6, limit),
         deps=deps,
     )
-    query_seed = [keyword_seed]
+    query_seed: list[str] = []
     if regions:
         query_seed.append(regions[0])
-    if industries:
-        query_seed.append(industries[0])
+    query_seed.append(keyword_seed)
     if focus:
         query_seed.append(focus)
     base = " ".join(item for item in query_seed if item)

@@ -35,6 +35,14 @@ export function useCollectorOpsRouteMetrics(wechatAgentBatchStatus: WechatAgentB
     wechatAgentBatchStatus?.submitted_url_resolved,
     wechatAgentBatchStatus?.live_report_submitted_url_resolved,
   );
+  const submittedUrlTabCopyLink = mergeBatchMetric(
+    wechatAgentBatchStatus?.submitted_url_tab_copy_link,
+    wechatAgentBatchStatus?.live_report_submitted_url_tab_copy_link,
+  );
+  const submittedUrlTabBrowserOpen = mergeBatchMetric(
+    wechatAgentBatchStatus?.submitted_url_tab_browser_open,
+    wechatAgentBatchStatus?.live_report_submitted_url_tab_browser_open,
+  );
   const submittedOcr = mergeBatchMetric(
     wechatAgentBatchStatus?.submitted_ocr,
     wechatAgentBatchStatus?.live_report_submitted_ocr,
@@ -92,9 +100,25 @@ export function useCollectorOpsRouteMetrics(wechatAgentBatchStatus: WechatAgentB
     wechatAgentBatchStatus?.submenu_trap_count,
     wechatAgentBatchStatus?.live_report_submenu_trap_count,
   );
-  const totalRouteDecisions = submittedUrlDirect + submittedUrlShareCopy + submittedUrlResolved + submittedOcr;
+  const totalRouteDecisions =
+    submittedUrlDirect +
+    submittedUrlShareCopy +
+    submittedUrlResolved +
+    submittedUrlTabCopyLink +
+    submittedUrlTabBrowserOpen +
+    submittedOcr;
   const urlFirstShare = totalRouteDecisions
-    ? Math.round(((submittedUrlDirect + submittedUrlShareCopy + submittedUrlResolved) / totalRouteDecisions) * 100)
+    ? Math.round(
+        ((
+          submittedUrlDirect +
+          submittedUrlShareCopy +
+          submittedUrlResolved +
+          submittedUrlTabCopyLink +
+          submittedUrlTabBrowserOpen
+        ) /
+          totalRouteDecisions) *
+          100,
+      )
     : 0;
   const ocrShare = totalRouteDecisions ? Math.round((submittedOcr / totalRouteDecisions) * 100) : 0;
 
@@ -103,6 +127,8 @@ export function useCollectorOpsRouteMetrics(wechatAgentBatchStatus: WechatAgentB
     submittedUrlDirect,
     submittedUrlShareCopy,
     submittedUrlResolved,
+    submittedUrlTabCopyLink,
+    submittedUrlTabBrowserOpen,
     submittedOcr,
     skippedSeenTotal,
     failedTotal,

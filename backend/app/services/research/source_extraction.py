@@ -30,7 +30,10 @@ def extract_source_document(
     title = normalize_text(hit.title) or hit.url
     domain = extract_domain(hit.url)
     source_type = hit.source_hint or deps.classify_source_type(hit.url)
-    source_origin = "adapter" if bool(getattr(hit, "source_label", None)) else "search"
+    source_origin = (
+        getattr(hit, "source_origin", None)
+        or ("adapter" if bool(getattr(hit, "source_label", None)) else "search")
+    )
     source_label = deps.derive_source_label(source_type=source_type, domain=domain, fallback=getattr(hit, "source_label", None))
     source_tier = deps.classify_source_tier(source_type=source_type, domain=domain, source_label=source_label)
     snippet = deps.truncate_text(
@@ -136,5 +139,8 @@ def extract_source_document_best_effort(
             excerpt=deps.truncate_text(deps.clean_source_text_for_analysis(hit.snippet), excerpt_chars),
             source_label=source_label,
             source_tier=source_tier,
-            source_origin="adapter" if bool(getattr(hit, "source_label", None)) else "search",
+            source_origin=(
+                getattr(hit, "source_origin", None)
+                or ("adapter" if bool(getattr(hit, "source_label", None)) else "search")
+            ),
         )

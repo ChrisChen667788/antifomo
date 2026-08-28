@@ -1,8 +1,10 @@
 import type { AppLanguage } from "@/lib/preferences";
 import { request } from "@/lib/api/client";
 import type {
+  CollectorBrowserExtensionVerifyResult,
   CollectorDailySummary,
   CollectorDaemonCommandResult,
+  CollectorDaemonConfig,
   CollectorDaemonStatus,
   CollectorExternalIngestResponse,
   CollectorFailedList,
@@ -37,6 +39,28 @@ export function getCollectorStatus(): Promise<CollectorStatus> {
 
 export function getCollectorDaemonStatus(): Promise<CollectorDaemonStatus> {
   return request<CollectorDaemonStatus>("/api/collector/daemon/status");
+}
+
+export function getCollectorDaemonConfig(): Promise<CollectorDaemonConfig> {
+  return request<CollectorDaemonConfig>("/api/collector/daemon/config");
+}
+
+export function updateCollectorDaemonConfig(payload: {
+  wechat_clipboard_auto_import?: boolean;
+  wechat_export_directory_auto_import?: boolean;
+  wechat_export_directory_path?: string;
+}): Promise<CollectorDaemonConfig> {
+  return request<CollectorDaemonConfig>("/api/collector/daemon/config", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function verifyCollectorBrowserExtension(): Promise<CollectorBrowserExtensionVerifyResult> {
+  return request<CollectorBrowserExtensionVerifyResult>("/api/collector/browser-extension/verify", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 export function startCollectorDaemon(): Promise<CollectorDaemonCommandResult> {
@@ -167,7 +191,7 @@ export function runWechatAgentOnce(payload?: {
   if (payload?.max_items) {
     params.set("max_items", String(payload.max_items));
   }
-  if (payload?.start_batch_index) {
+  if (payload?.start_batch_index !== undefined) {
     params.set("start_batch_index", String(payload.start_batch_index));
   }
   if (payload?.wait) {
@@ -224,7 +248,7 @@ export function runWechatAgentBatch(payload?: {
   if (payload?.segment_items) {
     params.set("segment_items", String(payload.segment_items));
   }
-  if (payload?.start_batch_index) {
+  if (payload?.start_batch_index !== undefined) {
     params.set("start_batch_index", String(payload.start_batch_index));
   }
   const query = params.toString();

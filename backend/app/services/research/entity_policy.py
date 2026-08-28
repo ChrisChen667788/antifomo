@@ -5,6 +5,10 @@ from functools import lru_cache
 import re
 
 from app.services.content_extractor import normalize_text
+from app.services.research.entity_authenticity import (
+    evaluate_organization_name,
+    repair_organization_candidate,
+)
 from app.services.research.entity_heuristics import (
     entity_canonical_key as heuristic_entity_canonical_key,
     extract_rank_entity_candidates as heuristic_extract_rank_entity_candidates,
@@ -12,7 +16,27 @@ from app.services.research.entity_heuristics import (
 
 
 INDUSTRY_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
-    "政务云": ("政务云", "政务", "政府云", "政务大模型", "数据局", "智慧政务", "电子政务"),
+    "政务云": (
+        "政务云",
+        "政务",
+        "政府云",
+        "政务大模型",
+        "数据局",
+        "智慧政务",
+        "电子政务",
+        "数字政府",
+        "政府行业",
+        "政府部门",
+        "政府机构",
+        "人民政府",
+        "公共部门",
+        "公共服务部门",
+        "政企",
+    ),
+    "文旅文博": (
+        "文旅文博", "文旅", "文博", "文化和旅游", "文化旅游", "旅游", "景区", "博物馆", "文物",
+        "文化馆", "美术馆", "非遗", "数字导览", "智慧景区", "酒旅",
+    ),
     "大模型": ("大模型", "模型", "生成式AI", "AI", "人工智能", "算力", "MaaS"),
     "人工智能": ("人工智能", "AI", "智能", "大模型", "模型", "算力"),
     "AI漫剧": ("AI漫剧", "漫剧", "AI短剧", "AIGC短剧", "AIGC漫剧", "AI动画", "AIGC动画", "动漫短剧", "漫画短剧"),
@@ -24,7 +48,11 @@ INDUSTRY_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
     "金融": ("金融", "银行", "证券", "保险", "资管"),
     "能源": ("能源", "电力", "电网", "光伏", "风电", "储能"),
 }
-THEME_GENERIC_SUPPRESSIONS: dict[str, tuple[str, ...]] = {"AI漫剧": ("大模型", "人工智能")}
+THEME_GENERIC_SUPPRESSIONS: dict[str, tuple[str, ...]] = {
+    "政务云": ("大模型", "人工智能", "信息化"),
+    "AI漫剧": ("大模型", "人工智能"),
+    "文旅文博": ("大模型", "人工智能", "信息化"),
+}
 GENERIC_FOCUS_TOKENS = {
     "预算", "招标", "采购", "中标", "甲方", "竞品", "生态伙伴", "生态", "伙伴", "领导讲话",
     "领导", "讲话", "项目", "商机", "区域", "行业", "客户", "公司", "同行", "战略", "规划",
@@ -65,8 +93,10 @@ REGION_TOKENS = (
     "广西", "云南", "贵州", "四川", "甘肃", "青海", "宁夏", "新疆", "西藏", "内蒙古", "辽宁", "吉林", "黑龙江",
 )
 ORG_PATTERN = re.compile(
-    r"([A-Za-z0-9\u4e00-\u9fa5·（）()]{2,40}"
-    r"(?:集团|公司|有限公司|股份有限公司|研究院|研究所|大学|医院|银行|政府|厅|局|委|办|中心|学院|学校|科技|智能|信息|控股|实验室))"
+    r"([A-Za-z0-9\u4e00-\u9fa5·（）()]{2,48}"
+    r"(?:股份有限公司|有限责任公司|集团有限公司|控股有限公司|有限公司|管理委员会|专业委员会|技术委员会|人民政府|"
+    r"研究中心|创新中心|技术中心|研究院|研究所|博物院|博物馆|图书馆|文化馆|美术馆|委员会|实验室|交易所|"
+    r"大学|学院|学校|医院|银行|证券|保险|基金|信托|协会|学会|商会|联盟|办公厅|办公室|总公司|分公司|公司|集团|政府|中心|厅|局|委|办|部))"
 )
 COMPACT_ENTITY_PATTERN = re.compile(
     r"([A-Za-z0-9\u4e00-\u9fa5·]{2,24}(?:数码|软件|信息|科技|咨询|顾问|股份|集团|服务|运营|网络|系统|通信|集成|研究院|协会|联盟))"
@@ -97,7 +127,7 @@ ENTITY_INVALID_PHRASE_TOKENS = (
     "公开线索", "优先给具体公司", "官方业务联系方式", "公开渠道联络人信息", "公开业务联系方式", "美国证券交易委",
     "证券交易委", "已向美国证券交易委", "公有云服务", "基础设施即服务", "模型即服务", "新协议", "保留了",
     "两家公司", "几家公司", "多家公司", "现在可以", "可以通过", "任何云服务", "不用再", "不再给", "宣布修订",
-    "长期合作", "绑定关系", "合作协议", "基本框架", "各有关", "并经",
+    "长期合作", "绑定关系", "合作协议", "基本框架", "各有关", "并经", "市场规模", "市场格局", "规模与格局",
 )
 LOW_VALUE_ENTITY_NAME_TOKENS = (
     "会员中心", "入局", "掘金赛道", "保姆级", "最新版", "工作流", "完全指南", "怎么个事", "所有人都", "关于加强",
@@ -118,6 +148,7 @@ ENTITY_SUFFIX_TOKENS = (
     "集团", "公司", "有限公司", "股份有限公司", "研究院", "研究所", "大学", "医院", "银行", "政府", "厅", "局", "委",
     "办", "中心", "学院", "学校", "科技", "信息", "控股", "实验室", "协会", "联盟", "咨询", "顾问", "集成", "服务",
     "运营", "系统", "通信", "半导体",
+    "证券", "保险", "基金", "信托", "交易所",
 )
 ENTITY_LEADING_NOISE_PREFIXES = (
     "新增范围锁定到", "新增范围集中到", "新增重点锁定到", "新增重点集中到", "范围锁定到", "范围集中到", "重点锁定到",
@@ -158,7 +189,7 @@ ENTITY_ROLE_CONTEXT_TOKENS: dict[str, tuple[str, ...]] = {
     "partner": ("合作", "伙伴", "联合", "生态", "咨询", "顾问", "渠道", "集成", "联盟", "牵线", "总包"),
 }
 ENTITY_ROLE_NAME_HINTS: dict[str, tuple[str, ...]] = {
-    "target": ("政府", "局", "委", "办", "中心", "医院", "大学", "银行", "学校", "集团", "城投", "交投", "水务", "地铁"),
+    "target": ("政府", "局", "委", "办", "中心", "医院", "大学", "银行", "证券", "保险", "基金", "信托", "交易所", "学校", "集团", "城投", "交投", "水务", "地铁"),
     "competitor": ("科技", "信息", "软件", "智能", "云", "数据", "通信", "平台", "系统", "股份", "有限公司"),
     "partner": ("咨询", "顾问", "集成", "渠道", "联盟", "协会", "研究院", "研究所", "运营", "服务"),
 }
@@ -195,6 +226,75 @@ THEME_ENTITY_BLOCK_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
         "competitor": ("政府", "市委", "局", "委", "办", "中心", "大学", "学院", "学校", "医院", "银行", "证券"),
         "partner": ("政府", "市委", "局", "委", "办", "中心", "大学", "学院", "学校", "医院", "银行", "证券"),
     },
+}
+
+INDUSTRY_CONFLICT_TOKENS: dict[str, tuple[str, ...]] = {
+    "文旅文博": (
+        "医院", "卫健", "医保", "临床", "银行", "证券", "保险", "资管", "金融监管", "电网", "光伏",
+    ),
+    "金融": (
+        "医疗",
+        "医院",
+        "卫健",
+        "卫生健康",
+        "卫健委",
+        "申康",
+        "医保",
+        "文旅",
+        "文化和旅游",
+        "旅游",
+        "景区",
+        "文物",
+        "导览",
+        "酒店",
+    ),
+    "医疗": (
+        "文旅",
+        "文化和旅游",
+        "旅游",
+        "景区",
+        "银行",
+        "证券",
+        "保险",
+        "资管",
+        "金融办",
+    ),
+    "教育": (
+        "医院",
+        "卫健",
+        "卫生健康",
+        "银行",
+        "证券",
+        "保险",
+        "文旅",
+        "文化和旅游",
+    ),
+}
+INDUSTRY_SCOPE_ALLOW_TOKENS: dict[str, tuple[str, ...]] = {
+    "文旅文博": (
+        "文旅", "文博", "文化和旅游", "文化旅游", "旅游", "景区", "博物馆", "文物", "文化馆", "美术馆",
+        "非遗", "导览", "游客", "酒店", "酒旅",
+    ),
+    "金融": (
+        "金融",
+        "银行",
+        "证券",
+        "保险",
+        "基金",
+        "资管",
+        "信托",
+        "期货",
+        "交易所",
+        "征信",
+        "支付",
+        "金融办",
+        "地方金融",
+        "金融监管",
+        "金管",
+        "投融资",
+    ),
+    "医疗": ("医疗", "医院", "卫健", "卫生健康", "医保", "医共体", "药品", "护理", "临床", "申康"),
+    "教育": ("教育", "学校", "高校", "职教", "教委", "课程", "教学", "学生", "校园"),
 }
 
 
@@ -243,8 +343,15 @@ def looks_like_sentence_fragment_entity(value: str) -> bool:
         return True
     if normalized.startswith(ENTITY_FRAGMENT_PREFIX_TOKENS):
         return True
-    if any(token in normalized for token in (*ENTITY_FRAGMENT_INFIX_TOKENS, *ENTITY_INVALID_PHRASE_TOKENS)):
+    invalid_phrase_tokens = tuple(token for token in ENTITY_INVALID_PHRASE_TOKENS if len(token) >= 3)
+    if any(token in normalized for token in (*ENTITY_FRAGMENT_INFIX_TOKENS, *invalid_phrase_tokens)):
         return True
+    if evaluate_organization_name(
+        normalized,
+        known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+        trusted_known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+    ).accepted:
+        return False
     return len(normalized) >= 10 and any(token in normalized for token in ("了", "可以", "通过", "不用", "仍是", "仍将", "转向"))
 
 
@@ -330,35 +437,17 @@ def trim_product_spec_from_entity_name(value: str) -> str:
 @lru_cache(maxsize=16384)
 def is_plausible_entity_name(value: str) -> bool:
     normalized = strip_entity_leading_noise(value)
-    if not normalized or len(normalized) < 3:
+    if not normalized or looks_like_placeholder_entity_name(normalized) or contains_low_value_entity_token(normalized):
         return False
-    if looks_like_sentence_fragment_entity(normalized) or looks_like_fragment_entity_name(normalized):
+    decision = evaluate_organization_name(
+        normalized,
+        known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+        trusted_known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+    )
+    if not decision.accepted:
         return False
-    if looks_like_placeholder_entity_name(normalized) or contains_low_value_entity_token(normalized):
-        return False
-    if any(token in normalized for token in (*ENTITY_BLACKLIST_TOKENS, *ENTITY_INVALID_PHRASE_TOKENS)):
-        return False
-    if any(char in normalized for char in "，,。；;") or "：" in normalized or ":" in normalized:
-        return False
-    if normalized.startswith(("和", "与", "及", "或", "如", "例如", "比如", "诸如", "优先给", "官方", "公开")):
-        return False
-    if any(connector in normalized for connector in ("与", "及", "和")) and normalized not in SPECIAL_ENTITY_ALIASES and not any(
-        token in normalized for token in ENTITY_SUFFIX_TOKENS
-    ):
-        return False
-    if normalized.endswith(("怎么办", "如何", "制作", "是指", "相关")):
-        return False
-    if re.search(r"(路径|节奏|策略|打法|能力|场景|机会|商机|窗口|趋势|布局|运营|建设|规划|升级|协同|统筹)$", normalized):
-        return False
-    industry_alias_values = {alias for aliases in INDUSTRY_SCOPE_ALIASES.values() for alias in aliases}
-    if normalized in industry_alias_values:
-        return False
-    if any(alias == normalized or alias in normalized for alias in SPECIAL_ENTITY_ALIASES):
-        return True
-    if any(token in normalized for token in ENTITY_SUFFIX_TOKENS):
-        return True
-    compact = re.sub(r"\s+", "", normalized)
-    return bool(ORG_PATTERN.fullmatch(compact) or COMPACT_ENTITY_PATTERN.fullmatch(compact))
+    repaired = decision.normalized_name
+    return not looks_like_sentence_fragment_entity(repaired) and not looks_like_fragment_entity_name(repaired)
 
 
 def extract_rank_entity_name(value: str) -> str:
@@ -367,7 +456,10 @@ def extract_rank_entity_name(value: str) -> str:
     candidates.extend(alias for alias in KNOWN_LIGHTWEIGHT_ENTITY_NAMES if alias in text)
     candidates.extend(heuristic_extract_rank_entity_candidates(text))
     for candidate in candidates:
-        normalized = trim_product_spec_from_entity_name(candidate)
+        normalized = repair_organization_candidate(
+            trim_product_spec_from_entity_name(candidate),
+            known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+        )
         if (is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)) and not looks_like_fragment_entity_name(normalized):
             return normalized
     return ""
@@ -395,6 +487,43 @@ def looks_like_placeholder_contact_row(value: str) -> bool:
 
 def entity_canonical_key(value: str) -> str:
     return heuristic_entity_canonical_key(value)
+
+
+def scope_industry_labels(scope_hints: dict[str, object] | None) -> list[str]:
+    scope = scope_hints or {}
+    raw_values = [
+        *(scope.get("industries", []) or []),
+        str(scope.get("industry_methodology_profile", "") or ""),
+        str(scope.get("anchor_text", "") or ""),
+    ]
+    labels: list[str] = []
+    for value in raw_values:
+        normalized = normalize_text(str(value))
+        if not normalized:
+            continue
+        for label, aliases in INDUSTRY_SCOPE_ALIASES.items():
+            if normalized == label or label in normalized or any(alias and alias in normalized for alias in aliases):
+                if label not in labels:
+                    labels.append(label)
+    return labels
+
+
+def text_has_industry_conflict(text: str, *, scope_hints: dict[str, object] | None) -> bool:
+    normalized = normalize_text(text)
+    if not normalized:
+        return False
+    active_labels = scope_industry_labels(scope_hints)
+    if not active_labels:
+        return False
+    for label in active_labels:
+        conflict_tokens = INDUSTRY_CONFLICT_TOKENS.get(label, ())
+        if not conflict_tokens or not any(token in normalized for token in conflict_tokens):
+            continue
+        allow_tokens = INDUSTRY_SCOPE_ALLOW_TOKENS.get(label, ())
+        if any(token in normalized for token in allow_tokens):
+            return False
+        return True
+    return False
 
 
 def is_theme_aligned_entity_name(value: str, *, role: str, theme_labels: list[str]) -> bool:

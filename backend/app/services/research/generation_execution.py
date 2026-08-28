@@ -9,6 +9,7 @@ from app.schemas.research import (
     ResearchEntityGraphOut,
     ResearchFollowupContextOut,
     ResearchFollowupDiagnosticsOut,
+    ResearchQuestionTreeOut,
     ResearchReportResponse,
     ResearchSourceDiagnosticsOut,
 )
@@ -33,12 +34,55 @@ class ResearchGenerationExecutionDependencies:
     merge_result_with_intelligence: Callable[[ResearchReportResult, dict[str, list[str]]], ResearchReportResult]
     apply_topic_specific_overrides: Callable[..., ResearchReportResult]
     apply_strategy_llm_refinement: Callable[..., ResearchReportResult]
+    render_question_tree_prompt_context: Callable[[ResearchQuestionTreeOut], str] = lambda _tree: ""
+    enforce_entity_authenticity: Callable[..., tuple[ResearchReportResult, dict[str, object]]] = (
+        lambda parsed, **_kwargs: (parsed, {})
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class ResearchGenerationExecutionResult:
     parsed: ResearchReportResult
     draft_report: ResearchReportResponse
+    generation_provider: str = ""
+    generation_model: str = ""
+    generation_status: str = ""
+    generation_fallback_used: bool = False
+    generation_notes: tuple[str, ...] = ()
+    entity_authenticity_audit: dict[str, object] | None = None
+
+
+def _is_fallback_run(result: Any | None) -> bool:
+    if result is None:
+        return False
+    metadata = getattr(result, "metadata", {}) or {}
+    return bool(
+        getattr(result, "status", "") == "fallback"
+        or getattr(result, "provider", "") == "mock"
+        or getattr(result, "model", "") == "deterministic-mock"
+        or metadata.get("fallback_used")
+    )
+
+
+def _fallback_messages(output_language: str) -> tuple[str, str]:
+    if output_language == "en":
+        return (
+            "The formal report model timed out; this is an evidence-backed degraded draft, not a deliverable report.",
+            "Restore model quota and connectivity, then regenerate the formal report before delivery.",
+        )
+    if output_language == "zh-TW":
+        return (
+            "正式研報模型逾時，當前內容為證據支撐的降級草稿，不可作為正式交付稿。",
+            "恢復模型額度與連線後重新生成正式研報，再進入交付。",
+        )
+    return (
+        "正式研报模型超时，当前内容为有证据支撑的降级草稿，不可作为正式交付稿。",
+        "恢复模型额度与连接后重新生成正式研报，再进入交付。",
+    )
+
+
+def _append_unique(values: list[str], value: str) -> list[str]:
+    return [*values, value] if value and value not in values else list(values)
 
 
 def execute_research_generation(
@@ -65,6 +109,7 @@ def execute_research_generation(
     snapshot_callback: Any | None,
     section_retrieval_dependencies: dict[str, Any],
     deps: ResearchGenerationExecutionDependencies,
+    research_question_tree: ResearchQuestionTreeOut | None = None,
 ) -> ResearchGenerationExecutionResult:
     outline_result = deps.build_partial_report_result(
         keyword=keyword,
@@ -78,6 +123,8 @@ def execute_research_generation(
         llm=llm,
         llm_timeout_seconds=int(runtime["llm_timeout_seconds"]),
     )
+    outline_run_result = getattr(llm, "last_run_result", None)
+    outline_is_remote = bool(outline_run_result is not None and not _is_fallback_run(outline_run_result))
     deps.emit_research_progress(
         progress_callback,
         "synthesizing",
@@ -128,6 +175,8 @@ def execute_research_generation(
             "research_mode": research_mode,
             "query_plan": " | ".join(effective_query_plan),
             "__timeout_seconds": str(int(runtime["llm_timeout_seconds"])),
+            "__stream_response": "true",
+            "__max_output_tokens": str(int(runtime.get("llm_max_output_tokens", 7000))),
             "source_count": str(len(sources)),
             "archive_context": archive_context,
             "source_summary": source_summary,
@@ -153,11 +202,20 @@ def execute_research_generation(
             "section_retrieval_context": section_runtime_context.section_retrieval_context,
             "retrieval_correction_context": deps.render_retrieval_correction_context(retrieval_correction_profile),
             "industry_methodology_context": deps.render_industry_methodology_context(scope_hints),
+            "research_question_tree_context": deps.render_question_tree_prompt_context(
+                research_question_tree or ResearchQuestionTreeOut()
+            ),
         },
     )
+    generation_run_result = getattr(llm, "last_run_result", None)
+    generation_provider = str(getattr(generation_run_result, "provider", "") or "")
+    generation_model = str(getattr(generation_run_result, "model", "") or "")
+    generation_status = str(getattr(generation_run_result, "status", "") or "succeeded")
+    generation_fallback_used = _is_fallback_run(generation_run_result)
     parsed = deps.merge_result_with_intelligence(
         deps.parse_research_report_response(raw, output_language=output_language),
         source_intelligence,
+        scope_hints=scope_hints,
     )
     parsed = deps.apply_topic_specific_overrides(
         parsed,
@@ -167,12 +225,43 @@ def execute_research_generation(
         scope_hints=scope_hints,
         intelligence=source_intelligence,
     )
-    parsed = deps.apply_strategy_llm_refinement(
+    generation_notes: tuple[str, ...] = ()
+    if generation_fallback_used:
+        risk, next_action = _fallback_messages(output_language)
+        update: dict[str, object] = {
+            "risks": _append_unique(parsed.risks, risk),
+            "next_actions": _append_unique(parsed.next_actions, next_action),
+        }
+        if outline_is_remote:
+            update.update(
+                report_title=outline_result.report_title,
+                executive_summary=outline_result.executive_summary,
+                consulting_angle=outline_result.consulting_angle,
+            )
+        parsed = parsed.model_copy(update=update)
+        generation_notes = (risk, next_action)
+    else:
+        parsed = deps.apply_strategy_llm_refinement(
+            parsed,
+            keyword=keyword,
+            research_focus=research_focus,
+            output_language=output_language,
+            scope_hints=scope_hints,
+            intelligence=source_intelligence,
+        )
+    parsed, entity_authenticity_audit = deps.enforce_entity_authenticity(
         parsed,
-        keyword=keyword,
-        research_focus=research_focus,
-        output_language=output_language,
+        sources=sources,
         scope_hints=scope_hints,
-        intelligence=source_intelligence,
+        output_language=output_language,
     )
-    return ResearchGenerationExecutionResult(parsed=parsed, draft_report=draft_report)
+    return ResearchGenerationExecutionResult(
+        parsed=parsed,
+        draft_report=draft_report,
+        generation_provider=generation_provider,
+        generation_model=generation_model,
+        generation_status=generation_status,
+        generation_fallback_used=generation_fallback_used,
+        generation_notes=generation_notes,
+        entity_authenticity_audit=entity_authenticity_audit,
+    )

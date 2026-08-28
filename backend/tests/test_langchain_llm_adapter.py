@@ -10,7 +10,7 @@ from app.core.config import Settings
 from app.services.langchain_llm_adapter import LangChainOpenAIAdapter
 from app.services.llm_parser import SummarizeResult
 from app.services.llm_runtime import ModelPricing
-from app.services.llm_service import LLMProviderRouter, MockLLMService
+from app.services.llm_service import FallbackLLMService, LLMProviderRouter, MockLLMService
 
 
 def _raw_message() -> SimpleNamespace:
@@ -147,6 +147,19 @@ def test_provider_router_selects_langchain_and_preserves_mock_without_key() -> N
         openai_api_key=None,
     )
     assert isinstance(LLMProviderRouter(missing_key).build(), MockLLMService)
+
+
+def test_research_generation_does_not_fall_back_to_mock() -> None:
+    configured = Settings(
+        _env_file=None,
+        llm_provider="openai",
+        llm_fallback_to_mock=True,
+        research_llm_fallback_to_mock=False,
+        openai_api_key="test-key",
+    )
+
+    assert isinstance(LLMProviderRouter(configured).build("generation"), FallbackLLMService)
+    assert not isinstance(LLMProviderRouter(configured).build("research_generation"), FallbackLLMService)
 
 
 def test_settings_reject_invalid_provider_and_negative_pricing() -> None:

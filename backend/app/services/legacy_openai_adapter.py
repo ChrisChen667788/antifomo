@@ -6,7 +6,7 @@ import ssl
 import time
 from urllib import error, request
 
-from app.services.llm_runtime import LLMRunResult, LLMUsage, ModelPricing
+from app.services.llm_runtime import LLMRunResult, LLMUsage, ModelPricing, estimated_usage
 from app.services.prompt_loader import render_prompt
 
 _QUOTA_ERROR_TOKENS = (
@@ -94,6 +94,9 @@ class OpenAILLMService:
         timeout_seconds: int,
         ssl_context: ssl.SSLContext | None,
         max_attempts: int,
+        *,
+        stream: bool = False,
+        max_output_tokens: int | None = None,
     ) -> tuple[str, int]:
         payload = {
             "model": self.model,
@@ -101,6 +104,10 @@ class OpenAILLMService:
             "temperature": self.temperature,
             "response_format": {"type": "json_object"},
         }
+        if stream:
+            payload["stream"] = True
+        if max_output_tokens is not None:
+            payload["max_tokens"] = max(1, int(max_output_tokens))
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self._active_api_key()}",
@@ -119,10 +126,18 @@ class OpenAILLMService:
 
         body = ""
         last_error: Exception | None = None
+        deadline = time.monotonic() + max(1, timeout_seconds)
         for attempt in range(1, max_attempts + 1):
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                last_error = RuntimeError(f"OpenAI request exceeded total timeout of {timeout_seconds}s")
+                break
             try:
-                with request.urlopen(req, timeout=timeout_seconds, context=ssl_context) as resp:
-                    body = resp.read().decode("utf-8", errors="ignore")
+                with request.urlopen(req, timeout=max(0.1, remaining_seconds), context=ssl_context) as resp:
+                    if stream:
+                        body = self._consume_stream_response(resp, deadline=deadline)
+                    else:
+                        body = resp.read().decode("utf-8", errors="ignore")
                 last_error = None
                 break
             except error.HTTPError as exc:
@@ -144,14 +159,97 @@ class OpenAILLMService:
                 )
                 if not should_retry:
                     raise last_error from exc
-            time.sleep(min(2.0, 0.8 * attempt))
+            retry_delay = min(2.0, 0.8 * attempt, max(0.0, deadline - time.monotonic()))
+            if retry_delay <= 0:
+                break
+            time.sleep(retry_delay)
         if last_error is not None and not body:
             raise last_error
         return body, attempt
 
+    @staticmethod
+    def _stream_delta_text(delta: object) -> str:
+        if not isinstance(delta, dict):
+            return ""
+        content = delta.get("content")
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return ""
+        parts: list[str] = []
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            text = block.get("text") or block.get("content")
+            if isinstance(text, str):
+                parts.append(text)
+        return "".join(parts)
+
+    def _consume_stream_response(self, response: object, *, deadline: float) -> str:
+        content_parts: list[str] = []
+        response_id = ""
+        resolved_model = self.model
+        finish_reason = ""
+        usage: dict[str, object] = {}
+
+        for raw_line in response:  # type: ignore[operator]
+            if time.monotonic() > deadline:
+                raise TimeoutError("OpenAI streaming response exceeded total timeout")
+            line = raw_line.decode("utf-8", errors="ignore").strip()
+            if not line or line.startswith(":"):
+                continue
+            data = line[5:].strip() if line.startswith("data:") else line
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(chunk, dict):
+                continue
+            if isinstance(chunk.get("error"), dict):
+                message = str(chunk["error"].get("message") or "OpenAI streaming response failed")
+                raise RuntimeError(message)
+            response_id = str(chunk.get("id") or response_id)
+            resolved_model = str(chunk.get("model") or resolved_model)
+            if isinstance(chunk.get("usage"), dict):
+                usage = chunk["usage"]
+            choices = chunk.get("choices")
+            if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                continue
+            choice = choices[0]
+            finish_reason = str(choice.get("finish_reason") or finish_reason)
+            text = self._stream_delta_text(choice.get("delta"))
+            if not text and isinstance(choice.get("message"), dict):
+                text = self._stream_delta_text(choice["message"])
+            if text:
+                content_parts.append(text)
+
+        return json.dumps(
+            {
+                "id": response_id,
+                "model": resolved_model,
+                "choices": [
+                    {
+                        "message": {"content": "".join(content_parts)},
+                        "finish_reason": finish_reason,
+                    }
+                ],
+                "usage": usage,
+            },
+            ensure_ascii=False,
+        )
+
     def run_prompt_result(self, prompt_name: str, variables: dict[str, str]) -> LLMRunResult:
         runtime_variables = dict(variables)
         timeout_override = runtime_variables.pop("__timeout_seconds", None)
+        stream_response = str(runtime_variables.pop("__stream_response", "")).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        max_output_tokens_override = runtime_variables.pop("__max_output_tokens", None)
         prompt = render_prompt(prompt_name, runtime_variables)
 
         ssl_context = self._build_ssl_context()
@@ -161,10 +259,23 @@ class OpenAILLMService:
                 timeout_seconds = max(1, int(timeout_override))
             except Exception:
                 timeout_seconds = self.timeout_seconds
+        max_output_tokens: int | None = None
+        if max_output_tokens_override is not None:
+            try:
+                max_output_tokens = max(1, int(max_output_tokens_override))
+            except Exception:
+                max_output_tokens = None
         max_attempts = 2 if prompt_name == "research_report.txt" else 1
 
         try:
-            body, attempts = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+            body, attempts = self._make_request(
+                prompt,
+                timeout_seconds,
+                ssl_context,
+                max_attempts,
+                stream=stream_response,
+                max_output_tokens=max_output_tokens,
+            )
         except _QuotaExhaustedError:
             if not self.fallback_api_key or self._using_fallback:
                 raise RuntimeError("API quota exhausted and no fallback key available")
@@ -173,7 +284,14 @@ class OpenAILLMService:
                 self.model,
             )
             self._using_fallback = True
-            body, fallback_attempts = self._make_request(prompt, timeout_seconds, ssl_context, max_attempts)
+            body, fallback_attempts = self._make_request(
+                prompt,
+                timeout_seconds,
+                ssl_context,
+                max_attempts,
+                stream=stream_response,
+                max_output_tokens=max_output_tokens,
+            )
             attempts = max_attempts + fallback_attempts
 
         try:
@@ -192,12 +310,16 @@ class OpenAILLMService:
             input_details = {}
         input_tokens = int(usage_payload.get("prompt_tokens") or 0)
         output_tokens = int(usage_payload.get("completion_tokens") or 0)
-        usage = LLMUsage(
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            total_tokens=int(usage_payload.get("total_tokens") or input_tokens + output_tokens),
-            cached_input_tokens=int(input_details.get("cached_tokens") or 0),
-            source="provider" if usage_payload else "unavailable",
+        usage = (
+            LLMUsage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=int(usage_payload.get("total_tokens") or input_tokens + output_tokens),
+                cached_input_tokens=int(input_details.get("cached_tokens") or 0),
+                source="provider",
+            )
+            if usage_payload
+            else estimated_usage(prompt, content)
         )
         choices = response_json.get("choices")
         first_choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
@@ -210,7 +332,11 @@ class OpenAILLMService:
             attempts=attempts,
             response_id=str(response_json.get("id") or ""),
             finish_reason=str(first_choice.get("finish_reason") or ""),
-            metadata={"fallback_api_key_used": self._using_fallback},
+            metadata={
+                "fallback_api_key_used": self._using_fallback,
+                "streamed": stream_response,
+                "max_output_tokens": max_output_tokens or 0,
+            },
         )
 
     def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:

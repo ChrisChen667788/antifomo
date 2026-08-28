@@ -1,8 +1,8 @@
 # Anti-FOMO 1.8.0 专业报告编译与语义质量升级
 
-Updated: 2026-06-21
+Updated: 2026-07-13
 
-Status: completed locally through P2.7; release candidate `1.8.0+20260622`
+Status: engineering implementation completed locally through `1.9.1`; release promotion remains blocked by pending real 100+30 expert calibration, three-industry blind evaluation, and customer acceptance artifacts.
 
 ## 版本决策
 
@@ -514,3 +514,164 @@ Acceptance:
 - P0 质量规则优先使用确定性检查，模型挑战者作为后续可选增强。
 - 当前未提交的主题、微信采集、评测治理和报告质量改动必须保留。
 - 未经明确要求，不提交、不打 tag、不推送 GitHub 或 ModelScope。
+
+## 2026-07-13 外部调研结论与后续质量路线
+
+### 结论
+
+当前主要矛盾不是“模型参数还不够强”，而是研究链路允许低相关证据进入、允许证据不足时继续长文生成，且总分可以掩盖主题错位等致命错误。继续叠加模板、反思轮次或统一切换到更强模型，只会让错误内容更完整、更像专业交付物。
+
+后续迭代应先完成以下闭环：
+
+1. 先把用户问题拆成可验证子问题，并把检索预算分配到每个子问题。
+2. 每条来源必须同时通过主题锚点、语义相关性和可支持主张检查，不能仅凭“AI”“模型”等通用词判为严格匹配。
+3. 先形成原子主张和证据账本，再写章节；引用与主张同时生成，禁止成文后补引用。
+4. 证据不足、检索降级或主题冲突时停止生成正式研报和解决方案，只输出证据缺口说明。
+5. 解决方案设计从“章节齐全”升级为“质量属性场景、备选方案、权衡、决策和验证证据齐全”。
+6. 自动评分只能辅助，必须用真实失败集和专家盲评校准；任一硬门禁失败时，总分不得把结果抬回可交付状态。
+
+### 本地最新失败样本
+
+2026-07-13 抽查 `backend/anti_fomo_demo.db` 中最新成功任务 `ba0ea2a443eb4ba4af8b63d99a962210`：
+
+- 用户问题是“2026年下半年上海医疗行业AI潜在需求行业调研及商机情报分析”，生成标题却变成“长三角｜生成式AI｜编程工具竞争格局”。
+- 最终仅保留 2 条与 Codex/OpenAI 相关的二手来源，官方来源为 0，但诊断仍记录 `strict_match_ratio=1.0`。
+- `accepted/ambiguous/rejected` 三类来源计数均为 0，说明来源分类结果没有真正约束最终保留集合。
+- 公网扩展触发后新增来源为 0，reranker 处于 fallback/degraded，流水线仍继续生成完整研报与解决方案包。
+- 研报就绪度为 `needs_evidence / 38`、质量分仍为 `54`；下游架构包继续围绕编程工具生成，架构就绪度 `64 / blocked`。
+- 历史索引还召回了跨行业旧报告，行业方法路由将医疗问题误判为 `compute_llm`，形成“检索污染 -> 研报跑题 -> 方案跑题”的级联错误。
+
+该样本将作为后续版本的首个硬负例。修复验收不是让它获得更高分，而是让错误来源被拒绝，并在证据不足时可靠停止。
+
+### 可借鉴的权威方法
+
+| 方法 | 可借鉴点 | 在 Anti-FOMO 中的落地 |
+| --- | --- | --- |
+| [STORM](https://aclanthology.org/2024.naacl-long.347/) | 多视角提问、检索前写作计划、可信来源组织 | 保留现有多视角规划，但补子问题覆盖门禁 |
+| [IRCoT](https://aclanthology.org/2023.acl-long.557/) 与 [Self-RAG](https://proceedings.iclr.cc/paper_files/paper/2024/file/25f7be9694d7b32d5cc670927b8091e1-Paper-Conference.pdf) | 推理与检索交替，按需要检索和自我批判，而非固定一次检索 | 对证据缺口、冲突和新实体触发定向补检 |
+| [CRAG](https://arxiv.org/abs/2401.15884) | 先判断检索质量，再决定接受、纠错或扩大搜索 | 将现有 retrieval correction 改为真正的 fail-closed 状态机 |
+| [Query Decomposition](https://aclanthology.org/2025.acl-srw.32/) | 分解复杂问题、逐题检索、合并后重排 | 建立 question tree、每题来源配额和覆盖率 |
+| [ALCE](https://aclanthology.org/2023.emnlp-main.398/) | 分开评价流畅度、正确性和引用质量 | 不再用单一专业分代替引用完整性和正确性 |
+| [RAGChecker](https://proceedings.neurips.cc/paper_files/paper/2024/hash/27245589131d17368cccdfa990cbf16e-Abstract-Datasets_and_Benchmarks_Track.html) 与 [RAGAS](https://aclanthology.org/2024.eacl-demo.16/) | 分离检索器与生成器问题，提供细粒度诊断 | 分别记录检索相关性、覆盖、忠实度和生成质量 |
+| [CiteEval](https://aclanthology.org/2025.acl-long.1574/) | 引用判断要结合问题、上下文和生成文本，不能只做局部 NLI | 在主张级评审中加入查询意图和上下文 |
+| [DEER](https://arxiv.org/abs/2512.17776) 与 [DeepResearch Bench](https://arxiv.org/abs/2506.11763) | 全文主张检查、多维 rubric、专家标准和有效引用评估 | 建立文档类型/行业 rubric，并用专家样本校准自动裁判 |
+| [SEI QAW](https://www.sei.cmu.edu/library/quality-attribute-workshops-qaws-third-edition/) 与 [ATAM](https://www.sei.cmu.edu/library/the-architecture-tradeoff-analysis-method/) | 用质量属性场景驱动架构，并显式识别风险、敏感点和权衡点 | 重构方案生成器的输入、备选方案比较和评审输出 |
+| [C4 Model](https://c4model.com/diagrams) | 用上下文、容器、组件、动态和部署视图服务不同受众 | 生成可追溯的多层架构视图，不再只输出一张泛化框图 |
+| [AWS Well-Architected](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)、[Azure Well-Architected](https://learn.microsoft.com/en-us/azure/well-architected/pillars) 与 [Google Cloud Well-Architected](https://docs.cloud.google.com/architecture/framework) | 按可靠性、安全、成本、性能和运维等维度审视取舍 | 形成云无关的质量属性检查矩阵，再映射具体云产品 |
+| [NIST AI RMF GenAI Profile](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence) | 将可信、评估、治理和生命周期风险纳入生成式 AI 方案 | 增加数据、模型、内容、供应链、人工复核和监控控制项 |
+
+### 1.8.2：真实研究数据绑定与主题硬门禁
+
+Implementation status (2026-07-13): complete in the local default workflow. Scope contracts, source admissions, minimum evidence, archive/index isolation, domain methodology routing, evidence-gap output, score caps, API/UI diagnostics, and the known medical hard-negative regression are implemented. Statistical promotion evidence based on independently reviewed cases remains pending and is not inferred from deterministic fixtures.
+
+Goal: 先保证检索证据确实回答用户问题，再允许研报和方案生成。
+
+Scope:
+
+- 新增独立的 `research_scope_contract`，固化行业、地区、时间、对象、任务类型、排除项和允许的比较范围。
+- 行业/方法路由改为“结构化分类 + 主题锚点 + 置信度”，医疗问题不得因通用 AI 词被路由到 `compute_llm`。
+- 每条候选来源必须绑定至少一个子问题，并记录 `accepted / ambiguous / rejected`、原因、相关性、来源类型和独立域。
+- 使用 cross-encoder/reranker 或等价语义判断做第二阶段筛选；深度模式下 reranker 降级必须显式阻断，不得静默回退后继续正式交付。
+- 为向量/历史报告索引增加 scope namespace 和交叉行业准入规则，默认禁止无关历史报告污染当前任务。
+- 定义可配置的最低证据包。行业研报默认至少 8 条有效来源、5 个独立域、3 条一手/官方来源；不足时输出 `evidence_gap_brief`，不生成正式研报或解决方案。
+- 解决方案生成增加前置依赖：研究状态不是 `evidence_ready` 时，只返回阻断原因和补证动作。
+
+Acceptance:
+
+- 最新医疗硬负例中的 2 条 Codex/OpenAI 来源均被拒绝，任务进入 `blocked_topic_mismatch` 或 `evidence_gap`，不再产生客户版研报和方案包。
+- 基于人工标注的 100 条候选来源，主题准入 precision 不低于 95%，严重跨行业泄漏为 0，整体泄漏率不高于 1%。
+- 任一保留来源都可追溯到分类结果和至少一个子问题；三类来源计数之和必须等于候选来源总数。
+- 公网扩展新增 0 条、reranker 不可用、官方来源为 0 或独立域不足时，状态与原因在 API、UI、diagnostics 和 release readiness 中一致可见。
+
+### 1.8.3：主张级迭代研究与引用完整性
+
+Implementation status (2026-07-13): complete in the local default workflow. The six-axis question tree, bounded corrective retrieval, atomic claim ledger, citation gate, fail-closed solution delivery, Markdown/API/UI traceability, and deterministic release-readiness regression are implemented. Formal promotion still depends on the real independent-review artifact.
+
+Goal: 把“先写文章再找证据”改为“问题树 -> 证据 -> 原子主张 -> 章节”的可审计流程。
+
+Scope:
+
+- 在现有多视角规划上生成 question tree，定义每个一级问题的成功条件、来源偏好和检索预算。
+- 逐子问题执行检索、覆盖评估和纠错；对空白、冲突、新实体和低置信主张定向补检，支持分支与回退。
+- 升级现有 claim-evidence ledger：主张起草时即绑定支持证据、反证、来源独立性、时效和适用范围。
+- 将数字、机构、时间、因果、比较、预测和建议拆成原子主张；一个引用不得用来装饰多个未被支持的断言。
+- 增加反证搜索和冲突仲裁。无法消解的冲突必须进入正文限制项，不能由模型静默选边。
+- 章节生成只能读取已通过门禁的主张账本，禁止直接读取未过滤网页块或跨 scope 历史摘要。
+
+Acceptance:
+
+- 关键主张证据覆盖率 100%，全部高置信主张覆盖率不低于 95%，未支持的高置信主张为 0。
+- 引用支持正确率不低于 95%，引用完整率不低于 90%；每个一级子问题覆盖率不低于 80%，不得存在零证据一级问题。
+- 来源重复域和二手转载不能虚增独立证据数；关键结论至少有 2 个独立来源，或明确标注为单一来源结论。
+- 报告可从任一关键句追溯到主张、证据、检索问题、来源决策和纠错记录。
+
+### 1.8.4：多维评测、专家校准与硬失败上限
+
+Goal: 让评分反映真实可交付性，而不是版式和结构完整度。
+
+Implementation status (2026-07-13): engineering complete. The locked 100-case set now exports 100 primary and 30 stratified second-blind assignments with reviewer separation, arbitration, five expert dimensions, agreement, automatic-judge bias, undeliverable recall, hard-cap validation, attestations, and digests. The shared 20/40/59 policy is consumed by report quality, automatic evaluation, readiness, and solution delivery. The exported artifact remains honestly `pending` at 0/100 primary and 0/30 secondary reviews; no expert conclusion has been synthesized.
+
+Scope:
+
+- 将评测拆为 scope alignment、retrieval relevance、sub-question coverage、citation correctness、citation completeness、faithfulness、objectivity、analysis depth、actionability 和 presentation。
+- 对行业、竞品、商机、可研、方案和投标文档配置不同 rubric；通用总分只用于汇总，不替代单项门禁。
+- 建立真实失败集：医疗跑到编程工具、金融跑到科技委、跨行业客户泄漏、来源计数不一致、零扩展仍生成、引用不支持主张等。
+- 完成 100 条独立复核 artifact，其中至少 30 条由两名领域评审者盲评并仲裁；记录评审一致性和自动裁判偏差。
+- 自动裁判使用少量人工标签做校准并持续抽检，不将单一 LLM judge 作为发布依据。
+- 引入硬失败分数上限：主题错位最高 20，最低证据包失败最高 40，存在无证据关键主张最高 59；硬门禁失败时交付状态始终为 blocked。
+
+Acceptance:
+
+- 自动门禁对人工“不可交付”样本的召回率不低于 95%，不得出现主题错位但总分可交付的样本。
+- 专家盲评在准确性、完整性、洞察、可执行性和专业表达五维平均不低于 4/5，且无维度低于 3.5/5。
+- 新版本与当前基线在同一真实样本集上盲测；只有硬失败率下降且关键指标不退化，才能进入默认链路。
+
+### 1.9.0：架构决策工程化
+
+Goal: 让解决方案从“合理措辞和通用组件”升级为可评审、可取舍、可验证的工程决策。
+
+Implementation status (2026-07-13): engineering complete in the solution-delivery pack, Markdown, API contract, UI, and release regression. Evidence-ready solutions produce six measurable QAW scenarios, all ATAM finding classes, three-option baseline/pilot/target ADRs, C4 context/container/component/dynamic/deployment views, cloud-neutral and NIST AI checks, 100% requirement-to-test traceability, and zero orphan components. Evidence-light inputs degrade to workshop-only output; research hard failures remain blocked.
+
+Scope:
+
+- 先用 QAW 结构生成并确认质量属性场景：业务来源、刺激、环境、受影响对象、期望响应、可测响应指标和优先级。
+- 每个关键问题至少比较现状基线、低风险试点和目标方案三类可行选项，禁止在未比较备选方案时直接给唯一推荐。
+- 用 ATAM 风格 utility tree 组织质量属性，输出风险、非风险、敏感点、权衡点和风险主题。
+- 升级现有 ADR：补充决策驱动因素、备选方案、证据、假设、后果、回滚条件和待验证项。
+- 生成 C4 上下文、容器、必要组件、动态和部署视图；图中每个关键组件必须关联业务场景、数据、接口、责任边界和质量属性。
+- 用云无关的 Well-Architected 矩阵检查可靠性、安全、性能、成本和运维；AI 方案额外映射 NIST AI RMF 的数据、模型、内容、供应链、人工监督和持续监控风险。
+- 禁止孤立输出“知识库、RAG、智能体、接口编排”等通用组件；每个组件必须回答具体需求并有采用理由。
+
+Acceptance:
+
+- 关键非功能需求 100% 有可量化场景，关键架构决策 100% 有备选方案、权衡、证据和验证动作。
+- 业务需求到能力、组件、数据、接口、部署、风险和验收测试的追溯链完整率为 100%，孤立组件为 0。
+- 高风险决策均有 owner、截止时间、通过阈值和回退方案；未验证假设不能伪装成已确认事实。
+- 研究门禁失败时不生成完整架构蓝图；研究通过但质量属性信息不足时，只生成 workshop 问题单和验证计划。
+
+### 1.9.1：可执行验证与客户交付闭环
+
+Goal: 用可运行证据证明方案，而不是以文档章节数量证明方案成熟。
+
+Implementation status (2026-07-13): machine engineering complete. A digest-verified minimum vertical simulator executes eight proof checks for each medical, financial-services, and tourism reference scenario; the delivery pack separates customer-confirmed evidence from internal assumptions/limitations and maps quality scenarios and high-risk ADRs to machine-readable checks. Release readiness records failure types, correction rounds, human status, artifacts, and commands. The reference suite is `3/3 machine passed`, while real three-industry blind review and customer acceptance remain `pending`, so promotion stays blocked.
+
+Scope:
+
+- 从架构决策自动生成 proof-of-architecture 清单：API/数据契约、代表性数据流、容量与成本模型、威胁建模、权限边界、故障与恢复、可观测性和回滚测试。
+- 为高风险路径提供最小纵向样机或模拟器，并把结果回写 ADR、风险和方案置信度。
+- 将验证动作转成机器可读检查项，包含输入、执行方式、owner、截止时间、阈值、证据 artifact 和状态。
+- 导出客户版正文与内部证据附录。客户版只呈现已确认结论；假设、限制、争议和待验证项不得被隐藏。
+- 将质量失败类型、纠错轮次、人工结论和发布状态接入 release-readiness 聚合面板。
+
+Acceptance:
+
+- 所有高风险架构决策至少有一项实际测试、原型、数据核验或客户确认 artifact，不能只以模型自评关闭。
+- 关键质量属性场景都能映射到验收测试，测试结果可回写方案结论和风险状态。
+- 真实医疗、金融、文旅三类样本完成从研究问题到交付 artifact 的端到端盲评，Office roundtrip、视觉基线和内容门禁同时通过。
+
+### 发布策略
+
+- `1.8.2` 和 `1.8.3` 先以 shadow mode 对同一任务同时运行新旧链路，比较来源准入、阻断率、引用和人工结论。
+- 通过真实回归后按 5% -> 25% -> 100% 放量；任一主题泄漏或无证据正式交付立即回滚。
+- “一键更新到最强模型”只作为经过模块基准验证后的路由更新，不允许绕过证据与质量门禁，也不默认给所有模块统一换模。
+- 每次升级保留 prompt、模型、检索器、reranker、规则、语料快照和评测集版本，保证结果可复现。

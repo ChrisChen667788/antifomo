@@ -16,7 +16,7 @@ export default async function ResearchComparePage({
   return (
     <PageShell
       title="对比矩阵"
-      description="横向对比甲方、中标方、竞品与伙伴，优先查看预算、项目、战略与竞争压力。"
+      description="横向比较客户、项目和竞争线索。"
     >
       <ResearchCompareMatrix
         initialQuery={query}

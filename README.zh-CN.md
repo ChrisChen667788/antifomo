@@ -18,6 +18,7 @@ Anti-FOMO 是一个开源 AI 研究工作台，适合解决方案架构师、行
 先看这里：
 - [快速开始](#快速开始)
 - [公开路线图](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [2026 竞品格局与 2.0.6 后路线图](./docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md)
 - [适合新贡献者的入口](https://github.com/ChrisChen667788/antifomo/issues/2)
 - [微信采集可靠性 help wanted](https://github.com/ChrisChen667788/antifomo/issues/3)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
@@ -78,6 +79,10 @@ Anti-FOMO 关注的是整条工作链路：
 | `1.7.1` | 评测治理：独立复核声明与内容摘要、真实评测预算规划、默认每批最多 5 条，以及缺失定价或超预算时的运行停止保护。 | Evaluation governance with independent-review attestations, content digests, live-run budget planning, five-case batch limits, and runtime spend stops. |
 | `1.7.2` | 专家意见范围修订：对 78 条评测用例补齐省级地区和明确研究主体，保持行为标签、答案锚点和来源域名不变。 | Expert-feedback scope refinement across 78 cases while preserving behavior labels, answer anchors, and source domains. |
 | `1.8.0` | 专业报告质量线：主张证据账本、语义挑战者、四类文档编译器、量化决策模型、真实业务黄金样本、原生 DOCX/PPTX/PDF 交付、Office 往返诊断和视觉基线。 | Professional-report quality line with claim/evidence ledgers, semantic challengers, four document compilers, quantitative models, real-business golden samples, native DOCX/PPTX/PDF delivery, Office round-trip diagnostics, and visual baselines. |
+| `1.8.1` - `1.9.1` | 发布加固、证据治理、专家校准工作流、QAW/ATAM/ADR/C4 与可执行验收证据；真实专家、盲测和客户验收仍保持阻断。 | Release hardening, evidence governance, expert-calibration workflows, QAW/ATAM/ADR/C4, and executable acceptance evidence, with real expert/blind/customer gates still blocked. |
+| `1.9.2` - `2.0.0` | Decision Studio 开发线：真实语义 Notebook、来源修订与段落引用、中国正式文档合同、Claim Graph、Knowledge Space/ACL、签名 Skill、受控 MCP 和证据绑定多形态产物。当前为本地工程实现，商业发布未放行。 | Decision Studio development line with real semantic Notebooks, source revisions, Chinese document contracts, Claim Graph, Knowledge Space/ACL, signed Skills, governed MCP, and evidence-bound multi-form artifacts; commercial release remains blocked. |
+| `2.0.1` - `2.0.6` | 发布程序开发线：真实数据激活、服务端计算的检索/文档/研报/安全/视觉/性能/恢复套件、不可变证据运行、哈希链审计和六版本发布控制台；人工与客户验收仍阻断。 | Release-program line with real-data activation, server-calculated quality/security/reliability suites, immutable evidence runs, hash-chain audit, and a six-version release console; human/customer acceptance remains blocked. |
+| `2.0.7` - `2.2.0` | Decision Program 工程线：不可变 RC 证据、研究控制、混合检索/解析基准、证据感知编辑、企业身份/连接器、受控 Agent、行业包与客户 Pilot；外部验收仍阻断。 | Decision Program engineering line with immutable RC evidence, research control, hybrid retrieval/parser benchmarks, evidence-aware editing, enterprise identity/connectors, governed agents, vertical packs, and customer Pilots; external acceptance remains blocked. |
 
 ## 产品截图
 
@@ -190,7 +195,8 @@ Anti-FOMO 关注的是整条工作链路：
 ### 1. 一次性安装
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+git clone https://github.com/ChrisChen667788/antifomo.git
+cd antifomo
 npm run demo:setup
 ```
 
@@ -199,7 +205,7 @@ npm run demo:setup
 ### 2. 一条命令启动
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+cd antifomo
 npm run demo:start
 ```
 
@@ -230,7 +236,7 @@ npm run collector:start
 ### 4. 回归基线
 
 ```bash
-cd /Users/chenhaorui/PyCharmMiscProject/.idea/anti-fomo-demo
+cd antifomo
 npm run check
 npm run demo:smoke
 ```
@@ -270,13 +276,23 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前版本：`1.8.0+20260622`
+- 当前开发版本：`2.9.5+20260814`（检索保证与证据运营线）
+- `2.10.0-development` 竞品能力证据台账已在本地实现；它分开记录厂商声明、本地工程状态和拟议待办，不改变发布语义版本、生产默认策略或 release-readiness
+- `2.10.1-development` 可复核决策上下文包可将 4 个 `build` / `integrate` / `defer` 决策初始化为仅限产品策略的可复核上下文，执行、发布与生产授权仍全部为否
+- 当前本地工程切片：`2.10.2-development` 交付物验收与修订差异；它把上述上下文绑定为仅 `HOLD` 的交付物复核草案，Office、视觉和可归属人工复核证据缺失时全部保持阻断，不能改变发布门禁
+- 发布晋级仍为 `blocked`：真实跨行业澄清任务与反馈、human qrels、100+30 专家校准、三行业盲测、客户验收、生产 Skill 治理以及最终 Office/视觉/安全证据尚未完成
+- `2.0.1-2.0.6` 完整验证合同见 `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`
+- 经竞品调研优化的路线与已完成工程合同见 `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md`、`docs/decision-program-v2.0.7-v2.2.0.md`；真实外部验收仍保持阻断
+- `2.2.1-2.9.5` 的证据恢复、渐进披露、实体与来源真值、账户推进、校准、检索保证和证据运营合同见 `docs/research-clarification-and-progressive-disclosure-roadmap-2026-07-26.md`
+- `2.9.5` 之后的竞品研究、取舍与验收边界见 `docs/competitive-capability-observatory-v2.10.0.md`
+- 已批准上下文的范围、修订/审计契约和硬性非授权门禁见 `docs/reviewable-decision-context-packets-v2.10.1.md`
+- 仅 `HOLD` 的交付物验收、字段级修订差异和 Office/视觉证据边界见 `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
 - LangGraph 已作为默认研究工作流，deterministic 引擎保留为即时回滚路径
 - 100 条研究评测集已锁定为 `1.2.0`，离线 deterministic/LangGraph parity 为 `100/100`
 - 真实 provider 评测仍要求完成修订后的独立复核，并获得明确预算批准
 - Web 构建可通过
 - 后端测试可通过 `npm run check`
-- 发布截图通过 `npm run repo:screenshots` 覆盖所有主功能界面
+- 现有截图基线覆盖 1.9.1 主功能界面；`/studio` 日间/夜间截图与人工视觉确认仍是 2.0 阻断项
 - 历代大版本核心迭代与当前完整功能地图维护在 `docs/release-history-and-feature-map.md`
 - 产品白皮书和商业化亮点文案维护在 `docs/product-whitepaper.md`、`docs/open-source-launch-kit.md` 和 `docs/open-source-growth-copy.md`
 - 仓库已做开源脱敏

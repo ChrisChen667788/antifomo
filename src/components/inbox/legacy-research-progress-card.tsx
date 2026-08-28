@@ -127,7 +127,7 @@ export function LegacyResearchProgressCard({
               <span className="af-progress-pill">
                 {modeLabel}
               </span>
-              <span className="af-progress-center-label">研究进度</span>
+              <span className="af-progress-center-label">进度</span>
             </div>
           </div>
 
@@ -163,12 +163,12 @@ export function LegacyResearchProgressCard({
                     <div className="af-progress-stage-topline">
                       <span className="af-progress-stage-label">{stage.label}</span>
                       <span className="af-progress-stage-badge">
-                        {stage.status === "done" ? "已完成" : stage.status === "active" ? "进行中" : "待开始"}
+                        {stage.status === "done" ? "完成" : stage.status === "active" ? "进行中" : "等待"}
                       </span>
                     </div>
                     <p className="af-progress-stage-summary">{stage.summary}</p>
                     {stage.value > 0 ? (
-                      <p className="af-progress-stage-value">当前样本 {stage.value}</p>
+                      <p className="af-progress-stage-value">已处理 {stage.value}</p>
                     ) : null}
                   </div>
                 ))}
@@ -180,7 +180,7 @@ export function LegacyResearchProgressCard({
 
         <div className="af-progress-mode">
           <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-400">{modeLabel}</p>
-          <div className="af-progress-phase-pill">当前阶段 · {activePipelineLabel}</div>
+          <div className="af-progress-phase-pill">阶段 · {activePipelineLabel}</div>
           <div className="mt-2 space-y-1.5">
             {hintLines.map((line) => (
               <p key={line} className="leading-6 text-slate-600">

@@ -52,7 +52,7 @@ export const evidenceModeMeta = (value: string) => {
     return {
       label: "强证据",
       className: "border-emerald-200/90 bg-emerald-50 text-emerald-800",
-      note: "当前结果有较稳定的主题命中、官方源和多域名交叉支撑。",
+      note: "当前结果有较稳定的主题匹配、官方来源和多来源交叉支撑。",
     };
   }
   if (value === "provisional") {
@@ -209,9 +209,9 @@ const followupResolutionMeta = (value?: string) => {
     return { label: "已按追问纠偏", className: "border-emerald-200/90 bg-emerald-50 text-emerald-800" };
   }
   if (value === "reused") {
-    return { label: "沿用基线", className: "border-sky-200/90 bg-sky-50 text-sky-800" };
+    return { label: "沿用初始版本", className: "border-sky-200/90 bg-sky-50 text-sky-800" };
   }
-  return { label: "基线生成", className: "border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]" };
+  return { label: "初始生成", className: "border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]" };
 };
 
 const reportSurfaceCopy = {

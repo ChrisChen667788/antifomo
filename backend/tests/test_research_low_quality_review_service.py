@@ -69,6 +69,51 @@ def _build_low_signal_report() -> ResearchReportResponse:
     )
 
 
+def _build_guarded_backlog_report() -> ResearchReportResponse:
+    return ResearchReportResponse(
+        keyword="长三角 数据中心",
+        research_focus="预算和联系人",
+        output_language="zh-CN",
+        research_mode="deep",
+        report_title="长三角｜数据中心：待核验清单与补证路径",
+        executive_summary="当前公开来源不足以支持对长三角数据中心形成正式推进判断，仅保留为待核验清单；先补官网、公告、采购和联系人线索。",
+        consulting_angle="作为补证路径保留。",
+        sections=[],
+        target_accounts=["曾经维持近十年价格稳定甚至周期性降价的云服务"],
+        target_departments=[],
+        public_contact_channels=[],
+        account_team_signals=[],
+        budget_signals=[],
+        project_distribution=[],
+        strategic_directions=[],
+        tender_timeline=[],
+        leadership_focus=[],
+        ecosystem_partners=[],
+        competitor_profiles=[],
+        benchmark_cases=[],
+        flagship_products=[],
+        key_people=[],
+        five_year_outlook=[],
+        client_peer_moves=[],
+        winner_peer_moves=[],
+        competition_analysis=[],
+        source_count=0,
+        evidence_density="low",
+        source_quality="low",
+        query_plan=[],
+        sources=[],
+        source_diagnostics=ResearchSourceDiagnosticsOut(
+            retrieval_quality="low",
+            evidence_mode="fallback",
+            official_source_ratio=0.0,
+        ),
+        commercial_summary=ResearchCommercialSummaryOut(
+            next_action="先补官网、公告、采购和联系人线索，再决定是否进入正式推进。"
+        ),
+        generated_at=datetime.now(timezone.utc),
+    )
+
+
 def _create_research_entry(db: Session) -> KnowledgeEntry:
     settings = get_settings()
     db.add(User(id=settings.single_user_id, name="demo"))
@@ -89,6 +134,100 @@ def _create_research_entry(db: Session) -> KnowledgeEntry:
     db.commit()
     db.refresh(entry)
     return entry
+
+
+def test_guarded_backlog_noisy_candidates_do_not_block_release_gate() -> None:
+    db = _new_session()
+    try:
+        settings = get_settings()
+        db.add(User(id=settings.single_user_id, name="demo"))
+        report = _build_guarded_backlog_report()
+        entry = KnowledgeEntry(
+            user_id=settings.single_user_id,
+            title=report.report_title,
+            content="# 待核验清单\n",
+            source_domain="research.report",
+            metadata_payload={
+                "kind": "research_report",
+                "report": report.model_dump(mode="json"),
+                "action_cards": [],
+                "commercial_intelligence": {},
+            },
+        )
+        db.add(entry)
+        db.commit()
+
+        queue = list_low_quality_research_review_queue(db, top=10)
+
+        assert queue["flagged_reports"] == 0
+        assert queue["items"] == []
+    finally:
+        db.close()
+
+
+def test_low_quality_queue_recovers_markdown_only_research_entry() -> None:
+    db = _new_session()
+    try:
+        settings = get_settings()
+        db.add(User(id=settings.single_user_id, name="demo"))
+        entry = KnowledgeEntry(
+            user_id=settings.single_user_id,
+            title="政务云 AI 中标预算研究报告",
+            content=(
+                "# 政务云 AI 中标预算研究报告\n"
+                "- 关键词: 政务云 AI 中标 预算\n"
+                "- 来源数: 1\n"
+                "- 补充关注点: 关注政策预算、项目二期和销售切入\n\n"
+                "## 执行摘要\n"
+                "测试执行摘要\n\n"
+                "## 咨询价值\n"
+                "测试咨询价值\n\n"
+                "## 检索路径\n"
+                "- 政务云 AI 中标 预算\n"
+            ),
+            source_domain="research.report",
+            metadata_payload=None,
+        )
+        db.add(entry)
+        db.commit()
+
+        queue = list_low_quality_research_review_queue(db, top=10)
+        item = next(item for item in queue["items"] if item["entry_id"] == str(entry.id))
+
+        assert queue["invalid_payloads"] == 0
+        assert "invalid_report_payload" not in item["issue_codes"]
+        assert item["keyword"] == "政务云 AI 中标 预算"
+        assert item["source_count"] == 1
+    finally:
+        db.close()
+
+
+def test_low_quality_queue_tolerates_legacy_report_without_generated_at() -> None:
+    db = _new_session()
+    try:
+        entry = _create_research_entry(db)
+        report_payload = dict(entry.metadata_payload["report"])
+        report_payload.pop("generated_at", None)
+        entry.metadata_payload = {
+            "kind": "research_report",
+            "report": report_payload,
+            "action_cards": [],
+            "commercial_intelligence": {},
+        }
+        db.commit()
+
+        queue = list_low_quality_research_review_queue(db, top=10)
+        item = next(item for item in queue["items"] if item["entry_id"] == str(entry.id))
+
+        assert queue["invalid_payloads"] == 0
+        assert "invalid_report_schema" not in item["issue_codes"]
+        assert item["risk_score"] > 0
+
+        rewritten = rewrite_low_quality_research_entry(db, str(entry.id))
+        assert rewritten["review_status"] == "rewritten"
+        assert rewritten["diff"]["after_risk_score"] == 0
+    finally:
+        db.close()
 
 
 def test_low_quality_review_queue_keeps_rewritten_item_until_accepted() -> None:

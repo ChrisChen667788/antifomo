@@ -371,7 +371,7 @@ def _audit_report(entry: Any, report: Any) -> dict[str, Any]:
         elif readiness_status == "degraded":
             _add_issue(issues, "degraded_readiness", "medium", 8, "报告 readiness 为 degraded。")
 
-    suspicious_rows = _collect_suspicious_rows(report)
+    suspicious_rows = [] if is_guarded_backlog else _collect_suspicious_rows(report)
     if suspicious_rows:
         _add_issue(
             issues,
@@ -516,10 +516,24 @@ def synthesize_report_from_entry(entry: KnowledgeEntry) -> ResearchReportRespons
     )
 
 
+def _coerce_legacy_report_payload(entry: KnowledgeEntry, raw_report: dict[str, Any]) -> dict[str, Any]:
+    if raw_report.get("generated_at") is not None:
+        return raw_report
+    generated_at = (
+        entry.updated_at
+        if getattr(entry, "updated_at", None)
+        else getattr(entry, "created_at", None) or datetime.now(timezone.utc)
+    )
+    return {**raw_report, "generated_at": generated_at}
+
+
 def _audit_entry(entry: KnowledgeEntry) -> dict[str, Any]:
     payload = entry.metadata_payload if isinstance(entry.metadata_payload, dict) else {}
     raw_report = payload.get("report") if isinstance(payload.get("report"), dict) else None
     if not isinstance(raw_report, dict):
+        recovered_report = synthesize_report_from_entry(entry)
+        if recovered_report is not None:
+            return _attach_review_state(_audit_report(entry, recovered_report), payload)
         sample = {
             "entry_id": str(entry.id),
             "updated_at": entry.updated_at.isoformat() if getattr(entry, "updated_at", None) else None,
@@ -546,6 +560,7 @@ def _audit_entry(entry: KnowledgeEntry) -> dict[str, Any]:
         }
         return _attach_review_state(sample, payload)
     try:
+        raw_report = _coerce_legacy_report_payload(entry, raw_report)
         report = ResearchReportResponse.model_validate(raw_report)
     except Exception:
         sample = {
@@ -663,6 +678,7 @@ def _load_previous_report(entry: KnowledgeEntry) -> tuple[dict[str, Any], Resear
     raw_report = payload.get("report") if isinstance(payload.get("report"), dict) else None
     if isinstance(raw_report, dict):
         try:
+            raw_report = _coerce_legacy_report_payload(entry, raw_report)
             return payload, ResearchReportResponse.model_validate(raw_report)
         except Exception:
             pass

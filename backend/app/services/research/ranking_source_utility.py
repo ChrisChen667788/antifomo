@@ -7,6 +7,7 @@ from typing import Pattern
 
 from app.services.content_extractor import normalize_text
 from app.services.language import localized_text
+from app.services.research.entity_authenticity import repair_organization_candidate
 from app.services.research.source_documents import SourceDocument
 
 
@@ -49,7 +50,7 @@ def rank_org_rows(
         if theme_terms and not any(term in lowered for term in theme_terms):
             continue
         for match in deps.org_pattern.findall(text):
-            name = normalize_text(match)
+            name = repair_organization_candidate(match)
             if not deps.is_plausible_entity_name(name):
                 continue
             if role == "target" and source.source_tier == "media":

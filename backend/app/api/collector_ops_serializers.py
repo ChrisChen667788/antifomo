@@ -61,6 +61,24 @@ def _to_daemon_status_response(status_obj: CollectorDaemonStatus) -> CollectorDa
         favorites_auto_imported_count=status_obj.favorites_auto_imported_count,
         favorites_auto_deduplicated_count=status_obj.favorites_auto_deduplicated_count,
         favorites_auto_message=status_obj.favorites_auto_message,
+        favorites_clipboard_auto_enabled=status_obj.favorites_clipboard_auto_enabled,
+        favorites_clipboard_adapter_available=status_obj.favorites_clipboard_adapter_available,
+        favorites_clipboard_last_message=status_obj.favorites_clipboard_last_message,
+        favorites_export_directory_auto_enabled=status_obj.favorites_export_directory_auto_enabled,
+        favorites_export_directory_path=status_obj.favorites_export_directory_path,
+        favorites_export_directory_adapter_available=status_obj.favorites_export_directory_adapter_available,
+        favorites_export_directory_last_message=status_obj.favorites_export_directory_last_message,
+        favorites_export_directory_last_processed_count=status_obj.favorites_export_directory_last_processed_count,
+        favorites_wechat_cli_adapter_available=status_obj.favorites_wechat_cli_adapter_available,
+        favorites_wechat_cli_last_message=status_obj.favorites_wechat_cli_last_message,
+        browser_extension_path=status_obj.browser_extension_path,
+        browser_extension_manifest_present=status_obj.browser_extension_manifest_present,
+        browser_extension_readme_path=status_obj.browser_extension_readme_path,
+        browser_extension_pipeline_script=status_obj.browser_extension_pipeline_script,
+        browser_extension_last_verification_at=status_obj.browser_extension_last_verification_at,
+        browser_extension_last_verification_ok=status_obj.browser_extension_last_verification_ok,
+        browser_extension_last_verification_message=status_obj.browser_extension_last_verification_message,
+        browser_extension_last_verification_report=status_obj.browser_extension_last_verification_report,
         source_health=[
             CollectorDaemonSourceHealthResponse(
                 source_url=source.source_url,
@@ -149,9 +167,28 @@ def _to_wechat_agent_route_quality_response(
     submitted_url_resolved = int(status_obj.submitted_url_resolved or 0) + int(
         status_obj.live_report_submitted_url_resolved or 0
     )
+    submitted_url_tab_copy_link = int(status_obj.submitted_url_tab_copy_link or 0) + int(
+        status_obj.live_report_submitted_url_tab_copy_link or 0
+    )
+    submitted_url_tab_browser_open = int(status_obj.submitted_url_tab_browser_open or 0) + int(
+        status_obj.live_report_submitted_url_tab_browser_open or 0
+    )
     submitted_ocr = int(status_obj.submitted_ocr or 0) + int(status_obj.live_report_submitted_ocr or 0)
-    route_total = submitted_url_direct + submitted_url_share_copy + submitted_url_resolved + submitted_ocr
-    url_first_total = submitted_url_direct + submitted_url_share_copy + submitted_url_resolved
+    route_total = (
+        submitted_url_direct
+        + submitted_url_share_copy
+        + submitted_url_resolved
+        + submitted_url_tab_copy_link
+        + submitted_url_tab_browser_open
+        + submitted_ocr
+    )
+    url_first_total = (
+        submitted_url_direct
+        + submitted_url_share_copy
+        + submitted_url_resolved
+        + submitted_url_tab_copy_link
+        + submitted_url_tab_browser_open
+    )
     url_first_share = round((url_first_total / route_total) * 100) if route_total else 0
     ocr_share = round((submitted_ocr / route_total) * 100) if route_total else 0
 
@@ -216,12 +253,16 @@ def _to_wechat_agent_batch_status_response(
         submitted_url_direct=status_obj.submitted_url_direct,
         submitted_url_share_copy=status_obj.submitted_url_share_copy,
         submitted_url_resolved=status_obj.submitted_url_resolved,
+        submitted_url_tab_copy_link=status_obj.submitted_url_tab_copy_link,
+        submitted_url_tab_browser_open=status_obj.submitted_url_tab_browser_open,
         submitted_ocr=status_obj.submitted_ocr,
         deduplicated_existing=status_obj.deduplicated_existing,
         deduplicated_existing_url=status_obj.deduplicated_existing_url,
         deduplicated_existing_url_direct=status_obj.deduplicated_existing_url_direct,
         deduplicated_existing_url_share_copy=status_obj.deduplicated_existing_url_share_copy,
         deduplicated_existing_url_resolved=status_obj.deduplicated_existing_url_resolved,
+        deduplicated_existing_url_tab_copy_link=status_obj.deduplicated_existing_url_tab_copy_link,
+        deduplicated_existing_url_tab_browser_open=status_obj.deduplicated_existing_url_tab_browser_open,
         deduplicated_existing_ocr=status_obj.deduplicated_existing_ocr,
         skipped_invalid_article=status_obj.skipped_invalid_article,
         skipped_seen=status_obj.skipped_seen,
@@ -253,6 +294,8 @@ def _to_wechat_agent_batch_status_response(
         live_report_submitted_url_direct=status_obj.live_report_submitted_url_direct,
         live_report_submitted_url_share_copy=status_obj.live_report_submitted_url_share_copy,
         live_report_submitted_url_resolved=status_obj.live_report_submitted_url_resolved,
+        live_report_submitted_url_tab_copy_link=status_obj.live_report_submitted_url_tab_copy_link,
+        live_report_submitted_url_tab_browser_open=status_obj.live_report_submitted_url_tab_browser_open,
         live_report_submitted_ocr=status_obj.live_report_submitted_ocr,
         live_report_skipped_seen=status_obj.live_report_skipped_seen,
         live_report_skipped_invalid_article=status_obj.live_report_skipped_invalid_article,

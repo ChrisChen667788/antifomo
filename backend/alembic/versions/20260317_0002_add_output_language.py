@@ -27,8 +27,11 @@ def upgrade() -> None:
         "focus_sessions",
         sa.Column("output_language", sa.String(length=10), nullable=False, server_default=sa.text("'zh-CN'")),
     )
-    op.alter_column("items", "output_language", server_default=None)
-    op.alter_column("focus_sessions", "output_language", server_default=None)
+    # SQLite cannot drop a column default in place; retaining zh-CN also matches
+    # the current ORM model and keeps empty-database recovery portable.
+    if op.get_bind().dialect.name != "sqlite":
+        op.alter_column("items", "output_language", server_default=None)
+        op.alter_column("focus_sessions", "output_language", server_default=None)
 
 
 def downgrade() -> None:

@@ -62,6 +62,8 @@ BAD_EXEC_SUMMARY_PHRASES = (
 )
 
 FIELD_ROW_NOISE_TOKENS = (
+    "公开线索",
+    "代表样本",
     "若金额仍缺失",
     "若暂未拿到明确金额",
     "可先给出高价值预算口径",
@@ -159,15 +161,20 @@ def is_actionable_budget_row(value: str) -> bool:
     ):
         return False
     has_money_signal = bool(MONEY_PATTERN.search(normalized))
-    has_strict_budget_signal = any(
-        token in normalized for token in ("预算", "采购", "招标", "中标", "经费", "金额", "资金", "专项", "立项", "合同额", "财政", "扩容")
+    signal_text = re.sub(
+        r"(?:计划)?(?:采购|招标)(?:部|处|科|组|中心|办公室|负责人|经理|组长)",
+        "",
+        normalized,
     )
-    has_budget_context = any(token in normalized for token in BUDGET_ROW_CONTEXT_TOKENS)
-    has_project_or_investment_signal = any(token in normalized for token in ("项目", "投资"))
+    has_strict_budget_signal = any(
+        token in signal_text for token in ("预算", "采购", "招标", "中标", "经费", "金额", "资金", "专项", "立项", "合同额", "财政", "扩容")
+    )
+    has_budget_context = any(token in signal_text for token in BUDGET_ROW_CONTEXT_TOKENS)
+    has_project_or_investment_signal = any(token in signal_text for token in ("项目", "投资"))
     if has_money_signal or has_strict_budget_signal:
         return True
     if has_project_or_investment_signal and any(
-        token in normalized for token in ("预算", "采购", "招标", "中标", "立项", "合同", "财政", "金额", "经费", "专项")
+        token in signal_text for token in ("预算", "采购", "招标", "中标", "立项", "合同", "财政", "金额", "经费", "专项")
     ):
         return True
     if "投资" in normalized and not (has_money_signal or has_budget_context):

@@ -116,8 +116,7 @@ def derive_source_label(*, source_type: str, domain: str | None, fallback: str |
 
 
 def search_query_text_for_matching(source: SearchHit | SourceDocument) -> str:
-    if isinstance(source, SearchHit):
-        return str(getattr(source, "search_query", "") or "")
+    # A query describes retrieval intent; treating it as result content creates false scope matches.
     return ""
 
 
@@ -154,7 +153,6 @@ def _semantic_score_hit(
             [
                 hit.title,
                 hit.snippet,
-                hit.search_query,
                 hit.source_label or "",
                 hit.url,
                 extract_domain(hit.url) or "",
@@ -415,6 +413,10 @@ def hybrid_rank_hits(
         reverse=True,
     )
     ranked_hits: list[SearchHit] = []
+    has_explicit_scope = any(
+        (scope_hints or {}).get(key)
+        for key in ("regions", "industries", "clients")
+    )
     for url in ordered_urls:
         hit = hits_by_url[url]
         if hybrid_scores.get(url, 0.0) <= 0:
@@ -427,6 +429,12 @@ def hybrid_rank_hits(
             continue
         if (
             retrieval_scores.get(url, 0.0) <= 0
+            and semantic_scores.get(url, 0) <= 0
+            and scope_scores.get(url, 0) <= 0
+        ):
+            continue
+        if (
+            has_explicit_scope
             and semantic_scores.get(url, 0) <= 0
             and scope_scores.get(url, 0) <= 0
         ):
@@ -675,13 +683,19 @@ def rerank_sources_hybrid(
         maximum=80,
     )
     reranker_model = normalize_text(str(mutable_scope_hints.get("runtime_reranker_model") or settings.research_cross_encoder_model))
-    reranked, profile = deps.rerank_sources_cross_encoder(
-        ranked,
-        query=retrieval_query,
-        model_name=reranker_model,
-        top_k=reranker_top_k,
-        backend=reranker_backend,
-    )
+    reranker_kwargs: dict[str, object] = {
+        "query": retrieval_query,
+        "model_name": reranker_model,
+        "top_k": reranker_top_k,
+        "backend": reranker_backend,
+    }
+    cache_dir = getattr(settings, "research_cross_encoder_cache_dir", None)
+    device = normalize_text(str(getattr(settings, "research_cross_encoder_device", "auto"))) or "auto"
+    if cache_dir:
+        reranker_kwargs["cache_dir"] = cache_dir
+    if device != "auto":
+        reranker_kwargs["device"] = device
+    reranked, profile = deps.rerank_sources_cross_encoder(ranked, **reranker_kwargs)
     mutable_scope_hints.update(profile.to_diagnostics_update())
     return list(reranked)
 

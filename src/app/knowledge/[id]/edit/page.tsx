@@ -30,7 +30,7 @@ export default async function KnowledgeEditPage({ params }: KnowledgeEditPagePro
       title={isActionCard ? "编辑行动卡" : "编辑知识卡片"}
       description={
         isActionCard
-          ? "调整优先级、对象、时间窗和建议步骤，系统会自动重建行动卡内容。"
+          ? "调整优先级、对象、时间窗和建议步骤。"
           : "调整标题、内容、分组和 Focus 参考状态。"
       }
     >

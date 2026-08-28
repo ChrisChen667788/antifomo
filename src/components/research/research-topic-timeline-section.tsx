@@ -43,7 +43,7 @@ export function ResearchTopicTimelineSection({
           <div>
             <p className="af-kicker">{t("research.topicTimeline", "专题时间线")}</p>
             <p className="mt-2 text-sm text-slate-500">
-              {t("research.topicTimelineDesc", "把专题刷新版本、已保存快照和差异复盘放到同一条时间线里，方便回看当时结论。")}
+              {t("research.topicTimelineDesc", "查看专题历史和关键结论。")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -51,7 +51,7 @@ export function ResearchTopicTimelineSection({
               {t("research.topicTimelineVersions", "版本")} {timelineStats.versionCount}
             </span>
             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-              {t("research.topicTimelineSnapshots", "快照")} {timelineStats.snapshotCount}
+              {t("research.topicTimelineSnapshots", "已保存")} {timelineStats.snapshotCount}
             </span>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
               {t("research.topicTimelineArchives", "复盘")} {timelineStats.archiveCount}
@@ -100,7 +100,7 @@ export function ResearchTopicTimelineSection({
                           {isVersion
                             ? t("research.topicTimelineVersionEvent", "研报版本")
                             : isSnapshot
-                              ? t("research.topicTimelineSnapshotEvent", "Compare 快照")
+                              ? t("research.topicTimelineSnapshotEvent", "已保存对比")
                               : t("research.topicTimelineArchiveEvent", "差异复盘")}
                         </span>
                         <span className="rounded-full bg-white/75 px-2.5 py-1 text-slate-500">
@@ -108,7 +108,7 @@ export function ResearchTopicTimelineSection({
                         </span>
                         {isBaseline ? (
                           <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">
-                            {t("research.versionBaseline", "基线版本")}
+                            {t("research.versionBaseline", "初始版本")}
                           </span>
                         ) : null}
                         {isCurrent ? (
@@ -179,7 +179,7 @@ export function ResearchTopicTimelineSection({
                           <>
                             {event.compare_snapshot_name ? (
                               <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">
-                                关联快照 · {event.compare_snapshot_name}
+                                关联对比 · {event.compare_snapshot_name}
                               </span>
                             ) : null}
                             {event.linked_report_version_title ? (
@@ -243,7 +243,7 @@ export function ResearchTopicTimelineSection({
                               onClick={() => setCompareLeftId(event.report_version_id || "")}
                               className="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                             >
-                              {t("research.versionSetBaseline", "设为基线")}
+                              {t("research.versionSetBaseline", "设为初始版本")}
                             </button>
                           ) : null}
                           {event.report_version_id ? (
@@ -265,7 +265,7 @@ export function ResearchTopicTimelineSection({
                         <>
                           {snapshotHref ? (
                             <Link href={snapshotHref} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-                              {t("research.compareOpenSnapshot", "打开快照")}
+                              {t("research.compareOpenSnapshot", "打开对比")}
                             </Link>
                           ) : null}
                           <Link href={liveCompareHref} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
@@ -293,7 +293,7 @@ export function ResearchTopicTimelineSection({
                               archiveId={event.markdown_archive_id}
                               fallbackCurrentArchiveId={event.current_markdown_archive_id}
                               fallbackCompareArchiveId={event.compare_markdown_archive_id}
-                              buttonLabel="变化深链"
+                              buttonLabel="定位链接"
                               buttonClassName="af-btn af-btn-secondary border px-3 py-1.5 text-xs"
                               align="right"
                               onCopyMessage={setTimelineMessage}
@@ -306,7 +306,7 @@ export function ResearchTopicTimelineSection({
                           ) : null}
                           {snapshotHref ? (
                             <Link href={snapshotHref} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-                              {t("research.compareOpenSnapshot", "打开关联快照")}
+                              {t("research.compareOpenSnapshot", "打开关联对比")}
                             </Link>
                           ) : null}
                           {event.linked_report_version_id ? (

@@ -170,9 +170,9 @@ export function fallbackMarkdown(
   locale: string,
 ): string {
   const now = new Date().toLocaleString(locale, { hour12: false });
-  return `# ${t("summary.block.markdown", "Markdown 总结")}
+  return `# ${t("summary.block.markdown", "本轮总结")}
 
-- ${t("summary.block.markdown", "Markdown 总结")}: ${now}
+- ${t("summary.block.markdown", "本轮总结")}: ${now}
 - ${t("focus.goal", "本次目标")}: ${metrics.goalText || t("common.notSet", "未设置")}
 - ${t("summary.metric.duration", "专注时长")}: ${formatDuration(metrics.durationMinutes, t)}
 - ${t("summary.metric.newContent", "新增内容数")}: ${metrics.newContentCount}
@@ -202,7 +202,7 @@ export function fallbackExecBrief(t: SummaryTranslateFn): string {
   return `# ${t("summary.block.execBrief", "老板简报")}
 
 - ${t("summary.metric.deepRead", "推荐深读数")}：优先同步本轮高价值内容和风险变化
-- ${t("summary.block.execBriefHighlight", "建议重点")}：今天先看新增甲方、预算节点和 watchlist 变化`;
+- ${t("summary.block.execBriefHighlight", "建议重点")}：今天先看新增客户、预算节点和监控变化`;
 }
 
 export function fallbackSalesBrief(t: SummaryTranslateFn): string {
@@ -219,7 +219,7 @@ export function fallbackOutreachDraft(t: SummaryTranslateFn): string {
 }
 
 function fallbackWatchlistDigest(t: SummaryTranslateFn): string {
-  return `# ${t("summary.block.watchlistDigest", "Watchlist Digest")}
+  return `# ${t("summary.block.watchlistDigest", "监控摘要")}
 
 - ${t("summary.block.watchlistDigestHint", "当前可先汇总专题刷新和新增风险提示")}。`;
 }
@@ -270,7 +270,7 @@ export function watchlistDigestFromHighlights(
     const budgetText = item.budgetProbability > 0 ? ` · 预算概率 ${item.budgetProbability}%` : "";
     return `- [${item.watchlistName}] ${item.summary}${accountText}${budgetText}`;
   });
-  return `# ${t("summary.block.watchlistDigest", "Watchlist Digest")}\n\n${lines.join("\n")}`;
+  return `# ${t("summary.block.watchlistDigest", "监控摘要")}\n\n${lines.join("\n")}`;
 }
 
 export function parseTaskBriefingContext(outputPayload: ApiTask["output_payload"]): ApiTaskBriefingContext | null {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+import re
 from typing import Any
 
 from app.schemas.research import (
@@ -338,6 +339,7 @@ def rank_top_entities(
     _extract_org_candidates = deps.extract_org_candidates
     _is_plausible_entity_name = deps.is_plausible_entity_name
     _is_lightweight_entity_name = deps.is_lightweight_entity_name
+    _org_entity_variants = deps.org_entity_variants
     THEME_ENTITY_ALLOW_TOKENS = deps.theme_entity_allow_tokens
     GENERIC_COMPANY_NAME_TOKENS = deps.generic_company_name_tokens
     THEME_ROLE_ARCHETYPES = deps.theme_role_archetypes
@@ -399,6 +401,52 @@ def rank_top_entities(
         positive_tokens = positive_name_tokens_map.get(role, ())
     preferred_source_types = preferred_source_types_map.get(role, set())
     graph_lookup = _entity_graph_lookup(entity_graph) if entity_graph else {}
+
+    role_relation_patterns = {
+        "target": (
+            r"(?:采购人|招标人|业主单位|建设单位|需求方|甲方|出资方|投资方|主管部门)\s*[:：]?\s*{name}",
+            r"(?:由|联合)\s*{name}\s*(?:指导|主办|牵头|负责|统筹|建设|采购)",
+            r"{name}\s*(?:拟|将|计划|启动|牵头|负责|统筹|建设|采购|招标|投资|出资)",
+        ),
+        "competitor": (
+            r"(?:中标人|中标单位|成交供应商|供应商|承建方|运营方|厂商)\s*[:：]?\s*{name}",
+            r"{name}.{0,48}(?:中标|成交|承建|交付|提供|推出|发布|运营|解决方案|平台|产品|案例)",
+        ),
+        "partner": (
+            r"(?:合作伙伴|生态伙伴|联合体成员|集成商|咨询方|渠道方)\s*[:：]?\s*{name}",
+            r"{name}.{0,36}(?:合作|联合|生态|咨询|集成|渠道|联盟|承办)",
+            r"(?:与|联合)\s*{name}.{0,24}(?:合作|共建|签约|联合)",
+        ),
+    }
+
+    def candidate_local_context(name: str, text: str, *, radius: int = 72) -> str:
+        windows: list[str] = []
+        variants = _dedupe_strings([name, *_org_entity_variants(name)], 6)
+        for variant in variants:
+            if not variant:
+                continue
+            start = 0
+            while (index := text.find(variant, start)) >= 0:
+                windows.append(text[max(0, index - radius) : min(len(text), index + len(variant) + radius)])
+                start = index + len(variant)
+                if len(windows) >= 4:
+                    break
+            if len(windows) >= 4:
+                break
+        return normalize_text(" ".join(windows))
+
+    def has_explicit_role_relation(name: str, text: str) -> bool:
+        variants = _dedupe_strings([name, *_org_entity_variants(name)], 6)
+        for variant in variants:
+            if not variant or variant not in text:
+                continue
+            escaped = re.escape(variant)
+            if any(
+                re.search(pattern.replace("{name}", escaped), text, flags=re.IGNORECASE)
+                for pattern in role_relation_patterns.get(role, ())
+            ):
+                return True
+        return False
 
     def build_entity_result(
         *,
@@ -490,7 +538,14 @@ def rank_top_entities(
             for index, name in enumerate(archetypes[:limit])
         ]
 
-    def allow_role_candidate(name: str, text: str) -> bool:
+    def allow_role_candidate(name: str, text: str, *, require_role_relation: bool = True) -> bool:
+        if not (
+            _is_plausible_entity_name(name)
+            or _is_lightweight_entity_name(name)
+            or name in seed_companies
+            or name in scope_clients
+        ):
+            return False
         if theme_labels and not _is_theme_aligned_entity_name(name, role=role, theme_labels=theme_labels):
             return False
         if prefer_company_entities and role in {"target", "competitor"} and not _is_company_like_entity_name(
@@ -502,6 +557,8 @@ def rank_top_entities(
             return False
         if any(client and (client in name or name in client) for client in scope_clients):
             return role == "target"
+        if require_role_relation and not has_explicit_role_relation(name, text):
+            return False
         if role == "target":
             if prefer_company_entities:
                 return (
@@ -571,7 +628,6 @@ def rank_top_entities(
         lowered = text.lower()
         if theme_terms and not any(term in lowered for term in theme_terms):
             continue
-        matched_signals = [token for token in context_keywords if token in text]
         official_hit = 1 if source.source_tier == "official" else 0
         extracted_names = _extract_rank_entity_candidates(text, scope_hints=scope_hints)
         domain_canonical = _canonical_org_name_from_domain(source.domain or extract_domain(source.url))
@@ -583,6 +639,8 @@ def rank_top_entities(
                 continue
             if not allow_role_candidate(name, text):
                 continue
+            local_text = candidate_local_context(name, text) or text
+            matched_signals = [token for token in context_keywords if token in local_text]
             graph_entity = graph_lookup.get(_entity_canonical_key(name))
             if graph_entity is not None:
                 graph_role = normalize_text(graph_entity.entity_type)
@@ -807,7 +865,7 @@ def rank_top_entities(
             seed_companies=seed_companies,
         ):
             return False
-        return allow_role_candidate(name, name)
+        return allow_role_candidate(name, name, require_role_relation=False)
 
     fallback_pool: list[str] = []
     if sources:
@@ -840,12 +898,18 @@ def rank_top_entities(
         has_scope_anchor = any(client and (client in name or name in client) for client in scope_clients)
         if not related_sources and not has_scope_anchor and graph_source_count == 0:
             continue
+        if not has_scope_anchor and not any(
+            has_explicit_role_relation(name, _source_text(source))
+            for source in related_sources
+        ):
+            continue
         official_hits = max(sum(1 for source in related_sources if source.source_tier == "official"), graph_official_hits)
         evidence_links = [_build_entity_evidence(source) for source in related_sources]
         signals: list[str] = []
         for source in related_sources:
             text = _source_text(source)
-            signals.extend([token for token in context_keywords if token in text])
+            local_text = candidate_local_context(name, text)
+            signals.extend([token for token in context_keywords if token in local_text])
         evidence_count = max(1, len(related_sources), graph_source_count)
         base_score = 34 + min(evidence_count, 3) * 9 + official_hits * 8
         if role == "target" and any(client and client in name for client in scope_clients):
@@ -909,13 +973,18 @@ def rank_top_entities(
             name = _resolve_known_org_name(name, scope_hints=scope_hints)
             if len(pending) >= limit or not name or is_duplicate_name(name):
                 continue
-            if not allow_role_candidate(name, name):
+            if not allow_role_candidate(name, name, require_role_relation=False):
                 continue
             related_sources = [source for source in sources if name in _source_text(source)][:2]
             graph_entity = graph_lookup.get(_entity_canonical_key(name))
             graph_source_count = int(getattr(graph_entity, "source_count", 0) or 0) if graph_entity is not None else 0
             has_scope_anchor = any(client and (client in name or name in client) for client in scope_clients)
             if not related_sources and not has_scope_anchor and graph_source_count == 0:
+                continue
+            if not has_scope_anchor and not any(
+                has_explicit_role_relation(name, _source_text(source))
+                for source in related_sources
+            ):
                 continue
             pending.append(
                 build_entity_result(

@@ -82,6 +82,8 @@ class ReportDeliveryOwnerPorts:
     evidence_density_level: Callable[..., str]
     source_quality_level: Callable[..., str]
     enrich_report_for_delivery: Callable[..., Any]
+    sanitize_report_result_entities: Callable[..., Any]
+    enforce_report_entity_authenticity: Callable[..., Any]
     build_guarded_rewrite_title: Callable[..., str]
     source_max_age_years: int
 
@@ -204,6 +206,8 @@ def stored_report_rewrite_orchestration_dependencies(
         source_quality_level=delivery.source_quality_level,
         source_documents_to_research_source_outputs=source_documents_to_research_source_outputs,
         enrich_report_for_delivery=delivery.enrich_report_for_delivery,
+        sanitize_report_result_entities=delivery.sanitize_report_result_entities,
+        enforce_report_entity_authenticity=delivery.enforce_report_entity_authenticity,
         is_low_signal_execution_report=lambda report: is_low_signal_execution_report(
             report,
             deps=report_readiness_dependencies(owners),

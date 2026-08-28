@@ -86,6 +86,44 @@ def build_research_report_markdown(
             f"{localized_text(resolved_language, {'zh-CN': '不绕过登录、付费墙或未授权后台数据；证据不足时会明确标注。', 'zh-TW': '不繞過登入、付費牆或未授權後台資料；證據不足時會明確標註。', 'en': 'No login, paywall, or unauthorized backend bypass is used; insufficient evidence is explicitly marked.'}, '不绕过登录、付费墙或未授权后台数据；证据不足时会明确标注。')}",
         ]
     )
+    evidence_gate = getattr(report, "research_evidence_gate", None)
+    question_tree = getattr(report, "research_question_tree", None)
+    citation_gate = getattr(report, "research_citation_gate", None)
+    if evidence_gate and evidence_gate.enforced:
+        lines.extend(
+            [
+                "",
+                f"## {localized_text(resolved_language, {'zh-CN': '研究证据治理', 'zh-TW': '研究證據治理', 'en': 'Research Evidence Governance'}, '研究证据治理')}",
+                "",
+                f"- Evidence gate: {evidence_gate.status}",
+                f"- Source admission: {evidence_gate.accepted_source_count}/{evidence_gate.candidate_source_count}",
+                f"- Official sources: {evidence_gate.official_source_count}/{evidence_gate.minimum_official_source_count}",
+                f"- Unique domains: {evidence_gate.unique_domain_count}/{evidence_gate.minimum_unique_domain_count}",
+                f"- Question coverage: {evidence_gate.question_coverage_percent}%",
+            ]
+        )
+        if evidence_gate.blockers:
+            lines.extend(["", "### 阻断原因", *[f"- {item}" for item in evidence_gate.blockers]])
+        if question_tree and question_tree.questions:
+            lines.extend(["", "### 研究问题树"])
+            lines.extend(
+                [
+                    f"- [{node.question_id}] {node.axis} · {node.coverage_status} · accepted={node.accepted_source_count}: {node.question}"
+                    for node in question_tree.questions
+                ]
+            )
+        if citation_gate and citation_gate.enforced:
+            lines.extend(
+                [
+                    "",
+                    "### 主张引用门",
+                    f"- Status: {citation_gate.status}",
+                    f"- Claims supported: {citation_gate.supported_claim_count}/{citation_gate.claim_count}",
+                    f"- Critical claim coverage: {citation_gate.critical_claim_coverage_percent}%",
+                    f"- Citation completeness: {citation_gate.citation_completeness_percent}%",
+                    f"- Citation support: {citation_gate.citation_support_percent}%",
+                ]
+            )
     ranked_groups = [
         (
             localized_text(resolved_language, {"zh-CN": "高价值甲方 Top 3", "zh-TW": "高價值甲方 Top 3", "en": "Top 3 High-Value Buyers"}, "高价值甲方 Top 3"),

@@ -52,6 +52,39 @@ CONFLICT_NEGATIVE_TOKENS = (
     "不涉及",
     "未见",
 )
+_GENERIC_EVIDENCE_SHINGLES = {
+    "人工智能",
+    "解决方案",
+    "行业应用",
+    "数字化转",
+    "数字化",
+    "大模型",
+    "政务云",
+    "项目建设",
+    "公开信息",
+    "当前公开",
+    "建议优先",
+}
+
+
+def _distinctive_evidence_terms(value: str, *, generic_tokens: Collection[str]) -> set[str]:
+    normalized = normalize_text(value).casefold()
+    if not normalized:
+        return set()
+    generic = {normalize_text(token).casefold() for token in generic_tokens if normalize_text(token)}
+    terms = set(re.findall(r"[a-z][a-z0-9.+-]{1,}|\d+(?:\.\d+)?(?:亿元|万元|元|mw|gw|%|年|月)", normalized))
+    for run in re.findall(r"[\u4e00-\u9fff]{4,}", normalized):
+        for width in (5, 4):
+            if len(run) < width:
+                continue
+            terms.update(run[index : index + width] for index in range(len(run) - width + 1))
+    return {
+        term
+        for term in terms
+        if term not in generic
+        and term not in _GENERIC_EVIDENCE_SHINGLES
+        and not any(term == token or (len(token) >= 4 and term in token) for token in generic)
+    }
 
 
 def excerpt_for_evidence(
@@ -147,6 +180,10 @@ def build_section_evidence_links(
     anchor_terms = extract_section_anchor_terms(section_title, items)
     if not anchor_terms or not sources:
         return [], {}, 0.0
+    section_terms = _distinctive_evidence_terms(
+        " ".join(items[:4]),
+        generic_tokens=deps.generic_focus_tokens,
+    )
     scored: list[tuple[int, SourceDocument, list[str]]] = []
     for source in sources:
         haystack = normalize_text(
@@ -165,9 +202,18 @@ def build_section_evidence_links(
         if not haystack:
             continue
         matched_terms = [term for term in anchor_terms if term and term.lower() in haystack]
-        if not matched_terms:
+        source_terms = _distinctive_evidence_terms(
+            haystack,
+            generic_tokens=deps.generic_focus_tokens,
+        )
+        overlap_terms = sorted(
+            section_terms & source_terms,
+            key=lambda term: (-len(term), term),
+        )
+        if not matched_terms and len(overlap_terms) < 2:
             continue
-        score = len(matched_terms) * 5
+        matched_terms = deps.dedupe_strings([*matched_terms, *overlap_terms[:6]], 8)
+        score = len(matched_terms) * 5 + min(len(overlap_terms), 8) * 2
         if source.source_tier == "official":
             score += 8
         elif source.source_tier == "aggregate":

@@ -1,6 +1,8 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { CommonSettingsPanel } from "@/components/settings/common-settings-panel";
 import { CollectorOpsPanel } from "@/components/settings/collector-ops-panel";
+import { InternalSkillGovernancePanel } from "@/components/settings/internal-skill-governance-panel";
+import { ModelControlPlanePanel } from "@/components/settings/model-control-plane-panel";
 import { PreferenceInsightsPanel } from "@/components/settings/preference-insights-panel";
 import { RecommenderTuner } from "@/components/settings/recommender-tuner";
 import { WorkBuddyPanel } from "@/components/settings/workbuddy-panel";
@@ -15,8 +17,10 @@ export default function SettingsPage() {
     >
       <div className="space-y-5">
         <CommonSettingsPanel />
+        <ModelControlPlanePanel />
         <PreferenceInsightsPanel />
         <WorkBuddyPanel />
+        <InternalSkillGovernancePanel />
         <CollectorOpsPanel />
         <RecommenderTuner />
       </div>

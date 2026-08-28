@@ -250,3 +250,17 @@ def test_wechat_local_home_header_does_not_become_title(monkeypatch) -> None:
     assert "长安君 中央政法委长安剑" not in processed.title
     assert "06:00" not in processed.title
     assert "每天3分钟" in processed.title
+
+
+def test_wechat_favorites_processing_stack_uses_strategy_llm(monkeypatch) -> None:
+    strategy_service = object()
+    monkeypatch.setattr(item_processor.settings, "wechat_favorites_llm_role", "strategy")
+    monkeypatch.setattr(item_processor, "get_strategy_llm_service", lambda: strategy_service)
+    item_processor.reset_wechat_processing_stack()
+
+    summarizer, tagger, scorer = item_processor._resolve_wechat_processing_stack()
+
+    assert summarizer.llm_service is strategy_service
+    assert tagger.llm_service is strategy_service
+    assert scorer.llm_service is strategy_service
+    item_processor.reset_wechat_processing_stack()

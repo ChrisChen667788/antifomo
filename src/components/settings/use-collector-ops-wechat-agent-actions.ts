@@ -217,9 +217,7 @@ export function useCollectorOpsWechatAgentActions({
     try {
       const preview = await getWechatAgentOCRPreview({ output_language: language });
       setWechatAgentOCRPreview(preview);
-      setMessage(
-        `${text("wechatAgentPreviewOCRTitle")}: ${preview.provider}, conf=${preview.confidence.toFixed(3)}`,
-      );
+      setMessage(`${text("wechatAgentPreviewOCRTitle")}已生成。`);
     } catch (error) {
       setMessage(String(error instanceof Error ? error.message : error));
     } finally {

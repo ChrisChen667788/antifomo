@@ -114,7 +114,7 @@ export function useResearchCenterWatchlistController({
       void refreshWatchlistOpsSummary().catch(() => undefined);
       setWatchlistMessage(`已更新 ${saved.name} 的刷新频率`);
     } catch {
-      setWatchlistError("更新 Watchlist 频率失败，请稍后重试。");
+      setWatchlistError("更新监控频率失败，请稍后重试。");
     } finally {
       setWatchlistActionKey("");
     }
@@ -130,7 +130,7 @@ export function useResearchCenterWatchlistController({
       void refreshWatchlistOpsSummary().catch(() => undefined);
       setWatchlistMessage(nextStatus === "paused" ? `已暂停 ${saved.name}` : `已恢复 ${saved.name}`);
     } catch {
-      setWatchlistError("更新 Watchlist 状态失败，请稍后重试。");
+      setWatchlistError("更新监控状态失败，请稍后重试。");
     } finally {
       setWatchlistActionKey("");
     }
@@ -157,7 +157,7 @@ export function useResearchCenterWatchlistController({
           : `${result.watchlist.name} 已刷新，暂无新增变化`,
       );
     } catch {
-      setWatchlistError("手动刷新 Watchlist 失败，请稍后重试。");
+      setWatchlistError("手动刷新监控失败，请稍后重试。");
     } finally {
       setRefreshingWatchlistId("");
     }
@@ -179,8 +179,8 @@ export function useResearchCenterWatchlistController({
       setLastRunDueResult(result);
       setWatchlistMessage(
         result.due_count
-          ? `本轮检查 ${result.due_count} 个到期 Watchlist，已刷新 ${result.refreshed_count} 个，失败 ${result.failed_count} 个，重试 ${result.retry_count} 次。`
-          : "当前没有到期 Watchlist。",
+          ? `本轮检查 ${result.due_count} 个到期监控，已刷新 ${result.refreshed_count} 个，失败 ${result.failed_count} 个，重试 ${result.retry_count} 次。`
+          : "当前没有到期监控。",
       );
       const [nextWatchlists, automation, opsSummary, runHistory, digestExport] = await Promise.all([
         listResearchWatchlists(),
@@ -202,7 +202,7 @@ export function useResearchCenterWatchlistController({
         setWatchlistDigestExport(digestExport);
       }
     } catch {
-      setWatchlistError("执行到期 Watchlist 失败，请检查自动巡检状态和日志。");
+      setWatchlistError("执行到期监控失败，请稍后重试或查看本地巡检状态。");
     } finally {
       setRunningDueWatchlists(false);
     }
@@ -213,10 +213,10 @@ export function useResearchCenterWatchlistController({
       const digest = await getResearchWatchlistDigestExport({ since_hours: 24, limit: 50 });
       setWatchlistDigestExport(digest);
       triggerMarkdownDownload(`watchlist-digest-${new Date().toISOString().slice(0, 10)}.md`, digest.export_markdown);
-      setWatchlistMessage("Watchlist 摘要已导出");
+      setWatchlistMessage("监控摘要已导出");
       setWatchlistError("");
     } catch {
-      setWatchlistError("导出 Watchlist 摘要失败，请稍后重试。");
+      setWatchlistError("导出监控摘要失败，请稍后重试。");
     }
   };
 

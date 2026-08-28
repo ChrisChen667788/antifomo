@@ -13,6 +13,7 @@ const DEFAULTS = {
   chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   sourceApiPath: "/api/collector/sources?enabled_only=true&limit=500",
   sourceFile: ".tmp/wechat_collector_sources.txt",
+  configFile: ".tmp/wechat_collector_config.json",
   stateFile: ".tmp/wechat_collector_state.json",
   reportFile: ".tmp/wechat_collector_latest.md",
   outputLanguage: "zh-CN",
@@ -28,6 +29,10 @@ const DEFAULTS = {
   batchSubmitSize: 10,
   wechatFavoritesAutoImport: true,
   wechatCliPath: process.env.WECHAT_CLI_BIN || "wechat-cli",
+  wechatClipboardAutoImport: true,
+  wechatClipboardPath: process.env.WECHAT_CLIPBOARD_BIN || "pbpaste",
+  wechatExportDirectoryAutoImport: true,
+  wechatExportDirectoryPath: process.env.WECHAT_FAVORITES_EXPORT_DIR || ".tmp/wechat_favorites_inbox",
   headless: true,
   loop: false,
 };
@@ -49,6 +54,11 @@ function parseArgs(argv) {
     }
     if (token === "--source-file" && next) {
       args.sourceFile = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--config-file" && next) {
+      args.configFile = next;
       i += 1;
       continue;
     }
@@ -130,6 +140,24 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (token === "--no-wechat-clipboard-auto") {
+      args.wechatClipboardAutoImport = false;
+      continue;
+    }
+    if (token === "--wechat-clipboard-path" && next) {
+      args.wechatClipboardPath = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--no-wechat-export-directory-auto") {
+      args.wechatExportDirectoryAutoImport = false;
+      continue;
+    }
+    if (token === "--wechat-export-directory" && next) {
+      args.wechatExportDirectoryPath = next;
+      i += 1;
+      continue;
+    }
     if (token === "--headful") {
       args.headless = false;
       continue;
@@ -141,6 +169,29 @@ function parseArgs(argv) {
   }
   args.apiBase = args.apiBase.replace(/\/+$/, "");
   return args;
+}
+
+function applyRuntimeConfig(args) {
+  const nextArgs = { ...args };
+  const configPath = path.resolve(nextArgs.configFile || DEFAULTS.configFile);
+  if (!fs.existsSync(configPath)) {
+    return nextArgs;
+  }
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    if (typeof config.wechat_clipboard_auto_import === "boolean") {
+      nextArgs.wechatClipboardAutoImport = config.wechat_clipboard_auto_import;
+    }
+    if (typeof config.wechat_export_directory_auto_import === "boolean") {
+      nextArgs.wechatExportDirectoryAutoImport = config.wechat_export_directory_auto_import;
+    }
+    if (typeof config.wechat_export_directory_path === "string" && config.wechat_export_directory_path.trim()) {
+      nextArgs.wechatExportDirectoryPath = config.wechat_export_directory_path.trim();
+    }
+  } catch (error) {
+    console.warn(`[collector] runtime config ignored: ${error?.message || error}`);
+  }
+  return nextArgs;
 }
 
 function sleep(ms) {
@@ -603,9 +654,166 @@ function parseWechatCliFavorites(stdout) {
   }
 }
 
+async function readClipboardArticleUrls(args) {
+  const result = {
+    available: false,
+    urls: [],
+    message: "",
+  };
+  if (!args.wechatClipboardAutoImport) {
+    result.message = "clipboard auto import disabled";
+    return result;
+  }
+  try {
+    const clipboard = await execFileAsync(args.wechatClipboardPath, [], {
+      timeout: 2500,
+      maxBuffer: 2 * 1024 * 1024,
+    });
+    result.available = true;
+    result.urls = Array.from(collectWechatArticleUrls(clipboard.stdout || ""));
+    result.message = result.urls.length
+      ? `clipboard contains ${result.urls.length} article link(s)`
+      : "clipboard checked; no article links";
+    return result;
+  } catch (error) {
+    const code = String(error?.code || "");
+    result.message =
+      code === "ENOENT"
+        ? `${args.wechatClipboardPath} not installed or unavailable`
+        : `clipboard read failed: ${error?.message || error}`;
+    return result;
+  }
+}
+
+function isSupportedWechatExportFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return [".html", ".htm", ".txt", ".md", ".url", ".webloc"].includes(ext);
+}
+
+function buildExportFileKey(filePath, stat) {
+  return `${path.resolve(filePath)}|${Number(stat.mtimeMs || 0).toFixed(0)}|${stat.size}`;
+}
+
+function readWechatExportDirectory(args, state) {
+  const result = {
+    available: false,
+    directory: path.resolve(args.wechatExportDirectoryPath || DEFAULTS.wechatExportDirectoryPath),
+    files: [],
+    discoveredCount: 0,
+    message: "",
+  };
+  if (!args.wechatExportDirectoryAutoImport) {
+    result.message = "export directory auto import disabled";
+    return result;
+  }
+
+  try {
+    fs.mkdirSync(result.directory, { recursive: true });
+  } catch (error) {
+    result.message = `export directory unavailable: ${error?.message || error}`;
+    return result;
+  }
+
+  result.available = true;
+  let entries = [];
+  try {
+    entries = fs.readdirSync(result.directory, { withFileTypes: true });
+  } catch (error) {
+    result.message = `export directory read failed: ${error?.message || error}`;
+    return result;
+  }
+
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const filePath = path.join(result.directory, entry.name);
+    if (!isSupportedWechatExportFile(filePath)) continue;
+    let stat;
+    try {
+      stat = fs.statSync(filePath);
+    } catch {
+      continue;
+    }
+    if (stat.size <= 0 || stat.size > 5 * 1024 * 1024) continue;
+    candidates.push({ filePath, stat });
+  }
+  candidates.sort((a, b) => Number(a.stat.mtimeMs || 0) - Number(b.stat.mtimeMs || 0));
+
+  const seenFiles = state.seen_favorite_export_files || {};
+  for (const candidate of candidates.slice(0, 30)) {
+    const key = buildExportFileKey(candidate.filePath, candidate.stat);
+    if (seenFiles[key]) continue;
+    let text = "";
+    try {
+      text = fs.readFileSync(candidate.filePath, "utf-8");
+    } catch {
+      continue;
+    }
+    const urls = Array.from(collectWechatArticleUrls(text));
+    result.discoveredCount += urls.length;
+    result.files.push({
+      key,
+      path: candidate.filePath,
+      name: path.basename(candidate.filePath),
+      text,
+      urls,
+    });
+  }
+
+  result.message = result.files.length
+    ? `export directory found ${result.files.length} new file(s)`
+    : `export directory checked; no new files`;
+  return result;
+}
+
+async function importWechatExportFiles(args, state, files) {
+  const result = {
+    processed: 0,
+    imported: 0,
+    deduplicated: 0,
+    invalid: 0,
+    skipped: 0,
+    failed: 0,
+    messages: [],
+  };
+  state.seen_favorite_export_files = state.seen_favorite_export_files || {};
+
+  for (const file of files) {
+    try {
+      const response = await apiCall(args.apiBase, "/api/collector/wechat-favorites/import", {
+        method: "POST",
+        payload: {
+          export_text: file.text,
+          urls: [],
+          output_language: args.outputLanguage,
+          include_text_blocks: true,
+          limit: 500,
+          process_immediately: false,
+        },
+      });
+      result.processed += 1;
+      result.imported += Number(response?.created || 0);
+      result.deduplicated += Number(response?.deduplicated || 0);
+      result.invalid += Number(response?.invalid || 0);
+      result.skipped += Number(response?.skipped || 0);
+      state.seen_favorite_export_files[file.key] = {
+        imported_at: new Date().toISOString(),
+        file_name: file.name,
+        url_count: file.urls.length,
+      };
+      result.messages.push(`${file.name}: created=${response?.created || 0} deduplicated=${response?.deduplicated || 0}`);
+    } catch (error) {
+      result.failed += 1;
+      result.messages.push(`${file.name}: ${error?.message || error}`);
+    }
+  }
+  return result;
+}
+
 async function runWechatFavoritesAutoImport(args) {
   const state = loadState(args.stateFile);
   state.seen_favorite_links = state.seen_favorite_links || {};
+  state.seen_favorite_export_files = state.seen_favorite_export_files || {};
   const record = {
     ts: new Date().toISOString(),
     status: "idle",
@@ -614,6 +822,7 @@ async function runWechatFavoritesAutoImport(args) {
     imported_count: 0,
     deduplicated_count: 0,
     message: "",
+    adapters: {},
   };
 
   if (!args.wechatFavoritesAutoImport) {
@@ -624,39 +833,87 @@ async function runWechatFavoritesAutoImport(args) {
     return record;
   }
 
-  let stdout = "";
+  const exportDirectory = readWechatExportDirectory(args, state);
+  const exportImport = await importWechatExportFiles(args, state, exportDirectory.files);
+  record.adapters.export_directory = {
+    available: exportDirectory.available,
+    enabled: Boolean(args.wechatExportDirectoryAutoImport),
+    path: exportDirectory.directory,
+    discovered_count: exportDirectory.discoveredCount,
+    processed_count: exportImport.processed,
+    failed_count: exportImport.failed,
+    message: exportImport.messages.length
+      ? `${exportDirectory.message}; ${exportImport.messages.slice(0, 3).join("；")}`
+      : exportDirectory.message,
+  };
+  record.imported_count += exportImport.imported;
+  record.deduplicated_count += exportImport.deduplicated;
+  record.discovered_count += exportDirectory.discoveredCount;
+
+  let cliUrls = [];
+  let cliAvailable = false;
+  let cliMessage = "";
   try {
     const result = await execFileAsync(
       args.wechatCliPath,
       ["favorites", "--type", "article"],
       { timeout: 45_000, maxBuffer: 8 * 1024 * 1024 },
     );
-    stdout = result.stdout || "";
-    record.available = true;
+    cliAvailable = true;
+    cliUrls = parseWechatCliFavorites(result.stdout || "");
+    cliMessage = cliUrls.length
+      ? `wechat-cli returned ${cliUrls.length} article link(s)`
+      : "wechat-cli checked; no article links";
   } catch (error) {
     const code = String(error?.code || "");
-    record.status = code === "ENOENT" ? "unavailable" : "error";
-    record.message =
+    cliMessage =
       code === "ENOENT"
         ? "wechat-cli not installed; automatic Favorites import is waiting for local read-only adapter setup"
         : `wechat-cli favorites failed: ${error?.message || error}`;
+    console.warn(`[collector] ${cliMessage}`);
+  }
+  record.adapters.wechat_cli = {
+    available: cliAvailable,
+    discovered_count: cliUrls.length,
+    message: cliMessage,
+  };
+
+  const clipboard = await readClipboardArticleUrls(args);
+  record.adapters.clipboard = {
+    available: clipboard.available,
+    discovered_count: clipboard.urls.length,
+    message: clipboard.message,
+  };
+
+  record.available = exportDirectory.available || cliAvailable || clipboard.available;
+  const discovered = Array.from(new Set([...cliUrls, ...clipboard.urls]));
+  const freshUrls = discovered.filter((url) => !state.seen_favorite_links[url]);
+  record.discovered_count += discovered.length;
+  if (!record.available) {
+    record.status = "unavailable";
+    record.message = [exportDirectory.message, cliMessage, clipboard.message].filter(Boolean).join("；");
     state.last_favorites_auto = record;
     saveState(args.stateFile, state);
     console.warn(`[collector] ${record.message}`);
     return record;
   }
-
-  const discovered = parseWechatCliFavorites(stdout);
-  const freshUrls = discovered.filter((url) => !state.seen_favorite_links[url]);
-  record.discovered_count = discovered.length;
   if (!freshUrls.length) {
-    record.status = "idle";
-    record.message = discovered.length
-      ? "WeChat Favorites checked; no new article links"
-      : "WeChat Favorites checked; no article links found";
+    record.status = exportImport.processed > 0 ? "imported" : "idle";
+    if (discovered.length) {
+      record.message = "WeChat links checked; no new article links";
+    } else {
+      record.message =
+        [exportDirectory.message, cliMessage, clipboard.message].filter(Boolean).join("；") ||
+        "WeChat links checked; no article links found";
+    }
+    if (exportImport.processed > 0) {
+      record.message =
+        `WeChat export files processed=${exportImport.processed} created=${exportImport.imported} ` +
+        `deduplicated=${exportImport.deduplicated}；${record.message}`;
+    }
     state.last_favorites_auto = record;
     saveState(args.stateFile, state);
-    console.log(`[collector] favorites auto import idle discovered=${discovered.length}`);
+    console.log(`[collector] favorites auto import ${record.status} discovered=${record.discovered_count}`);
     return record;
   }
 
@@ -673,8 +930,8 @@ async function runWechatFavoritesAutoImport(args) {
       },
     });
     record.status = "imported";
-    record.imported_count = Number(result?.created || 0);
-    record.deduplicated_count = Number(result?.deduplicated || 0);
+    record.imported_count += Number(result?.created || 0);
+    record.deduplicated_count += Number(result?.deduplicated || 0);
     record.message =
       `WeChat Favorites imported created=${record.imported_count} ` +
       `deduplicated=${record.deduplicated_count}`;
@@ -693,16 +950,17 @@ async function runWechatFavoritesAutoImport(args) {
 }
 
 async function runPostCycleTasks(args) {
-  if (!args.runPostCycle) {
+  const runtimeArgs = applyRuntimeConfig(args);
+  if (!runtimeArgs.runPostCycle) {
     return;
   }
 
-  await runWechatFavoritesAutoImport(args);
+  await runWechatFavoritesAutoImport(runtimeArgs);
 
   try {
     const flush = await apiCall(
-      args.apiBase,
-      `/api/collector/process-pending?limit=${encodeURIComponent(String(args.flushPendingLimit))}`,
+      runtimeArgs.apiBase,
+      `/api/collector/process-pending?limit=${encodeURIComponent(String(runtimeArgs.flushPendingLimit))}`,
       {
         method: "POST",
         payload: {},
@@ -718,13 +976,13 @@ async function runPostCycleTasks(args) {
 
   try {
     const daily = await apiCall(
-      args.apiBase,
-      `/api/collector/daily-summary?hours=${encodeURIComponent(String(args.dailySummaryHours))}` +
-        `&limit=${encodeURIComponent(String(args.dailySummaryLimit))}`,
+      runtimeArgs.apiBase,
+      `/api/collector/daily-summary?hours=${encodeURIComponent(String(runtimeArgs.dailySummaryHours))}` +
+        `&limit=${encodeURIComponent(String(runtimeArgs.dailySummaryLimit))}`,
     );
     const markdown = String(daily?.markdown || "").trim();
     if (markdown) {
-      const abs = path.resolve(args.dailySummaryReport);
+      const abs = path.resolve(runtimeArgs.dailySummaryReport);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, `${markdown}\n`, "utf-8");
       console.log(`[collector] daily summary updated: ${abs}`);

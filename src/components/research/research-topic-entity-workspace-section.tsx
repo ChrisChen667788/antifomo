@@ -95,7 +95,7 @@ export function ResearchTopicEntityWorkspaceSection({
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-slate-500">{t("research.entityWorkspaceEmpty", "当前专题还没有归一化实体。")}</p>
+                <p className="text-sm text-slate-500">{t("research.entityWorkspaceEmpty", "当前专题还没有整理出实体。")}</p>
               )}
             </article>
           </div>

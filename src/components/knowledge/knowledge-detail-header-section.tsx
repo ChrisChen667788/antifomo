@@ -92,7 +92,7 @@ export function KnowledgeDetailHeaderSection({
             className="af-btn af-btn-secondary border px-4 py-2"
           >
             <AppIcon name="copy" className="h-4 w-4" />
-            {t("knowledge.copyMarkdown", "复制 Markdown")}
+            {t("knowledge.copyMarkdown", "复制原文")}
           </button>
           <button
             type="button"
@@ -101,7 +101,7 @@ export function KnowledgeDetailHeaderSection({
             className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <AppIcon name="summary" className="h-4 w-4" />
-            {exporting ? t("knowledge.downloading", "导出中...") : t("knowledge.download", "下载 Markdown")}
+            {exporting ? t("knowledge.downloading", "导出中...") : t("knowledge.download", "下载原文")}
           </button>
           <button
             type="button"
@@ -112,7 +112,7 @@ export function KnowledgeDetailHeaderSection({
             <WorkBuddyMark size={14} />
             {workBuddyExporting
               ? t("knowledge.workbuddyExporting", "导出中...")
-              : t("knowledge.workbuddyExport", "导出 Markdown")}
+              : t("knowledge.workbuddyExport", "导出原文")}
           </button>
           <Link href={`/knowledge/${entry.id}/edit`} className="af-btn af-btn-secondary border px-4 py-2">
             <AppIcon name="edit" className="h-4 w-4" />

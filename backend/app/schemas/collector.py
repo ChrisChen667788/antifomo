@@ -556,9 +556,49 @@ class CollectorDaemonStatusResponse(BaseModel):
     favorites_auto_imported_count: int = 0
     favorites_auto_deduplicated_count: int = 0
     favorites_auto_message: str = ""
+    favorites_clipboard_auto_enabled: bool = True
+    favorites_clipboard_adapter_available: bool = False
+    favorites_clipboard_last_message: str = ""
+    favorites_export_directory_auto_enabled: bool = True
+    favorites_export_directory_path: str = ""
+    favorites_export_directory_adapter_available: bool = False
+    favorites_export_directory_last_message: str = ""
+    favorites_export_directory_last_processed_count: int = 0
+    favorites_wechat_cli_adapter_available: bool = False
+    favorites_wechat_cli_last_message: str = ""
+    browser_extension_path: str = ""
+    browser_extension_manifest_present: bool = False
+    browser_extension_readme_path: str = ""
+    browser_extension_pipeline_script: str = ""
+    browser_extension_last_verification_at: datetime | None = None
+    browser_extension_last_verification_ok: bool = False
+    browser_extension_last_verification_message: str = ""
+    browser_extension_last_verification_report: str = ""
     source_health: list[CollectorDaemonSourceHealthResponse] = Field(default_factory=list)
     last_rows: list[CollectorDaemonRecentRowResponse] = Field(default_factory=list)
     log_tail: list[str] = Field(default_factory=list)
+
+
+class CollectorDaemonConfigUpdateRequest(BaseModel):
+    wechat_clipboard_auto_import: bool | None = None
+    wechat_export_directory_auto_import: bool | None = None
+    wechat_export_directory_path: str | None = Field(default=None, max_length=1000)
+
+
+class CollectorDaemonConfigResponse(BaseModel):
+    wechat_clipboard_auto_import: bool = True
+    wechat_export_directory_auto_import: bool = True
+    wechat_export_directory_path: str = ""
+    config_file: str
+    updated_at: datetime | None = None
+
+
+class CollectorBrowserExtensionVerifyResponse(BaseModel):
+    ok: bool
+    verified_at: datetime
+    message: str
+    output: str = ""
+    report_file: str
 
 
 class CollectorDaemonCommandResponse(BaseModel):
@@ -631,12 +671,16 @@ class WechatAgentBatchStatusResponse(BaseModel):
     submitted_url_direct: int = 0
     submitted_url_share_copy: int = 0
     submitted_url_resolved: int = 0
+    submitted_url_tab_copy_link: int = 0
+    submitted_url_tab_browser_open: int = 0
     submitted_ocr: int = 0
     deduplicated_existing: int = 0
     deduplicated_existing_url: int = 0
     deduplicated_existing_url_direct: int = 0
     deduplicated_existing_url_share_copy: int = 0
     deduplicated_existing_url_resolved: int = 0
+    deduplicated_existing_url_tab_copy_link: int = 0
+    deduplicated_existing_url_tab_browser_open: int = 0
     deduplicated_existing_ocr: int = 0
     skipped_invalid_article: int = 0
     skipped_seen: int = 0
@@ -668,6 +712,8 @@ class WechatAgentBatchStatusResponse(BaseModel):
     live_report_submitted_url_direct: int = 0
     live_report_submitted_url_share_copy: int = 0
     live_report_submitted_url_resolved: int = 0
+    live_report_submitted_url_tab_copy_link: int = 0
+    live_report_submitted_url_tab_browser_open: int = 0
     live_report_submitted_ocr: int = 0
     live_report_skipped_seen: int = 0
     live_report_skipped_invalid_article: int = 0

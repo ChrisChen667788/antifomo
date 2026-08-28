@@ -7,14 +7,16 @@ import { useAppPreferences } from "@/components/settings/app-preferences-provide
 import { AppIcon } from "@/components/ui/app-icon";
 
 const navItems = [
-  { href: "/", labelKey: "nav.feed", fallback: "Feed", icon: "home" as const },
+  { href: "/", labelKey: "nav.feed", fallback: "首页", icon: "home" as const },
   { href: "/inbox", labelKey: "nav.inbox", fallback: "Solution Intelligence", icon: "inbox" as const },
   { href: "/research", labelKey: "nav.research", fallback: "商机情报", icon: "spark" as const },
-  { href: "/saved", labelKey: "nav.saved", fallback: "Saved", icon: "bookmark" as const },
+  { href: "/competitive", labelKey: "nav.competitive", fallback: "竞品策略", icon: "spark" as const },
+  { href: "/studio", labelKey: "nav.studio", fallback: "Decision Studio", icon: "knowledge" as const },
+  { href: "/saved", labelKey: "nav.saved", fallback: "稍后读", icon: "bookmark" as const },
   { href: "/knowledge", labelKey: "nav.knowledge", fallback: "知识库", icon: "knowledge" as const },
-  { href: "/focus", labelKey: "nav.focus", fallback: "Focus", icon: "focus" as const },
+  { href: "/focus", labelKey: "nav.focus", fallback: "专注", icon: "focus" as const },
   { href: "/session-summary", labelKey: "nav.summary", fallback: "专注总结", icon: "summary" as const },
-  { href: "/collector", labelKey: "nav.collector", fallback: "Collector", icon: "collector" as const },
+  { href: "/collector", labelKey: "nav.collector", fallback: "采集", icon: "collector" as const },
   { href: "/settings", labelKey: "nav.settings", fallback: "设置", icon: "settings" as const },
 ];
 

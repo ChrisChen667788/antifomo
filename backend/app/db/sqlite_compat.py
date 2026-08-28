@@ -99,6 +99,26 @@ def ensure_sqlite_compat_columns(engine: Engine) -> None:
         statements.append(
             "ALTER TABLE research_jobs ADD COLUMN metrics_payload JSON NOT NULL DEFAULT '{}'"
         )
+    if _table_exists(engine, "research_jobs") and not _table_has_column(engine, "research_jobs", "request_payload"):
+        statements.append(
+            "ALTER TABLE research_jobs ADD COLUMN request_payload JSON NOT NULL DEFAULT '{}'"
+        )
+    if _table_exists(engine, "research_jobs") and not _table_has_column(engine, "research_jobs", "worker_id"):
+        statements.append(
+            "ALTER TABLE research_jobs ADD COLUMN worker_id VARCHAR(80) NOT NULL DEFAULT ''"
+        )
+    if _table_exists(engine, "research_jobs") and not _table_has_column(engine, "research_jobs", "lease_expires_at"):
+        statements.append(
+            "ALTER TABLE research_jobs ADD COLUMN lease_expires_at DATETIME NULL"
+        )
+    if _table_exists(engine, "research_jobs") and not _table_has_column(engine, "research_jobs", "execution_attempts"):
+        statements.append(
+            "ALTER TABLE research_jobs ADD COLUMN execution_attempts INTEGER NOT NULL DEFAULT 0"
+        )
+    if _table_exists(engine, "research_jobs"):
+        statements.append(
+            "CREATE INDEX IF NOT EXISTS idx_research_jobs_worker_lease ON research_jobs (worker_id, lease_expires_at)"
+        )
     if _table_exists(engine, "research_compare_snapshots") and not _table_has_column(
         engine, "research_compare_snapshots", "report_version_id"
     ):

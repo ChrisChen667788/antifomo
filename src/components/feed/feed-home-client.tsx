@@ -273,11 +273,13 @@ export function FeedHomeClient() {
             if (restored) return;
           } catch {
             window.localStorage.removeItem(WECHAT_IMPORT_BATCH_KEY);
-            if (importIds.length) {
-              await refreshImportReview(importIds);
-              return;
-            }
           }
+        }
+        const latestBatches = await listWechatFavoriteImportBatches({ limit: 1, includeReviewed: false });
+        const latestBatch = latestBatches.items[0];
+        if (latestBatch && latestBatch.review_item_ids.length) {
+          await applyImportBatch(latestBatch);
+          return;
         }
         if (importIds.length) {
           setImportReview((prev) => ({
@@ -287,12 +289,6 @@ export function FeedHomeClient() {
             total: importIds.length,
           }));
           await refreshFeed(nextMode, nextGoal, importIds);
-          return;
-        }
-        const latestBatches = await listWechatFavoriteImportBatches({ limit: 1, includeReviewed: false });
-        const latestBatch = latestBatches.items[0];
-        if (latestBatch && latestBatch.review_item_ids.length) {
-          await applyImportBatch(latestBatch);
           return;
         }
       } catch {
@@ -512,6 +508,10 @@ export function FeedHomeClient() {
           } else {
             void refreshFeed(mode, goalText);
           }
+        }}
+        onBatchSelected={(batch) => {
+          window.localStorage.setItem(WECHAT_IMPORT_BATCH_KEY, batch.id);
+          void applyImportBatch(batch);
         }}
       />
       {importReview.active ? (

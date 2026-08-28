@@ -186,7 +186,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     setMessage("");
     try {
       await navigator.clipboard.writeText(markdownContent);
-      setMessage(t("knowledge.copyMarkdownDone", "Markdown 已复制"));
+      setMessage(t("knowledge.copyMarkdownDone", "原文已复制"));
     } catch {
       setMessage(t("knowledge.copyMarkdownFailed", "复制失败，请稍后重试"));
     }
@@ -265,10 +265,10 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
     try {
       const result = await getKnowledgeMarkdown(entry.id);
       triggerMarkdownDownload(result.filename, result.content);
-      setMessage(t("knowledge.downloadDone", "Markdown 文件已下载"));
+      setMessage(t("knowledge.downloadDone", "文件已下载"));
     } catch {
       triggerMarkdownDownload(`${entry.title || "knowledge-card"}.md`, markdownContent);
-      setMessage(t("knowledge.downloadFallback", "已使用本地内容导出 Markdown"));
+      setMessage(t("knowledge.downloadFallback", "已导出本地内容"));
     } finally {
       setExporting(false);
     }
@@ -294,7 +294,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
       if (content) {
         triggerMarkdownDownload(filename, content);
       }
-      setMessage(t("knowledge.workbuddyDone", "Markdown 已导出"));
+      setMessage(t("knowledge.workbuddyDone", "原文已导出"));
     } catch {
       try {
         const task = await createTask({
@@ -309,7 +309,7 @@ export function KnowledgeDetailCard({ item }: { item: ApiKnowledgeEntry }) {
             ? task.output_payload.filename
             : `${entry.title || "knowledge-card"}.md`;
         triggerMarkdownDownload(filename, content);
-        setMessage(t("knowledge.workbuddyFallback", "已完成 Markdown 导出"));
+        setMessage(t("knowledge.workbuddyFallback", "已完成原文导出"));
       } catch {
         setMessage(t("knowledge.workbuddyFailed", "导出失败，请稍后重试"));
       }

@@ -100,8 +100,12 @@ class LLMProviderRouter:
         if provider == "mock":
             return mock_service
         if not route["api_key"]:
-            return None if role == "strategy" else mock_service
+            return None if role in {"strategy", "research_generation"} else mock_service
         service = self._remote_service(route)
+        if role == "research_generation":
+            if self.settings.research_llm_fallback_to_mock:
+                return FallbackLLMService(service, mock_service)
+            return service
         if role != "strategy" and self.settings.llm_fallback_to_mock:
             return FallbackLLMService(service, mock_service)
         return service

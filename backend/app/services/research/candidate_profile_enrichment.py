@@ -12,6 +12,46 @@ from app.services.research.source_documents import SourceDocument
 from app.services.research.web_search import SearchHit
 
 
+_INVALID_PROFILE_TITLES = {
+    "404",
+    "403",
+    "not found",
+    "page not found",
+    "页面不存在",
+    "访问被拒绝",
+}
+
+
+def _is_valid_profile_source(source: SourceDocument) -> bool:
+    title = normalize_text(source.title).casefold().strip(" -_|:：")
+    return bool(
+        normalize_text(source.url)
+        and title not in _INVALID_PROFILE_TITLES
+        and source.content_status not in {"failed", "error", "empty"}
+    )
+
+
+def _topical_profile_sources(
+    sources: list[SourceDocument],
+    *,
+    seed_profile_urls: set[str],
+) -> list[SourceDocument]:
+    return [
+        source
+        for source in sources
+        if _is_valid_profile_source(source)
+        and normalize_text(source.url) not in seed_profile_urls
+    ]
+
+
+def _candidate_profile_enrichment_requested(input_scope_hints: dict[str, object]) -> bool:
+    return bool(
+        input_scope_hints.get("prefer_company_entities")
+        or input_scope_hints.get("company_anchors")
+        or input_scope_hints.get("clients")
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class CandidateProfileEnrichmentDependencies:
     dedupe_strings: Callable[..., list[str]]
@@ -83,6 +123,23 @@ def enrich_candidate_profiles(
     candidate_profile_source_labels: list[str] = []
     region_conflict_signatures: set[str] = set()
 
+    if not _candidate_profile_enrichment_requested(input_scope_hints):
+        return CandidateProfileEnrichmentResult(
+            sources=sources,
+            rankings=rankings,
+            scope_hints=scope_hints,
+            theme_terms=theme_terms,
+            company_anchor_terms=company_anchor_terms,
+            entity_graph=entity_graph,
+            corrective_triggered=corrective_triggered,
+            candidate_profile_sources=candidate_profile_sources,
+            candidate_profile_companies=candidate_profile_companies,
+            candidate_profile_hit_count=candidate_profile_hit_count,
+            candidate_profile_official_hit_count=candidate_profile_official_hit_count,
+            candidate_profile_source_labels=candidate_profile_source_labels,
+            region_conflict_signatures=region_conflict_signatures,
+        )
+
     candidate_public_profile_names = rankings.candidate_public_profile_names
     if not candidate_public_profile_names:
         return CandidateProfileEnrichmentResult(
@@ -151,6 +208,11 @@ def enrich_candidate_profiles(
     )
     public_profile_hits: list[SearchHit] = []
     seed_profile_hits = deps.build_company_seed_hits(candidate_public_profile_names, keyword=keyword)
+    seed_profile_urls = {
+        normalize_text(hit.url)
+        for hit in seed_profile_hits
+        if normalize_text(hit.url)
+    }
     public_profile_hits.extend(seed_profile_hits)
     for query in public_profile_queries:
         try:
@@ -204,7 +266,7 @@ def enrich_candidate_profiles(
             )
             for hit in selected_profile_hits
         )
-        if source is not None
+        if source is not None and _is_valid_profile_source(source)
     ]
     if not profile_sources:
         return CandidateProfileEnrichmentResult(
@@ -233,7 +295,13 @@ def enrich_candidate_profiles(
         ],
         8,
     )
-    sources = deps.dedupe_sources([*sources, *profile_sources])
+    # Static home/contact seeds prove organization identity, but do not prove
+    # that the organization is relevant to the current research topic.
+    topical_profile_sources = _topical_profile_sources(
+        profile_sources,
+        seed_profile_urls=seed_profile_urls,
+    )
+    sources = deps.dedupe_sources([*sources, *topical_profile_sources])
     region_conflict_signatures.update(
         deps.region_conflict_signature(source)
         for source in sources

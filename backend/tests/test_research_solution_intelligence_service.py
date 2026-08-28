@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
-from app.schemas.research import ResearchReportResponse, ResearchSourceOut
+from app.schemas.research import (
+    ResearchCitationGateOut,
+    ResearchEvidenceGateOut,
+    ResearchReportReadinessOut,
+    ResearchReportResponse,
+    ResearchSourceOut,
+)
+from app.services import industry_skill_library
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.industry_knowledge_rag import LocalContentUnit, LocalDocumentAnalysis
+from app.services.industry_skill_library import build_industry_skill_library
 from app.services.research_solution_intelligence_service import build_solution_delivery_pack
 
 
@@ -152,6 +162,23 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
         for dependency in pack.architect_workbench.integration_dependencies
     )
     assert pack.architect_workbench.next_meeting_agenda
+    assert pack.architecture_export_bundle.adr_table
+    assert pack.architecture_export_bundle.dependency_workshop_checklist
+    assert pack.architecture_export_bundle.stakeholder_brief.key_messages
+    assert pack.architecture_export_bundle.customer_technical_workshop_agenda
+    assert "架构交付导出包" in pack.architecture_export_bundle.export_markdown
+    assert "ADR 表" in pack.architecture_export_bundle.export_markdown
+    assert "集成依赖 workshop 清单" in pack.architecture_export_bundle.export_markdown
+    assert "Stakeholder Brief" in pack.architecture_export_bundle.export_markdown
+    engineering = pack.architecture_decision_engineering
+    assert engineering.status == "ready_for_review"
+    assert len(engineering.quality_attribute_scenarios) >= 6
+    assert all(scenario.response_measure for scenario in engineering.quality_attribute_scenarios)
+    assert all({option.option_type for option in adr.options} == {"baseline", "pilot", "target"} for adr in engineering.adrs)
+    assert {view.level for view in engineering.c4_views} == {"context", "container", "component", "dynamic", "deployment"}
+    assert engineering.traceability_coverage_percent == 100
+    assert engineering.orphan_component_count == 0
+    assert pack.proof_of_architecture.scenario_test_coverage_percent == 100
     assert pack.project_proposal_quality_profile.self_review.triggered is True
     assert (
         pack.project_proposal_quality_profile.self_review.after_score
@@ -169,3 +196,159 @@ def test_solution_delivery_pack_builds_feasibility_proposal_and_ppt_outlines() -
     assert "能力到架构矩阵" in pack.export_markdown
     assert "ADR 架构决策记录" in pack.export_markdown
     assert "集成依赖诊断" in pack.export_markdown
+    assert "架构交付导出包" in pack.export_markdown
+    assert "客户技术 workshop 议程" in pack.export_markdown
+    assert "QAW / ATAM / ADR / C4 架构决策工程" in pack.export_markdown
+    assert "Proof of Architecture 与验收证据" in pack.export_markdown
+
+
+def test_solution_delivery_pack_uses_local_industry_skill_without_inflating_project_evidence(tmp_path, monkeypatch) -> None:
+    source_root = tmp_path / "行业资讯"
+    source_root.mkdir()
+    (source_root / "2026中国旅游AI营销白皮书.pdf").write_bytes(b"fixture")
+    def fake_analyze(path, *, ocr_binary=None):
+        text = "文旅景区游客旅程、内容生产与营销转化需要结合高峰期服务保障和内容版权。"
+        return LocalDocumentAnalysis(
+            extraction_status="full_text_analyzed",
+            source_format="pdf",
+            total_unit_count=2,
+            extracted_unit_count=2,
+            content_char_count=len(text),
+            units=[LocalContentUnit(ordinal=1, locator="第 1 页", text=text)],
+            full_text=text,
+        )
+
+    monkeypatch.setattr(industry_skill_library, "analyze_document_content", fake_analyze)
+    output_dir = tmp_path / "industry-skills"
+    build_industry_skill_library(source_root=source_root, library_dir=output_dir, workers=1, build_rag=False)
+    monkeypatch.setenv("INDUSTRY_SKILL_CATALOG_PATH", str(output_dir / "catalog.json"))
+
+    baseline = build_solution_delivery_pack(
+        _report(),
+        scenario="文旅AIGC平台",
+        target_customer="某文旅集团",
+        vertical_scene="景区数字人导览",
+        use_industry_skills=False,
+    )
+    pack = build_solution_delivery_pack(
+        _report(),
+        scenario="文旅AIGC平台",
+        target_customer="某文旅集团",
+        vertical_scene="景区数字人导览",
+    )
+
+    assert pack.industry_skill_context.status == "available"
+    assert any(skill.industry == "tourism_hospitality" for skill in pack.industry_skill_context.selected_skills)
+    assert pack.source_support_score == baseline.source_support_score
+    assert any(section.title == "行业资料技能与规范性要求" for section in pack.feasibility_outline)
+    assert all(
+        any(section.title == "行业资料技能与规范性要求" for section in document.sections)
+        for document in pack.compiled_documents
+    )
+    assert "本地行业资料技能" in pack.export_markdown
+    assert "不计入公开来源支撑度" in pack.export_markdown
+
+
+def test_solution_delivery_pack_passes_explicit_retrieval_strategy_to_local_skill_context(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_context(**kwargs):
+        captured.update(kwargs)
+        from app.schemas.research import ResearchIndustrySkillContextOut
+
+        return ResearchIndustrySkillContextOut(
+            status="not_selected",
+            query="fixture",
+            retrieval_strategy=kwargs["retrieval_strategy"],
+            retrieval_strategy_label="候选 A：预过滤 + 标题加权",
+        )
+
+    monkeypatch.setattr("app.services.research_solution_intelligence_service.build_industry_skill_context", fake_context)
+    pack = build_solution_delivery_pack(
+        _report(),
+        scenario="文旅AIGC平台",
+        target_customer="某文旅集团",
+        vertical_scene="景区数字人导览",
+        industry_knowledge_retrieval_strategy="prefilter_weighted_hybrid",
+    )
+
+    assert captured["retrieval_strategy"] == "prefilter_weighted_hybrid"
+    assert pack.industry_skill_context.retrieval_strategy == "prefilter_weighted_hybrid"
+
+
+def test_solution_delivery_pack_passes_fixed_retrieval_scope_to_local_skill_context(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_context(**kwargs):
+        captured.update(kwargs)
+        from app.schemas.research import ResearchIndustrySkillContextOut
+
+        return ResearchIndustrySkillContextOut(status="not_selected", query="fixture")
+
+    monkeypatch.setattr("app.services.research_solution_intelligence_service.build_industry_skill_context", fake_context)
+    build_solution_delivery_pack(
+        _report(),
+        scenario="政务数据开放",
+        industry_knowledge_retrieval_industries=["government_public"],
+        industry_knowledge_retrieval_document_types=["policy_standard"],
+    )
+
+    assert captured["retrieval_industries"] == ["government_public"]
+    assert captured["retrieval_document_types"] == ["policy_standard"]
+
+
+def test_delivery_review_route_generates_strategy_isolated_artifacts(tmp_path, monkeypatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.api import research as research_api
+    from app.main import app
+
+    report = _report().model_copy(
+        update={
+            "research_evidence_gate": ResearchEvidenceGateOut(
+                enforced=True,
+                status="evidence_ready",
+                passed=True,
+                formal_report_allowed=True,
+                solution_delivery_allowed=True,
+                accepted_source_count=2,
+                official_source_count=1,
+                unique_domain_count=2,
+                question_coverage_percent=100,
+            ),
+            "research_citation_gate": ResearchCitationGateOut(enforced=True, status="pass", passed=True),
+            "report_readiness": ResearchReportReadinessOut(
+                status="ready", score=90, actionable=True, evidence_gate_passed=True
+            ),
+        }
+    )
+    monkeypatch.setattr(
+        research_api,
+        "load_industry_knowledge_retrieval_benchmark_dataset",
+        lambda: ({}, [type("Case", (), {"case_id": "case-a", "query": "景区 AIGC 导览", "industries": ("tourism_hospitality",), "document_types": ("whitepaper",)})()]),
+    )
+    monkeypatch.setattr(research_api, "resolve_library_dir", lambda: tmp_path / "industry-skills")
+    monkeypatch.setattr(research_api, "register_industry_knowledge_delivery_review_artifacts", lambda **_kwargs: [])
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/research/industry-skills/retrieval-ranking-benchmark/delivery-review",
+            json={"case_id": "case-a", "report": report.model_dump(mode="json")},
+        )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert {artifact["strategy"] for artifact in payload["artifacts"]} == {
+        "baseline_hybrid",
+        "prefilter_weighted_hybrid",
+        "prefilter_weighted_rerank",
+    }
+    paths = [artifact["report_artifact_path"] for artifact in payload["artifacts"]]
+    assert all(path.startswith("../") is False for path in paths)
+    assert all(not path.startswith(str(tmp_path)) for path in paths)
+    assert all(path.endswith(".md") for path in paths)
+    artifact_root = tmp_path / "industry-knowledge-retrieval-ranking-ab-v1" / "delivery-review" / "case-a"
+    absolute_paths = [next(artifact_root.rglob(Path(path).name)) for path in paths]
+    assert all(path.is_file() for path in absolute_paths)
+    candidate_a = next(path for path in absolute_paths if path.name == "prefilter_weighted_hybrid.md")
+    assert "候选 A：预过滤 + 标题加权" in candidate_a.read_text(encoding="utf-8")

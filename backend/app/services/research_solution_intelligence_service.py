@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from app.schemas.research import (
     ResearchEntityEvidenceOut,
@@ -8,21 +8,20 @@ from app.schemas.research import (
     ResearchSolutionDeliveryPackOut,
 )
 from app.services.content_extractor import normalize_text
-from app.services.delivery.market_intelligence import (
-    build_market_intelligence_markdown,
-    build_market_intelligence_pack,
-)
-from app.services.delivery.solution_architecture import (
-    build_solution_architect_workbench,
-    build_solution_architecture_readiness,
-)
+from app.services.delivery.market_intelligence import build_market_intelligence_pack
+from app.services.delivery.solution_architecture import build_solution_architecture_delivery
 from app.services.delivery.quantitative_models import build_quantitative_decision_model
+from app.services.delivery.industry_skill_context import apply_industry_skill_context
+from app.services.delivery.solution_evidence_guard import evaluate_solution_delivery_guard
 from app.services.delivery.solution_materials import (
     build_advisory_artifacts,
     build_solution_delivery_markdown,
     build_solution_delivery_outlines,
 )
 from app.services.research_delivery_quality_service import review_and_improve_solution_delivery_pack
+from app.services.research.architecture_traceability import build_customer_architecture_traceability
+from app.services.industry_knowledge_rag import DEFAULT_INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGY, IndustryKnowledgeRetrievalStrategy
+from app.services.industry_skill_library import build_industry_skill_context
 
 
 def _dedupe_strings(values: Iterable[object], limit: int = 10) -> list[str]:
@@ -37,14 +36,6 @@ def _dedupe_strings(values: Iterable[object], limit: int = 10) -> list[str]:
         if len(rows) >= limit:
             break
     return rows
-
-
-def _scenario_from_report(report: ResearchReportDocument) -> str:
-    text = normalize_text(" ".join([report.keyword, report.research_focus or "", report.report_title]))
-    for value in ("电商数字人", "文旅AIGC平台", "AI营销平台", "政务AI解决方案", "政务AI", "数字人", "AIGC", "AI营销"):
-        if value.lower() in text.lower():
-            return value
-    return report.keyword
 
 
 def _delivery_evidence_links(report: ResearchReportDocument) -> list[ResearchEntityEvidenceOut]:
@@ -81,10 +72,31 @@ def build_solution_delivery_pack(
     target_customer: str = "",
     vertical_scene: str = "",
     supplemental_context: str = "",
+    use_industry_skills: bool = True,
+    industry_skill_ids: list[str] | None = None,
+    industry_knowledge_retrieval_strategy: IndustryKnowledgeRetrievalStrategy = DEFAULT_INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGY,
+    industry_knowledge_retrieval_industries: Sequence[str] | None = None,
+    industry_knowledge_retrieval_document_types: Sequence[str] | None = None,
 ) -> ResearchSolutionDeliveryPackOut:
-    resolved_scenario = normalize_text(scenario) or _scenario_from_report(report)
-    resolved_customer = normalize_text(target_customer) or (report.target_accounts[0] if report.target_accounts else "")
-    resolved_scene = normalize_text(vertical_scene) or normalize_text(report.research_focus or "")
+    resolved_scenario, resolved_customer, resolved_scene, blocked_pack = evaluate_solution_delivery_guard(
+        report,
+        scenario=scenario,
+        target_customer=target_customer,
+        vertical_scene=vertical_scene,
+    )
+    industry_skill_context = build_industry_skill_context(
+        scenario=resolved_scenario,
+        target_customer=resolved_customer,
+        vertical_scene=resolved_scene,
+        supplemental_context=supplemental_context,
+        selected_skill_ids=industry_skill_ids,
+        enabled=use_industry_skills,
+        retrieval_strategy=industry_knowledge_retrieval_strategy,
+        retrieval_industries=industry_knowledge_retrieval_industries,
+        retrieval_document_types=industry_knowledge_retrieval_document_types,
+    )
+    if blocked_pack is not None:
+        return apply_industry_skill_context(blocked_pack, industry_skill_context)
     market_pack = build_market_intelligence_pack(
         report,
         scenario=resolved_scenario,
@@ -146,6 +158,7 @@ def build_solution_delivery_pack(
         vertical_scene=resolved_scene,
         source_support_score=market_pack.source_support_score,
         evidence_policy=evidence_policy,
+        industry_skill_context=industry_skill_context,
         grounding_checks=_dedupe_strings(
             [
                 f"已通过来源校正筛出 {market_pack.validated_source_count} 条高相关来源。",
@@ -181,6 +194,7 @@ def build_solution_delivery_pack(
             limit=6,
         ),
     )
+    pack = apply_industry_skill_context(pack, industry_skill_context)
     pack = review_and_improve_solution_delivery_pack(
         pack,
         evidence_links=_delivery_evidence_links(report),
@@ -192,21 +206,13 @@ def build_solution_delivery_pack(
             limit=4,
         ),
     )
-    architecture_readiness = build_solution_architecture_readiness(
-        report,
-        market_pack=market_pack,
-        pack=pack,
-    )
-    architect_workbench = build_solution_architect_workbench(
-        report,
-        market_pack=market_pack,
-        pack=pack,
-        architecture=architecture_readiness,
-    )
+    pack = build_solution_architecture_delivery(report, market_pack=market_pack, pack=pack)
     pack = pack.model_copy(
         update={
-            "architecture_readiness": architecture_readiness,
-            "architect_workbench": architect_workbench,
+            "customer_architecture_traceability": build_customer_architecture_traceability(
+                report,
+                pack=pack,
+            )
         }
     )
     pack.export_markdown = build_solution_delivery_markdown(pack, market_pack=market_pack)

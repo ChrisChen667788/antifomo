@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
+import os
+from pathlib import Path
 from typing import Any, Iterable, Literal
 
 from app.services.content_extractor import normalize_text
@@ -201,10 +203,26 @@ def _cross_encoder_pair_score(source: object, *, query_terms: list[str], query_t
 
 
 @lru_cache(maxsize=2)
-def _load_sentence_transformers_cross_encoder(model_name: str) -> Any:
+def _load_sentence_transformers_cross_encoder(
+    model_name: str,
+    cache_dir: str | None = None,
+    device: str = "auto",
+) -> Any:
     from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
 
-    return CrossEncoder(model_name)
+    kwargs: dict[str, Any] = {}
+    # Do not let a request-triggered reranker download arbitrary model weights.
+    # The caller records an unavailable model as a gate failure and can retry
+    # after the explicitly managed cache is present.
+    kwargs["local_files_only"] = True
+    if cache_dir:
+        resolved_cache = Path(cache_dir).expanduser()
+        resolved_cache.mkdir(parents=True, exist_ok=True)
+        os.environ["HF_HUB_CACHE"] = str(resolved_cache)
+        kwargs["cache_folder"] = str(resolved_cache)
+    if device and device != "auto":
+        kwargs["device"] = device
+    return CrossEncoder(model_name, **kwargs)
 
 
 def _predict_sentence_transformers_scores(
@@ -212,8 +230,14 @@ def _predict_sentence_transformers_scores(
     *,
     query: str,
     model_name: str,
+    cache_dir: str | None = None,
+    device: str = "auto",
 ) -> tuple[list[float], str]:
-    model = _load_sentence_transformers_cross_encoder(model_name)
+    model = (
+        _load_sentence_transformers_cross_encoder(model_name, cache_dir, device)
+        if cache_dir or device != "auto"
+        else _load_sentence_transformers_cross_encoder(model_name)
+    )
     pairs = [
         [
             normalize_text(query),
@@ -275,6 +299,8 @@ def rerank_sources_cross_encoder(
     model_name: str,
     top_k: int = 20,
     backend: str = "auto",
+    cache_dir: str | None = None,
+    device: str = "auto",
 ) -> tuple[list[object], CrossEncoderRerankProfile]:
     candidates = list(sources)
     capped_top_k = max(1, min(int(top_k or 20), 80))
@@ -296,6 +322,8 @@ def rerank_sources_cross_encoder(
                 scored_sources,
                 query=query,
                 model_name=resolved_model,
+                cache_dir=cache_dir,
+                device=device,
             )
             if len(scores) != len(scored_sources):
                 raise RuntimeError(
@@ -464,9 +492,20 @@ def _build_corrective_queries(
     missing_terms: list[str],
     limit: int,
 ) -> list[str]:
-    base_parts = _dedupe_strings([*scope_terms[:3], keyword, research_focus or ""], limit=6)
+    compact_scope_terms = [term for term in scope_terms if 2 <= len(normalize_text(term)) <= 18]
+    keyword_seed = normalize_text(keyword)
+    focus_seed = normalize_text(research_focus or "")
+    if len(keyword_seed) > 24 and any(marker in keyword_seed for marker in ("调研", "研究", "分析", "搜集", "情报")):
+        keyword_seed = ""
+    if len(focus_seed) > 24:
+        focus_seed = ""
+    base_parts = _dedupe_strings([*compact_scope_terms[:4], keyword_seed, focus_seed], limit=6)
     base_query = normalize_text(" ".join(base_parts)) or normalize_text(keyword)
-    missing = normalize_text(" ".join(missing_terms[:4]))
+    missing = normalize_text(
+        " ".join(
+            [term for term in missing_terms if 2 <= len(normalize_text(term)) <= 12][:4]
+        )
+    )
     queries = [
         f"{base_query} 官方 招标 中标 预算",
         f"site:gov.cn {base_query} 政策 规划 预算",

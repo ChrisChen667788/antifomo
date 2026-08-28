@@ -12,10 +12,13 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.models.entities import User
 from app.schemas.research import (
+    ResearchCitationGateOut,
+    ResearchEvidenceGateOut,
     ResearchFollowupContextOut,
     ResearchFollowupDiagnosticsOut,
     ResearchFollowupSectionImpactOut,
     ResearchReportResponse,
+    ResearchReportReadinessOut,
     ResearchSourceOut,
 )
 from app.services.work_task_service import build_research_plaintext
@@ -59,6 +62,40 @@ def _report() -> ResearchReportResponse:
                 source_tier="official",
             )
         ],
+        research_evidence_gate=ResearchEvidenceGateOut(
+            enforced=True,
+            status="evidence_ready",
+            passed=True,
+            formal_report_allowed=True,
+            solution_delivery_allowed=True,
+            minimum_source_count=1,
+            minimum_official_source_count=1,
+            minimum_unique_domain_count=1,
+            minimum_question_coverage_percent=0,
+            candidate_source_count=1,
+            accepted_source_count=1,
+            official_source_count=1,
+            unique_domain_count=1,
+            question_coverage_percent=100,
+        ),
+        research_citation_gate=ResearchCitationGateOut(
+            enforced=True,
+            status="pass",
+            passed=True,
+            claim_count=1,
+            supported_claim_count=1,
+            critical_claim_count=1,
+            supported_critical_claim_count=1,
+            citation_completeness_percent=100,
+            critical_claim_coverage_percent=100,
+            citation_support_percent=100,
+        ),
+        report_readiness=ResearchReportReadinessOut(
+            status="ready",
+            score=90,
+            actionable=True,
+            evidence_gate_passed=True,
+        ),
         generated_at=datetime.now(timezone.utc),
     )
 
@@ -125,6 +162,9 @@ def test_solution_intelligence_export_tasks_generate_markdown_artifacts() -> Non
         assert "能力到架构矩阵" in str(solution_task.output_payload.get("content") or "")
         assert "ADR 架构决策记录" in str(solution_task.output_payload.get("content") or "")
         assert "集成依赖诊断" in str(solution_task.output_payload.get("content") or "")
+        assert "架构交付导出包" in str(solution_task.output_payload.get("content") or "")
+        assert "集成依赖 workshop 清单" in str(solution_task.output_payload.get("content") or "")
+        assert "客户技术 workshop 议程" in str(solution_task.output_payload.get("content") or "")
         assert "量化决策模型" in str(solution_task.output_payload.get("content") or "")
         assert "可研财务三情景" in str(solution_task.output_payload.get("content") or "")
         assert pptx_task.status == "done"

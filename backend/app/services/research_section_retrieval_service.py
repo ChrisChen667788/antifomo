@@ -267,11 +267,20 @@ def build_section_retrieval_packs(
 ) -> list[ResearchSectionRetrievalPackOut]:
     packs: list[ResearchSectionRetrievalPackOut] = []
     capped_limit = max(1, min(int(limit_per_section or 4), 10))
+    contract = getattr(report, "research_scope_contract", None)
+    diagnostics = getattr(report, "source_diagnostics", None)
+    regions = list(getattr(contract, "regions", []) or getattr(diagnostics, "scope_regions", []) or [])
+    industries = list(getattr(contract, "industries", []) or getattr(diagnostics, "scope_industries", []) or [])
+    specific_industries = [item for item in industries if item not in {"大模型", "人工智能", "信息化"}]
+    region_filter = normalize_text(str(regions[0])) if regions else None
+    industry_filter = normalize_text(str(specific_industries[0])) if specific_industries else None
     for target in build_section_retrieval_targets(report):
         hits = search_research_retrieval_index(
             index,
             target.query,
             limit=capped_limit,
+            region=region_filter,
+            industry=industry_filter,
             parent_block_boost=parent_block_boost,
             official_source_bias=official_source_bias,
         )

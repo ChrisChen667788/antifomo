@@ -101,6 +101,7 @@ def _maybe_delegate_to_official_codebuddy(
         command=settings.workbuddy_official_cli_command,
         timeout_seconds=settings.workbuddy_official_cli_timeout_seconds,
         output_format="text",
+        model=settings.workbuddy_official_model,
     )
     output_payload["workbuddy_bridge"] = {
         "provider": "tencent_codebuddy_cli" if cli_result.ok else "local_adapter",
@@ -109,6 +110,8 @@ def _maybe_delegate_to_official_codebuddy(
         "official_cli_authenticated": cli_result.authenticated,
         "detail": cli_result.detail,
         "summary": cli_result.output if cli_result.ok else None,
+        "requested_model": cli_result.requested_model,
+        "effective_model": cli_result.effective_model,
     }
     task.output_payload = dict(output_payload)
     db.add(task)

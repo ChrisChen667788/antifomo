@@ -21,7 +21,7 @@ from app.services.content_extractor import (
 from app.services.scorer import Scorer
 from app.services.summarizer import Summarizer
 from app.services.tagger import Tagger
-from app.services.llm_service import MockLLMService
+from app.services.llm_service import MockLLMService, get_strategy_llm_service
 
 
 summarizer = Summarizer()
@@ -32,6 +32,7 @@ mock_summarizer = Summarizer(llm_service=_mock_llm_service)
 mock_tagger = Tagger(llm_service=_mock_llm_service)
 mock_scorer = Scorer(llm_service=_mock_llm_service)
 settings = get_settings()
+_wechat_processing_stack: tuple[Summarizer, Tagger, Scorer] | None = None
 
 _ARTICLE_METRIC_RE = re.compile(
     r"20[2-3]\d[./年-]\s*\d{1,2}[./月-]\s*\d{1,2}日?\s*(?:本文)?字数\s*[:：]?\s*\d{2,6}\s*[,，、]?\s*阅读时长[^。；;，,\n]{0,32}",
@@ -420,11 +421,42 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
     return source_domain, title, clean_content
 
 
+def reset_wechat_processing_stack() -> None:
+    global _wechat_processing_stack
+    _wechat_processing_stack = None
+
+
+def _resolve_wechat_processing_stack() -> tuple[Summarizer, Tagger, Scorer]:
+    global _wechat_processing_stack
+    if _wechat_processing_stack is not None:
+        return _wechat_processing_stack
+    if settings.wechat_favorites_llm_role == "generation":
+        _wechat_processing_stack = (summarizer, tagger, scorer)
+        return _wechat_processing_stack
+    service = get_strategy_llm_service()
+    if service is None:
+        raise RuntimeError("WeChat Favorites strategy LLM is not configured")
+    _wechat_processing_stack = (
+        Summarizer(llm_service=service),
+        Tagger(llm_service=service),
+        Scorer(llm_service=service),
+    )
+    return _wechat_processing_stack
+
+
 def _resolve_item_processing_stack(item: Item) -> tuple[Summarizer, Tagger, Scorer, int | None]:
     if item.ingest_route == "ocr" and item.fallback_used:
         return mock_summarizer, mock_tagger, mock_scorer, None
     if item.ingest_route == "ocr":
         return summarizer, tagger, scorer, max(1, int(settings.ocr_item_llm_timeout_seconds))
+    if item.ingest_route == "wechat_favorites":
+        wechat_summarizer, wechat_tagger, wechat_scorer = _resolve_wechat_processing_stack()
+        return (
+            wechat_summarizer,
+            wechat_tagger,
+            wechat_scorer,
+            max(1, int(settings.wechat_favorites_llm_timeout_seconds)),
+        )
     return summarizer, tagger, scorer, max(1, int(settings.item_llm_timeout_seconds))
 
 

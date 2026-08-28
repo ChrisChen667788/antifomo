@@ -127,9 +127,9 @@ export function ResearchReportStrategicSection({
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-info)]">
                 {report.five_year_outlook.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" />
-                    <span>{item}</span>
+                  <li key={item} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                    <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-info)]" />
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -142,9 +142,9 @@ export function ResearchReportStrategicSection({
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-warning)]">
                 {report.competition_analysis.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-warning)]" />
-                    <span>{item}</span>
+                  <li key={item} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                    <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-warning)]" />
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -184,12 +184,12 @@ export function ResearchReportStrategicSection({
                             className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2"
                           >
                             <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs font-medium text-[var(--af-text-secondary)]">{factor.label}</span>
-                                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${factorBucket(factor.score).className}`}>
-                                      {factorBucket(factor.score).label}
-                                    </span>
-                                  </div>
-                                  {factor.note ? <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">{factor.note}</p> : null}
+                              <span className="text-xs font-medium text-[var(--af-text-secondary)]">{factor.label}</span>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] ${factorBucket(factor.score).className}`}>
+                                {factorBucket(factor.score).label}
+                              </span>
+                            </div>
+                            {factor.note ? <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">{factor.note}</p> : null}
                           </div>
                         ))}
                       </div>
@@ -245,9 +245,9 @@ export function ResearchReportStrategicSection({
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {report.client_peer_moves.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-border-strong)]" />
-                    <span>{item}</span>
+                  <li key={item} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                    <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-border-strong)]" />
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -260,9 +260,9 @@ export function ResearchReportStrategicSection({
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {report.winner_peer_moves.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[var(--af-border-strong)]" />
-                    <span>{item}</span>
+                  <li key={item} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                    <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-[var(--af-border-strong)]" />
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>
@@ -281,9 +281,9 @@ export function ResearchReportStrategicSection({
               <p className="af-panel-kicker text-xs font-semibold uppercase tracking-[0.22em]">{panel.title}</p>
               <ul className="mt-3 space-y-2 text-sm leading-6">
                 {panel.items.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="af-bullet mt-[7px] h-1.5 w-1.5 rounded-full" />
-                    <span>{item}</span>
+                  <li key={item} className="grid grid-cols-[8px_1fr] items-start gap-2">
+                    <span className="af-bullet mt-[9px] h-1.5 w-1.5 rounded-full" />
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ul>

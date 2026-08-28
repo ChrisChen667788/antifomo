@@ -20,6 +20,7 @@ function parseArgs(argv) {
     pollIntervalMs: 1500,
     headless: true,
     chromePath: DEFAULT_CHROME_PATH,
+    limit: 0,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -57,6 +58,11 @@ function parseArgs(argv) {
     }
     if (token === "--chrome-path" && next) {
       args.chromePath = next;
+      i += 1;
+      continue;
+    }
+    if (token === "--limit" && next) {
+      args.limit = Math.max(0, Number(next) || 0);
       i += 1;
       continue;
     }
@@ -247,7 +253,10 @@ function renderReport(reportPath, context) {
 async function main() {
   const args = parseArgs(process.argv);
   const apiBase = args.apiBase.replace(/\/+$/, "");
-  const urls = loadUrls(args.file).filter((url) => url !== args.excludeUrl);
+  let urls = loadUrls(args.file).filter((url) => url !== args.excludeUrl);
+  if (args.limit > 0) {
+    urls = urls.slice(0, args.limit);
+  }
   if (urls.length === 0) {
     throw new Error("No target URLs found after exclude filter.");
   }

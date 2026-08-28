@@ -55,6 +55,7 @@ from app.schemas.research import (
     ResearchRankedEntityOut,
     ResearchReportDocument,
     ResearchReportRequest,
+    ResearchReportReadinessOut,
     ResearchReportSectionOut,
 )
 
@@ -175,7 +176,6 @@ def _source_scope_match_score(
                 str(getattr(source, "title", "") or ""),
                 str(getattr(source, "snippet", "") or ""),
                 str(getattr(source, "excerpt", "") or ""),
-                str(getattr(source, "search_query", "") or "") if isinstance(source, SearchHit) else "",
                 str(getattr(source, "source_label", "") or ""),
                 str(getattr(source, "domain", "") or ""),
                 str(getattr(source, "url", "") or ""),
@@ -259,6 +259,7 @@ def _dedupe_sources(sources: list[SourceDocument]) -> list[SourceDocument]:
 def _source_ranking_dependencies(
     *,
     rerank_sources_cross_encoder=_passthrough_rerank_sources_cross_encoder,
+    retrieve_text_matches=None,
 ) -> SourceRankingDependencies:
     settings = SimpleNamespace(
         research_cross_encoder_rerank_enabled=False,
@@ -266,6 +267,9 @@ def _source_ranking_dependencies(
         research_cross_encoder_top_k=20,
         research_cross_encoder_model="cross-encoder/ms-marco-MiniLM-L-6-v2",
     )
+    kwargs = {}
+    if retrieve_text_matches is not None:
+        kwargs["retrieve_text_matches"] = retrieve_text_matches
     return SourceRankingDependencies(
         dedupe_hits=lambda hits: _dedupe_hits(list(hits)),
         dedupe_sources=lambda sources: _dedupe_sources(list(sources)),
@@ -276,6 +280,7 @@ def _source_ranking_dependencies(
         get_settings=lambda: settings,
         safe_int=_safe_int,
         rerank_sources_cross_encoder=rerank_sources_cross_encoder,
+        **kwargs,
     )
 
 
@@ -688,12 +693,12 @@ def test_hybrid_rank_does_not_promote_search_query_only_overlap_noise() -> None:
         keyword=keyword,
         research_focus=research_focus,
         scope_hints=scope_hints,
-        deps=_source_ranking_dependencies(),
+        deps=_source_ranking_dependencies(retrieve_text_matches=lambda *_args, **_kwargs: []),
     )
 
     assert ranked
     assert ranked[0].url == "https://www.nanjing.gov.cn/data/procurement-intent"
-    assert all("论坛" not in hit.title for hit in ranked[:1])
+    assert all("论坛" not in hit.title for hit in ranked)
 
 
 def test_source_rerank_prefers_official_browser_extracted_sources() -> None:
@@ -1360,3 +1365,27 @@ def test_report_readiness_guardrails_keep_title_clean() -> None:
     assert "待补证研判" not in guarded.report_title
     assert "候选推进版" not in guarded.report_title
     assert "待核验" in guarded.executive_summary or "候选推进" in guarded.executive_summary
+
+
+def test_ready_guardrail_removes_stale_blocked_notes() -> None:
+    report = ResearchReportDocument(
+        keyword="政务云商机",
+        output_language="zh-CN",
+        research_mode="deep",
+        report_title="长三角政务云AI需求与机会调研",
+        executive_summary="已形成可执行判断。当前版本更适合作为待核验清单，不建议直接作为最终商业判断。",
+        consulting_angle="用于内部决策。建议先补关键证据，再决定是否进入正式推进。",
+        sections=[],
+        source_count=8,
+        report_readiness=ResearchReportReadinessOut(
+            status="ready",
+            score=96,
+            actionable=True,
+            evidence_gate_passed=True,
+        ),
+    )
+
+    guarded = apply_report_readiness_guardrails(report)
+
+    assert guarded.executive_summary == "已形成可执行判断"
+    assert guarded.consulting_angle == "用于内部决策"

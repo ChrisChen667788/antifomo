@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
+import sys
 
+from app.services import research_rag_quality_service
 from app.services.research_rag_quality_service import (
     build_retrieval_correction_profile,
     rerank_sources_cross_encoder,
@@ -48,6 +51,25 @@ class _Report:
     client_peer_moves: list[str]
     winner_peer_moves: list[str]
     competition_analysis: list[str]
+
+
+def test_cross_encoder_loader_never_attempts_a_network_download(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeCrossEncoder:
+        def __init__(self, model_name: str, **kwargs: object) -> None:
+            captured["model_name"] = model_name
+            captured["kwargs"] = kwargs
+
+    research_rag_quality_service._load_sentence_transformers_cross_encoder.cache_clear()
+    monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(CrossEncoder=_FakeCrossEncoder))
+    try:
+        research_rag_quality_service._load_sentence_transformers_cross_encoder("fixture-cross-encoder")
+    finally:
+        research_rag_quality_service._load_sentence_transformers_cross_encoder.cache_clear()
+
+    assert captured["model_name"] == "fixture-cross-encoder"
+    assert captured["kwargs"] == {"local_files_only": True}
 
 
 def test_retrieval_correction_profile_scores_and_rewrites_low_signal_sources() -> None:

@@ -454,6 +454,44 @@ def test_merge_scope_hints_with_archive_context_pushes_archive_targets_into_quer
     assert any("上海数据集团" in query and "预算" in query for query in queries)
 
 
+def test_merge_scope_hints_with_archive_context_does_not_pollute_industry_study_without_account_intent() -> None:
+    base_scope_hints = {
+        "regions": ["长三角"],
+        "industries": ["文旅文博"],
+        "clients": [],
+        "company_anchors": [],
+        "strategy_query_expansions": ["长三角 景区 博物馆 AI 招标 预算"],
+        "prefer_company_entities": False,
+    }
+
+    merged_scope_hints = merge_scope_hints_with_archive_context(
+        base_scope_hints,
+        [
+            {
+                "kind": "stored_report",
+                "supported_targets": ["国家消防救援局"],
+                "target_departments": ["采购中心"],
+                "budget_signals": ["7 月预算复核"],
+                "source_count": 5,
+                "official_source_ratio": 0.8,
+                "retrieval_quality": "high",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ],
+        keyword="2026年长三角文旅文博行业AI潜在需求及商机情报调研分析",
+        research_focus=None,
+        dedupe_strings=_dedupe_strings,
+        sanitize_report_field_rows=_sanitize_report_field_rows,
+        is_actionable_budget_row=is_actionable_budget_row,
+        truncate_text=_truncate_text,
+        strip_query_noise=_strip_query_noise,
+        sanitize_research_focus_text=_sanitize_research_focus_text,
+    )
+
+    assert merged_scope_hints == base_scope_hints
+    assert "国家消防救援局" not in str(merged_scope_hints)
+
+
 def test_merge_scope_hints_with_archive_context_ignores_stale_low_support_archive_items() -> None:
     base_scope_hints = {
         "regions": ["上海"],
@@ -552,6 +590,33 @@ class _CaptureLLM:
         raise AssertionError(f"unexpected prompt: {prompt_name}")
 
 
+class _FallbackCaptureLLM(_CaptureLLM):
+    def __init__(self) -> None:
+        super().__init__()
+        self.last_run_result = None
+
+    def run_prompt(self, prompt_name: str, variables: dict[str, str]) -> str:
+        if prompt_name == "research_report_outline.txt":
+            raw = super().run_prompt(prompt_name, variables)
+            self.last_run_result = SimpleNamespace(
+                provider="openai",
+                model="gpt-5.5",
+                status="succeeded",
+                metadata={"fallback_used": False},
+            )
+            return raw
+        if prompt_name == "research_report.txt":
+            self.calls.append((prompt_name, dict(variables)))
+            self.last_run_result = SimpleNamespace(
+                provider="mock",
+                model="deterministic-mock",
+                status="fallback",
+                metadata={"fallback_used": True, "primary_error": "RuntimeError"},
+            )
+            return '{"report_title":"模板标题","executive_summary":"脏片段","consulting_angle":"模板角度"}'
+        raise AssertionError(f"unexpected prompt: {prompt_name}")
+
+
 def _build_partial_report_result_for_test(**kwargs):
     return build_partial_report_result(
         **kwargs,
@@ -644,7 +709,7 @@ def test_execute_research_generation_passes_archive_context_into_outline_and_ful
             render_retrieval_correction_context=lambda _profile: "",
             render_industry_methodology_context=lambda _scope_hints: "",
             parse_research_report_response=parse_research_report_response,
-            merge_result_with_intelligence=lambda parsed, _intelligence: parsed,
+            merge_result_with_intelligence=lambda parsed, _intelligence, **_kwargs: parsed,
             apply_topic_specific_overrides=lambda parsed, **_kwargs: parsed,
             apply_strategy_llm_refinement=lambda parsed, **_kwargs: parsed,
         ),
@@ -653,9 +718,68 @@ def test_execute_research_generation_passes_archive_context_into_outline_and_ful
     assert "上海" in execution.parsed.report_title
     outline_call = next(call for call in llm.calls if call[0] == "research_report_outline.txt")
     full_call = next(call for call in llm.calls if call[0] == "research_report.txt")
+    assert outline_call[1]["__timeout_seconds"] == "30"
     assert "上海数据集团" in outline_call[1]["archive_context"]
     assert "预算复核" in outline_call[1]["archive_context"]
     assert "上海数据集团" in full_call[1]["archive_context"]
     assert "预算复核" in full_call[1]["archive_context"]
     assert "二次检索摘要" in outline_call[1]["followup_diagnostics"]
     assert "采购中心" in full_call[1]["followup_diagnostics"]
+
+
+def test_execute_research_generation_marks_fallback_and_preserves_remote_outline() -> None:
+    llm = _FallbackCaptureLLM()
+
+    execution = execute_research_generation(
+        keyword="长三角文旅文博人工智能",
+        research_focus="研判景区和博物馆的人工智能机会",
+        report_research_focus="研判景区和博物馆的人工智能机会",
+        output_language="zh-CN",
+        research_mode="deep",
+        archive_context="",
+        followup_context=ResearchFollowupContextOut(),
+        followup_diagnostics=ResearchFollowupDiagnosticsOut(),
+        source_intelligence={"risks": [], "next_actions": []},
+        scope_hints={"regions": ["长三角"], "industries": ["文旅文博"]},
+        llm=llm,
+        runtime={"llm_timeout_seconds": 30},
+        effective_query_plan=["长三角 文旅文博 人工智能"],
+        adapter_query_plan=[],
+        sources=[],
+        source_diagnostics=ResearchSourceDiagnosticsOut(),
+        entity_graph=ResearchEntityGraphOut(),
+        retrieval_correction_profile=SimpleNamespace(),
+        progress_callback=None,
+        snapshot_callback=None,
+        section_retrieval_dependencies={},
+        deps=ResearchGenerationExecutionDependencies(
+            build_partial_report_result=_build_partial_report_result_for_test,
+            render_followup_diagnostics_prompt_context=lambda _diagnostics: "",
+            emit_research_progress=lambda *args, **kwargs: None,
+            build_progress_message=lambda value, **kwargs: value,
+            build_partial_report_response=_build_partial_report_response_for_test,
+            build_section_retrieval_runtime_context=lambda **kwargs: SimpleNamespace(
+                followup_section_focus_context="",
+                section_retrieval_context="",
+            ),
+            emit_research_snapshot=lambda *args, **kwargs: None,
+            render_source_digest=lambda _sources: "",
+            render_followup_prompt_context=lambda _context: "",
+            render_retrieval_correction_context=lambda _profile: "",
+            render_industry_methodology_context=lambda _scope_hints: "",
+            parse_research_report_response=parse_research_report_response,
+            merge_result_with_intelligence=lambda parsed, _intelligence, **_kwargs: parsed,
+            apply_topic_specific_overrides=lambda parsed, **_kwargs: parsed,
+            apply_strategy_llm_refinement=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("fallback drafts must not be strategy-refined")
+            ),
+        ),
+    )
+
+    assert execution.generation_fallback_used is True
+    assert execution.generation_provider == "mock"
+    assert execution.generation_model == "deterministic-mock"
+    assert execution.parsed.report_title == "上海政务云推进研判"
+    assert "上海数据集团" in execution.parsed.executive_summary
+    assert "降级草稿" in execution.parsed.risks[-1]
+    assert "重新生成正式研报" in execution.parsed.next_actions[-1]

@@ -44,6 +44,33 @@ class CompanySourceEnrichmentResult:
     region_conflict_signatures: set[str]
 
 
+def _company_enrichment_seed_names(
+    *,
+    input_scope_hints: dict[str, object],
+    scope_hints: dict[str, object],
+    company_anchor_terms: list[str],
+    theme_seed_companies: list[str],
+    dedupe_strings: Callable[..., list[str]],
+) -> list[str]:
+    explicit_names = [
+        *(input_scope_hints.get("company_anchors", []) or []),
+        *(input_scope_hints.get("clients", []) or []),
+    ]
+    company_focused = bool(input_scope_hints.get("prefer_company_entities"))
+    if not explicit_names and not company_focused:
+        return []
+    return dedupe_strings(
+        [
+            *explicit_names,
+            *company_anchor_terms,
+            *(scope_hints.get("company_anchors", []) or []),
+            *(scope_hints.get("clients", []) or []),
+            *theme_seed_companies,
+        ],
+        10,
+    )
+
+
 def enrich_company_sources(
     *,
     keyword: str,
@@ -52,6 +79,7 @@ def enrich_company_sources(
     research_mode: str,
     sources: list[SourceDocument],
     input_scope_hints: dict[str, object],
+    explicit_scope_hints: dict[str, object] | None,
     scope_hints: dict[str, object],
     theme_terms: list[str],
     company_anchor_terms: list[str],
@@ -61,12 +89,13 @@ def enrich_company_sources(
     progress_callback: Any | None,
     deps: CompanySourceEnrichmentDependencies,
 ) -> CompanySourceEnrichmentResult:
-    company_seed_names = [
-        *company_anchor_terms[:3],
-        *scope_hints.get("company_anchors", [])[:3],
-        *scope_hints.get("clients", [])[:2],
-        *theme_seed_companies[:4],
-    ]
+    company_seed_names = _company_enrichment_seed_names(
+        input_scope_hints=explicit_scope_hints if explicit_scope_hints is not None else input_scope_hints,
+        scope_hints=scope_hints,
+        company_anchor_terms=company_anchor_terms,
+        theme_seed_companies=theme_seed_companies,
+        dedupe_strings=deps.dedupe_strings,
+    )
     company_contact_queries = deps.build_company_contact_query_plan(
         company_seed_names,
         keyword=keyword,

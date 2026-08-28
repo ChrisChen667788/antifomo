@@ -50,7 +50,7 @@ async function loadDetailItem(id: string): Promise<DetailItemViewModel | null> {
             ingestRoute: diagnostics.ingest_route,
             contentAcquisitionStatus: diagnostics.content_acquisition_status,
             contentAcquisitionNote:
-              diagnostics.content_acquisition_note || "当前没有额外采集说明。",
+              diagnostics.content_acquisition_note || "内容已完成基础整理。",
             bodySource: diagnostics.body_source || "unknown",
             fallbackUsed: diagnostics.fallback_used,
             attemptCount: diagnostics.attempt_count,
@@ -73,8 +73,8 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
 
   return (
     <PageShell
-      title="Item 详情"
-      description="查看摘要、标签、建议动作，并进行用户操作。"
+      title="内容详情"
+      description="查看摘要、标签和建议动作。"
       titleKey="page.item.title"
       descriptionKey="page.item.description"
     >

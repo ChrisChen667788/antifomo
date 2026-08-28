@@ -1,12 +1,14 @@
 # Feature Screenshot Coverage
 
-Version: `1.7.2+20260615`
+Version: `1.9.1+20260713`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 
+The checked-in gallery is a historical `1.9.1` baseline. It is intentionally not accepted as `2.9.5` release evidence: the Research Assurance, Retrieval Assurance, and Evidence Operations panels, including their blocked-state controls, require a fresh capture and human visual confirmation before the visual release gate can pass.
+
 The current baseline contains 30 screenshots: 15 primary surfaces in light
 mode and the same 15 surfaces in dark mode. It was regenerated on
-`2026-06-21` after the P2.2 formal-delivery export update, so nested progress,
+`2026-07-13` after the 1.9.1 architecture-decision, executable-validation, and release-readiness update, so nested progress,
 knowledge, collector, settings, Focus, research, and Inbox delivery surfaces are
 covered instead of only the original four dark-mode routes.
 
@@ -18,7 +20,7 @@ npm run repo:screenshots
 
 The release harness builds the application, allocates a free localhost port, starts `next start`, captures the matrix, and stops only that isolated frontend process. `npm run repo:screenshots:capture` remains available when a compatible frontend is already running.
 
-The capture script also writes `docs/assets/screenshots/screenshot-manifest.json` and rejects screenshots that are too small, captured with a runtime error overlay, or rendered with a theme different from the declared manifest entry. All 15 primary release surfaces have both light and dark baselines.
+The capture script also writes `docs/assets/screenshots/screenshot-manifest.json` and rejects screenshots that are too small, captured with a runtime error overlay, rendered with a theme different from the declared manifest entry, or missing a configured required capture anchor. All 15 primary release surfaces have both light and dark baselines.
 
 ## Coverage Matrix
 

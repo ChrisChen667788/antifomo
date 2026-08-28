@@ -79,7 +79,7 @@ export function ResearchArchiveSectionLinkPopover({
   archiveId,
   fallbackCurrentArchiveId,
   fallbackCompareArchiveId,
-  buttonLabel = "变化深链",
+  buttonLabel = "定位链接",
   buttonClassName = "af-btn af-btn-secondary border px-3 py-1.5 text-xs",
   align = "left",
   onCopyMessage,
@@ -121,7 +121,7 @@ export function ResearchArchiveSectionLinkPopover({
       const summaryLink = fallbackSummaryLink(currentArchiveId, compareArchiveId);
       setLinks(resolvedLinks.length ? resolvedLinks : summaryLink ? [summaryLink] : []);
     } catch {
-      setLoadError("读取变化 section 失败，请稍后重试");
+      setLoadError("读取变化位置失败，请稍后重试");
       setLinks([]);
     } finally {
       setLoading(false);
@@ -141,10 +141,10 @@ export function ResearchArchiveSectionLinkPopover({
   const handleCopyLink = async (link: ResearchMarkdownArchiveCompareSectionLink) => {
     try {
       await navigator.clipboard.writeText(buildAbsoluteHref(link.href));
-      onCopyMessage?.(`已复制变化深链：${link.title}`);
+      onCopyMessage?.(`已复制定位链接：${link.title}`);
       setOpen(false);
     } catch {
-      onCopyMessage?.("复制变化深链失败，请稍后重试");
+      onCopyMessage?.("复制定位链接失败，请稍后重试");
     }
   };
 
@@ -152,10 +152,10 @@ export function ResearchArchiveSectionLinkPopover({
     if (!links?.length) return;
     try {
       await navigator.clipboard.writeText(buildBatchCopyPayload(links));
-      onCopyMessage?.(`已复制 ${links.length} 条变化深链`);
+      onCopyMessage?.(`已复制 ${links.length} 条定位链接`);
       setOpen(false);
     } catch {
-      onCopyMessage?.("复制全部变化深链失败，请稍后重试");
+      onCopyMessage?.("复制全部定位链接失败，请稍后重试");
     }
   };
 
@@ -164,7 +164,7 @@ export function ResearchArchiveSectionLinkPopover({
     links.forEach((link) => {
       window.open(buildAbsoluteHref(link.href), "_blank", "noopener,noreferrer");
     });
-    onCopyMessage?.(`已打开 ${links.length} 个变化 section`);
+    onCopyMessage?.(`已打开 ${links.length} 个变化位置`);
     setOpen(false);
   };
 

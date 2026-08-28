@@ -13,6 +13,7 @@ from urllib import parse, request
 import xml.etree.ElementTree as ET
 
 from app.services.content_extractor import normalize_text
+from app.services.research.web_search import _search_so360
 
 
 REGION_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
@@ -54,6 +55,9 @@ PROCUREMENT_COMPLIANT_DOMAINS = (
 )
 
 THEME_ALIASES: dict[str, tuple[str, ...]] = {
+    "文旅文博": ("文旅", "文博", "文化和旅游", "旅游", "景区", "博物馆", "文物", "导览", "公共文化"),
+    "文旅": ("文旅", "文博", "文化和旅游", "旅游", "景区", "博物馆", "文物", "导览"),
+    "文博": ("文博", "博物馆", "文物", "文化馆", "美术馆", "公共文化", "数字化"),
     "政务云": ("政务", "政府", "云", "云平台", "数据", "大数据", "数据中心", "信息化", "数字化", "平台"),
     "政务": ("政务", "政府", "财政", "采购", "预算", "信息化", "数字化"),
     "大模型": ("大模型", "模型", "训练数据", "算力", "人工智能", "智能", "AI"),
@@ -280,10 +284,11 @@ def _build_match_tokens(keyword: str, research_focus: str | None) -> list[str]:
         rough = re.split(r"[\s,，、/|:：;；（）()]+", value)
         for token in rough:
             normalized = normalize_text(token)
+            lowered = normalized.lower()
             if len(normalized) >= 2:
                 if normalized in GENERIC_MATCH_TOKENS:
                     continue
-                tokens.append(normalized.lower())
+                tokens.append(lowered)
                 if normalized in THEME_ALIASES:
                     tokens.extend(alias.lower() for alias in THEME_ALIASES[normalized])
             compact = re.sub(r"\s+", "", normalized)
@@ -291,9 +296,9 @@ def _build_match_tokens(keyword: str, research_focus: str | None) -> list[str]:
                 if compact in GENERIC_MATCH_TOKENS:
                     continue
                 tokens.append(compact.lower())
-                for trigger, aliases in THEME_ALIASES.items():
-                    if trigger in compact:
-                        tokens.extend(alias.lower() for alias in aliases)
+            for trigger, aliases in THEME_ALIASES.items():
+                if trigger.lower() in lowered:
+                    tokens.extend(alias.lower() for alias in aliases)
     return list(dict.fromkeys(item for item in tokens if item))
 
 
@@ -512,20 +517,27 @@ def _search_domain_hits(
     domain_keyword: str | None = None,
     tokens: list[str],
 ) -> list[ResearchCrawlerHit]:
-    entries: list[dict[str, str]] = []
     try:
-        rss = _fetch_html(
-            f"https://www.bing.com/search?format=rss&q={parse.quote_plus(query)}",
-            timeout_seconds=timeout_seconds,
-        )
-        root = ET.fromstring(rss)
-        for item in root.findall("./channel/item"):
-            title = normalize_text(item.findtext("title") or "")
-            href = normalize_text(item.findtext("link") or "")
-            if title and href:
-                entries.append({"href": href, "title": title})
+        entries: list[dict[str, str]] = [
+            {"href": hit.url, "title": hit.title, "snippet": hit.snippet}
+            for hit in _search_so360(query, timeout_seconds=timeout_seconds, limit=limit)
+        ]
     except Exception:
         entries = []
+    try:
+        if not entries:
+            rss = _fetch_html(
+                f"https://www.bing.com/search?format=rss&q={parse.quote_plus(query)}",
+                timeout_seconds=timeout_seconds,
+            )
+            root = ET.fromstring(rss)
+            for item in root.findall("./channel/item"):
+                title = normalize_text(item.findtext("title") or "")
+                href = normalize_text(item.findtext("link") or "")
+                if title and href:
+                    entries.append({"href": href, "title": title})
+    except Exception:
+        pass
 
     if not entries:
         html = _fetch_html(
@@ -553,7 +565,7 @@ def _search_domain_hits(
             detail_html = _fetch_html(url, timeout_seconds=min(timeout_seconds, 8), allow_insecure=True)
         except Exception:
             detail_html = ""
-        snippet = _extract_meta_description(detail_html) or title
+        snippet = _extract_meta_description(detail_html) or normalize_text(entry.get("snippet", "")) or title
         score = _score_candidate(
             title=title,
             snippet=snippet,

@@ -6,12 +6,14 @@ from app.schemas.research import (
     ResearchReportDocument,
     ResearchReportReadinessOut,
     ResearchReportSectionOut,
+    ResearchScopeContractOut,
     ResearchScenarioOut,
     ResearchSourceDiagnosticsOut,
     ResearchSourceOut,
     ResearchTechnicalAppendixOut,
 )
 from app.services.research_quality_service import build_research_quality_profile
+from app.services.research.report_readiness import ReportReadinessDependencies, build_report_readiness
 
 
 def _official_source(title: str) -> ResearchSourceOut:
@@ -179,3 +181,117 @@ def test_quality_profile_flags_low_professional_and_evidence_value() -> None:
     assert profile.overall_score < 55
     assert profile.gaps
     assert any("官方" in action or "预算" in action for action in profile.next_actions)
+
+
+def test_quality_profile_keeps_culture_tourism_methodology_when_sources_contain_procurement_terms() -> None:
+    report = ResearchReportDocument(
+        keyword="长三角文旅文博人工智能",
+        research_focus="研判景区、博物馆与公共文化场景的人工智能机会。",
+        report_title="长三角文旅文博人工智能机会研判",
+        executive_summary="围绕景区导览、博物馆内容资产和游客运营形成机会判断。",
+        consulting_angle="核验场景、业主、招采窗口与持续运营价值。",
+        sources=[
+            ResearchSourceOut(
+                title="某博物馆数字导览项目采购公告",
+                url="https://example.gov.cn/tender",
+                domain="example.gov.cn",
+                snippet="公共资源交易平台发布博物馆数字导览和游客服务项目采购公告。",
+                search_query="长三角 博物馆 数字导览 招标",
+                source_type="tender",
+                content_status="browser_extracted",
+                source_label="政府公告",
+                source_tier="official",
+            )
+        ],
+        source_count=1,
+        source_diagnostics=ResearchSourceDiagnosticsOut(
+            scope_regions=["长三角"],
+            scope_industries=["文旅文博"],
+        ),
+        research_scope_contract=ResearchScopeContractOut(
+            keyword="长三角文旅文博人工智能",
+            regions=["长三角"],
+            industries=["文旅文博"],
+            industry_methodology="文旅文博",
+            status="ready",
+        ),
+    )
+
+    profile = build_research_quality_profile(report)
+
+    assert profile.methodology.industry_key == "culture_tourism_ai"
+    assert "场景" in profile.methodology.framework_name
+
+
+def test_report_readiness_blocks_an_otherwise_actionable_generation_fallback() -> None:
+    report = ResearchReportDocument(
+        keyword="长三角文旅文博人工智能",
+        report_title="长三角文旅文博人工智能机会研判",
+        executive_summary="已有来源、账户和预算信号。",
+        consulting_angle="用于解决方案与销售推进。",
+        target_accounts=["某文旅集团"],
+        target_departments=["数字化中心"],
+        budget_signals=["年度数字化建设预算"],
+        source_count=8,
+        evidence_density="high",
+        source_diagnostics=ResearchSourceDiagnosticsOut(
+            official_source_ratio=0.5,
+            generation_provider="mock",
+            generation_model="deterministic-mock",
+            generation_status="fallback",
+            generation_fallback_used=True,
+            generation_notes=["正式研报模型超时，当前为降级草稿。"],
+        ),
+    )
+
+    readiness = build_report_readiness(
+        report,
+        deps=ReportReadinessDependencies(
+            dedupe_strings=lambda values, limit: list(dict.fromkeys(values))[:limit],
+            sanitize_entity_row=lambda _field, value: value,
+            is_actionable_budget_row=lambda value: bool(value),
+        ),
+    )
+
+    assert readiness.status == "needs_evidence"
+    assert readiness.score == 45
+    assert readiness.actionable is False
+    assert readiness.evidence_gate_passed is False
+    assert "正式模型输出" in readiness.missing_axes
+
+
+def test_report_readiness_keeps_snapshot_recovery_out_of_ready_state() -> None:
+    report = ResearchReportDocument(
+        keyword="长三角文旅文博人工智能",
+        report_title="长三角文旅文博人工智能机会研判",
+        executive_summary="已有来源、账户、预算和组织入口。",
+        consulting_angle="用于解决方案与销售推进。",
+        target_accounts=["某文旅集团"],
+        target_departments=["数字化中心"],
+        public_contact_channels=["官网业务入口"],
+        budget_signals=["年度数字化建设预算"],
+        source_count=8,
+        evidence_density="high",
+        source_diagnostics=ResearchSourceDiagnosticsOut(
+            official_source_ratio=0.5,
+            snapshot_recovery_used=True,
+            snapshot_recovery_source_count=12,
+            snapshot_recovery_job_id="prior-job",
+            snapshot_recovery_age_hours=3,
+        ),
+    )
+
+    readiness = build_report_readiness(
+        report,
+        deps=ReportReadinessDependencies(
+            dedupe_strings=lambda values, limit: list(dict.fromkeys(values))[:limit],
+            sanitize_entity_row=lambda _field, value: value,
+            is_actionable_budget_row=lambda value: bool(value),
+        ),
+    )
+
+    assert readiness.status == "needs_evidence"
+    assert readiness.score <= 58
+    assert readiness.actionable is False
+    assert readiness.evidence_gate_passed is False
+    assert "新鲜证据复核" in readiness.missing_axes

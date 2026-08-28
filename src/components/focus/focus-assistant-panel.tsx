@@ -29,9 +29,9 @@ function renderBridgeLabel(task: ApiTask | null, t: (key: string, fallback: stri
     return t("focus.assistant.bridgeOfficial", "腾讯官方 CodeBuddy CLI");
   }
   if (bridge.official_cli_authenticated === false) {
-    return t("focus.assistant.bridgeLocalFallback", "本地兼容层（官方 CLI 未登录）");
+    return t("focus.assistant.bridgeLocalFallback", "本地助手未登录");
   }
-  return t("focus.assistant.bridgeLocal", "本地兼容层");
+  return t("focus.assistant.bridgeLocal", "本地助手");
 }
 
 export function FocusAssistantPanel({

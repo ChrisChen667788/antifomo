@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
-from app.schemas.research import ResearchJobCreateRequest
+from app.schemas.research import ResearchJobCreateRequest, ResearchReportResponse
 from app.services.llm_runtime import LLMRunResult, LLMUsage
 from app.services import research_job_store
 from app.services.research.run_metrics import (
@@ -11,6 +13,7 @@ from app.services.research.run_metrics import (
     activate_research_run_metrics,
     instrument_llm_service,
 )
+from app.services.research.workflow_engine import ResearchWorkflowExecution
 
 
 class _StaticLLM:
@@ -107,6 +110,8 @@ def test_metered_llm_prefers_provider_usage_and_pricing() -> None:
     with activate_research_run_metrics(metrics):
         service = instrument_llm_service(_UsageAwareLLM(), role="generation")
         assert service.run_prompt("missing-test-prompt.txt", {}) == '{"ok": true}'
+        assert service.last_run_result is not None
+        assert service.last_run_result.model == "gpt-test-2026"
 
     entry = metrics.cost_ledger.snapshot()["entries"][0]
     assert entry["provider"] == "langchain_openai"
@@ -118,6 +123,41 @@ def test_metered_llm_prefers_provider_usage_and_pricing() -> None:
     assert entry["estimated_cost_usd"] == 0.00042
     assert entry["metadata"]["token_counting"] == "provider"
     assert entry["metadata"]["cached_input_tokens"] == 30
+
+
+def test_historical_job_report_infers_generation_fallback_from_cost_ledger() -> None:
+    report = {
+        "source_diagnostics": {},
+        "report_readiness": {"status": "ready", "score": 88, "actionable": True},
+        "quality_profile": {"overall_score": 72, "status": "usable", "headline": "可交付"},
+    }
+    metrics = {
+        "cost_ledger": {
+            "entries": [
+                {
+                    "operation": "research_report.txt",
+                    "provider": "mock",
+                    "model": "deterministic-mock",
+                    "status": "fallback",
+                    "metadata": {"fallback_used": True, "primary_error": "RuntimeError"},
+                }
+            ]
+        }
+    }
+
+    enriched = research_job_store._enrich_report_with_generation_metrics(
+        report,
+        metrics,
+        output_language="zh-CN",
+    )
+
+    assert enriched is not None
+    assert enriched["source_diagnostics"]["generation_fallback_used"] is True
+    assert enriched["source_diagnostics"]["generation_model"] == "deterministic-mock"
+    assert enriched["report_readiness"]["status"] == "needs_evidence"
+    assert enriched["report_readiness"]["score"] == 45
+    assert enriched["report_readiness"]["actionable"] is False
+    assert enriched["quality_profile"]["overall_score"] == 45
 
 
 def test_run_metrics_records_nodes_progress_and_completion() -> None:
@@ -162,3 +202,35 @@ def test_research_job_failure_persists_finished_metrics(monkeypatch) -> None:
     assert isinstance(metrics, dict)
     assert metrics["status"] == "failed"
     assert metrics["finished_at"]
+
+
+def test_research_job_does_not_mark_an_empty_evidence_report_as_succeeded(monkeypatch) -> None:
+    updates: list[dict[str, object]] = []
+    report = ResearchReportResponse(
+        keyword="通用主题测试",
+        report_title="证据缺口",
+        executive_summary="当前没有可用证据。",
+        consulting_angle="仅用于补证。",
+        source_count=0,
+        generated_at=datetime.now(timezone.utc),
+    )
+
+    def blocked_workflow(*args, **kwargs):
+        return ResearchWorkflowExecution(report=report, metrics=kwargs["metrics"])
+
+    monkeypatch.setattr(research_job_store, "execute_research_report_workflow", blocked_workflow)
+    monkeypatch.setattr(
+        research_job_store,
+        "update_research_job",
+        lambda job_id, **changes: updates.append(changes),
+    )
+
+    research_job_store._run_research_job(
+        "00000000-0000-0000-0000-000000000002",
+        ResearchJobCreateRequest(keyword="通用主题测试", research_mode="fast"),
+    )
+
+    final_update = updates[-1]
+    assert final_update["status"] == "needs_evidence"
+    assert final_update["stage_key"] == "needs_evidence"
+    assert "正式研报未生成" in str(final_update["message"])

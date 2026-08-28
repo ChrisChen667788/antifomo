@@ -34,6 +34,16 @@ export function ResearchReportDeliverySection({
   valueBucket: (score: number) => ReportScoreBucket;
 }) {
   const quantitativeModel = solutionDeliveryPack?.quantitative_decision_model;
+  const architectureExportBundle = solutionDeliveryPack?.architecture_export_bundle;
+  const architectureAdrRows = architectureExportBundle?.adr_table || [];
+  const architectureDependencyWorkshopItems = architectureExportBundle?.dependency_workshop_checklist || [];
+  const architectureTechnicalAgenda = architectureExportBundle?.customer_technical_workshop_agenda || [];
+  const architectureStakeholderBrief = architectureExportBundle?.stakeholder_brief;
+  const architectureEngineering = solutionDeliveryPack?.architecture_decision_engineering;
+  const proofOfArchitecture = solutionDeliveryPack?.proof_of_architecture;
+  const industrySkillContext = solutionDeliveryPack?.industry_skill_context;
+  const architectureExportCount =
+    architectureAdrRows.length + architectureDependencyWorkshopItems.length + architectureTechnicalAgenda.length;
   const recommendedOption =
     quantitativeModel?.alternative_options?.find((option) => option.option_id === quantitativeModel.recommended_option_id) ||
     quantitativeModel?.alternative_options?.[0];
@@ -46,17 +56,21 @@ export function ResearchReportDeliverySection({
       {(marketIntelligence?.tender_projects?.length ||
         marketIntelligence?.product_catalog?.length ||
         solutionDeliveryPack?.client_ppt_outline?.length ||
-        quantitativeModel?.alternative_options?.length) ? (
+        industrySkillContext?.selected_skills?.length ||
+        quantitativeModel?.alternative_options?.length ||
+        architectureEngineering?.quality_attribute_scenarios?.length ||
+        proofOfArchitecture?.checks?.length ||
+        architectureExportCount) ? (
         <article className="mt-5 af-report-surface rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-info)]">近三年公开情报与交付包</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-info)]">公开情报与交付材料</p>
               <h4 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
-                招投标明细、产品清单、技术参数和方案材料大纲
+                机会线索、产品要点和交付文件
               </h4>
               <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 {marketIntelligence?.source_scope_summary ||
-                  "基于公开网页、政府采购、公共资源交易、招投标公开平台、企业官网/产品页和行业媒体整理。"}
+                  "已整理可引用的公开来源。"}
               </p>
             </div>
             {marketIntelligence?.window_start && marketIntelligence?.window_end ? (
@@ -68,7 +82,7 @@ export function ResearchReportDeliverySection({
 
           <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
             <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">招投标项目明细</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">项目线索</p>
               <div className="mt-3 space-y-2">
                 {(marketIntelligence?.tender_projects || []).slice(0, 4).map((item) => (
                   <div key={`${item.project_name}-${item.source_url}`} className="rounded-xl bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] px-3 py-2">
@@ -77,20 +91,20 @@ export function ResearchReportDeliverySection({
                       {item.notice_type || "公开线索"} · {item.publish_date || "日期待核验"} · {item.amount || "金额待核验"}
                     </p>
                     {item.source_url ? (
-                      <a className="mt-1 block truncate text-xs text-[var(--af-info)] text-[var(--af-info)]" href={item.source_url} target="_blank" rel="noreferrer">
+                      <a className="mt-1 block truncate text-xs text-[var(--af-info)]" href={item.source_url} target="_blank" rel="noreferrer">
                         {item.source_title || item.source_url}
                       </a>
                     ) : null}
                   </div>
                 ))}
                 {!(marketIntelligence?.tender_projects || []).length ? (
-                  <p className="text-sm leading-6 text-[var(--af-text-tertiary)]">当前未形成可引用项目明细，需继续补公开招采来源。</p>
+                  <p className="text-sm leading-6 text-[var(--af-text-tertiary)]">暂无可引用项目线索。</p>
                 ) : null}
               </div>
             </div>
 
             <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">产品清单与技术参数</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">产品与参数</p>
               <div className="mt-3 space-y-2">
                 {(marketIntelligence?.product_catalog || []).slice(0, 5).map((item) => (
                   <div key={`product-${item.name}`} className="rounded-xl bg-[var(--af-surface-muted)] px-3 py-2">
@@ -107,60 +121,65 @@ export function ResearchReportDeliverySection({
             </div>
 
             <div className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">交付材料大纲</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">交付文件</p>
               <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                 <p>场景：{solutionDeliveryPack?.scenario || report.keyword}</p>
                 <p>目标客户：{solutionDeliveryPack?.target_customer || report.target_accounts[0] || "待确认"}</p>
                 <p>可研章节：{solutionDeliveryPack?.feasibility_outline?.length || 0} 个</p>
                 <p>建议书章节：{solutionDeliveryPack?.project_proposal_outline?.length || 0} 个</p>
                 <p>PPT 页纲：{solutionDeliveryPack?.client_ppt_outline?.length || 0} 页</p>
-                <p>Advisory 产物：{solutionDeliveryPack?.advisory_artifacts?.length || 0} 份</p>
-                <p>专用编译器：{solutionDeliveryPack?.compiled_documents?.length || 0} 类</p>
+                <p>交付附件：{solutionDeliveryPack?.advisory_artifacts?.length || 0} 份</p>
+                <p>正式文档：{solutionDeliveryPack?.compiled_documents?.length || 0} 类</p>
                 {quantitativeModel?.alternative_options?.length ? (
                   <p>
-                    量化模型：{quantitativeModel.status} · 推荐{" "}
+                    决策建议：推荐{" "}
                     {recommendedOption?.name || quantitativeModel.recommended_option_id || "待确认"}
                   </p>
-                ) : null}
-                {solutionDeliveryPack?.evidence_ledger ? (
-                  <>
-                    <p>
-                      主张账本：{solutionDeliveryPack.evidence_ledger.claim_count} 条 · 证据{" "}
-                      {solutionDeliveryPack.evidence_ledger.evidence_count} 个
-                    </p>
-                    <p>
-                      高置信覆盖：{solutionDeliveryPack.evidence_ledger.high_confidence_coverage_percent}% ·
-                      实体/数字一致性：{solutionDeliveryPack.evidence_ledger.entity_consistency_score}/
-                      {solutionDeliveryPack.evidence_ledger.numeric_consistency_score}
-                    </p>
-                  </>
-                ) : null}
-                {solutionDeliveryPack?.semantic_challenge ? (
-                  <>
-                    <p>
-                      语义挑战者：{solutionDeliveryPack.semantic_challenge.overall_score}/100 ·{" "}
-                      {solutionDeliveryPack.semantic_challenge.status}
-                    </p>
-                    <p>
-                      范围漂移：{solutionDeliveryPack.semantic_challenge.scope_drift_count} ·
-                      跨章节冲突：{solutionDeliveryPack.semantic_challenge.cross_section_conflict_count} ·
-                      黄金样本：{solutionDeliveryPack.semantic_challenge.golden_sample_alignment_score || 0}
-                    </p>
-                  </>
                 ) : null}
               </div>
               {solutionDeliveryPack?.semantic_challenge?.high_severity_count ? (
                 <p className="mt-2 text-xs leading-5 text-[var(--af-danger)]">
-                  语义阻断：{solutionDeliveryPack.semantic_challenge.issues?.[0]?.summary || "存在高严重度语义问题"}
+                  需复核：{solutionDeliveryPack.semantic_challenge.issues?.[0]?.summary || "存在高优先级问题"}
                 </p>
               ) : null}
               {solutionDeliveryPack?.evidence_ledger?.consistency_issues?.length ? (
                 <p className="mt-2 text-xs leading-5 text-[var(--af-danger)]">
-                  一致性阻断：{solutionDeliveryPack.evidence_ledger.consistency_issues[0].summary}
+                  需复核：{solutionDeliveryPack.evidence_ledger.consistency_issues[0].summary}
                 </p>
               ) : null}
               {solutionDeliveryPack?.review_checklist?.length ? (
-                <p className="mt-2 text-xs leading-5 text-[var(--af-info)]">审阅重点：{solutionDeliveryPack.review_checklist[0]}</p>
+                <p className="mt-2 text-xs leading-5 text-[var(--af-info)]">建议关注：{solutionDeliveryPack.review_checklist[0]}</p>
+              ) : null}
+              {industrySkillContext?.status === "available" ? (
+                <div className="mt-3 rounded-xl border border-[color-mix(in_srgb,var(--af-info)_24%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_8%,var(--af-surface-muted))] px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-[var(--af-text-primary)]">已调用本地行业资料技能</p>
+                    <span className="rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[11px] text-[var(--af-info)]">
+                      覆盖 {industrySkillContext.source_document_count} 份资料
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
+                    {industrySkillContext.selected_skills.map((skill) => skill.name).join(" / ")}
+                  </p>
+                  {industrySkillContext.selected_skills[0]?.references?.[0] ? (
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                      代表资料：{industrySkillContext.selected_skills[0].references[0].title}
+                    </p>
+                  ) : null}
+                  {industrySkillContext.knowledge_base?.hybrid_search_enabled ? (
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--af-info)]">
+                      全文 RAG：{industrySkillContext.knowledge_base.passage_count} 个分段，关键词 + 向量混合检索。
+                    </p>
+                  ) : null}
+                  {industrySkillContext.retrieval_hits?.[0] ? (
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                      本次命中：{industrySkillContext.retrieval_hits[0].title} {industrySkillContext.retrieval_hits[0].locator}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                    仅用于行业框架与规范性校验，不计入项目事实或公开证据。
+                  </p>
+                </div>
               ) : null}
               {solutionDeliveryPack?.compiled_documents?.length ? (
                 <div className="mt-3 grid grid-cols-1 gap-2">
@@ -168,7 +187,7 @@ export function ResearchReportDeliverySection({
                     <div key={document.document_kind} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
                       <p className="text-xs font-semibold text-[var(--af-text-primary)]">{document.title}</p>
                       <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-secondary)]">
-                        {document.framework} · {document.sections?.length || 0} 章
+                        {document.sections?.length || 0} 章
                       </p>
                     </div>
                   ))}
@@ -177,9 +196,9 @@ export function ResearchReportDeliverySection({
               {quantitativeModel?.alternative_options?.length ? (
                 <div className="mt-3 rounded-xl border border-[color-mix(in_srgb,var(--af-info)_24%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_8%,var(--af-surface-muted))] px-3 py-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-[var(--af-text-primary)]">量化决策模型</p>
+                    <p className="text-xs font-semibold text-[var(--af-text-primary)]">决策建议</p>
                     <span className="rounded-full bg-[var(--af-surface-elevated)] px-2 py-0.5 text-[11px] text-[var(--af-text-secondary)]">
-                      {quantitativeModel.status} · {quantitativeModel.financial_scenarios?.length || 0} 情景
+                      {quantitativeModel.financial_scenarios?.length || 0} 个情景
                     </span>
                   </div>
                   <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
@@ -188,9 +207,9 @@ export function ResearchReportDeliverySection({
                   </p>
                   {baseFinancialScenario ? (
                     <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
-                      基准 CAPEX：{baseFinancialScenario.capex_cny ?? "待补"} · 三年 TCO：
-                      {baseFinancialScenario.tco_3y_cny ?? "待补"} · IRR：
-                      {baseFinancialScenario.irr_percent ?? "待补"}% · ROI：
+                      基准投入：{baseFinancialScenario.capex_cny ?? "待补"} · 三年成本：
+                      {baseFinancialScenario.tco_3y_cny ?? "待补"} · 回收率：
+                      {baseFinancialScenario.irr_percent ?? "待补"}% · 投资回报：
                       {baseFinancialScenario.roi_percent ?? "待补"}%
                     </p>
                   ) : null}
@@ -207,7 +226,7 @@ export function ResearchReportDeliverySection({
                         </span>
                       </div>
                       <p className="mt-1 text-xs leading-5">
-                        {solutionDeliveryQuality.gaps?.[0] || solutionDeliveryQuality.strengths?.[0] || "已按交付质量口径完成结构化自审。"}
+                        {solutionDeliveryQuality.gaps?.[0] || solutionDeliveryQuality.strengths?.[0] || "已完成质量检查。"}
                       </p>
                     </div>
                   ) : null}
@@ -221,8 +240,8 @@ export function ResearchReportDeliverySection({
                       </div>
                       <p className="mt-1 text-xs leading-5">
                         {projectProposalQuality.self_review?.triggered
-                          ? `已自修订：${projectProposalQuality.self_review.before_score}→${projectProposalQuality.self_review.after_score}`
-                          : projectProposalQuality.gaps?.[0] || projectProposalQuality.strengths?.[0] || "已完成项目建议书质量自审。"}
+                          ? `已优化：${projectProposalQuality.self_review.before_score}→${projectProposalQuality.self_review.after_score}`
+                          : projectProposalQuality.gaps?.[0] || projectProposalQuality.strengths?.[0] || "已完成质量检查。"}
                       </p>
                     </div>
                   ) : null}
@@ -245,12 +264,12 @@ export function ResearchReportDeliverySection({
             <div className="mt-4 rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">解决方案架构就绪度</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">方案就绪度</p>
                   <h5 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
-                    架构蓝图、接口风险和核验动作
+                    方案蓝图、风险和待确认动作
                   </h5>
                   <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
-                    {architectureReadiness.summary || "已为解决方案架构师沉淀架构评估框架，需补充客户和接口约束后形成外发版。"}
+                    {architectureReadiness.summary || "已形成方案骨架，补齐客户约束后可进入外发准备。"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -297,7 +316,7 @@ export function ResearchReportDeliverySection({
                 <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                   {architectureReadiness.integration_risks?.length ? (
                     <div className="rounded-xl border border-[color-mix(in_srgb,var(--af-warning)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_10%,var(--af-surface-muted))] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-warning)]">集成 / 落地风险</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-warning)]">落地风险</p>
                       <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--af-warning)]">
                         {architectureReadiness.integration_risks.slice(0, 3).map((risk) => (
                           <li key={`architecture-risk-${risk}`}>{risk}</li>
@@ -307,7 +326,7 @@ export function ResearchReportDeliverySection({
                   ) : null}
                   {architectureReadiness.validation_actions?.length ? (
                     <div className="rounded-xl border border-[color-mix(in_srgb,var(--af-success)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-success)_9%,var(--af-surface-muted))] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-success)]">架构核验动作</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-success)]">待确认动作</p>
                       <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--af-success)]">
                         {architectureReadiness.validation_actions.slice(0, 3).map((action) => (
                           <li key={`architecture-action-${action}`}>{action}</li>
@@ -332,10 +351,10 @@ export function ResearchReportDeliverySection({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">
-                    {architectWorkbench.framework_label || "解决方案架构师工作台"}
+                    方案工作台
                   </p>
                   <h5 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
-                    客户场景、干系人问题和决策核验
+                    客户场景、关键问题和决策依据
                   </h5>
                 </div>
                 {primaryCustomerScenario ? (
@@ -367,7 +386,7 @@ export function ResearchReportDeliverySection({
                 <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                   {architectWorkbench.stakeholders?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">干系人问题地图</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">关键问题</p>
                       <div className="mt-2 space-y-2">
                         {architectWorkbench.stakeholders.slice(0, 4).map((stakeholder) => (
                           <div key={`stakeholder-${stakeholder.role}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
@@ -387,7 +406,7 @@ export function ResearchReportDeliverySection({
                   ) : null}
                   {architectWorkbench.decision_criteria?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">决策标准与验证动作</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">决策标准</p>
                       <div className="mt-2 space-y-2">
                         {architectWorkbench.decision_criteria.slice(0, 4).map((criterion) => (
                           <div key={`criterion-${criterion.criterion}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
@@ -408,7 +427,7 @@ export function ResearchReportDeliverySection({
                 <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
                   {architectWorkbench.capability_architecture_matrix?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">能力到架构矩阵</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">能力映射</p>
                       <div className="mt-2 space-y-2">
                         {architectWorkbench.capability_architecture_matrix.slice(0, 3).map((mapping) => (
                           <div key={`capability-mapping-${mapping.business_capability}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
@@ -418,7 +437,7 @@ export function ResearchReportDeliverySection({
                             </p>
                             {mapping.integration_surfaces?.length ? (
                               <p className="mt-1 text-[11px] leading-5 text-[var(--af-info)]">
-                                集成面：{mapping.integration_surfaces.slice(0, 2).join(" / ")}
+                                对接：{mapping.integration_surfaces.slice(0, 2).join(" / ")}
                               </p>
                             ) : null}
                           </div>
@@ -428,7 +447,7 @@ export function ResearchReportDeliverySection({
                   ) : null}
                   {architectWorkbench.integration_dependencies?.length ? (
                     <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">集成依赖诊断</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">集成依赖</p>
                       <div className="mt-2 space-y-2">
                         {architectWorkbench.integration_dependencies.slice(0, 3).map((dependency) => (
                           <div key={`integration-dependency-${dependency.dependency}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
@@ -457,7 +476,7 @@ export function ResearchReportDeliverySection({
 
               {architectWorkbench.architecture_decision_records?.length ? (
                 <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">ADR 架构决策记录</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">关键决策</p>
                   <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
                     {architectWorkbench.architecture_decision_records.slice(0, 3).map((record) => (
                       <div key={`architecture-decision-${record.decision}`} className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
@@ -482,6 +501,197 @@ export function ResearchReportDeliverySection({
                     ))}
                   </div>
                 </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {(architectureEngineering || proofOfArchitecture) ? (
+            <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[var(--af-surface-elevated)] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">
+                    架构决策与验证证据
+                  </p>
+                  <h5 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
+                    QAW / ATAM / ADR / C4 / Proof of Architecture
+                  </h5>
+                  <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
+                    {architectureEngineering?.summary || proofOfArchitecture?.summary || "待生成架构决策与验证工件。"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {architectureEngineering ? (
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      architectureEngineering.status === "ready_for_review"
+                        ? "af-chip af-chip-success"
+                        : architectureEngineering.status === "blocked"
+                          ? "af-chip af-chip-danger"
+                          : "af-chip af-chip-warning"
+                    }`}>
+                      {architectureEngineering.status === "ready_for_review" ? "架构可评审" : architectureEngineering.status === "blocked" ? "架构已阻断" : "仅 Workshop"}
+                    </span>
+                  ) : null}
+                  {proofOfArchitecture ? (
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      proofOfArchitecture.status === "machine_pass"
+                        ? "af-chip af-chip-success"
+                        : proofOfArchitecture.status === "blocked"
+                          ? "af-chip af-chip-danger"
+                          : "af-chip af-chip-warning"
+                    }`}>
+                      {proofOfArchitecture.status === "machine_pass" ? "机器与人工证据通过" : proofOfArchitecture.status === "blocked" ? "验证已阻断" : "机器通过 / 人工待确认"}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {architectureEngineering ? (
+                <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  {[
+                    ["QAW 场景", architectureEngineering.quality_attribute_scenarios?.length || 0],
+                    ["三方案 ADR", architectureEngineering.adrs?.length || 0],
+                    ["C4 视图", architectureEngineering.c4_views?.length || 0],
+                    ["追溯链", `${architectureEngineering.traceability_coverage_percent || 0}%`],
+                  ].map(([label, value]) => (
+                    <div key={`decision-engineering-${label}`} className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+                      <p className="text-[11px] text-[var(--af-text-tertiary)]">{label}</p>
+                      <p className="mt-1 text-base font-semibold text-[var(--af-text-primary)]">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {(architectureEngineering?.quality_attribute_scenarios?.length || architectureEngineering?.adrs?.length) ? (
+                <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  <div className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">可量化质量场景</p>
+                    <div className="mt-2 space-y-2">
+                      {(architectureEngineering?.quality_attribute_scenarios || []).slice(0, 3).map((scenario) => (
+                        <div key={scenario.scenario_id} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
+                          <p className="text-xs font-semibold text-[var(--af-text-primary)]">{scenario.quality_attribute} · {scenario.priority}</p>
+                          <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">{scenario.response_measure}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">关键 ADR 与备选方案</p>
+                    <div className="mt-2 space-y-2">
+                      {(architectureEngineering?.adrs || []).slice(0, 3).map((adr) => (
+                        <div key={adr.adr_id} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
+                          <p className="text-xs font-semibold text-[var(--af-text-primary)]">{adr.title}</p>
+                          <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-secondary)]">
+                            {adr.options.map((option) => option.option_type).join(" / ")} · {adr.owner} · {adr.status}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {proofOfArchitecture?.checks?.length ? (
+                <div className="mt-3 rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">可执行验证</p>
+                    <p className="text-[11px] text-[var(--af-text-secondary)]">
+                      场景覆盖 {proofOfArchitecture.scenario_test_coverage_percent}% · 高风险 ADR 证据 {proofOfArchitecture.high_risk_decision_evidence_percent}%
+                    </p>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {proofOfArchitecture.checks.slice(0, 8).map((check) => (
+                      <div key={check.check_id} className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-xs font-semibold text-[var(--af-text-primary)]">{check.category}</p>
+                          <span className={`text-[10px] font-semibold ${
+                            check.status === "passed"
+                              ? "text-[var(--af-success)]"
+                              : check.status === "failed" || check.status === "blocked"
+                                ? "text-[var(--af-danger)]"
+                                : "text-[var(--af-warning)]"
+                          }`}>
+                            {check.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[var(--af-text-tertiary)]">{check.threshold}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {proofOfArchitecture.blockers?.length ? (
+                    <p className="mt-2 text-xs leading-5 text-[var(--af-warning)]">待收口：{proofOfArchitecture.blockers[0]}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {architectureExportCount ? (
+            <div className="mt-3 rounded-2xl border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_8%,var(--af-surface-muted))] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--af-info)]">
+                    架构导出
+                  </p>
+                  <h5 className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
+                    ADR、依赖清单和客户技术会
+                  </h5>
+                </div>
+                <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-xs font-semibold text-[var(--af-info)]">
+                  {architectureExportCount} 项
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
+                <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">ADR 表</p>
+                  <div className="mt-2 space-y-2">
+                    {architectureAdrRows.slice(0, 3).map((row) => (
+                      <div key={`adr-export-${row.decision}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
+                        <p className="text-sm font-semibold leading-5 text-[var(--af-text-primary)]">{row.decision}</p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">{row.selected_direction || row.owner}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">依赖 Workshop</p>
+                  <div className="mt-2 space-y-2">
+                    {architectureDependencyWorkshopItems.slice(0, 3).map((item) => (
+                      <div key={`dependency-workshop-${item.dependency}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold leading-5 text-[var(--af-text-primary)]">{item.dependency}</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            item.risk_level === "high"
+                              ? "af-chip af-chip-danger"
+                              : item.risk_level === "low"
+                                ? "af-chip af-chip-success"
+                                : "af-chip af-chip-warning"
+                          }`}>
+                            {item.risk_level === "high" ? "高风险" : item.risk_level === "low" ? "低风险" : "中风险"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">{item.owner || item.expected_decision}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-info)]">技术会</p>
+                  <div className="mt-2 space-y-2">
+                    {architectureTechnicalAgenda.slice(0, 3).map((item) => (
+                      <div key={`technical-workshop-${item.topic}`} className="border-t border-[var(--af-border-subtle)] pt-2 first:border-t-0 first:pt-0">
+                        <p className="text-sm font-semibold leading-5 text-[var(--af-text-primary)]">{item.topic}</p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">
+                          {item.owner || "待确认 owner"} · {item.duration_minutes} 分钟
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {architectureStakeholderBrief?.summary ? (
+                <p className="mt-3 rounded-xl bg-[var(--af-surface-elevated)] px-3 py-2 text-xs leading-5 text-[var(--af-text-secondary)]">
+                  {architectureStakeholderBrief.summary}
+                </p>
               ) : null}
             </div>
           ) : null}

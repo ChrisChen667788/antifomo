@@ -143,6 +143,121 @@ def test_try_extract_article_url_prefers_open_in_browser(monkeypatch: pytest.Mon
     assert MODULE.OPEN_IN_BROWSER_KEYWORDS in calls
 
 
+def test_click_wechat_tab_menu_action_uses_wechat_4110_geometry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clicks: list[tuple[int, int]] = []
+    monkeypatch.setattr(MODULE, "click_at", lambda x, y: clicks.append((x, y)))
+
+    popup = {"x": 388, "y": 125, "w": 273, "h": 516}
+
+    copy_click = MODULE._click_wechat_tab_menu_action(
+        popup=popup,
+        action="copy_link",
+        legacy_item_index=7,
+    )
+    open_click = MODULE._click_wechat_tab_menu_action(
+        popup=popup,
+        action="open_in_browser",
+        legacy_item_index=4,
+    )
+
+    assert copy_click == (524, 184, "wechat_4_1_10_geometry")
+    assert open_click == (524, 515, "wechat_4_1_10_geometry")
+    assert clicks == [(524, 184), (524, 515)]
+
+
+def test_build_wechat_tab_right_click_offsets_scale_with_window_width() -> None:
+    narrow = MODULE._build_wechat_tab_right_click_offsets({"w": 900})
+    wide = MODULE._build_wechat_tab_right_click_offsets({"w": 2424})
+
+    assert (316, 25) in narrow
+    assert (316, 25) in wide
+    assert any(120 <= x <= 820 and y in {26, 34} for x, y in narrow)
+    assert any(500 <= x <= 1100 and y in {26, 34} for x, y in wide)
+    assert len(narrow) == len(set(narrow))
+    assert len(wide) == len(set(wide))
+
+
+@pytest.mark.skipif(MODULE.Image is None, reason="Pillow unavailable for agent helper test")
+def test_find_article_card_centers_in_capture_detects_large_media_cards(tmp_path: Path) -> None:
+    path = tmp_path / "cards.png"
+    image = Image.new("RGB", (1100, 760), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((360, 80, 680, 290), radius=14, fill=(242, 242, 242))
+    draw.rectangle((380, 98, 660, 218), fill=(58, 112, 180))
+    draw.rounded_rectangle((374, 360, 706, 590), radius=14, fill=(242, 242, 242))
+    draw.rectangle((392, 382, 688, 528), fill=(178, 94, 52))
+    image.save(path)
+
+    centers = MODULE._find_article_card_centers_in_capture(path)
+
+    assert len(centers) >= 2
+    assert 500 <= centers[0][0] <= 560
+    assert 140 <= centers[0][1] <= 210
+    assert centers[0][1] < centers[1][1]
+
+
+def test_get_best_window_rect_falls_back_to_screen_when_wechat_front_has_no_ax_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_applescript(lines: list[str]) -> str:
+        script = "\n".join(lines)
+        if "Finder" in script and "bounds of window of desktop" in script:
+            return "0, 0, 2560, 1440"
+        raise RuntimeError("AX no windows")
+
+    monkeypatch.setattr(MODULE, "list_window_rects", lambda _app_name: [])
+    monkeypatch.setattr(MODULE, "get_front_window_rect", lambda _app_name: (_ for _ in ()).throw(RuntimeError("no front window")))
+    monkeypatch.setattr(MODULE, "get_front_process_name", lambda: "WeChat")
+    monkeypatch.setattr(MODULE, "_applescript", fake_applescript)
+
+    assert MODULE.get_best_window_rect("WeChat") == (0, 30, 2560, 1348)
+    assert MODULE.get_usable_window_rect("WeChat") == (True, (0, 30, 2560, 1348))
+
+
+def test_try_extract_url_via_tab_right_click_accepts_sentinel_verified_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    article_url = "https://mp.weixin.qq.com/s/GGjob8FJW6Xn-sulzc_MLg"
+    clipboard = {"value": article_url}
+
+    monkeypatch.setattr(
+        MODULE,
+        "_list_wechat_window_rects",
+        lambda _app_name: [{"name": "微信 (窗口)", "x": 96, "y": 104, "w": 2424, "h": 1112}],
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_open_wechat_tab_context_menu",
+        lambda **_kwargs: ({"name": "", "x": 388, "y": 125, "w": 273, "h": 516}, (316, 25)),
+    )
+    monkeypatch.setattr(MODULE, "read_clipboard_text", lambda: clipboard["value"])
+
+    def fake_write_clipboard(value: str) -> None:
+        clipboard["value"] = value
+
+    def fake_click_at(x: int, y: int) -> None:
+        assert (x, y) == (524, 184)
+        clipboard["value"] = article_url
+
+    monkeypatch.setattr(MODULE, "write_clipboard_text", fake_write_clipboard)
+    monkeypatch.setattr(MODULE, "click_at", fake_click_at)
+    monkeypatch.setattr(MODULE.time, "sleep", lambda *_args, **_kwargs: None)
+
+    extracted_url, opened_window, telemetry = MODULE.try_extract_url_via_tab_right_click(
+        wechat_app_name="WeChat",
+        copy_link_index=7,
+        open_in_browser_index=4,
+    )
+
+    assert extracted_url == article_url
+    assert opened_window is None
+    assert telemetry["path_taken"] == "copy_link"
+    assert telemetry["clipboard_a_changed"] is True
+    assert telemetry["popup_a_click_method"] == "wechat_4_1_10_geometry"
+
+
 def test_find_accessibility_action_points_prefers_actionable_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         MODULE,
@@ -1012,6 +1127,28 @@ def test_ensure_wechat_front_ready_falls_back_to_open(monkeypatch: pytest.Monkey
     assert calls[:3] == ["activate", "open", "switch"]
 
 
+def test_switch_to_main_wechat_window_prefers_named_main_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_applescript(lines, **_kwargs):
+        script = "\n".join(lines)
+        assert '"微信"' in script
+        calls.append("raise")
+        return "raised"
+
+    monkeypatch.setattr(MODULE, "_applescript", fake_applescript)
+    monkeypatch.setattr(MODULE.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        MODULE,
+        "click_menu_item",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("menu fallback should not run")),
+    )
+
+    MODULE.switch_to_main_wechat_window("WeChat")
+
+    assert calls == ["raise"]
+
+
 def test_targeted_ocr_fallback_reason_only_triggers_without_action_signal() -> None:
     assert (
         MODULE._targeted_ocr_fallback_reason(
@@ -1040,6 +1177,44 @@ def test_targeted_ocr_fallback_reason_only_triggers_without_action_signal() -> N
         )
         is None
     )
+
+
+def test_validate_article_preview_rejects_chinese_adjacent_chat_timestamps() -> None:
+    ok, reason = MODULE.validate_article_preview(
+        {
+            "title": "昨天22:41 11:06 荷10:59 三题直播哈",
+            "body_text": (
+                "昨天22:41 11:06 荷10:59 三题直播哈。"
+                "10:44 10:38 10:27 09:03 昨天21:53 二维码加入群聊。"
+                "这不是公众号正文，而是普通聊天列表 OCR。"
+            ),
+            "body_preview": "昨天22:41 11:06 荷10:59",
+            "text_length": 160,
+            "quality_ok": True,
+            "quality_reason": "ok",
+        },
+        min_text_length=120,
+    )
+
+    assert ok is False
+    assert reason.startswith("chat_timestamps")
+
+
+@pytest.mark.skipif(MODULE.Image is None, reason="Pillow unavailable for agent helper test")
+def test_find_first_blue_icon_center_in_capture_picks_topmost_large_icon(tmp_path: Path) -> None:
+    image_path = tmp_path / "wechat-list.png"
+    image = Image.new("RGB", (360, 700), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((18, 28, 54, 64), fill=(240, 240, 240))
+    draw.rounded_rectangle((20, 210, 68, 258), radius=8, fill=(58, 132, 235))
+    draw.rounded_rectangle((20, 530, 68, 578), radius=8, fill=(58, 132, 235))
+    image.save(image_path)
+
+    center = MODULE._find_first_blue_icon_center_in_capture(image_path)
+
+    assert center is not None
+    assert 38 <= center[0] <= 54
+    assert 228 <= center[1] <= 242
 
 
 def test_should_stop_profile_probe_after_standard_template_only_miss() -> None:
@@ -1296,6 +1471,65 @@ def test_run_cycle_browser_first_disables_ocr_fallback(monkeypatch: pytest.Monke
     assert report["article_url_strategy"] == "browser_first"
     assert report["submitted"] == 0
     assert report["submitted_ocr"] == 0
+    assert any(
+        log["stage"] == "ocr_fallback" and log["detail"] == "disabled:url_only_mode"
+        for log in report["stage_logs"]
+    )
+
+
+def test_run_cycle_strict_url_only_blocks_ocr_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = dict(MODULE.DEFAULT_CONFIG)
+    config.update(
+        {
+            "rows_per_batch": 1,
+            "batches_per_cycle": 1,
+            "article_strict_url_only": True,
+            "article_allow_ocr_fallback": True,
+            "article_allow_targeted_ocr_fallback": True,
+            "article_verify_retries": 1,
+            "min_capture_file_size_kb": 1,
+        }
+    )
+    state = {"processed_hashes": {}}
+
+    monkeypatch.setattr(MODULE, "_check_required_binaries", lambda: None)
+    monkeypatch.setattr(MODULE, "activate_wechat", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "wait_for_front_process", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(MODULE, "switch_to_main_wechat_window", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "get_usable_window_rect", lambda *_args, **_kwargs: (True, (0, 0, 1440, 900)))
+    monkeypatch.setattr(MODULE, "resolve_point", lambda x, y, **_kwargs: (x, y))
+    monkeypatch.setattr(MODULE, "click_at", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "key_code", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "key_combo_command", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(MODULE, "get_front_process_name", lambda: "WeChat")
+    monkeypatch.setattr(MODULE, "wait_for_article_destination", lambda *_args, **_kwargs: ("WeChat", ["WeChat"]))
+    monkeypatch.setattr(MODULE, "try_copy_current_article_url", lambda **_kwargs: None)
+    monkeypatch.setattr(MODULE, "_expand_article_link_profiles", lambda *_args, **_kwargs: ["standard"])
+    monkeypatch.setattr(MODULE, "try_extract_url_via_tab_right_click", lambda **_kwargs: (None, None, {"path_taken": "no_article_window"}))
+    monkeypatch.setattr(
+        MODULE,
+        "try_extract_article_url_from_wechat_ui",
+        lambda **_kwargs: (None, {"accessibility_candidates": 0, "template_candidates": 0, "budget_exhausted": False}),
+    )
+    monkeypatch.setattr(MODULE, "resolve_region", lambda region, **_kwargs: region)
+    monkeypatch.setattr(MODULE.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        MODULE,
+        "request_ocr_preview",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("ocr preview should not run")),
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "post_json",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("ocr ingest should not run")),
+    )
+
+    report = MODULE.run_cycle(config, state, max_items=1)
+
+    assert report["article_strict_url_only"] is True
+    assert report["submitted"] == 0
+    assert report["submitted_ocr"] == 0
+    assert report["url_only_skip_count"] == 1
     assert any(
         log["stage"] == "ocr_fallback" and log["detail"] == "disabled:url_only_mode"
         for log in report["stage_logs"]

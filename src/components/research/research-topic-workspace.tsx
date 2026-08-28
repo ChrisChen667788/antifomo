@@ -50,7 +50,7 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
   return (
     <div className="space-y-5">
       <section className="af-glass rounded-[30px] p-6">
-        <p className="af-kicker">{t("research.centerTrackingKicker", "Tracking Topics")}</p>
+        <p className="af-kicker">{t("research.centerTrackingKicker", "长期专题")}</p>
         <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-900">{topic.name}</h2>
         <p className="mt-2 text-sm text-slate-500">{topic.keyword}</p>
         {topic.research_focus ? <p className="mt-3 text-sm leading-6 text-slate-600">{topic.research_focus}</p> : null}
@@ -159,10 +159,10 @@ export function ResearchTopicWorkspace({ topicId }: ResearchTopicWorkspaceProps)
       <ResearchConsolePanel
         topicId={topic.id}
         topicName={topic.name}
-        title={t("research.consoleTopicKicker", "Topic Console")}
+        title={t("research.consoleTopicKicker", "专题追问")}
         description={t(
           "research.consoleTopicDesc",
-          "继续围绕当前专题追问预算节点、甲方、竞品与伙伴，同时保留研究阶段进度。",
+          "继续围绕当前专题追问预算、客户、竞品和伙伴。",
         )}
       />
 

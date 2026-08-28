@@ -219,11 +219,11 @@ export function MultiFormatImportPanel() {
         <div>
           <label className="block text-sm font-semibold text-slate-700">多格式输入</label>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            把 RSS、newsletter、PDF/文件和 YouTube transcript 统一导入同一条 Item 处理流。
+            导入 RSS、newsletter、PDF/文件和 YouTube 内容。
           </p>
         </div>
         <span className="rounded-full border border-amber-200 bg-white/80 px-3 py-1 text-xs font-semibold text-amber-700">
-          Collector
+          导入
         </span>
       </div>
 

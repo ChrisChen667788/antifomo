@@ -9,12 +9,15 @@ from app.api.collector_sources import router as collector_sources_router
 from app.api.collector_url_resolve import router as collector_url_resolve_router
 from app.api.collector_wechat_agent import router as collector_wechat_agent_router
 from app.api.collector_wechat_favorites import router as collector_wechat_favorites_router
+from app.api.decision_studio import router as decision_studio_router
+from app.api.decision_program import router as decision_program_router
 from app.api.feedback import router as feedback_router
 from app.api.focus_assistant import router as focus_assistant_router
 from app.api.items import router as items_router
 from app.api.knowledge import router as knowledge_router
 from app.api.mobile import router as mobile_router
 from app.api.preferences import router as preferences_router
+from app.api.product_strategy import router as product_strategy_router
 from app.api.sessions import router as sessions_router
 from app.api.research import router as research_router
 from app.api.system import router as system_router
@@ -25,6 +28,7 @@ from app.db.base import Base
 from app.db.session import engine
 from app.db.sqlite_compat import ensure_sqlite_compat_columns
 from app.services.item_processing_runtime import start_item_recovery_worker, stop_item_recovery_worker
+from app.services.research_job_store import start_research_job_worker, stop_research_job_worker
 from app.services.wechat_pc_agent_daemon import read_wechat_agent_status, start_wechat_agent
 from app import models  # noqa: F401
 
@@ -64,11 +68,13 @@ def startup_init_db() -> None:
                 pass
 
     start_item_recovery_worker()
+    start_research_job_worker()
 
 
 @app.on_event("shutdown")
 def shutdown_background_workers() -> None:
     stop_item_recovery_worker()
+    stop_research_job_worker()
 
 
 app.include_router(items_router)
@@ -90,3 +96,6 @@ app.include_router(tasks_router)
 app.include_router(workbuddy_router)
 app.include_router(mobile_router)
 app.include_router(system_router)
+app.include_router(decision_studio_router)
+app.include_router(decision_program_router)
+app.include_router(product_strategy_router)

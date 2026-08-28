@@ -28,6 +28,14 @@ def get_strategy_llm_service() -> LLMService | None:
     return build_llm_service(role="strategy")
 
 
+@lru_cache(maxsize=1)
+def get_research_llm_service() -> LLMService:
+    service = build_llm_service(role="research_generation")
+    if service is None:
+        raise RuntimeError("Research generation LLM is not configured; mock fallback is disabled")
+    return service
+
+
 __all__ = [
     "FallbackLLMService",
     "LLMProviderRouter",
@@ -37,6 +45,7 @@ __all__ = [
     "build_llm_service",
     "extract_openai_message_content",
     "get_llm_service",
+    "get_research_llm_service",
     "get_strategy_llm_service",
     "run_llm_prompt_result",
 ]

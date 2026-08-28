@@ -99,6 +99,7 @@ from app.services.research.report_ranking_runtime import (
 from app.services.research.report_delivery_runtime import (
     evidence_density_level as _report_delivery_evidence_density_level,
     merge_result_with_intelligence as _report_delivery_merge_result_with_intelligence,
+    sanitize_report_response_fields as _report_delivery_sanitize_response_fields,
     source_quality_level as _report_delivery_source_quality_level,
 )
 from app.services.research.report_delivery_runtime_dependencies import (
@@ -302,6 +303,14 @@ from app.services.research.entity_graph_builder import (
     build_entity_graph as _entity_graph_builder_build,
     entity_graph_lookup as _entity_graph_builder_lookup,
 )
+from app.services.research.entity_authenticity import (
+    evaluate_organization_name as _evaluate_organization_name,
+    repair_organization_candidate as _repair_organization_candidate,
+)
+from app.services.research.entity_authenticity_gate import (
+    enforce_report_entity_authenticity as _entity_authenticity_enforce_report,
+    sanitize_report_result_entities as _entity_authenticity_sanitize_result,
+)
 from app.services.research.followup_diagnostics import (
     FollowupDiagnosticsDependencies,
     build_followup_context as _followup_diagnostics_build_context,
@@ -321,9 +330,20 @@ from app.services.research.generation_execution import (
     ResearchGenerationExecutionDependencies,
     execute_research_generation as _generation_execution_execute,
 )
+from app.services.research.evidence_governance import (
+    apply_evidence_governance_diagnostics as _evidence_governance_apply_diagnostics,
+    build_evidence_gap_report as _evidence_governance_build_gap_report,
+    build_research_claim_governance as _evidence_governance_build_claims,
+    build_research_evidence_governance as _evidence_governance_build,
+    render_question_tree_prompt_context as _evidence_governance_render_question_tree,
+)
 from app.services.research.generation_setup import (
     ResearchGenerationSetupDependencies,
     prepare_research_generation_setup as _generation_setup_prepare,
+)
+from app.services.research.source_snapshot_recovery import (
+    load_evidence_snapshot_by_job_id as _source_snapshot_load_by_job_id,
+    load_recent_evidence_snapshot as _source_snapshot_load_recent,
 )
 from app.services.research.generation_workflow import (
     ResearchGenerationWorkflowDependencies,
@@ -361,7 +381,10 @@ from app.services.research.report_field_sanitization import (
     sanitize_entity_row as _report_field_sanitization_entity_row,
     sanitize_report_field_rows as _report_field_sanitization_rows,
 )
-from app.services.research.report_assembly import assemble_final_research_report as _report_assembly_assemble_final_report
+from app.services.research.report_assembly import (
+    _stabilize_report_header as _report_assembly_stabilize_header,
+    assemble_final_research_report as _report_assembly_assemble_final_report,
+)
 from app.services.research.retrieval_orchestration import (
     build_section_retrieval_runtime_context as _retrieval_orchestration_build_section_runtime_context,
 )
@@ -387,6 +410,10 @@ from app.services.research.source_collection import (
     collect_adapter_hits as _source_collection_collect_adapter_hits,
     collect_public_search_hits as _source_collection_collect_public_search_hits,
     extract_initial_sources as _source_collection_extract_initial_sources,
+)
+from app.services.research.supplemental_sources import (
+    build_user_supplied_documents as _supplemental_sources_build_documents,
+    build_user_supplied_hits as _supplemental_sources_build_hits,
 )
 from app.services.research.source_diagnostics import (
     SourceDiagnosticsDependencies,
@@ -470,7 +497,7 @@ from app.services.research_section_retrieval_service import (
 )
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
 from app.services.research_solution_intelligence_service import build_solution_delivery_pack
-from app.services.llm_service import get_llm_service, get_strategy_llm_service
+from app.services.llm_service import get_research_llm_service, get_strategy_llm_service
 from app.services.research_source_adapters import (
     CURATED_WECHAT_CHANNELS,
     collect_enabled_source_hits,
@@ -509,6 +536,12 @@ RESEARCH_SOURCE_SITE_QUERIES = (
 
 
 THEME_QUERY_EXPANSION_TEMPLATES: dict[str, tuple[str, ...]] = {
+    "文旅文博": (
+        "{keyword} 文旅 文博 博物馆 景区 AI 数字化",
+        "{keyword} 数字导览 智慧景区 公共文化 采购 预算",
+        "site:gov.cn {keyword} 文化和旅游 博物馆 人工智能 规划",
+        "site:ccgp.gov.cn {keyword} 景区 博物馆 数字化 招标",
+    ),
     "AI漫剧": (
         "{keyword} AIGC动画 短剧 平台 商业化",
         "{keyword} 漫剧 IP 内容平台 合作 发行",
@@ -516,16 +549,23 @@ THEME_QUERY_EXPANSION_TEMPLATES: dict[str, tuple[str, ...]] = {
         "site:mp.weixin.qq.com {keyword} AIGC动画 短剧 平台",
     ),
     "政务云": (
-        "{keyword} 数据局 政务云 一体化 招标 预算",
-        "{keyword} 政务云 建设 采购 中标 二期 三期",
-        "site:gov.cn {keyword} 数据局 政务云 规划",
-        "site:ggzy.gov.cn {keyword} 政务云 建设 项目",
+        "{keyword} 数字政府 政务服务 数据治理 AI 采购 预算",
+        "{keyword} 政府部门 人工智能 应用场景 招标 中标",
+        "site:gov.cn {keyword} 数字政府 人工智能 行动方案",
+        "site:ccgp.gov.cn {keyword} 政务 人工智能 采购 招标",
     ),
 }
 
 
 
 THEME_OFFICIAL_QUERY_TEMPLATES: dict[str, tuple[str, ...]] = {
+    "文旅文博": (
+        "site:mct.gov.cn 文旅 数字化 人工智能",
+        "site:gov.cn 文旅 文博 人工智能 试点 规划",
+        "site:ccgp.gov.cn 景区 博物馆 导览 招标",
+        "site:ggzy.gov.cn 文旅 文博 数字化 项目",
+        "site:cninfo.com.cn 文旅 景区 年报 数字化",
+    ),
     "AI漫剧": (
         "site:iqiyi.com {keyword} AIGC动画 短剧 合作 平台",
         "site:ir.iqiyi.com {keyword} 内容 业务 合作 生态",
@@ -544,6 +584,10 @@ THEME_OFFICIAL_QUERY_TEMPLATES: dict[str, tuple[str, ...]] = {
         "site:col.com {keyword} 动漫 IP AIGC 合作",
     ),
     "政务云": (
+        "site:gov.cn {keyword} 数字政府 人工智能 政务服务",
+        "site:ccgp.gov.cn {keyword} 政务 人工智能 采购 招标",
+        "site:ggzy.gov.cn {keyword} 政务 人工智能 项目 中标",
+        "site:nda.gov.cn {keyword} 数字政府 人工智能 数据治理",
         "site:aliyun.com {keyword} 政务云 政务 合作",
         "site:cloud.tencent.com {keyword} 政务云 合作 案例",
         "site:huawei.com {keyword} 政务云 行业 数字政府",
@@ -2583,12 +2627,14 @@ def _build_entity_specific_contact_rows(
     entity_names: list[str],
     output_language: str,
     limit: int,
+    scope_hints: dict[str, object] | None = None,
 ) -> list[str]:
     return _ranking_runtime_build_contact_rows(
         sources,
         entity_names=entity_names,
         output_language=output_language,
         limit=limit,
+        scope_hints=scope_hints,
     )
 
 
@@ -2664,11 +2710,19 @@ def _extract_rank_entity_candidates_cached(
             candidates.append(alias)
     candidates.extend(_known_org_alias_candidates_from_text_cached(text, scope_org_names))
     filtered: list[str] = []
+    known_names = (*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES, *scope_org_names)
     for candidate in candidates:
+        candidate = _repair_organization_candidate(candidate, known_names=known_names)
         normalized = _resolve_known_org_name_cached(candidate, scope_org_names)
         normalized = _trim_product_spec_from_entity_name(normalized)
         normalized = _strip_entity_leading_noise(normalized)
-        if not _is_plausible_entity_name(normalized) and not _is_lightweight_entity_name(normalized):
+        decision = _evaluate_organization_name(
+            normalized,
+            known_names=known_names,
+            trusted_known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+        )
+        normalized = decision.normalized_name
+        if not (decision.accepted or _is_plausible_entity_name(normalized) or _is_lightweight_entity_name(normalized)):
             continue
         if _looks_like_fragment_entity_name(normalized):
             continue
@@ -2781,8 +2835,10 @@ def _build_source_intelligence(
 def _merge_result_with_intelligence(
     parsed: ResearchReportResult,
     intelligence: dict[str, list[str]],
+    *,
+    scope_hints: dict[str, object] | None = None,
 ) -> ResearchReportResult:
-    return _report_delivery_merge_result_with_intelligence(parsed, intelligence)
+    return _report_delivery_merge_result_with_intelligence(parsed, intelligence, scope_hints=scope_hints)
 
 
 def _source_quality_level(sources: list[SourceDocument]) -> str:
@@ -3565,7 +3621,7 @@ def _generation_setup_dependencies() -> ResearchGenerationSetupDependencies:
     return ResearchGenerationSetupDependencies(
         get_settings=get_settings,
         get_llm_service=lambda: instrument_llm_service(
-            get_llm_service(),
+            get_research_llm_service(),
             role="generation",
         ),
         build_followup_context=_build_followup_context,
@@ -3597,6 +3653,8 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
             build_query_plan=_build_query_plan,
             source_collection_collect_adapter_hits=_source_collection_collect_adapter_hits,
             collect_enabled_source_hits=collect_enabled_source_hits,
+            build_user_supplied_hits=_supplemental_sources_build_hits,
+            build_user_supplied_documents=_supplemental_sources_build_documents,
             source_collection_collect_public_search_hits=_source_collection_collect_public_search_hits,
             search_public_web=_search_public_web,
             dedupe_hits=_dedupe_hits,
@@ -3615,6 +3673,7 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
             derive_source_label=_derive_source_label,
             extract_source_document_best_effort=_extract_source_document_best_effort,
             dedupe_sources=_dedupe_sources,
+            report_sources_to_source_documents=_report_sources_to_source_documents,
             build_source_intelligence=_build_source_intelligence,
             build_expanded_query_plan=_build_expanded_query_plan,
             build_corrective_query_plan=_build_corrective_query_plan,
@@ -3658,6 +3717,8 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
             merge_result_with_intelligence=_merge_result_with_intelligence,
             apply_topic_specific_overrides=_apply_topic_specific_overrides,
             apply_strategy_llm_refinement=_apply_strategy_llm_refinement,
+            render_question_tree_prompt_context=_evidence_governance_render_question_tree,
+            enforce_entity_authenticity=_entity_authenticity_sanitize_result,
         ),
         ranking=ResearchWorkflowRankingPorts(
             build_entity_graph=_build_entity_graph,
@@ -3675,6 +3736,8 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
             build_sections=_build_sections,
             source_documents_to_outputs=_to_research_source_outputs,
             enrich_report_for_delivery=_enrich_report_for_delivery,
+            sanitize_report_response_fields=_report_delivery_sanitize_response_fields,
+            stabilize_report_header=_report_assembly_stabilize_header,
         ),
         quality=ResearchWorkflowQualityPorts(
             concrete_rows=_concrete_rows,
@@ -3688,6 +3751,13 @@ def _generation_workflow_dependencies() -> ResearchGenerationWorkflowDependencie
             review_generation_grounding=review_generation_grounding,
             evaluate_and_improve_research_report=evaluate_and_improve_research_report,
             expand_report_public_sources_until_quality_improves=_expand_report_public_sources_until_quality_improves,
+            build_research_evidence_governance=_evidence_governance_build,
+            apply_evidence_governance_diagnostics=_evidence_governance_apply_diagnostics,
+            build_evidence_gap_report=_evidence_governance_build_gap_report,
+            build_research_claim_governance=_evidence_governance_build_claims,
+            load_recent_evidence_snapshot=_source_snapshot_load_recent,
+            load_evidence_snapshot_by_job_id=_source_snapshot_load_by_job_id,
+            enforce_report_entity_authenticity=_entity_authenticity_enforce_report,
         ),
     )
 

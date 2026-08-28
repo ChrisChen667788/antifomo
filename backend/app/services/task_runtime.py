@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.entities import FocusSession, Item, KnowledgeEntry, SessionItem, WorkTask
 from app.models.research_entities import ResearchWatchlistChangeEvent
-from app.schemas.research import ResearchReportDocument
+from app.schemas.research import ResearchReportDocument, ResearchReportResponse
+from app.services.research.clarification import require_formal_research_delivery
 from app.services.knowledge_intelligence_service import (
     build_knowledge_commercial_dashboard,
     get_knowledge_account_detail,
@@ -494,6 +495,13 @@ def create_and_execute_task(
         }:
             if not isinstance(input_payload, dict) or not isinstance(input_payload.get("report"), dict):
                 raise ValueError(f"input_payload.report is required for {task_type}")
+            formal_report = require_formal_research_delivery(
+                ResearchReportResponse.model_validate(input_payload["report"])
+            )
+            input_payload = {
+                **input_payload,
+                "report": formal_report.model_dump(mode="json"),
+            }
             delivery_supplement = (
                 input_payload.get("delivery_supplement")
                 if isinstance(input_payload.get("delivery_supplement"), dict)

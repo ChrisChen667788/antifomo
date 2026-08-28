@@ -16,7 +16,10 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.entities import Item
 from app.schemas.collector import (
+    CollectorBrowserExtensionVerifyResponse,
     CollectorDaemonCommandResponse,
+    CollectorDaemonConfigResponse,
+    CollectorDaemonConfigUpdateRequest,
     CollectorDaemonStatusResponse,
     CollectorDailySummaryResponse,
     CollectorFailedItemOut,
@@ -28,10 +31,14 @@ from app.schemas.collector import (
     CollectorSummaryItemOut,
 )
 from app.services.collector_daemon import (
+    CONFIG_FILE,
     read_collector_daemon_status,
+    read_collector_daemon_config,
     run_collector_once,
     start_collector_daemon,
     stop_collector_daemon,
+    update_collector_daemon_config,
+    verify_browser_extension_pipeline,
 )
 from app.services.collector_diagnostics import list_item_attempts, serialize_ingest_attempt
 from app.services.item_processing_runtime import process_item_by_id, recover_stale_items
@@ -407,6 +414,45 @@ def get_collector_daemon_status_impl() -> CollectorDaemonStatusResponse:
     return _to_daemon_status_response(read_collector_daemon_status())
 
 
+def get_collector_daemon_config_impl() -> CollectorDaemonConfigResponse:
+    config = read_collector_daemon_config()
+    return CollectorDaemonConfigResponse(
+        wechat_clipboard_auto_import=bool(config.get("wechat_clipboard_auto_import", True)),
+        wechat_export_directory_auto_import=bool(config.get("wechat_export_directory_auto_import", True)),
+        wechat_export_directory_path=str(config.get("wechat_export_directory_path") or ""),
+        config_file=str(CONFIG_FILE),
+        updated_at=config.get("updated_at"),
+    )
+
+
+def update_collector_daemon_config_impl(
+    payload: CollectorDaemonConfigUpdateRequest,
+) -> CollectorDaemonConfigResponse:
+    config = update_collector_daemon_config(
+        wechat_clipboard_auto_import=payload.wechat_clipboard_auto_import,
+        wechat_export_directory_auto_import=payload.wechat_export_directory_auto_import,
+        wechat_export_directory_path=payload.wechat_export_directory_path,
+    )
+    return CollectorDaemonConfigResponse(
+        wechat_clipboard_auto_import=bool(config.get("wechat_clipboard_auto_import", True)),
+        wechat_export_directory_auto_import=bool(config.get("wechat_export_directory_auto_import", True)),
+        wechat_export_directory_path=str(config.get("wechat_export_directory_path") or ""),
+        config_file=str(CONFIG_FILE),
+        updated_at=config.get("updated_at"),
+    )
+
+
+def verify_browser_extension_impl() -> CollectorBrowserExtensionVerifyResponse:
+    record = verify_browser_extension_pipeline()
+    return CollectorBrowserExtensionVerifyResponse(
+        ok=bool(record.get("ok")),
+        verified_at=record["verified_at"],
+        message=str(record.get("message") or ""),
+        output=str(record.get("output") or ""),
+        report_file=str(record.get("report_file") or ""),
+    )
+
+
 def start_collector_daemon_impl(
     *,
     db: Session,
@@ -499,6 +545,18 @@ def get_collector_daemon_status() -> CollectorDaemonStatusResponse:
     return get_collector_daemon_status_impl()
 
 
+@router.get("/daemon/config", response_model=CollectorDaemonConfigResponse)
+def get_collector_daemon_config() -> CollectorDaemonConfigResponse:
+    return get_collector_daemon_config_impl()
+
+
+@router.patch("/daemon/config", response_model=CollectorDaemonConfigResponse)
+def update_collector_daemon_config_api(
+    payload: CollectorDaemonConfigUpdateRequest,
+) -> CollectorDaemonConfigResponse:
+    return update_collector_daemon_config_impl(payload)
+
+
 @router.post("/daemon/start", response_model=CollectorDaemonCommandResponse)
 def start_collector_daemon_api(db: Session = Depends(get_db)) -> CollectorDaemonCommandResponse:
     return start_collector_daemon_impl(db=db)
@@ -520,3 +578,8 @@ def run_collector_daemon_once_api(
         max_collect_per_cycle=max_collect_per_cycle,
         db=db,
     )
+
+
+@router.post("/browser-extension/verify", response_model=CollectorBrowserExtensionVerifyResponse)
+def verify_browser_extension_api() -> CollectorBrowserExtensionVerifyResponse:
+    return verify_browser_extension_impl()

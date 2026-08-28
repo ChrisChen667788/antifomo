@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 from collections import defaultdict
+from threading import RLock
+import time
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, desc, or_, select
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -58,6 +60,42 @@ _BACKFILL_STAGE_ENTRIES = "entries"
 _BACKFILL_STAGE_VERSIONS = "versions"
 _BACKFILL_STAGE_DONE = "done"
 _BACKFILL_CHECKPOINT_SCHEMA_VERSION = 1
+_COMMERCIAL_AGGREGATE_CACHE_TTL_SECONDS = 60.0
+_COMMERCIAL_AGGREGATE_CACHE_MAX_ENTRIES = 16
+_COMMERCIAL_AGGREGATE_CACHE_LOCK = RLock()
+_COMMERCIAL_AGGREGATE_CACHE: dict[tuple[Any, ...], tuple[float, dict[str, dict[str, Any]]]] = {}
+_COMMERCIAL_DASHBOARD_CACHE: dict[tuple[Any, ...], tuple[float, dict[str, Any]]] = {}
+
+
+def _commercial_cache_signature(db: Session) -> tuple[Any, ...]:
+    report_count, report_max_updated, report_max_created = db.execute(
+        select(
+            func.count(KnowledgeEntry.id),
+            func.max(KnowledgeEntry.updated_at),
+            func.max(KnowledgeEntry.created_at),
+        )
+        .where(KnowledgeEntry.user_id == settings.single_user_id)
+        .where(KnowledgeEntry.source_domain == "research.report")
+    ).one()
+    watchlist_count, watchlist_max_updated = db.execute(
+        select(func.count(ResearchWatchlist.id), func.max(ResearchWatchlist.updated_at)).where(
+            ResearchWatchlist.user_id == settings.single_user_id
+        )
+    ).one()
+    event_count, event_max_created = db.execute(
+        select(func.count(ResearchWatchlistChangeEvent.id), func.max(ResearchWatchlistChangeEvent.created_at))
+        .join(ResearchWatchlist, ResearchWatchlist.id == ResearchWatchlistChangeEvent.watchlist_id)
+        .where(ResearchWatchlist.user_id == settings.single_user_id)
+    ).one()
+    return (
+        int(report_count or 0),
+        report_max_updated,
+        report_max_created,
+        int(watchlist_count or 0),
+        watchlist_max_updated,
+        int(event_count or 0),
+        event_max_created,
+    )
 
 def _load_research_report_entry_batch(
     db: Session,
@@ -1199,7 +1237,7 @@ def _build_role_views(
     ]
 
 
-def _aggregate_accounts(db: Session) -> dict[str, dict[str, Any]]:
+def _aggregate_accounts_uncached(db: Session) -> dict[str, dict[str, Any]]:
     accounts: dict[str, dict[str, Any]] = {}
     seen_opportunity_keys: defaultdict[str, set[str]] = defaultdict(set)
     watchlist_timeline = _account_timeline_from_watchlists(db)
@@ -1366,6 +1404,31 @@ def _aggregate_accounts(db: Session) -> dict[str, dict[str, Any]]:
     return accounts
 
 
+def _aggregate_accounts(
+    db: Session,
+    *,
+    signature: tuple[Any, ...] | None = None,
+) -> dict[str, dict[str, Any]]:
+    signature = signature or _commercial_cache_signature(db)
+    cache_key = (id(db.get_bind()), str(settings.single_user_id), signature)
+    now = time.monotonic()
+    with _COMMERCIAL_AGGREGATE_CACHE_LOCK:
+        cached = _COMMERCIAL_AGGREGATE_CACHE.get(cache_key)
+        if cached and now - cached[0] <= _COMMERCIAL_AGGREGATE_CACHE_TTL_SECONDS:
+            return cached[1]
+
+        # Build under the lock so concurrent cache misses share one report scan.
+        accounts = _aggregate_accounts_uncached(db)
+        if (
+            cache_key not in _COMMERCIAL_AGGREGATE_CACHE
+            and len(_COMMERCIAL_AGGREGATE_CACHE) >= _COMMERCIAL_AGGREGATE_CACHE_MAX_ENTRIES
+        ):
+            oldest_key = min(_COMMERCIAL_AGGREGATE_CACHE, key=lambda key: _COMMERCIAL_AGGREGATE_CACHE[key][0])
+            _COMMERCIAL_AGGREGATE_CACHE.pop(oldest_key, None)
+        _COMMERCIAL_AGGREGATE_CACHE[cache_key] = (time.monotonic(), accounts)
+        return accounts
+
+
 def list_knowledge_accounts(
     db: Session,
     *,
@@ -1411,8 +1474,12 @@ def list_knowledge_opportunities(
     return opportunities[: max(1, min(limit, 60))]
 
 
-def build_knowledge_commercial_dashboard(db: Session) -> dict[str, Any]:
-    account_index = _aggregate_accounts(db)
+def _build_knowledge_commercial_dashboard_uncached(
+    db: Session,
+    *,
+    signature: tuple[Any, ...],
+) -> dict[str, Any]:
+    account_index = _aggregate_accounts(db, signature=signature)
     all_accounts = sorted(
         account_index.values(),
         key=lambda item: (item["confidence_score"], item["budget_probability"], item["report_count"]),
@@ -1455,3 +1522,23 @@ def build_knowledge_commercial_dashboard(db: Session) -> dict[str, Any]:
         "role_views": _build_role_views(all_accounts, all_opportunities, alerts, review_queue),
         "review_queue": review_queue,
     }
+
+
+def build_knowledge_commercial_dashboard(db: Session) -> dict[str, Any]:
+    signature = _commercial_cache_signature(db)
+    cache_key = (id(db.get_bind()), str(settings.single_user_id), signature)
+    now = time.monotonic()
+    with _COMMERCIAL_AGGREGATE_CACHE_LOCK:
+        cached = _COMMERCIAL_DASHBOARD_CACHE.get(cache_key)
+        if cached and now - cached[0] <= _COMMERCIAL_AGGREGATE_CACHE_TTL_SECONDS:
+            return cached[1]
+
+        dashboard = _build_knowledge_commercial_dashboard_uncached(db, signature=signature)
+        if (
+            cache_key not in _COMMERCIAL_DASHBOARD_CACHE
+            and len(_COMMERCIAL_DASHBOARD_CACHE) >= _COMMERCIAL_AGGREGATE_CACHE_MAX_ENTRIES
+        ):
+            oldest_key = min(_COMMERCIAL_DASHBOARD_CACHE, key=lambda key: _COMMERCIAL_DASHBOARD_CACHE[key][0])
+            _COMMERCIAL_DASHBOARD_CACHE.pop(oldest_key, None)
+        _COMMERCIAL_DASHBOARD_CACHE[cache_key] = (time.monotonic(), dashboard)
+        return dashboard

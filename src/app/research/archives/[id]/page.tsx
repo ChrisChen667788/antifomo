@@ -71,8 +71,8 @@ export default async function ResearchMarkdownArchivePage({
 
   return (
     <PageShell
-      title="Markdown 归档"
-      description="在线查看历史归档，并在同一页面对照两个版本的结构与差异摘要。"
+      title="历史归档"
+      description="查看历史归档和版本差异。"
     >
       <ResearchMarkdownArchiveViewer
         archive={archive}

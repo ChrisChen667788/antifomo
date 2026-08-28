@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from app.schemas.research import (
     ResearchEntityGraphOut,
+    ResearchEvidenceGateOut,
     ResearchReportDocument,
     ResearchReportResponse,
     ResearchSourceDiagnosticsOut,
@@ -483,3 +484,34 @@ def test_watch_quality_triggers_public_expansion_for_delivery_materials() -> Non
     assert expanded.source_count > evaluated.source_count
     assert expanded.solution_delivery_pack.advisory_artifacts
     assert "政府采购公告" in expanded.source_diagnostics.matched_source_labels
+
+
+def test_evidence_governed_report_skips_legacy_post_draft_expansion() -> None:
+    report = _report().model_copy(
+        update={
+            "research_evidence_gate": ResearchEvidenceGateOut(
+                enforced=True,
+                status="evidence_ready",
+                passed=True,
+                formal_report_allowed=True,
+                solution_delivery_allowed=True,
+            )
+        }
+    )
+    calls: list[str] = []
+
+    def _unexpected_search(query: str, **_kwargs) -> list[SearchHit]:
+        calls.append(query)
+        return []
+
+    expanded = expand_report_public_sources_until_quality_improves(
+        report,
+        source_documents=_report_sources_to_source_documents(report.sources),
+        deps=_quality_expansion_dependencies(
+            search_public_web=_unexpected_search,
+            extract_source_document_best_effort=lambda *_args, **_kwargs: None,
+        ),
+    )
+
+    assert expanded == report
+    assert calls == []

@@ -12,6 +12,7 @@ from app.schemas.research import (
     ResearchScoreFactorOut,
 )
 from app.services.content_extractor import extract_domain, normalize_text
+from app.services.research.entity_authenticity import evaluate_organization_name, repair_organization_candidate
 from app.services.research.source_documents import SourceDocument, source_document_text
 
 
@@ -145,17 +146,12 @@ def is_lightweight_entity_name(value: str) -> bool:
 
 def is_plausible_entity_name(value: str) -> bool:
     normalized = trim_product_spec_from_entity_name(value)
-    if not normalized or len(normalized) < 2 or any(char in normalized for char in "，,。；;：:"):
-        return False
-    if looks_like_fragment_entity_name(normalized):
-        return False
-    if is_lightweight_entity_name(normalized):
-        return True
-    if any(token in normalized for token in COMPANY_SUFFIX_TOKENS + INSTITUTION_TOKENS):
-        return True
-    if re.fullmatch(r"[A-Za-z][A-Za-z0-9 .-]{2,30}", normalized):
-        return True
-    return False
+    decision = evaluate_organization_name(
+        normalized,
+        known_names=(*KNOWN_COMPANIES, *ALIAS_TO_CANONICAL, *ALIAS_TO_CANONICAL.values()),
+        trusted_known_names=(*KNOWN_COMPANIES, *ALIAS_TO_CANONICAL, *ALIAS_TO_CANONICAL.values()),
+    )
+    return decision.accepted and not looks_like_fragment_entity_name(decision.normalized_name)
 
 
 def extract_rank_entity_candidates(value: str, *, scope_hints: dict[str, object] | None = None) -> list[str]:
@@ -178,8 +174,16 @@ def extract_rank_entity_candidates(value: str, *, scope_hints: dict[str, object]
 
     filtered: list[str] = []
     for candidate in candidates:
-        normalized = trim_product_spec_from_entity_name(resolve_known_org_name(candidate, scope_hints=scope_hints))
-        if not (is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
+        known_names = (*KNOWN_COMPANIES, *ALIAS_TO_CANONICAL, *ALIAS_TO_CANONICAL.values(), *scope_org_names(scope_hints))
+        repaired = repair_organization_candidate(candidate, known_names=known_names)
+        normalized = trim_product_spec_from_entity_name(resolve_known_org_name(repaired, scope_hints=scope_hints))
+        decision = evaluate_organization_name(
+            normalized,
+            known_names=known_names,
+            trusted_known_names=(*KNOWN_COMPANIES, *ALIAS_TO_CANONICAL, *ALIAS_TO_CANONICAL.values()),
+        )
+        normalized = decision.normalized_name
+        if not (decision.accepted or is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
             continue
         if looks_like_fragment_entity_name(normalized):
             continue

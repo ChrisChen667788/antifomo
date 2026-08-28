@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -28,11 +31,19 @@ from app.schemas.research import (
     ResearchActionSaveRequest,
     ResearchActionSaveResponse,
     ResearchActionSaveItemOut,
+    ResearchAssuranceSnapshotOut,
+    ResearchClarificationPacketOut,
+    ResearchClarificationSubmitRequest,
+    ResearchClarificationSubmitResponse,
     ResearchConversationCreateRequest,
     ResearchConversationMessageCreateRequest,
     ResearchConversationOut,
     ResearchEntityAliasResolveRequest,
     ResearchEntityDetailOut,
+    ResearchExperienceFeedbackOut,
+    ResearchExperienceFeedbackRequest,
+    ResearchExperienceMetricsOut,
+    ResearchExperienceReadinessOut,
     ResearchConnectorStatusOut,
     ResearchDeliveryExportDiagnosticsOut,
     ResearchExperimentActivePolicyOut,
@@ -46,6 +57,17 @@ from app.schemas.research import (
     ResearchExperimentRuntimeSnapshotOut,
     ResearchFollowupDeltaEvaluationOut,
     ResearchGoldenEvaluationOut,
+    ResearchIndustryKnowledgeBenchmarkOut,
+    ResearchIndustryKnowledgeRetrievalApprovalTemplateOut,
+    ResearchIndustryKnowledgeRetrievalAssuranceSnapshotOut,
+    ResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshotOut,
+    ResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplatesOut,
+    ResearchIndustryKnowledgeRetrievalEvidenceTemplatesOut,
+    ResearchIndustryKnowledgeDeliveryReviewArtifactOut,
+    ResearchIndustryKnowledgeDeliveryReviewOut,
+    ResearchIndustryKnowledgeDeliveryReviewRequest,
+    ResearchIndustryKnowledgeSearchOut,
+    ResearchIndustrySkillLibraryOut,
     ResearchJobCreateRequest,
     ResearchJobOut,
     ResearchJobTimelineEventOut,
@@ -66,6 +88,8 @@ from app.schemas.research import (
     ResearchSavedViewOut,
     ResearchSourceSettingsOut,
     ResearchSourceSettingsUpdate,
+    ResearchUpgradeDiagnosticsOut,
+    ResearchUpgradeDiagnosticsRequest,
     ResearchTrackingTopicCreateRequest,
     ResearchTrackingTopicRefreshRequest,
     ResearchTrackingTopicRefreshResponse,
@@ -87,6 +111,27 @@ from app.schemas.research import (
 )
 from app.services.delivery.market_intelligence import build_market_intelligence_pack
 from app.services.research_solution_intelligence_service import build_solution_delivery_pack
+from app.services.industry_knowledge_rag import hybrid_search_industry_knowledge
+from app.services.industry_knowledge_retrieval_benchmark import (
+    BENCHMARK_ID,
+    STRATEGY_KEYS,
+    industry_knowledge_benchmark_artifact_reference,
+    load_industry_knowledge_retrieval_benchmark_dataset,
+    load_latest_industry_knowledge_retrieval_benchmark,
+    register_industry_knowledge_delivery_review_artifacts,
+    run_industry_knowledge_retrieval_benchmark,
+)
+from app.services.industry_knowledge_retrieval_assurance import (
+    build_industry_knowledge_retrieval_assurance_snapshot,
+    export_industry_knowledge_retrieval_approval_template,
+    export_industry_knowledge_retrieval_evidence_templates,
+)
+from app.services.industry_knowledge_retrieval_evidence_operations import (
+    build_industry_knowledge_retrieval_evidence_operations_snapshot,
+    export_industry_knowledge_retrieval_evidence_operations_templates,
+)
+from app.services.industry_skill_library import build_industry_skill_library_snapshot, resolve_library_dir
+from app.services.industry_knowledge_rag import INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGIES
 from app.services.research_delivery_export_diagnostics_service import build_delivery_export_diagnostics
 from app.services.research_experiment_orchestration_service import (
     build_research_experiment_orchestration,
@@ -113,7 +158,10 @@ from app.services.research_retrieval_index_service import (
     search_persistent_research_retrieval_index,
 )
 from app.services.research_section_retrieval_service import build_section_retrieval_packs
+from app.services.research_upgrade_diagnostics_service import build_research_upgrade_diagnostics
+from app.services.research_assurance_service import build_research_assurance_snapshot
 from app.services.research.report_persistence import upsert_research_knowledge_entry
+from app.services.research.clarification import require_formal_research_delivery
 from app.services.daily_brief_service import build_daily_brief_snapshot, serialize_daily_brief
 from app.services.research_conversation_service import (
     add_research_conversation_message,
@@ -189,13 +237,26 @@ from app.services.research_job_store import (
     get_research_job,
     get_research_job_metrics,
     get_research_job_timeline,
+    record_research_experience_feedback,
     start_research_job,
+    submit_research_clarification,
+)
+from app.services.research_experience_service import (
+    build_research_experience_metrics,
+    build_research_experience_readiness,
 )
 from app.services.user_context import ensure_demo_user
 
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 settings = get_settings()
+
+
+def _require_formal_report(report: ResearchReportResponse) -> ResearchReportResponse:
+    try:
+        return require_formal_research_delivery(report)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def _report_entity_names(*values: object) -> list[str]:
@@ -477,6 +538,7 @@ def _refresh_tracking_topic_core(
         saved_entry_id: str | None = None
         saved_entry_title: str | None = None
         if payload.save_to_knowledge:
+            report = _require_formal_report(report)
             ensure_demo_user(db)
             _, content = build_research_report_markdown(report, output_language=payload.output_language)
             entry = upsert_research_knowledge_entry(
@@ -751,6 +813,28 @@ def get_research_delivery_export_diagnostics(
     )
 
 
+@router.get("/upgrade-diagnostics/preview", response_model=ResearchUpgradeDiagnosticsOut)
+def get_research_upgrade_diagnostics_preview() -> ResearchUpgradeDiagnosticsOut:
+    return ResearchUpgradeDiagnosticsOut(**build_research_upgrade_diagnostics())
+
+
+@router.post("/upgrade-diagnostics/preview", response_model=ResearchUpgradeDiagnosticsOut)
+def preview_research_upgrade_diagnostics(
+    payload: ResearchUpgradeDiagnosticsRequest,
+) -> ResearchUpgradeDiagnosticsOut:
+    return ResearchUpgradeDiagnosticsOut(**build_research_upgrade_diagnostics(payload))
+
+
+@router.get("/assurance/preview", response_model=ResearchAssuranceSnapshotOut)
+def get_research_assurance_preview(
+    db: Session = Depends(get_db),
+) -> ResearchAssuranceSnapshotOut:
+    """Read the quality-program state without modifying tasks or artifacts."""
+
+    ensure_demo_user(db)
+    return ResearchAssuranceSnapshotOut(**build_research_assurance_snapshot(db))
+
+
 @router.post("/retrieval/section-packs", response_model=list[ResearchSectionRetrievalPackOut])
 def build_research_section_retrieval_packs(
     payload: ResearchSectionRetrievalPackRequest,
@@ -772,16 +856,230 @@ def build_research_section_retrieval_packs(
     )
 
 
+@router.get("/industry-skills", response_model=ResearchIndustrySkillLibraryOut)
+def get_research_industry_skills(
+    query: str = "",
+    limit: int = 8,
+) -> ResearchIndustrySkillLibraryOut:
+    return build_industry_skill_library_snapshot(query=query, limit=limit)
+
+
+@router.get("/industry-skills/retrieve", response_model=ResearchIndustryKnowledgeSearchOut)
+def retrieve_research_industry_knowledge(
+    query: str,
+    industries: str = "",
+    document_types: str = "",
+    limit: int = 6,
+    strategy: Literal["baseline_hybrid", "prefilter_weighted_hybrid", "prefilter_weighted_rerank"] = "baseline_hybrid",
+) -> ResearchIndustryKnowledgeSearchOut:
+    result = hybrid_search_industry_knowledge(
+        resolve_library_dir(),
+        query=query,
+        industries=[item.strip() for item in industries.split(",") if item.strip()],
+        document_types=[item.strip() for item in document_types.split(",") if item.strip()],
+        limit=limit,
+        strategy=strategy,
+    )
+    return ResearchIndustryKnowledgeSearchOut(**result)
+
+
+@router.get("/industry-skills/retrieval-ranking-benchmark", response_model=ResearchIndustryKnowledgeBenchmarkOut)
+def get_research_industry_knowledge_retrieval_ranking_benchmark() -> ResearchIndustryKnowledgeBenchmarkOut:
+    return ResearchIndustryKnowledgeBenchmarkOut(**load_latest_industry_knowledge_retrieval_benchmark())
+
+
+@router.post("/industry-skills/retrieval-ranking-benchmark/run", response_model=ResearchIndustryKnowledgeBenchmarkOut)
+def run_research_industry_knowledge_retrieval_ranking_benchmark() -> ResearchIndustryKnowledgeBenchmarkOut:
+    return ResearchIndustryKnowledgeBenchmarkOut(**run_industry_knowledge_retrieval_benchmark())
+
+
+@router.get(
+    "/industry-skills/retrieval-ranking-assurance",
+    response_model=ResearchIndustryKnowledgeRetrievalAssuranceSnapshotOut,
+)
+def get_research_industry_knowledge_retrieval_assurance() -> ResearchIndustryKnowledgeRetrievalAssuranceSnapshotOut:
+    """Return the fail-closed 15-round retrieval assurance view."""
+
+    return ResearchIndustryKnowledgeRetrievalAssuranceSnapshotOut(
+        **build_industry_knowledge_retrieval_assurance_snapshot()
+    )
+
+
+@router.post(
+    "/industry-skills/retrieval-ranking-assurance/approval-template",
+    response_model=ResearchIndustryKnowledgeRetrievalApprovalTemplateOut,
+)
+def export_research_industry_knowledge_retrieval_approval_template() -> ResearchIndustryKnowledgeRetrievalApprovalTemplateOut:
+    """Create a pending human approval template without promoting a strategy."""
+
+    try:
+        return ResearchIndustryKnowledgeRetrievalApprovalTemplateOut(
+            **export_industry_knowledge_retrieval_approval_template()
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post(
+    "/industry-skills/retrieval-ranking-assurance/evidence-templates",
+    response_model=ResearchIndustryKnowledgeRetrievalEvidenceTemplatesOut,
+)
+def export_research_industry_knowledge_retrieval_evidence_templates() -> ResearchIndustryKnowledgeRetrievalEvidenceTemplatesOut:
+    """Create pending approval/shadow/drift templates without creating evidence."""
+
+    try:
+        return ResearchIndustryKnowledgeRetrievalEvidenceTemplatesOut(
+            **export_industry_knowledge_retrieval_evidence_templates()
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/industry-skills/retrieval-evidence-operations",
+    response_model=ResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshotOut,
+)
+def get_research_industry_knowledge_retrieval_evidence_operations() -> ResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshotOut:
+    """Return the read-only 2.8.1-2.9.5 evidence-operations control plane."""
+
+    return ResearchIndustryKnowledgeRetrievalEvidenceOperationsSnapshotOut(
+        **build_industry_knowledge_retrieval_evidence_operations_snapshot()
+    )
+
+
+@router.post(
+    "/industry-skills/retrieval-evidence-operations/templates",
+    response_model=ResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplatesOut,
+)
+def export_research_industry_knowledge_retrieval_evidence_operations_templates() -> ResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplatesOut:
+    """Create missing pending operations templates without completing external evidence."""
+
+    try:
+        return ResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplatesOut(
+            **export_industry_knowledge_retrieval_evidence_operations_templates()
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def _delivery_review_report_digest(report: ResearchReportResponse) -> str:
+    payload = {
+        "keyword": report.keyword,
+        "research_focus": report.research_focus,
+        "report_title": report.report_title,
+        "generated_at": report.generated_at.isoformat(),
+        "source_urls": [source.url for source in report.sources],
+    }
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+@router.post(
+    "/industry-skills/retrieval-ranking-benchmark/delivery-review",
+    response_model=ResearchIndustryKnowledgeDeliveryReviewOut,
+)
+def build_research_industry_knowledge_delivery_review(
+    payload: ResearchIndustryKnowledgeDeliveryReviewRequest,
+) -> ResearchIndustryKnowledgeDeliveryReviewOut:
+    """Create three strategy-isolated solution-delivery artifacts for human A/B review."""
+    report = _require_formal_report(payload.report)
+    _dataset, cases = load_industry_knowledge_retrieval_benchmark_dataset()
+    case = next((item for item in cases if item.case_id == payload.case_id), None)
+    if case is None:
+        raise HTTPException(status_code=404, detail="Unknown fixed retrieval-ranking benchmark case")
+
+    source_report_digest = _delivery_review_report_digest(report)
+    review_root = (
+        resolve_library_dir().parent
+        / BENCHMARK_ID
+        / "delivery-review"
+        / case.case_id
+        / source_report_digest[:16]
+    )
+    artifacts: list[ResearchIndustryKnowledgeDeliveryReviewArtifactOut] = []
+    warnings: list[str] = []
+    for strategy in STRATEGY_KEYS:
+        pack = build_solution_delivery_pack(
+            report,
+            scenario=payload.scenario or case.query,
+            target_customer=payload.target_customer,
+            vertical_scene=payload.vertical_scene or case.query,
+            supplemental_context=payload.supplemental_context,
+            use_industry_skills=payload.use_industry_skills,
+            industry_skill_ids=payload.industry_skill_ids,
+            industry_knowledge_retrieval_strategy=strategy,
+            industry_knowledge_retrieval_industries=case.industries,
+            industry_knowledge_retrieval_document_types=case.document_types,
+        )
+        context = pack.industry_skill_context
+        content = "\n".join(
+            [
+                "# 检索排序报告人工复核工件",
+                "",
+                "> 该工件以同一正式研报为基础，仅改变本地行业资料检索策略；用于人工 A/B 复核，不代表生产默认策略已切换。",
+                "",
+                f"- 固定题目：{case.case_id}",
+                f"- 固定查询：{case.query}",
+                f"- 原始研报：{report.report_title}",
+                f"- 原始研报摘要哈希：`{source_report_digest}`",
+                f"- 本地检索策略：{context.retrieval_strategy_label or strategy}",
+                f"- 策略标识：`{strategy}`",
+                f"- 实际复排：{context.rerank_applied} ({context.rerank_backend})",
+                "",
+                "## 完整方案交付稿",
+                pack.export_markdown,
+                "",
+                "## 人工复核要求",
+                "- 对照同一题目的三份工件，从事实支撑、引用可用性、方案可执行性和结构完整性四方面给 1-5 分。",
+                "- 将此文件路径填入 human-review.json 对应条目的 report_artifact_path。",
+                "- 真实 Cross Encoder 未应用时，不得把候选 B 视为复排通过。",
+                "",
+            ]
+        )
+        path = review_root / f"{strategy}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        artifacts.append(
+            ResearchIndustryKnowledgeDeliveryReviewArtifactOut(
+                strategy=strategy,
+                strategy_label=INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGIES[strategy].label,
+                report_artifact_path=industry_knowledge_benchmark_artifact_reference(path),
+            )
+        )
+        warnings.extend(context.warnings)
+        if strategy == "prefilter_weighted_rerank" and not context.rerank_applied:
+            warnings.append("候选 B 未实际应用 Cross Encoder；该工件只可用于记录不可用状态，不能形成复排上线证据。")
+    warnings.extend(
+        register_industry_knowledge_delivery_review_artifacts(
+            case_id=case.case_id,
+            artifact_paths={item.strategy: item.report_artifact_path for item in artifacts},
+        )
+    )
+    return ResearchIndustryKnowledgeDeliveryReviewOut(
+        case_id=case.case_id,
+        query=case.query,
+        source_report_title=report.report_title,
+        source_report_digest=source_report_digest,
+        generated_at=datetime.now(timezone.utc),
+        artifacts=artifacts,
+        warnings=list(dict.fromkeys(warnings))[:10],
+    )
+
+
 @router.post("/solution-delivery-pack", response_model=ResearchSolutionDeliveryPackOut)
 def build_research_solution_delivery_pack(
     payload: ResearchSolutionDeliveryRequest,
 ) -> ResearchSolutionDeliveryPackOut:
+    report = _require_formal_report(payload.report)
     return build_solution_delivery_pack(
-        payload.report,
+        report,
         scenario=payload.scenario,
         target_customer=payload.target_customer,
         vertical_scene=payload.vertical_scene,
         supplemental_context=payload.supplemental_context,
+        use_industry_skills=payload.use_industry_skills,
+        industry_skill_ids=payload.industry_skill_ids,
+        industry_knowledge_retrieval_strategy=payload.industry_knowledge_retrieval_strategy,
     )
 
 
@@ -789,7 +1087,7 @@ def build_research_solution_delivery_pack(
 def refresh_research_solution_intelligence(
     payload: ResearchSolutionDeliveryRequest,
 ) -> ResearchReportResponse:
-    report = payload.report
+    report = _require_formal_report(payload.report)
     market_intelligence = build_market_intelligence_pack(
         report,
         scenario=payload.scenario,
@@ -802,6 +1100,9 @@ def refresh_research_solution_intelligence(
         target_customer=payload.target_customer,
         vertical_scene=payload.vertical_scene,
         supplemental_context=payload.supplemental_context,
+        use_industry_skills=payload.use_industry_skills,
+        industry_skill_ids=payload.industry_skill_ids,
+        industry_knowledge_retrieval_strategy=payload.industry_knowledge_retrieval_strategy,
     )
     return report.model_copy(
         update={
@@ -1449,6 +1750,61 @@ def get_research_job_status(job_id: str) -> ResearchJobOut:
     return job
 
 
+@router.get(
+    "/jobs/{job_id}/clarification",
+    response_model=ResearchClarificationPacketOut,
+)
+def get_research_job_clarification(job_id: str) -> ResearchClarificationPacketOut:
+    job = get_research_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Research job not found")
+    return job.clarification_packet
+
+
+@router.post(
+    "/jobs/{job_id}/clarification",
+    response_model=ResearchClarificationSubmitResponse,
+)
+def submit_research_job_clarification(
+    job_id: str,
+    payload: ResearchClarificationSubmitRequest,
+) -> ResearchClarificationSubmitResponse:
+    try:
+        return submit_research_clarification(job_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/jobs/{job_id}/experience-feedback",
+    response_model=ResearchExperienceFeedbackOut,
+)
+def submit_research_job_experience_feedback(
+    job_id: str,
+    payload: ResearchExperienceFeedbackRequest,
+) -> ResearchExperienceFeedbackOut:
+    try:
+        return record_research_experience_feedback(job_id, payload)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/experience/metrics", response_model=ResearchExperienceMetricsOut)
+def get_research_experience_metrics(
+    db: Session = Depends(get_db),
+) -> ResearchExperienceMetricsOut:
+    return build_research_experience_metrics(db=db)
+
+
+@router.get("/experience/readiness", response_model=ResearchExperienceReadinessOut)
+def get_research_experience_readiness(
+    db: Session = Depends(get_db),
+) -> ResearchExperienceReadinessOut:
+    return build_research_experience_readiness(db=db)
+
+
 @router.get("/jobs/{job_id}/timeline", response_model=list[ResearchJobTimelineEventOut])
 def get_research_job_timeline_items(job_id: str) -> list[ResearchJobTimelineEventOut]:
     timeline = get_research_job_timeline(job_id)
@@ -1539,17 +1895,18 @@ def save_research_report(
     db: Session = Depends(get_db),
 ) -> ResearchReportSaveResponse:
     ensure_demo_user(db)
-    _, content = build_research_report_markdown(payload.report, output_language=payload.report.output_language)
-    action_cards = build_research_action_cards(payload.report)
+    report = _require_formal_report(payload.report)
+    _, content = build_research_report_markdown(report, output_language=report.output_language)
+    action_cards = build_research_action_cards(report)
     entry = upsert_research_knowledge_entry(
         db,
-        keyword=payload.report.keyword,
-        title=payload.report.report_title,
+        keyword=report.keyword,
+        title=report.report_title,
         content=content,
         collection_name=payload.collection_name,
         is_focus_reference=payload.is_focus_reference,
         metadata_payload=build_research_report_metadata(
-            payload.report,
+            report,
             action_cards=action_cards,
         ),
     )
@@ -1562,10 +1919,11 @@ def save_research_report(
 
 @router.post("/action-plan", response_model=ResearchActionPlanResponse)
 def create_research_action_plan(payload: ResearchActionPlanRequest) -> ResearchActionPlanResponse:
+    report = _require_formal_report(payload.report)
     return ResearchActionPlanResponse(
-        keyword=payload.report.keyword,
+        keyword=report.keyword,
         generated_at=datetime.now(timezone.utc),
-        cards=build_research_action_cards(payload.report),
+        cards=build_research_action_cards(report),
     )
 
 

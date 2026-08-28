@@ -125,7 +125,7 @@ export function PreferenceInsightsPanel() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {t(
               "preferences.desc",
-              "把 like / ignore / save / open_detail 转成主题与来源权重，直接影响推荐排序。",
+              "根据你的操作持续优化推荐。",
             )}
           </p>
         </div>

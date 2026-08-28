@@ -2,6 +2,119 @@
 
 ## Unreleased
 
+### 2.10.0-2.10.2 product-strategy evidence and HOLD-only artifact-review line
+
+- Added a first-party-source Competitive Capability Observatory that keeps vendor claims, local implementation state, proposed roadmap decisions, and blocked release evidence separate.
+- Added explicit, idempotent Reviewable Decision Context Packets for the four `build` / `integrate` / `defer` cards, while retaining TRAE autonomous IDE execution and QClaw instant-message device execution as explicit non-goals.
+- Added 2.10.2 delivery-artifact acceptance drafts bound to context-packet/source digests, immutable initial revision snapshots, and field-level before/after diffs.
+- Kept every 2.10.2 artifact in `HOLD`/`blocked`: Office openability, visual render/layout, and attributable human-acceptance evidence are intentionally not synthesized, read, or claimed by the new control plane.
+- Preserved the current production and release boundary: no auto acceptance, execution, or release approval; no change to `baseline_hybrid`; existing release readiness remains blocked.
+
+### 2.8.1-2.9.5 retrieval evidence-operations line
+
+- Added 15 fail-closed evidence-operations rounds after retrieval assurance: immutable evidence envelopes, artifact inventory and lineage, freshness and chronology, role separation, full-review coverage, actual reranker preflight, shadow/drift operations, incident closure, revocation acknowledgement, evidence-package digest, independent audit handoff, and release-readiness bridging.
+- Added a read-only Research Center/API control plane for the operations chain plus non-destructive pending templates for incident registers, revocation records, and audit handoff. Existing human-authored artifacts are never overwritten.
+- Added a second release-readiness gate that reads the operations snapshot. It cannot promote a retrieval candidate or change the `baseline_hybrid` production default.
+- Kept release promotion blocked: fixture coverage proves the contract only. Real independent review, approval, shadow/drift runtime evidence, incident closure, revocation confirmation, audit handoff, Office/visual proof, and inherited external gates remain outstanding.
+
+### 2.6.6-2.8.0 retrieval assurance and controlled-promotion line
+
+- Added a fixed-evidence digest for local industry-knowledge retrieval A/B. Persisted snapshots, complete-report reviews, approvals, shadow runs, and drift checks must bind the same dataset, knowledge-base generation, and retrieval result; tampered or old review evidence is rejected.
+- Added 15 fail-closed assurance rounds for cohort coverage, per-case failure localization, paired complete-report review and significance, latency/cost limits, actual Cross Encoder provenance, candidate governance, separated human approval, controlled shadow, drift, rollback, audit chain, and release-readiness aggregation.
+- Added Research Center/API/CLI visibility and non-destructive templates for approval, shadow, and drift evidence. A `promote` recommendation never changes `baseline_hybrid`, and human-authored evidence is never overwritten.
+- Kept release promotion blocked: the current local 12-case run is partial, real Cross Encoder proof, independent complete-report review, approval, shadow, drift, Office, visual, and existing external acceptance evidence remain outstanding.
+
+### 2.5.1-2.6.5 assurance command center line
+
+- Added a read-only Research Assurance snapshot and Research Center panel that evaluate historical payload compatibility, source topology, entity roles, claim coverage, delivery truth, low-quality remediation, clarification recovery, model fallback truth, cost coverage, reranker adoption, cross-industry samples, independent review, calibration, visual/Office evidence, and durable job state.
+- Connected the 15-round program to release readiness as `assurance_program`. It reads persisted reports and artifact files but never writes reviewer decisions, calibration results, customer acceptance, or visual approval.
+- Kept release promotion blocked whenever real review, calibration, customer acceptance, current-version screenshots, Office baselines, or sufficient cross-industry samples are absent.
+
+### 2.3.2-2.5.0 field-test quality recovery line
+
+- Added role-bearing entity truth and source-topology admission before ranking: external benchmarks, historical context, unsafe URLs, and tender boilerplate cannot become local target-account proof.
+- Added a single delivery-truth contract that drives readiness, formal export eligibility, commercial-section confidence, clarification, and the result-first UI.
+- Added verified account-pursuit cards, buyer/bid engineering, and customer architecture traceability that separates facts, assumptions, benchmarks, and recommendations.
+- Added 2.5.0 calibration artifacts for 100 quality audits, topology-qrel digests, fixed-evidence model/prompt A/B, and three customer-side acceptance samples. The release remains blocked until real independent evidence is supplied.
+
+### 2.2.1-2.3.1 clarification and research-experience line
+
+- Added stable user interaction states, bounded recovery, near-threshold evidence-bounded drafts, structured clarification packets, and fail-closed formal export rules.
+- Added typed clarification answers, URL/text/file supplementation, accepted-source snapshot reuse, parent/child job lineage, idempotent continuation, and bounded delta retrieval.
+- Reworked the Inbox research result around a plain-language recovery card, progressive disclosure, retained-work messaging, provenance labels, and collapsed operator diagnostics.
+- Added feedback capture plus clarification conversion, stale recovery, replay, provenance, formal-bypass, cross-industry, and time-to-result metrics.
+- Added `/api/research/experience/readiness` to aggregate the human-in-the-loop acceptance contract into global release readiness.
+- Preserved release truth: the engineering paths are implemented and tested locally, while the required real cross-industry tasks, human feedback, independent expert review, customer acceptance, and final Office/visual/security evidence remain blocked.
+
+### 2.0.1-2.0.6 release-program development line
+
+- Added idempotent, preview-first activation of existing knowledge entries and completed research jobs into provenance-bound Decision Notebooks.
+- Added server-owned calculators for 13 retrieval, parser, formal-document, Claim compiler, report quality, entity authenticity, permission, Skill security, cross-artifact, Office/visual, performance/cost, and recovery/audit suites.
+- Added append-only `DecisionValidationRun` evidence records and reversible Alembic revision `20260716_0027`; external suites require reviewer separation, attestations, reviewed time, and raw artifact URIs.
+- Added SHA-256 chained audit export, latest-run milestone aggregation, a non-destructive reliability probe, CI-oriented CLI commands, and a `2.0.6-development` release-readiness gate.
+- Aligned the concurrency runner with the 2.0.6 `20/500`, P95 `2.5s`, and error-rate `1%` contract, added Decision Studio endpoints and validation-input export, and made local load/recovery smoke ineligible for production release evidence.
+- Removed the knowledge-commercial dashboard cache stampede by sharing one content-signature build across concurrent requests and caching the assembled dashboard; the real local `20/500` rerun improved from 491 successes and 10.583s P95 to 500 successes and 690ms P95.
+- Hardened the historical Alembic chain for SQLite recovery: JSONB now degrades to JSON, default removal is dialect-aware, foreign-key changes use batch mode, and a fresh database can upgrade through `20260716_0027`, downgrade to `0026`, and upgrade again.
+- Extended `/studio` with existing-data activation and a six-version release console that separates locally implemented capability from acceptance status.
+- Kept commercial promotion blocked: automated fixtures do not replace 300 human qrels, 100/100 independent review, expert calibration, security review, Office/visual approval, production load/recovery evidence, or customer acceptance.
+
+### 2.0.0 Decision Studio development line
+
+- Provisioned the real `BAAI/bge-m3` SentenceTransformer runtime with configurable Hugging Face Hub/Xet cache roots, external-volume mount validation, MPS device selection, conservative batching, and model-control-plane visibility; model files remain outside the repository and Python virtual environment.
+- Added a source-scoped Notebook with native text/HTML/OOXML parsing, structured `pypdf` extraction, optional Docling adaptation, immutable source revisions, passage locators, real SentenceTransformer embeddings, strict semantic mode, and explicitly labeled lexical degradation.
+- Added versioned Chinese government/enterprise feasibility, project-proposal, and solution-document policy packs; every formal-document field now has an explicit state, and assumptions plus deterministic calculations retain complete input lineage.
+- Added a Claim dependency graph with current-revision/trusted-source validation, cycle rejection, cross-claim fact conflict detection, bounded section compilation, dependency hashes, and incremental section rebuild.
+- Added Knowledge Spaces, owner/editor/reviewer/viewer ACL, source owner/expiry trust, review threads, connector fingerprints, allowlist dry-runs, and controlled MCP action/permission sandboxing with network disabled by default.
+- Added an immutable governed Skill registry with HMAC signatures, license and permission admission, quarantine, benchmark evidence, approval, dry-run, built-in execution, and blocked unsigned or over-privileged packages.
+- Added evidence-bound executive briefs, mind maps, data tables, slide outlines, infographic specs, and audio scripts with shared Claim/source-revision lineage, stale propagation, and cross-artifact consistency checks.
+- Added `/api/decision-studio`, the `/studio` operational workspace, a reversible `20260716_0026` migration, Decision Studio model-control-plane visibility, and aggregate `2.0.0-development` readiness that inherits the existing blocked human/customer/Office/visual gates.
+- Kept commercial promotion blocked: 300-query human qrels, real expert calibration, three-industry blind evaluation, customer acceptance, production Skill signing/benchmarks, and final visual/Office/security evidence remain external gates.
+
+## 1.9.1+20260713 - 2026-07-13
+
+- Added a machine-readable proof-of-architecture checklist for API/data contracts, representative flows, capacity and cost, threat modeling, access boundaries, failure recovery, observability, rollback, and customer confirmation.
+- Added an executable minimum vertical simulator and digest-verified artifact covering medical, financial-services, and tourism reference scenarios with eight checks per scenario.
+- Split customer-facing confirmed evidence from internal assumptions, limitations, disputes, and pending validation; reference fixtures are explicitly excluded from customer acceptance claims.
+- Connected architecture failures, machine execution evidence, human conclusions, correction rounds, artifacts, and operator commands to release readiness.
+- Kept promotion blocked because real three-industry blind review and customer acceptance artifacts remain pending even though the deterministic engineering suite passes.
+
+## 1.9.0+20260713 - 2026-07-13
+
+- Added measurable QAW quality-attribute scenarios, ATAM utility-tree findings, and three-option baseline/pilot/target ADRs with owners, due dates, rollback conditions, evidence, and validation actions.
+- Added C4 context, container, component, dynamic, and deployment views plus cloud-neutral Well-Architected and NIST AI risk checks.
+- Added complete requirement-to-capability/component/data/interface/deployment/risk/test traceability and a zero-orphan-component gate.
+- Degraded evidence-light solutions to workshop questions and validation plans instead of presenting unverified architecture choices as confirmed facts.
+
+## 1.8.4+20260713 - 2026-07-13
+
+- Centralized topic-mismatch, minimum-evidence, and unsupported-critical-claim score caps at 20, 40, and 59 across quality, evaluation, readiness, and solution delivery.
+- Added a 100-case primary expert-review workflow with a stratified 30-case second blind review, reviewer separation, disagreement arbitration, attestations, and content digests.
+- Added expert five-dimension scoring, inter-reviewer agreement, automatic-judge bias, hard-cap violations, and human-undeliverable recall calibration with a 95% release threshold.
+- Exported the honest pending `100+30` calibration artifact; no reviewer identity, score, decision, arbitration, or approval was synthesized.
+
+## 1.8.3+20260713 - 2026-07-13
+
+- Replaced one-shot report drafting with an auditable question-tree flow that assigns accepted evidence to six first-level research questions and triggers bounded, question-specific corrective retrieval for coverage gaps.
+- Added an atomic claim/evidence ledger and enforced citation gate with 100% critical-claim coverage, 90% overall completeness, 95% support, conflict detection, and traceable claim/source IDs.
+- Made solution delivery fail closed when either the evidence gate or citation gate fails; blocked work now returns only evidence gaps and remediation actions instead of a formal blueprint, feasibility report, proposal, or client deck.
+- Added evidence-governance diagnostics to report APIs, Markdown exports, the research UI, quality/readiness scoring, and the aggregate release-readiness gate.
+- Kept release promotion blocked because the checked-in 100-case independent-review artifact is still pending; automated evidence tests do not replace an independent reviewer.
+
+## 1.8.2+20260713 - 2026-07-13
+
+- Added a structured research scope contract for industry, region, time, subjects, task type, exclusions, and methodology routing.
+- Added per-source accepted/ambiguous/rejected admissions with stable reasons, question bindings, source-tier/domain accounting, and deep-mode minimums of 8 accepted sources, 3 official sources, 5 independent domains, and 80% question coverage.
+- Added medical and financial methodology routing, scope-namespaced runtime retrieval, persistent-index and archive isolation, and cross-industry source rejection.
+- Added an evidence-gap report path that stops before model generation and rejects the known Shanghai medical-AI/Codex hard negative while preserving a positive eight-source medical fixture.
+- Added hard quality/readiness caps for topic mismatch, minimum-evidence failure, and citation failure so aggregate scores cannot promote an invalid report.
+
+## 1.8.1+20260713 - 2026-07-13
+
+- Added the aggregate release-readiness API and research-center panel for system health, research diagnostics, low-quality audit, independent review, visual/Office evidence, operator commands, and release artifacts.
+- Added deterministic stability smoke checks, safe low-quality repair with SQLite backup, and visual-baseline/Office roundtrip manifest aggregation.
+- Reduced the live unresolved low-quality queue to 6/68 (8.8%) with zero invalid payloads; stability and machine visual/Office gates pass.
+- Preserved an honest blocked release state for the pending 0/100 independent review instead of synthesizing reviewer metadata, attestations, or approval decisions.
+
 ## 1.8.0+20260622 - 2026-06-22
 
 - Started the `1.8.0` professional-report quality line and inserted it ahead of later generic delivery-export work.

@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable
+import re
 
 from app.services.content_extractor import normalize_text
+from app.services.research.entity_authenticity import evaluate_organization_name, repair_organization_candidate
 from app.services.research.entity_policy import (
     COMPACT_ENTITY_PATTERN,
     ENTITY_SUFFIX_TOKENS,
+    GENERIC_FOCUS_TOKENS,
     INDUSTRY_SCOPE_ALIASES,
     KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
     ORG_PATTERN,
@@ -46,6 +49,7 @@ from app.services.research.source_documents import SourceDocument, looks_like_so
 
 REGION_SCOPE_ALIASES: dict[str, tuple[str, ...]] = {
     "长三角": ("长三角", "上海", "江苏", "浙江", "安徽", "南京", "苏州", "杭州", "宁波", "无锡", "合肥"),
+    "华东": ("华东", "上海", "江苏", "浙江", "安徽", "福建", "江西", "山东"),
     "京津冀": ("京津冀", "北京", "天津", "河北"),
     "粤港澳": ("粤港澳", "广东", "广州", "深圳", "珠海", "佛山", "东莞", "中山", "香港", "澳门"),
     "成渝": ("成渝", "成都", "重庆", "四川"),
@@ -60,6 +64,88 @@ COMPANY_ENTITY_QUERY_TOKENS = (
 HEAD_COMPANY_QUERY_TOKENS = (
     "头部", "龙头", "领先", "头部玩家", "top", "leading", "leader", "leaders", "头部公司",
 )
+EXPLICIT_INDUSTRY_PATTERN = re.compile(
+    r"([A-Za-z0-9\u4e00-\u9fa5]{1,28}?)(?:行业|产业|领域|赛道)"
+)
+EXPLICIT_INDUSTRY_PREFIXES = (
+    "全国",
+    "国内",
+    "中国",
+    "全球",
+    "境内",
+    "海外",
+    "本地",
+    "区域",
+    "重点",
+    "新兴",
+    "未来",
+    "关于",
+    "针对",
+)
+EXPLICIT_INDUSTRY_NOISE = {
+    "相关",
+    "目标",
+    "重点",
+    "区域",
+    "当地",
+    "各地",
+    "主要",
+}
+
+
+def infer_explicit_industry_labels(seed_text: str) -> list[str]:
+    """Extract an explicit ``X行业/产业/领域`` even when X is not in the curated taxonomy."""
+
+    normalized_seed = normalize_text(seed_text)
+    if not normalized_seed:
+        return []
+    region_prefixes = sorted(
+        {
+            *REGION_SCOPE_ALIASES.keys(),
+            *(alias for aliases in REGION_SCOPE_ALIASES.values() for alias in aliases),
+            *REGION_TOKENS,
+        },
+        key=len,
+        reverse=True,
+    )
+    labels: list[str] = []
+    for match in EXPLICIT_INDUSTRY_PATTERN.finditer(normalized_seed):
+        candidate = normalize_text(match.group(1))
+        candidate = re.sub(r"^(?:20\d{2}年(?:上半年|下半年)?|近\d+年|未来\d+年)", "", candidate)
+        changed = True
+        while changed and candidate:
+            changed = False
+            for prefix in (*EXPLICIT_INDUSTRY_PREFIXES, *region_prefixes):
+                if candidate.startswith(prefix) and len(candidate) > len(prefix):
+                    candidate = normalize_text(candidate[len(prefix) :])
+                    changed = True
+                    break
+            cleaned = re.sub(r"^(?:地区|区域|城市群|省|市)+", "", candidate)
+            if cleaned != candidate:
+                candidate = normalize_text(cleaned)
+                changed = True
+        candidate = normalize_text(candidate.strip("的与及和-_/"))
+        if candidate == "政府":
+            labels.append("政务云")
+            continue
+        canonical = next(
+            (
+                label
+                for label, aliases in INDUSTRY_SCOPE_ALIASES.items()
+                if candidate == label or candidate in aliases
+            ),
+            "",
+        )
+        if canonical:
+            labels.append(canonical)
+            continue
+        if (
+            2 <= len(candidate) <= 16
+            and candidate not in EXPLICIT_INDUSTRY_NOISE
+            and candidate not in GENERIC_FOCUS_TOKENS
+        ):
+            labels.append(candidate)
+    return dedupe_strings(labels, 4)
 
 
 def sanitize_research_focus_text_bound(value: str | None) -> str:
@@ -149,10 +235,24 @@ def extract_rank_entity_candidates(
     candidates.extend(alias for alias in KNOWN_LIGHTWEIGHT_ENTITY_NAMES if alias in text)
     candidates.extend(heuristic_extract_rank_entity_candidates(text, scope_hints=scope_hints))
     filtered: list[str] = []
+    known_names = (
+        *KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
+        *SPECIAL_ENTITY_ALIASES,
+        *(scope_hints or {}).get("seed_companies", []),
+        *(scope_hints or {}).get("clients", []),
+        *(scope_hints or {}).get("company_anchors", []),
+    )
     for candidate in candidates:
+        candidate = repair_organization_candidate(candidate, known_names=known_names)
         normalized = resolve_known_org_name(candidate, scope_hints=scope_hints)
         normalized = strip_entity_leading_noise(trim_product_spec_from_entity_name(normalized))
-        if not (is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
+        decision = evaluate_organization_name(
+            normalized,
+            known_names=known_names,
+            trusted_known_names=(*KNOWN_LIGHTWEIGHT_ENTITY_NAMES, *SPECIAL_ENTITY_ALIASES),
+        )
+        normalized = decision.normalized_name
+        if not (decision.accepted or is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
             continue
         if looks_like_fragment_entity_name(normalized):
             continue
@@ -276,6 +376,7 @@ def infer_input_scope_hints(
     exclusion_terms = extract_explicit_exclusion_terms_bound(research_focus)
     if not seed_text:
         return {
+            "input_scope_locked": False,
             "regions": [],
             "industries": [],
             "clients": [],
@@ -312,6 +413,7 @@ def infer_input_scope_hints(
             for label, aliases in INDUSTRY_SCOPE_ALIASES.items()
             if any(alias in seed_text for alias in aliases)
         ]
+        + infer_explicit_industry_labels(seed_text)
     )
     theme_labels = dedupe_strings(
         [*industry_hints, *theme_labels_from_scope_bound({}, keyword=keyword, research_focus=research_focus)],
@@ -332,7 +434,8 @@ def infer_input_scope_hints(
             [
                 item
                 for item in ORG_PATTERN.findall(seed_text)
-                if is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
+                if is_plausible_entity_name(item)
+                and is_theme_aligned_entity_name(item, role="target", theme_labels=theme_labels)
             ],
             3,
         )
@@ -359,8 +462,12 @@ def infer_input_scope_hints(
         industries=theme_labels or industry_hints,
         clients=client_candidates,
     )
+    methodology_profile = normalize_text(str(methodology_scope_hints.get("industry_methodology_profile") or ""))
+    if not industry_hints and methodology_profile not in {"", "大模型", "人工智能", "信息化", "通用主题"}:
+        industry_hints = [methodology_profile]
 
     return {
+        "input_scope_locked": bool(industry_hints or client_candidates or company_anchors or exclusion_terms),
         "regions": region_hints,
         "industries": industry_hints,
         "clients": client_candidates,
@@ -408,7 +515,8 @@ def infer_scope_hints(
     for label, aliases in INDUSTRY_SCOPE_ALIASES.items():
         if any(alias.lower() in normalized_seed for alias in aliases):
             industry_hints.append(label)
-    industry_hints = list(dict.fromkeys(industry_hints))[:3]
+    industry_hints.extend(infer_explicit_industry_labels(seed_text))
+    industry_hints = prune_industry_hints(industry_hints)
     theme_labels = dedupe_strings(
         [*industry_hints, *theme_labels_from_scope_bound({}, keyword=keyword, research_focus=research_focus)],
         3,
@@ -472,6 +580,9 @@ def infer_scope_hints(
         industries=theme_labels or industry_hints,
         clients=client_candidates,
     )
+    methodology_profile = normalize_text(str(methodology_scope_hints.get("industry_methodology_profile") or ""))
+    if not industry_hints and methodology_profile not in {"", "大模型", "人工智能", "信息化", "通用主题"}:
+        industry_hints = [methodology_profile]
 
     return {
         "regions": region_hints,
@@ -490,9 +601,13 @@ def merge_scope_hints(
     base: dict[str, object],
     refined: dict[str, object],
 ) -> dict[str, object]:
+    input_scope_locked = bool(base.get("input_scope_locked")) or bool(refined.get("input_scope_locked"))
+    refined_scope_is_explicit = bool(refined.get("input_scope_locked"))
     base_regions = [normalize_text(str(item)) for item in (base.get("regions", []) or []) if normalize_text(str(item))]
     refined_regions = [normalize_text(str(item)) for item in (refined.get("regions", []) or []) if normalize_text(str(item))]
-    if base_regions:
+    if bool(base.get("input_scope_locked")) and not refined_scope_is_explicit:
+        regions = dedupe_strings(base_regions, 3)
+    elif base_regions:
         allowed_terms = {item.lower() for item in expand_region_scope_terms(base_regions)}
         region_candidates = list(base_regions)
         region_candidates.extend(
@@ -506,7 +621,9 @@ def merge_scope_hints(
         regions = dedupe_strings([*refined_regions], 3)
     base_industries = [normalize_text(str(item)) for item in (base.get("industries", []) or []) if normalize_text(str(item))]
     refined_industries = [normalize_text(str(item)) for item in (refined.get("industries", []) or []) if normalize_text(str(item))]
-    if base_industries:
+    if bool(base.get("input_scope_locked")) and not refined_scope_is_explicit:
+        industries = prune_industry_hints(base_industries)
+    elif base_industries:
         allowed_industry_terms = {
             normalize_text(alias)
             for industry in base_industries
@@ -526,7 +643,9 @@ def merge_scope_hints(
 
     base_clients = [normalize_text(str(item)) for item in (base.get("clients", []) or []) if normalize_text(str(item))]
     refined_clients = [normalize_text(str(item)) for item in (refined.get("clients", []) or []) if normalize_text(str(item))]
-    if base_clients:
+    if bool(base.get("input_scope_locked")) and not refined_scope_is_explicit:
+        clients = dedupe_strings(base_clients, 3)
+    elif base_clients:
         clients = dedupe_strings(
             [
                 *base_clients,
@@ -551,7 +670,9 @@ def merge_scope_hints(
         for item in (refined.get("company_anchors", []) or [])
         if normalize_text(str(item))
     ]
-    if base_company_anchors:
+    if bool(base.get("input_scope_locked")) and not refined_scope_is_explicit:
+        company_anchors = dedupe_strings(base_company_anchors, 4)
+    elif base_company_anchors:
         company_anchors = dedupe_strings(
             [
                 *base_company_anchors,
@@ -567,28 +688,64 @@ def merge_scope_hints(
         company_anchors = dedupe_strings(refined_company_anchors, 4)
     clients = clean_scope_entity_names(clients, limit=3, theme_labels=industries)
     company_anchors = clean_scope_entity_names(company_anchors, limit=4, theme_labels=industries)
+    locked_input_scope = bool(base.get("input_scope_locked")) and not refined_scope_is_explicit
+    locked_specific_industries = [
+        item
+        for item in base_industries
+        if item not in {"大模型", "人工智能", "信息化"}
+    ]
+    locked_industry_terms = {
+        normalize_text(alias).lower()
+        for industry in locked_specific_industries
+        for alias in (industry, *INDUSTRY_SCOPE_ALIASES.get(industry, ()))
+        if normalize_text(alias)
+    }
+    refined_strategy_queries = [
+        normalize_text(str(item))
+        for item in (refined.get("strategy_query_expansions", []) or [])
+        if normalize_text(str(item))
+    ]
+    if locked_industry_terms:
+        refined_strategy_queries = [
+            query
+            for query in refined_strategy_queries
+            if any(term in query.lower() for term in locked_industry_terms)
+        ]
     strategy_must_include_terms = dedupe_strings(
-        [*(base.get("strategy_must_include_terms", []) or []), *(refined.get("strategy_must_include_terms", []) or [])],
+        [
+            *(base.get("strategy_must_include_terms", []) or []),
+            *([] if locked_input_scope else (refined.get("strategy_must_include_terms", []) or [])),
+        ],
         8,
     )
     strategy_exclusion_terms = dedupe_strings(
-        [*(base.get("strategy_exclusion_terms", []) or []), *(refined.get("strategy_exclusion_terms", []) or [])],
+        [
+            *(base.get("strategy_exclusion_terms", []) or []),
+            *([] if locked_input_scope else (refined.get("strategy_exclusion_terms", []) or [])),
+        ],
         8,
     )
     strategy_query_expansions = dedupe_strings(
         [
             item
-            for item in [*(base.get("strategy_query_expansions", []) or []), *(refined.get("strategy_query_expansions", []) or [])]
+            for item in [*(base.get("strategy_query_expansions", []) or []), *refined_strategy_queries]
             if normalize_text(str(item))
             and not any(exclusion in normalize_text(str(item)) for exclusion in strategy_exclusion_terms)
         ],
         10,
     )
-    strategy_scope_summary = normalize_text(str(refined.get("strategy_scope_summary", ""))) or normalize_text(
-        str(base.get("strategy_scope_summary", ""))
+    base_strategy_scope_summary = normalize_text(str(base.get("strategy_scope_summary", "")))
+    strategy_scope_summary = (
+        base_strategy_scope_summary
+        if locked_input_scope and base_strategy_scope_summary
+        else normalize_text(str(refined.get("strategy_scope_summary", ""))) or base_strategy_scope_summary
     )
-    prefer_company_entities = bool(base.get("prefer_company_entities")) or bool(refined.get("prefer_company_entities"))
-    prefer_head_companies = bool(base.get("prefer_head_companies")) or bool(refined.get("prefer_head_companies"))
+    prefer_company_entities = bool(base.get("prefer_company_entities")) or (
+        refined_scope_is_explicit and bool(refined.get("prefer_company_entities"))
+    )
+    prefer_head_companies = bool(base.get("prefer_head_companies")) or (
+        refined_scope_is_explicit and bool(refined.get("prefer_head_companies"))
+    )
     seed_companies = dedupe_strings(
         [
             normalize_text(str(item))
@@ -597,60 +754,30 @@ def merge_scope_hints(
         ],
         12,
     )
-    industry_methodology_profile = normalize_text(str(refined.get("industry_methodology_profile", ""))) or normalize_text(
-        str(base.get("industry_methodology_profile", ""))
-    )
-    industry_methodology_authority = normalize_text(str(refined.get("industry_methodology_authority", ""))) or normalize_text(
-        str(base.get("industry_methodology_authority", ""))
-    )
-    industry_methodology_framework = normalize_text(str(refined.get("industry_methodology_framework", ""))) or normalize_text(
-        str(base.get("industry_methodology_framework", ""))
-    )
-    industry_methodology_questions = dedupe_strings(
-        [*(base.get("industry_methodology_questions", []) or []), *(refined.get("industry_methodology_questions", []) or [])],
-        6,
-    )
+    methodology_scope = refined if refined_scope_is_explicit else base
+    if not normalize_text(str(methodology_scope.get("industry_methodology_profile", ""))):
+        methodology_scope = refined
+    industry_methodology_profile = normalize_text(str(methodology_scope.get("industry_methodology_profile", "")))
+    industry_methodology_authority = normalize_text(str(methodology_scope.get("industry_methodology_authority", "")))
+    industry_methodology_framework = normalize_text(str(methodology_scope.get("industry_methodology_framework", "")))
+    industry_methodology_questions = dedupe_strings(methodology_scope.get("industry_methodology_questions", []) or [], 6)
     industry_methodology_source_preferences = dedupe_strings(
-        [
-            *(base.get("industry_methodology_source_preferences", []) or []),
-            *(refined.get("industry_methodology_source_preferences", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_source_preferences", []) or [], 6
     )
     industry_methodology_solution_lenses = dedupe_strings(
-        [
-            *(base.get("industry_methodology_solution_lenses", []) or []),
-            *(refined.get("industry_methodology_solution_lenses", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_solution_lenses", []) or [], 6
     )
     industry_methodology_sales_lenses = dedupe_strings(
-        [
-            *(base.get("industry_methodology_sales_lenses", []) or []),
-            *(refined.get("industry_methodology_sales_lenses", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_sales_lenses", []) or [], 6
     )
     industry_methodology_bidding_lenses = dedupe_strings(
-        [
-            *(base.get("industry_methodology_bidding_lenses", []) or []),
-            *(refined.get("industry_methodology_bidding_lenses", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_bidding_lenses", []) or [], 6
     )
     industry_methodology_outreach_lenses = dedupe_strings(
-        [
-            *(base.get("industry_methodology_outreach_lenses", []) or []),
-            *(refined.get("industry_methodology_outreach_lenses", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_outreach_lenses", []) or [], 6
     )
     industry_methodology_ecosystem_lenses = dedupe_strings(
-        [
-            *(base.get("industry_methodology_ecosystem_lenses", []) or []),
-            *(refined.get("industry_methodology_ecosystem_lenses", []) or []),
-        ],
-        6,
+        methodology_scope.get("industry_methodology_ecosystem_lenses", []) or [], 6
     )
     runtime_strategy_applied_lanes = dedupe_strings(
         [
@@ -711,6 +838,7 @@ def merge_scope_hints(
     if not anchor_text:
         anchor_text = normalize_text(str(refined.get("anchor_text", ""))) or normalize_text(str(base.get("anchor_text", "")))
     return {
+        "input_scope_locked": input_scope_locked,
         "regions": regions,
         "industries": industries,
         "clients": clients,

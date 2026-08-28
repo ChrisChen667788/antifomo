@@ -69,6 +69,11 @@ def report_needs_public_quality_expansion(
     *,
     deps: QualityExpansionDependencies,
 ) -> bool:
+    evidence_gate = getattr(report, "research_evidence_gate", None)
+    if evidence_gate and evidence_gate.enforced:
+        # Evidence-governed reports already run question-specific correction before drafting.
+        # Post-draft expansion would bypass the admission and claim ledgers.
+        return False
     app_settings = deps.get_settings()
     if not bool(app_settings.research_quality_expansion_enabled):
         return False
@@ -334,6 +339,7 @@ def rebuild_report_with_quality_expansion_sources(
                 entity_names=entity_names,
                 output_language=report.output_language,
                 limit=5,
+                scope_hints=scope_hints,
             ),
             *report.public_contact_channels,
         ],

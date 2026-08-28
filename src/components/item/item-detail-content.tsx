@@ -64,6 +64,22 @@ function buildExcerptTitle(
   return `${itemTitle || t("common.untitled", "未命名内容")} / ${t("item.excerptTitle", "关键摘录")} ${index + 1}`;
 }
 
+function acquisitionStatusLabel(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("complete") || normalized.includes("success") || normalized.includes("ready")) return "已完成";
+  if (normalized.includes("fail") || normalized.includes("error")) return "需复核";
+  if (normalized.includes("pending") || normalized.includes("running") || normalized.includes("processing")) return "整理中";
+  return "已整理";
+}
+
+function processingStatusLabel(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("complete") || normalized.includes("success") || normalized.includes("ready")) return "已完成";
+  if (normalized.includes("fail") || normalized.includes("error")) return "需复核";
+  if (normalized.includes("pending") || normalized.includes("running") || normalized.includes("processing")) return "处理中";
+  return "已处理";
+}
+
 export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
   const { t, preferences } = useAppPreferences();
   const [activeView, setActiveView] = useState<DetailView>("summary");
@@ -119,7 +135,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
       <div className="af-glass rounded-[30px] p-5 md:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="af-kicker mb-2">{t("item.detailKicker", "Detail View")}</p>
+            <p className="af-kicker mb-2">{t("item.detailKicker", "内容详情")}</p>
             <h2 className="text-xl font-semibold tracking-[-0.03em] text-slate-900 md:text-2xl">
               {item.title || t("common.untitled", "未命名内容")}
             </h2>
@@ -132,7 +148,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
             className="af-btn af-btn-secondary self-start px-3 py-1.5 text-sm"
           >
             <AppIcon name="home" className="h-4 w-4" />
-            {t("item.backToFeed", "返回 Feed")}
+            {t("item.backToFeed", "返回首页")}
           </Link>
         </div>
 
@@ -149,11 +165,8 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
         {item.diagnostics ? (
           <div className="mt-4 rounded-[22px] border border-sky-200/80 bg-sky-50/60 px-4 py-3 text-sm text-slate-700">
             <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">
-              <span>来源 · {item.diagnostics.ingestRoute}</span>
-              <span>采集状态 · {item.diagnostics.contentAcquisitionStatus}</span>
-              <span>正文来源 · {item.diagnostics.bodySource}</span>
-              <span>尝试次数 · {item.diagnostics.attemptCount}</span>
-              <span>处理状态 · {item.diagnostics.processingStatus}</span>
+              <span>采集 · {acquisitionStatusLabel(item.diagnostics.contentAcquisitionStatus)}</span>
+              <span>处理 · {processingStatusLabel(item.diagnostics.processingStatus)}</span>
               {item.diagnostics.fallbackUsed ? <span>已使用可用内容</span> : null}
             </div>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -186,8 +199,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
             ) : null}
             {(item.topicMatchScore !== undefined || item.sourceMatchScore !== undefined) ? (
               <p className="mt-3 text-xs text-slate-500">
-                Topic {Math.round(item.topicMatchScore ?? 0)} / Source {Math.round(item.sourceMatchScore ?? 0)}
-                {item.preferenceVersion ? ` · v${item.preferenceVersion.slice(0, 8)}` : ""}
+                主题匹配 {Math.round(item.topicMatchScore ?? 0)} / 来源匹配 {Math.round(item.sourceMatchScore ?? 0)}
               </p>
             ) : null}
           </div>
@@ -380,7 +392,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
       </section>
 
       <section className="af-glass rounded-[30px] p-5 md:p-6">
-        <p className="af-kicker">{t("item.userActions", "用户操作")}</p>
+        <p className="af-kicker">{t("item.userActions", "下一步")}</p>
         <div className="mt-3">
           <ItemDetailActions itemId={item.id} sourceUrl={item.url} />
         </div>

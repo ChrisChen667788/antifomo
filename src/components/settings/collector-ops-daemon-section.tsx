@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { AppLanguage } from "@/lib/preferences";
 import { CollectorOpsStatCard as StatCard } from "@/components/settings/collector-ops-stat-card";
 import type { useCollectorOpsPanelController } from "@/components/settings/use-collector-ops-panel-controller";
@@ -20,6 +21,14 @@ type CollectorOpsDaemonSectionProps = {
   text: (key: string) => string;
 };
 
+function favoritesAutoStatusLabel(status?: string | null) {
+  if (status === "imported") return "已导入";
+  if (status === "error") return "需处理";
+  if (status === "unavailable") return "不可用";
+  if (status === "checked") return "已检查";
+  return "待机";
+}
+
 export function CollectorOpsDaemonSection({
   controller,
   language,
@@ -30,10 +39,25 @@ export function CollectorOpsDaemonSection({
     startingDaemon,
     stoppingDaemon,
     runningOnce,
+    updatingClipboardAutoImport,
+    updatingExportDirectoryAutoImport,
+    verifyingBrowserExtension,
     handleStartDaemon,
     handleStopDaemon,
     handleRunOnce,
+    handleToggleClipboardAutoImport,
+    handleUpdateExportDirectoryAutoImport,
+    handleVerifyBrowserExtension,
   } = controller;
+  const clipboardEnabled = daemonStatus?.favorites_clipboard_auto_enabled ?? true;
+  const exportDirectoryEnabled = daemonStatus?.favorites_export_directory_auto_enabled ?? true;
+  const exportDirectoryPath = daemonStatus?.favorites_export_directory_path || ".tmp/wechat_favorites_inbox";
+  const extensionPath = daemonStatus?.browser_extension_path || "browser-extension/chrome";
+  const [exportDirectoryInput, setExportDirectoryInput] = useState(exportDirectoryPath);
+
+  useEffect(() => {
+    setExportDirectoryInput(exportDirectoryPath);
+  }, [exportDirectoryPath]);
 
   return (
       <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-4">
@@ -160,13 +184,100 @@ export function CollectorOpsDaemonSection({
                       : "af-chip-info"
               }`}
             >
-              {daemonStatus?.favorites_auto_status || "idle"}
+              {favoritesAutoStatusLabel(daemonStatus?.favorites_auto_status)}
             </span>
           </div>
-          <p className="mt-2 text-xs leading-5 text-[var(--af-text-secondary)]">
-            {daemonStatus?.favorites_auto_message ||
-              "采集守护进程会检测本地只读 wechat-cli 适配器，并增量导入新的公众号文章收藏。"}
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+            <div>
+              <p className="text-xs font-medium text-[var(--af-text-primary)]">剪贴板链接自动导入</p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                {clipboardEnabled
+                  ? "复制公众号文章链接后，下一轮采集会自动入队；该链路只稳定获取链接。"
+                  : "已关闭剪贴板监听；仍可手动导入，或用浏览器扩展获取正文。"}
+              </p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-[var(--af-text-secondary)]">
+              <input
+                type="checkbox"
+                checked={clipboardEnabled}
+                disabled={updatingClipboardAutoImport}
+                onChange={(event) => void handleToggleClipboardAutoImport(event.target.checked)}
+                className="h-4 w-4 accent-[var(--af-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              {updatingClipboardAutoImport ? "保存中" : clipboardEnabled ? "已开启" : "已关闭"}
+            </label>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
+              <p className="text-[11px] font-medium text-[var(--af-text-secondary)]">剪贴板</p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                {daemonStatus?.favorites_clipboard_last_message || "等待下一轮检查。"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2">
+              <p className="text-[11px] font-medium text-[var(--af-text-secondary)]">本地微信适配器</p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                {daemonStatus?.favorites_wechat_cli_last_message || "未检测到可用适配器。"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--af-text-primary)]">导出文件夹自动导入</p>
+                <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                  把微信收藏导出的 HTML/TXT/URL 文件放入该目录，下一轮采集会增量导入。
+                </p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-[var(--af-text-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={exportDirectoryEnabled}
+                  disabled={updatingExportDirectoryAutoImport}
+                  onChange={(event) =>
+                    void handleUpdateExportDirectoryAutoImport({
+                      enabled: event.target.checked,
+                      path: exportDirectoryInput,
+                    })
+                  }
+                  className="h-4 w-4 accent-[var(--af-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                {updatingExportDirectoryAutoImport ? "保存中" : exportDirectoryEnabled ? "已开启" : "已关闭"}
+              </label>
+            </div>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={exportDirectoryInput}
+                onChange={(event) => setExportDirectoryInput(event.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 text-xs text-[var(--af-text-primary)] outline-none focus:border-[var(--af-accent)]"
+                placeholder=".tmp/wechat_favorites_inbox"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  void handleUpdateExportDirectoryAutoImport({
+                    enabled: exportDirectoryEnabled,
+                    path: exportDirectoryInput,
+                  })
+                }
+                disabled={updatingExportDirectoryAutoImport}
+                className="af-btn af-btn-secondary px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                保存目录
+              </button>
+              <button
+                type="button"
+                onClick={() => void navigator.clipboard?.writeText(exportDirectoryPath)}
+                className="af-btn af-btn-secondary px-3 py-2 text-xs"
+              >
+                复制路径
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+              {daemonStatus?.favorites_export_directory_last_message || "等待下一轮检查。"} · 最近处理{" "}
+              {daemonStatus?.favorites_export_directory_last_processed_count ?? 0} 个文件
+            </p>
+          </div>
           <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">
             最近检查 {formatTs(daemonStatus?.favorites_auto_last_at ?? null)} · 发现{" "}
             {daemonStatus?.favorites_auto_discovered_count ?? 0} · 新增{" "}
@@ -175,12 +286,62 @@ export function CollectorOpsDaemonSection({
           </p>
           {daemonStatus?.favorites_auto_status === "unavailable" ? (
             <p className="mt-2 text-[11px] leading-5 text-[var(--af-warning)]">
-              需用户自行完成本地只读适配器安装和授权；Anti-FOMO 不会自动解密、重签名或上传微信数据库。
+              请先完成本机授权；Anti-FOMO 不会上传微信数据库。
             </p>
           ) : null}
         </div>
 
-        <p className="mt-2 text-[11px] text-[var(--af-text-tertiary)]">{daemonStatus?.log_file || "-"}</p>
+        <div className="af-surface-card mt-3 rounded-xl border px-3 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold text-[var(--af-text-primary)]">浏览器扩展正文导入</p>
+              <p className="mt-1 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+                用扩展打开公众号文章页后导入，优先获取正文；这是微信文章知识库的主链路。
+              </p>
+            </div>
+            <span
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                daemonStatus?.browser_extension_manifest_present ? "af-chip-success" : "af-chip-warning"
+              }`}
+            >
+              {daemonStatus?.browser_extension_manifest_present ? "可安装" : "缺少扩展文件"}
+            </span>
+          </div>
+          <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-3 py-2 text-[11px] leading-5 text-[var(--af-text-secondary)]">
+            <p>1. 打开 Chrome/Edge 扩展管理页，开启开发者模式。</p>
+            <p>2. 选择“加载已解压的扩展程序”，目录填入：{extensionPath}</p>
+            <p>3. 打开公众号文章页，点击扩展发送正文，再回到首页队列确认。</p>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard?.writeText(extensionPath)}
+              className="af-btn af-btn-secondary px-3 py-1 text-xs"
+            >
+              复制扩展目录
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleVerifyBrowserExtension()}
+              disabled={verifyingBrowserExtension}
+              className="af-btn af-btn-primary px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {verifyingBrowserExtension ? "验证中..." : "验证正文链路"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] leading-5 text-[var(--af-text-tertiary)]">
+            最近验证 {formatTs(daemonStatus?.browser_extension_last_verification_at ?? null)} ·{" "}
+            {daemonStatus?.browser_extension_last_verification_message || "未验证"}
+            {daemonStatus?.browser_extension_last_verification_report
+              ? " · 已生成验证报告"
+              : ""}
+          </p>
+        </div>
+
+        <details className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3">
+          <summary className="cursor-pointer text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">
+            高级记录
+          </summary>
         <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3">
           <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">
             {text("daemonSourceHealth")}
@@ -255,6 +416,7 @@ export function CollectorOpsDaemonSection({
             {(daemonStatus?.log_tail || []).join("\n") || "-"}
           </pre>
         </div>
+        </details>
       </div>
   );
 }

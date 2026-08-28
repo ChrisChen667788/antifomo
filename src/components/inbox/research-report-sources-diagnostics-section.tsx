@@ -71,9 +71,143 @@ export function ResearchReportSourcesDiagnosticsSection({
   sourceTierLabel: (value: string) => string;
   classifySourceTier: (source: ResearchReportSource) => string;
 }) {
+  const evidenceGate = report.research_evidence_gate;
+  const questionTree = report.research_question_tree;
+  const scopeContract = report.research_scope_contract;
+  const citationGate = report.research_citation_gate;
+  const admissions = report.research_source_admissions || [];
+  const generationFallbackUsed = Boolean(diagnostics?.generation_fallback_used);
+  const gatePassed = Boolean(evidenceGate?.passed);
+  const interactionState = report.interaction_state || report.clarification_packet?.interaction_state || (gatePassed ? "ready" : "awaiting_user");
+  const gateTone = gatePassed
+    ? "border-[color-mix(in_srgb,var(--af-success)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-success)_8%,var(--af-surface-muted))] text-[var(--af-success)]"
+    : interactionState === "provisional"
+      ? "border-[color-mix(in_srgb,var(--af-warning)_35%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-warning)_8%,var(--af-surface-muted))] text-[var(--af-text-primary)]"
+      : "border-[color-mix(in_srgb,var(--af-info)_30%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_7%,var(--af-surface-muted))] text-[var(--af-text-primary)]";
+
   return (
     <>
-      <div className={`mt-6 grid grid-cols-1 gap-4 ${hideSources ? "md:grid-cols-1" : "md:grid-cols-[1.15fr_0.85fr]"}`}>
+      {generationFallbackUsed ? (
+        <section
+          className="mt-6 border border-[color-mix(in_srgb,var(--af-danger)_35%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-danger)_8%,var(--af-surface-muted))] p-4 text-[var(--af-danger)]"
+          aria-label="正式模型降级状态"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">生成质量门</p>
+              <p className="mt-1 text-base font-semibold">正式模型降级稿，不可直接交付</p>
+              <p className="mt-1 text-xs leading-5 opacity-85">
+                {diagnostics?.generation_notes?.[0] || "正式研报模型未成功返回，当前为降级草稿。"}
+              </p>
+            </div>
+            <span className="border border-current px-2.5 py-1 text-xs font-semibold">系统降级</span>
+          </div>
+          {diagnostics?.generation_notes?.[1] ? (
+            <p className="mt-3 text-xs leading-5 opacity-85">下一步：{diagnostics.generation_notes[1]}</p>
+          ) : null}
+        </section>
+      ) : null}
+      {evidenceGate?.enforced ? (
+        <section className={`mt-6 border p-4 ${gateTone}`} aria-label="研究证据治理">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">证据检查</p>
+              <p className="mt-1 text-base font-semibold">
+                {gatePassed
+                  ? "来源与引用已达到交付要求"
+                  : interactionState === "provisional"
+                    ? "草稿可阅读，正式交付仍需补少量证据"
+                    : "已保留有效来源，补充信息后可继续"}
+              </p>
+              <p className="mt-1 text-xs leading-5 opacity-80">
+                {report.clarification_packet?.summary
+                  || `${scopeContract?.industries?.length ? scopeContract.industries.join(" / ") : "研究范围待确认"}${
+                    scopeContract?.regions?.length ? ` · ${scopeContract.regions.join(" / ")}` : ""
+                  }`}
+              </p>
+            </div>
+            <span className="border border-current px-2.5 py-1 text-xs font-semibold">
+              {gatePassed ? "可交付" : interactionState === "provisional" ? "受限草稿" : "待补充"}
+            </span>
+          </div>
+
+          <details className="mt-4 border-t border-current/20 pt-3">
+            <summary className="cursor-pointer text-xs font-semibold">查看证据检查明细</summary>
+          <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
+            {[
+              ["来源准入", `${evidenceGate.accepted_source_count}/${evidenceGate.candidate_source_count}`],
+              ["官方来源", `${evidenceGate.official_source_count}/${evidenceGate.minimum_official_source_count}`],
+              ["独立域", `${evidenceGate.unique_domain_count}/${evidenceGate.minimum_unique_domain_count}`],
+              ["问题覆盖", `${evidenceGate.question_coverage_percent}%`],
+              ["主张覆盖", `${citationGate?.critical_claim_coverage_percent || 0}%`],
+            ].map(([label, value]) => (
+              <div key={label} className="border border-current/20 bg-[var(--af-surface-elevated)] px-3 py-2 text-[var(--af-text-primary)]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--af-text-tertiary)]">{label}</p>
+                <p className="mt-1 text-sm font-semibold">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {evidenceGate.blockers.length || evidenceGate.warnings.length ? (
+            <div className="mt-4 space-y-1.5 text-xs leading-5">
+              {[...evidenceGate.blockers, ...evidenceGate.warnings].slice(0, 6).map((item) => (
+                <p key={item}>• {item}</p>
+              ))}
+            </div>
+          ) : null}
+
+          {questionTree?.questions?.length ? (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">研究问题树</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                {questionTree.questions.map((node) => (
+                  <div key={node.question_id} className="border border-current/20 bg-[var(--af-surface-elevated)] px-3 py-2 text-[var(--af-text-primary)]">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold">{node.axis}</p>
+                      <span className="text-[10px] text-[var(--af-text-tertiary)]">
+                        {node.accepted_source_count} 条 · {node.coverage_status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-[var(--af-text-secondary)]">{node.question}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {admissions.some((row) => row.decision !== "accepted") ? (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">
+                被拦截来源 · 模糊 {evidenceGate.ambiguous_source_count} / 拒绝 {evidenceGate.rejected_source_count}
+              </p>
+              <div className="mt-2 space-y-2">
+                {admissions.filter((row) => row.decision !== "accepted").slice(0, 4).map((row) => (
+                  <div key={row.source_id} className="border border-current/20 bg-[var(--af-surface-elevated)] px-3 py-2 text-xs text-[var(--af-text-secondary)]">
+                    <p className="font-semibold text-[var(--af-text-primary)]">{row.title || row.domain || "未命名来源"}</p>
+                    <p className="mt-1 leading-5">{row.reasons.join("；")}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {citationGate?.enforced ? (
+            <div className="mt-4 border-t border-current/20 pt-3 text-xs leading-5">
+              <p className="font-semibold">
+                主张引用门：{citationGate.status} · 支撑 {citationGate.supported_claim_count}/{citationGate.claim_count} · 引用完整率 {citationGate.citation_completeness_percent}%
+              </p>
+              {citationGate.blockers.slice(0, 3).map((item) => <p key={item} className="mt-1">• {item}</p>)}
+            </div>
+          ) : null}
+          </details>
+        </section>
+      ) : null}
+
+      <details className="mt-6 rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--af-text-secondary)]">
+          高级诊断与检索过程
+        </summary>
+      <div className={`mt-4 grid grid-cols-1 gap-4 ${hideSources ? "md:grid-cols-1" : "md:grid-cols-[1.15fr_0.85fr]"}`}>
         <div className="af-report-muted-surface rounded-2xl border border-[var(--af-border-subtle)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--af-text-tertiary)]">{sourcePathTitle}</p>
           <div className="mt-3">
@@ -116,6 +250,11 @@ export function ResearchReportSourcesDiagnosticsSection({
                       质量扩源 {diagnostics.quality_expansion_rounds || 1} 轮
                     </span>
                   ) : null}
+                  {diagnostics.snapshot_recovery_used ? (
+                    <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px]">
+                      同题证据恢复 · fresh {diagnostics.fresh_source_count || 0} / snapshot {diagnostics.snapshot_recovery_source_count || 0}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-xs leading-5">
                   {evidenceMode.note}
@@ -154,41 +293,41 @@ export function ResearchReportSourcesDiagnosticsSection({
                   启用源 {enabledSourceLabels.length}
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                  命中公开源 {diagnostics.adapter_hit_count}
+                  公开来源 {diagnostics.adapter_hit_count}
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                  命中搜索源 {diagnostics.search_hit_count}
+                  搜索来源 {diagnostics.search_hit_count}
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                   近 {diagnostics.recency_window_years} 年窗口
                 </span>
                 {diagnostics.filtered_old_source_count > 0 ? (
                   <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    剔除过旧来源 {diagnostics.filtered_old_source_count}
+                    过滤旧来源 {diagnostics.filtered_old_source_count}
                   </span>
                 ) : null}
                 {diagnostics.filtered_region_conflict_count > 0 ? (
                   <span className="rounded-full bg-[color-mix(in_srgb,var(--af-danger)_10%,var(--af-surface-muted))] px-2.5 py-1 text-[var(--af-danger)]">
-                    拦截越界区域 {diagnostics.filtered_region_conflict_count}
+                    区域冲突 {diagnostics.filtered_region_conflict_count}
                   </span>
                 ) : null}
                 {diagnostics.strict_topic_source_count > 0 ? (
                   <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    严格主题保留 {diagnostics.strict_topic_source_count}
+                    主题相关来源 {diagnostics.strict_topic_source_count}
                   </span>
                 ) : null}
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                   来源质量 {qualityLabel(diagnostics.retrieval_quality)}
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                  严格命中 {Math.round(diagnostics.strict_match_ratio * 100)}%
+                  主题匹配 {Math.round(diagnostics.strict_match_ratio * 100)}%
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
                   官方源 {Math.round(diagnostics.official_source_ratio * 100)}%
                 </span>
                 {diagnostics.unique_domain_count > 0 ? (
                   <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    覆盖域名 {diagnostics.unique_domain_count}
+                    覆盖来源 {diagnostics.unique_domain_count}
                   </span>
                 ) : null}
                 {candidateProfileCompanies.length ? (
@@ -336,7 +475,7 @@ export function ResearchReportSourcesDiagnosticsSection({
               ) : null}
               {matchedSourceLabels.length ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">本次命中</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">本次来源</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {matchedSourceLabels.map((label) => (
                       <span key={label} className="rounded-full border border-[color-mix(in_srgb,var(--af-info)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-info)_9%,var(--af-surface-muted))] px-2.5 py-1 text-xs text-[var(--af-info)]">
@@ -360,7 +499,7 @@ export function ResearchReportSourcesDiagnosticsSection({
               ) : null}
               {matchedThemeLabels.length ? (
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">命中主题</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">主题线索</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {matchedThemeLabels.map((label) => (
                       <span key={label} className="rounded-full border border-[color-mix(in_srgb,var(--af-success)_28%,var(--af-border-subtle))] bg-[color-mix(in_srgb,var(--af-success)_9%,var(--af-surface-muted))] px-2.5 py-1 text-xs text-[var(--af-success)]">
@@ -457,6 +596,7 @@ export function ResearchReportSourcesDiagnosticsSection({
         </div>
         ) : null}
       </div>
+      </details>
     </>
   );
 }

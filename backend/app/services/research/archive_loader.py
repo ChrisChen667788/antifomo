@@ -11,6 +11,62 @@ from app.models.entities import KnowledgeEntry
 from app.schemas.research import ResearchReportResponse, ResearchSourceDiagnosticsOut
 from app.services.content_extractor import normalize_text
 from app.services.knowledge_retrieval_service import retrieve_knowledge_entry_matches
+from app.services.research.entity_policy import INDUSTRY_SCOPE_ALIASES
+from app.services.research.scope_hints import REGION_SCOPE_ALIASES
+
+
+_GENERIC_INDUSTRIES = {"大模型", "人工智能", "信息化"}
+
+
+def _scope_aliases(values: list[str], aliases: dict[str, tuple[str, ...]]) -> set[str]:
+    return {
+        normalize_text(alias).casefold()
+        for value in values
+        for alias in (value, *aliases.get(value, ()))
+        if normalize_text(alias)
+    }
+
+
+def archive_scope_is_compatible(
+    requested_scope: dict[str, object],
+    archive_scope: dict[str, object],
+) -> bool:
+    requested_industries = [
+        normalize_text(str(item))
+        for item in requested_scope.get("industries", []) or []
+        if normalize_text(str(item)) not in _GENERIC_INDUSTRIES
+    ]
+    archive_industries = [
+        normalize_text(str(item))
+        for item in archive_scope.get("industries", []) or []
+        if normalize_text(str(item)) not in _GENERIC_INDUSTRIES
+    ]
+    if requested_industries:
+        if not archive_industries:
+            return False
+        requested_aliases = _scope_aliases(requested_industries, INDUSTRY_SCOPE_ALIASES)
+        archive_aliases = _scope_aliases(archive_industries, INDUSTRY_SCOPE_ALIASES)
+        if not requested_aliases.intersection(archive_aliases):
+            return False
+
+    requested_regions = [
+        normalize_text(str(item))
+        for item in requested_scope.get("regions", []) or []
+        if normalize_text(str(item))
+    ]
+    archive_regions = [
+        normalize_text(str(item))
+        for item in archive_scope.get("regions", []) or []
+        if normalize_text(str(item))
+    ]
+    if requested_regions:
+        if not archive_regions:
+            return False
+        requested_aliases = _scope_aliases(requested_regions, REGION_SCOPE_ALIASES)
+        archive_aliases = _scope_aliases(archive_regions, REGION_SCOPE_ALIASES)
+        if not requested_aliases.intersection(archive_aliases):
+            return False
+    return True
 
 
 def entry_report_payload(entry: KnowledgeEntry) -> ResearchReportResponse | None:
@@ -97,6 +153,8 @@ def build_archive_context_item(
                 report_scope_hints,
                 infer_scope_hints(report.keyword, report.research_focus, source_documents),
             )
+        if not archive_scope_is_compatible(scope_hints, report_scope_hints):
+            return None
         rewrite_mode, _, _ = assess_stored_report_rewrite_mode(
             report,
             source_documents=source_documents,
@@ -152,6 +210,8 @@ def build_archive_context_item(
             "official_source_ratio": round(official_ratio, 4),
             "retrieval_quality": normalize_text(diagnostics.retrieval_quality),
             "evidence_mode": normalize_text(diagnostics.evidence_mode),
+            "scope_regions": list(report_scope_hints.get("regions", []) or [])[:3],
+            "scope_industries": list(report_scope_hints.get("industries", []) or [])[:3],
             "updated_at": reference_timestamp.isoformat() if isinstance(reference_timestamp, datetime) else None,
         }
 

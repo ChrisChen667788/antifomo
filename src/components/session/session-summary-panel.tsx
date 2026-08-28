@@ -543,13 +543,13 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             >
               <div className="flex flex-wrap gap-2 text-[11px]">
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
-                  URL-first {wechatBatchStatus.route_quality.url_first_share}%
+                  链接优先 {wechatBatchStatus.route_quality.url_first_share}%
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
-                  OCR {wechatBatchStatus.route_quality.ocr_share}%
+                  补录 {wechatBatchStatus.route_quality.ocr_share}%
                 </span>
                 <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1">
-                  Accessibility {wechatBatchStatus.route_quality.accessibility_hit_rate}%
+                  自动采集 {wechatBatchStatus.route_quality.accessibility_hit_rate}%
                 </span>
               </div>
               <p className="mt-2 text-xs leading-5">{wechatBatchStatus.route_quality.recommendation}</p>
@@ -571,7 +571,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                 {t(
                   "summary.latestNewHint",
-                  "优先展示最近一轮采集命中的新卡片，可直接进入详情继续判断。",
+                  "优先展示最近一轮采集到的新内容，可直接进入详情继续判断。",
                 )}
               </p>
             </div>
@@ -679,7 +679,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
               <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
                 {t(
                   "summary.researchHint",
-                  "把最近沉淀的行业研报和行动卡带回本次总结，便于继续推进销售、投标与生态动作。",
+                  "带入最近的研报和行动卡，继续推进后续动作。",
                 )}
               </p>
             </div>
@@ -773,22 +773,22 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                     ))}
                     {entry.filteredOldSourceCount > 0 ? (
                       <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-tertiary)]">
-                        剔除过旧来源 {entry.filteredOldSourceCount}
+                        过滤旧来源 {entry.filteredOldSourceCount}
                       </span>
                     ) : null}
                     {entry.filteredRegionConflictCount > 0 ? (
                       <span className="rounded-full bg-[color-mix(in_srgb,var(--af-danger)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-danger)]">
-                        拦截越界区域 {entry.filteredRegionConflictCount}
+                        区域冲突 {entry.filteredRegionConflictCount}
                       </span>
                     ) : null}
                     {entry.uniqueDomainCount > 0 ? (
                       <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[11px] text-[var(--af-text-tertiary)]">
-                        域名 {entry.uniqueDomainCount}
+                        来源 {entry.uniqueDomainCount}
                       </span>
                     ) : null}
                     {entry.normalizedEntityCount > 0 ? (
                       <span className="rounded-full bg-[color-mix(in_srgb,var(--af-success)_14%,var(--af-surface-muted))] px-2.5 py-1 text-[11px] text-[var(--af-success)]">
-                        归一化实体 {entry.normalizedEntityCount}
+                        实体校正 {entry.normalizedEntityCount}
                       </span>
                     ) : null}
                     {entry.correctiveTriggered ? (
@@ -1150,7 +1150,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
             <WorkBuddyMark size={14} />
             {runningTask === "export_watchlist_digest"
               ? t("summary.btn.generating", "生成中...")
-              : t("summary.btn.watchlistDigest", "生成 Watchlist Digest")}
+              : t("summary.btn.watchlistDigest", "生成监控摘要")}
           </button>
         </div>
         {loadingSession ? (
@@ -1167,7 +1167,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
         {taskMessage ? <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">{taskMessage}</p> : null}
 
         <OutputBlock
-          title={t("summary.block.markdown", "Markdown 总结")}
+          title={t("summary.block.markdown", "本轮总结")}
           content={markdown}
           emptyText={t("summary.block.emptyMarkdown", "点击“整理总结”后显示结果。")}
           onCopy={copyText}
@@ -1230,15 +1230,15 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
           contextBlock={<TaskBriefingContextCard context={taskContexts.export_outreach_draft || null} title="外联准备" compact />}
         />
         <OutputBlock
-          title={t("summary.block.watchlistDigest", "Watchlist Digest")}
+          title={t("summary.block.watchlistDigest", "监控摘要")}
           content={watchlistDigest}
-          emptyText={t("summary.block.emptyWatchlistDigest", "点击“生成 Watchlist Digest”后显示结果。")}
+          emptyText={t("summary.block.emptyWatchlistDigest", "点击“生成监控摘要”后显示结果。")}
           onCopy={copyText}
           copyLabel={t("common.copy", "复制")}
           contextBlock={<TaskBriefingContextCard context={taskContexts.export_watchlist_digest || null} title="监控参考" compact />}
         />
         <div className="mt-4">
-          <p className="af-kicker">{t("summary.block.watchlistPriority", "高优先级 Watchlist 变化")}</p>
+          <p className="af-kicker">{t("summary.block.watchlistPriority", "高优先级监控变化")}</p>
           <div className="mt-3 space-y-3">
             {watchlistHighlights.length ? (
               watchlistHighlights.map((item) => (
@@ -1281,7 +1281,7 @@ export function SessionSummaryPanel({ metrics: initialMetrics }: SessionSummaryP
                 </article>
               ))
             ) : (
-              <p className="text-sm text-[var(--af-text-tertiary)]">{t("summary.block.emptyWatchlistPriority", "当前还没有可消费的高优先级 Watchlist 变化。")}</p>
+              <p className="text-sm text-[var(--af-text-tertiary)]">{t("summary.block.emptyWatchlistPriority", "当前还没有可用的高优先级监控变化。")}</p>
             )}
           </div>
         </div>

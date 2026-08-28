@@ -85,6 +85,8 @@ DEFAULT_WECHAT_AGENT_CONFIG: dict[str, object] = {
     "dedup_max_hashes": 8000,
     "min_capture_file_size_kb": 45,
     "article_allow_ocr_fallback": False,
+    "article_allow_targeted_ocr_fallback": True,
+    "article_strict_url_only": False,
     "article_verify_with_ocr": True,
     "article_verify_min_text_length": 120,
     "article_verify_retries": 2,
@@ -180,12 +182,16 @@ class WechatAgentBatchStatus:
     submitted_url_direct: int
     submitted_url_share_copy: int
     submitted_url_resolved: int
+    submitted_url_tab_copy_link: int
+    submitted_url_tab_browser_open: int
     submitted_ocr: int
     deduplicated_existing: int
     deduplicated_existing_url: int
     deduplicated_existing_url_direct: int
     deduplicated_existing_url_share_copy: int
     deduplicated_existing_url_resolved: int
+    deduplicated_existing_url_tab_copy_link: int
+    deduplicated_existing_url_tab_browser_open: int
     deduplicated_existing_ocr: int
     skipped_invalid_article: int
     skipped_seen: int
@@ -217,6 +223,8 @@ class WechatAgentBatchStatus:
     live_report_submitted_url_direct: int = 0
     live_report_submitted_url_share_copy: int = 0
     live_report_submitted_url_resolved: int = 0
+    live_report_submitted_url_tab_copy_link: int = 0
+    live_report_submitted_url_tab_browser_open: int = 0
     live_report_submitted_ocr: int = 0
     live_report_skipped_seen: int = 0
     live_report_skipped_invalid_article: int = 0
@@ -472,12 +480,16 @@ def _default_batch_status_payload() -> dict[str, object]:
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_copy_link": 0,
+        "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
         "deduplicated_existing_url": 0,
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_copy_link": 0,
+        "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_invalid_article": 0,
         "skipped_seen": 0,
@@ -509,6 +521,8 @@ def _default_batch_status_payload() -> dict[str, object]:
         "live_report_submitted_url_direct": 0,
         "live_report_submitted_url_share_copy": 0,
         "live_report_submitted_url_resolved": 0,
+        "live_report_submitted_url_tab_copy_link": 0,
+        "live_report_submitted_url_tab_browser_open": 0,
         "live_report_submitted_ocr": 0,
         "live_report_skipped_seen": 0,
         "live_report_skipped_invalid_article": 0,
@@ -556,6 +570,18 @@ def _sanitize_batch_status_payload(raw: dict[str, object]) -> dict[str, object]:
     payload["submitted_url_direct"] = _coerce_int(raw.get("submitted_url_direct"), 0, 0, 1_000_000)
     payload["submitted_url_share_copy"] = _coerce_int(raw.get("submitted_url_share_copy"), 0, 0, 1_000_000)
     payload["submitted_url_resolved"] = _coerce_int(raw.get("submitted_url_resolved"), 0, 0, 1_000_000)
+    payload["submitted_url_tab_copy_link"] = _coerce_int(
+        raw.get("submitted_url_tab_copy_link"),
+        0,
+        0,
+        1_000_000,
+    )
+    payload["submitted_url_tab_browser_open"] = _coerce_int(
+        raw.get("submitted_url_tab_browser_open"),
+        0,
+        0,
+        1_000_000,
+    )
     payload["submitted_ocr"] = _coerce_int(raw.get("submitted_ocr"), 0, 0, 1_000_000)
     payload["deduplicated_existing"] = _coerce_int(raw.get("deduplicated_existing"), 0, 0, 1_000_000)
     payload["deduplicated_existing_url"] = _coerce_int(
@@ -578,6 +604,18 @@ def _sanitize_batch_status_payload(raw: dict[str, object]) -> dict[str, object]:
     )
     payload["deduplicated_existing_url_resolved"] = _coerce_int(
         raw.get("deduplicated_existing_url_resolved"),
+        0,
+        0,
+        1_000_000,
+    )
+    payload["deduplicated_existing_url_tab_copy_link"] = _coerce_int(
+        raw.get("deduplicated_existing_url_tab_copy_link"),
+        0,
+        0,
+        1_000_000,
+    )
+    payload["deduplicated_existing_url_tab_browser_open"] = _coerce_int(
+        raw.get("deduplicated_existing_url_tab_browser_open"),
         0,
         0,
         1_000_000,
@@ -631,6 +669,18 @@ def _sanitize_batch_status_payload(raw: dict[str, object]) -> dict[str, object]:
     )
     payload["live_report_submitted_url_resolved"] = _coerce_int(
         raw.get("live_report_submitted_url_resolved"),
+        0,
+        0,
+        1_000_000,
+    )
+    payload["live_report_submitted_url_tab_copy_link"] = _coerce_int(
+        raw.get("live_report_submitted_url_tab_copy_link"),
+        0,
+        0,
+        1_000_000,
+    )
+    payload["live_report_submitted_url_tab_browser_open"] = _coerce_int(
+        raw.get("live_report_submitted_url_tab_browser_open"),
         0,
         0,
         1_000_000,
@@ -747,12 +797,16 @@ def _batch_status_from_payload(payload: dict[str, object]) -> WechatAgentBatchSt
         submitted_url_direct=int(sanitized["submitted_url_direct"]),
         submitted_url_share_copy=int(sanitized["submitted_url_share_copy"]),
         submitted_url_resolved=int(sanitized["submitted_url_resolved"]),
+        submitted_url_tab_copy_link=int(sanitized["submitted_url_tab_copy_link"]),
+        submitted_url_tab_browser_open=int(sanitized["submitted_url_tab_browser_open"]),
         submitted_ocr=int(sanitized["submitted_ocr"]),
         deduplicated_existing=int(sanitized["deduplicated_existing"]),
         deduplicated_existing_url=int(sanitized["deduplicated_existing_url"]),
         deduplicated_existing_url_direct=int(sanitized["deduplicated_existing_url_direct"]),
         deduplicated_existing_url_share_copy=int(sanitized["deduplicated_existing_url_share_copy"]),
         deduplicated_existing_url_resolved=int(sanitized["deduplicated_existing_url_resolved"]),
+        deduplicated_existing_url_tab_copy_link=int(sanitized["deduplicated_existing_url_tab_copy_link"]),
+        deduplicated_existing_url_tab_browser_open=int(sanitized["deduplicated_existing_url_tab_browser_open"]),
         deduplicated_existing_ocr=int(sanitized["deduplicated_existing_ocr"]),
         skipped_invalid_article=int(sanitized["skipped_invalid_article"]),
         skipped_seen=int(sanitized["skipped_seen"]),
@@ -784,6 +838,8 @@ def _batch_status_from_payload(payload: dict[str, object]) -> WechatAgentBatchSt
         live_report_submitted_url_direct=int(sanitized["live_report_submitted_url_direct"]),
         live_report_submitted_url_share_copy=int(sanitized["live_report_submitted_url_share_copy"]),
         live_report_submitted_url_resolved=int(sanitized["live_report_submitted_url_resolved"]),
+        live_report_submitted_url_tab_copy_link=int(sanitized["live_report_submitted_url_tab_copy_link"]),
+        live_report_submitted_url_tab_browser_open=int(sanitized["live_report_submitted_url_tab_browser_open"]),
         live_report_submitted_ocr=int(sanitized["live_report_submitted_ocr"]),
         live_report_skipped_seen=int(sanitized["live_report_skipped_seen"]),
         live_report_skipped_invalid_article=int(sanitized["live_report_skipped_invalid_article"]),
@@ -1178,6 +1234,8 @@ def _read_live_report_snapshot() -> dict[str, object]:
         "live_report_submitted_url_direct": 0,
         "live_report_submitted_url_share_copy": 0,
         "live_report_submitted_url_resolved": 0,
+        "live_report_submitted_url_tab_copy_link": 0,
+        "live_report_submitted_url_tab_browser_open": 0,
         "live_report_submitted_ocr": 0,
         "live_report_skipped_seen": 0,
         "live_report_skipped_invalid_article": 0,
@@ -1223,6 +1281,18 @@ def _read_live_report_snapshot() -> dict[str, object]:
     )
     snapshot["live_report_submitted_url_resolved"] = _coerce_int(
         loaded.get("submitted_url_resolved"),
+        0,
+        0,
+        1_000_000,
+    )
+    snapshot["live_report_submitted_url_tab_copy_link"] = _coerce_int(
+        loaded.get("submitted_url_tab_copy_link"),
+        0,
+        0,
+        1_000_000,
+    )
+    snapshot["live_report_submitted_url_tab_browser_open"] = _coerce_int(
+        loaded.get("submitted_url_tab_browser_open"),
         0,
         0,
         1_000_000,
@@ -1474,10 +1544,11 @@ def _build_run_once_command(
     output_language: str,
     max_items: int,
     start_batch_index: int,
+    strict_url_only: bool = False,
 ) -> list[str]:
     safe_max_items = max(1, min(max_items, 200))
     safe_start_batch_index = max(0, min(start_batch_index, 1_000))
-    return [
+    command = [
         _resolve_agent_python(),
         str(AGENT_SCRIPT),
         "--config",
@@ -1493,6 +1564,9 @@ def _build_run_once_command(
         "--output-language",
         output_language,
     ]
+    if strict_url_only:
+        command.append("--strict-url-only")
+    return command
 
 
 def _terminate_process(process: subprocess.Popen[str], *, grace_seconds: float = 2.0) -> None:
@@ -1749,12 +1823,16 @@ def run_wechat_agent_batch(
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_copy_link": 0,
+        "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
         "deduplicated_existing_url": 0,
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_copy_link": 0,
+        "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_invalid_article": 0,
         "skipped_seen": 0,
@@ -1811,6 +1889,7 @@ def run_wechat_agent_batch(
                     output_language=output_language,
                     max_items=current_items,
                     start_batch_index=next_batch_index,
+                    strict_url_only=True,
                 )
                 ok, aborted, output = _run_segment_process(command, stop_event=stop_event)
                 status = read_wechat_agent_status()
@@ -1829,6 +1908,12 @@ def run_wechat_agent_batch(
                 payload["submitted_url_resolved"] = int(payload["submitted_url_resolved"]) + int(
                     _coerce_int(latest_report.get("submitted_url_resolved"), 0, 0, 1_000_000)
                 )
+                payload["submitted_url_tab_copy_link"] = int(payload["submitted_url_tab_copy_link"]) + int(
+                    _coerce_int(latest_report.get("submitted_url_tab_copy_link"), 0, 0, 1_000_000)
+                )
+                payload["submitted_url_tab_browser_open"] = int(payload["submitted_url_tab_browser_open"]) + int(
+                    _coerce_int(latest_report.get("submitted_url_tab_browser_open"), 0, 0, 1_000_000)
+                )
                 payload["submitted_ocr"] = int(payload["submitted_ocr"]) + int(
                     _coerce_int(latest_report.get("submitted_ocr"), 0, 0, 1_000_000)
                 )
@@ -1846,6 +1931,16 @@ def run_wechat_agent_batch(
                 )
                 payload["deduplicated_existing_url_resolved"] = int(payload["deduplicated_existing_url_resolved"]) + int(
                     _coerce_int(latest_report.get("deduplicated_existing_url_resolved"), 0, 0, 1_000_000)
+                )
+                payload["deduplicated_existing_url_tab_copy_link"] = int(
+                    payload["deduplicated_existing_url_tab_copy_link"]
+                ) + int(
+                    _coerce_int(latest_report.get("deduplicated_existing_url_tab_copy_link"), 0, 0, 1_000_000)
+                )
+                payload["deduplicated_existing_url_tab_browser_open"] = int(
+                    payload["deduplicated_existing_url_tab_browser_open"]
+                ) + int(
+                    _coerce_int(latest_report.get("deduplicated_existing_url_tab_browser_open"), 0, 0, 1_000_000)
                 )
                 payload["deduplicated_existing_ocr"] = int(payload["deduplicated_existing_ocr"]) + int(
                     _coerce_int(latest_report.get("deduplicated_existing_ocr"), 0, 0, 1_000_000)

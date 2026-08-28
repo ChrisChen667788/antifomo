@@ -65,6 +65,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "min_capture_file_size_kb": 45,
     "article_allow_ocr_fallback": False,
     "article_allow_targeted_ocr_fallback": True,
+    "article_strict_url_only": False,
     "article_verify_with_ocr": True,
     "article_verify_min_text_length": 120,
     "article_verify_retries": 2,
@@ -492,6 +493,46 @@ def get_front_window_rect(app_name: str) -> tuple[int, int, int, int]:
     return numbers[0], numbers[1], numbers[2], numbers[3]
 
 
+def _get_front_wechat_screen_fallback_rect(
+    app_name: str,
+    *,
+    min_width: int = 900,
+    min_height: int = 600,
+) -> tuple[int, int, int, int] | None:
+    """Fallback when macOS AX reports WeChat frontmost but exposes no windows.
+
+    This happens intermittently with WeChat full-screen / reused reader
+    windows. For coordinate-mode auto we can still operate safely against the
+    main screen's usable area; strict-mode article/card visual checks prevent
+    submitting non-article content.
+    """
+    try:
+        current = get_front_process_name()
+    except Exception:
+        current = None
+    if current not in {app_name, "WeChat"}:
+        return None
+    try:
+        output = _applescript(['tell application "Finder" to get bounds of window of desktop'])
+    except Exception:
+        return None
+    try:
+        left, top, right, bottom = [
+            int(part.strip())
+            for part in str(output or "").replace("{", "").replace("}", "").split(",")
+            if part.strip()
+        ]
+    except Exception:
+        return None
+    width = max(0, right - left)
+    height = max(0, bottom - top)
+    if width < min_width or height < min_height:
+        return None
+    usable_y = max(top, 30)
+    usable_height = max(min_height, height - (usable_y - top) - 62)
+    return left, usable_y, width, usable_height
+
+
 def list_window_rects(app_name: str) -> list[tuple[int, int, int, int]]:
     output = _applescript(
         [
@@ -534,7 +575,11 @@ def get_best_window_rect(app_name: str, *, min_width: int = 900, min_height: int
     try:
         rect = get_front_window_rect(app_name)
     except Exception:
-        return None
+        return _get_front_wechat_screen_fallback_rect(
+            app_name,
+            min_width=min_width,
+            min_height=min_height,
+        )
     return rect if rect[2] >= min_width and rect[3] >= min_height else None
 
 
@@ -542,7 +587,12 @@ def is_usable_front_window(app_name: str, *, min_width: int = 900, min_height: i
     try:
         rect = get_front_window_rect(app_name)
     except Exception:
-        return False, None
+        fallback = _get_front_wechat_screen_fallback_rect(
+            app_name,
+            min_width=min_width,
+            min_height=min_height,
+        )
+        return bool(fallback), fallback
     return rect[2] >= min_width and rect[3] >= min_height, rect
 
 
@@ -573,7 +623,12 @@ def get_usable_window_rect(app_name: str, *, min_width: int = 900, min_height: i
     try:
         front_rect = get_front_window_rect(app_name)
     except Exception:
-        return False, None
+        fallback = _get_front_wechat_screen_fallback_rect(
+            app_name,
+            min_width=min_width,
+            min_height=min_height,
+        )
+        return bool(fallback), fallback
     if front_rect and (front_rect[2] < min_width or front_rect[3] < min_height):
         if _resize_wechat_window(app_name, width=max(min_width, 1400), height=max(min_height, 900)):
             try:
@@ -662,7 +717,9 @@ def key_combo_command(char: str) -> None:
 # 239x374 (~11 items); right-clicking on the article BODY produces a much
 # smaller menu (~117x159) that does NOT contain the items we want. So the
 # popup-size thresholds below are tight on purpose — only the wide tab
-# menu qualifies.
+# menu qualifies. WeChat 4.1.10 also exposes a 210x309 article/body menu
+# near the tab strip; it must be rejected because it lacks the link/open
+# actions used here.
 #
 # Menu order observed (1-based, used for keyboard-nav Down × N + Enter):
 #   1. 转发到群发表
@@ -686,11 +743,41 @@ WECHAT_TAB_RIGHT_CLICK_OFFSETS: tuple[tuple[int, int], ...] = (
     (450, 30),
     (150, 25),
 )
-WECHAT_TAB_POPUP_MIN_WIDTH = 180
-WECHAT_TAB_POPUP_MIN_HEIGHT = 280
+WECHAT_TAB_POPUP_MIN_WIDTH = 230
+WECHAT_TAB_POPUP_MIN_HEIGHT = 340
 WECHAT_TAB_POPUP_MAX_WIDTH = 400
 WECHAT_TAB_POPUP_MAX_HEIGHT = 800
 WECHAT_SHELL_TITLES_NO_ARTICLE: frozenset[str] = frozenset({"微信"})
+WECHAT_TAB_POPUP_4110_MIN_HEIGHT = 480
+# macOS WeChat 4.1.10 changed the tab context menu order and height:
+#   刷新, 复制链接, 调整文字大小, 全文翻译, 听全文, 查找, 投诉, 打印,
+#   转发, 分享到朋友圈, 收藏, 星标, 用默认浏览器打开, 关闭, 关闭全部标签页
+# Qt does not expose menu items as AX children, and keyboard navigation is
+# not reliably focused. These ratios were measured from the AX popup rect
+# (273x516) and screenshot pixel clusters on WeChat 4.1.10.
+WECHAT_TAB_POPUP_4110_COPY_LINK_Y_RATIO = 59.0 / 516.0
+WECHAT_TAB_POPUP_4110_OPEN_BROWSER_Y_RATIO = 390.0 / 516.0
+WECHAT_TAB_POPUP_LEGACY_TOTAL_ITEMS = 11
+
+
+def _build_wechat_tab_right_click_offsets(article_window: dict[str, Any]) -> list[tuple[int, int]]:
+    """Return tab-strip right-click candidates for different WeChat window sizes.
+
+    The historical fixed offsets work on the user's wide 4.1.10 window, but
+    Focus tests can leave article windows resized to smaller/wider proportions.
+    Keep the proven fixed offsets first, then add width-relative candidates
+    that stay in the tab strip rather than drifting into article body content.
+    """
+    try:
+        width = max(1, int(article_window.get("w") or 0))
+    except Exception:
+        width = 0
+    candidates: list[tuple[int, int]] = list(WECHAT_TAB_RIGHT_CLICK_OFFSETS)
+    if width >= 400:
+        for ratio in (0.12, 0.18, 0.24, 0.32, 0.42):
+            candidates.append((max(120, min(width - 80, int(width * ratio))), 26))
+            candidates.append((max(120, min(width - 80, int(width * ratio))), 34))
+    return _dedupe_points(candidates)
 
 
 def right_click_at(x: int, y: int) -> bool:
@@ -820,7 +907,7 @@ def _open_wechat_tab_context_menu(
     """Right-click the tab title at progressively different offsets
     until a tab-menu-sized AXWindow appears. Returns (popup, offset)
     or (None, None) on failure."""
-    for off_x, off_y in WECHAT_TAB_RIGHT_CLICK_OFFSETS:
+    for off_x, off_y in _build_wechat_tab_right_click_offsets(article_window):
         try:
             tab_x = int(article_window["x"]) + int(off_x)
             tab_y = int(article_window["y"]) + int(off_y)
@@ -886,6 +973,50 @@ def _click_popup_menu_item(
     return click_x, click_y
 
 
+def _click_wechat_tab_menu_action(
+    *,
+    popup: dict[str, Any],
+    action: str,
+    legacy_item_index: int,
+) -> tuple[int, int, str] | None:
+    """Click a known action inside WeChat's tab context menu.
+
+    WeChat 4.1.10 uses a taller Qt menu and a different order than the
+    earlier 11-item menu. Because the menu is exposed to accessibility only
+    as a borderless AXWindow, action selection must be geometry-based.
+    """
+    try:
+        px = int(popup.get("x"))
+        py = int(popup.get("y"))
+        pw = int(popup.get("w"))
+        ph = int(popup.get("h"))
+    except Exception:
+        return None
+    if pw < 50 or ph < 50:
+        return None
+
+    if ph >= WECHAT_TAB_POPUP_4110_MIN_HEIGHT:
+        if action == "copy_link":
+            ratio = WECHAT_TAB_POPUP_4110_COPY_LINK_Y_RATIO
+        elif action == "open_in_browser":
+            ratio = WECHAT_TAB_POPUP_4110_OPEN_BROWSER_Y_RATIO
+        else:
+            return None
+        click_x = px + pw // 2
+        click_y = py + int(round(float(ph) * ratio))
+        click_at(click_x, click_y)
+        return click_x, click_y, "wechat_4_1_10_geometry"
+
+    clicked = _click_popup_menu_item(
+        popup=popup,
+        item_index=int(legacy_item_index),
+        total_items=max(WECHAT_TAB_POPUP_LEGACY_TOTAL_ITEMS, int(legacy_item_index)),
+    )
+    if not clicked:
+        return None
+    return clicked[0], clicked[1], "legacy_geometry"
+
+
 def try_extract_url_via_tab_right_click(
     *,
     wechat_app_name: str,
@@ -912,6 +1043,10 @@ def try_extract_url_via_tab_right_click(
         "clipboard_a_changed": False,
         "front_after_b": "",
         "path_taken": "",
+        "popup_a_click": None,
+        "popup_a_click_method": "",
+        "popup_b_click": None,
+        "popup_b_click_method": "",
     }
     windows_now = _list_wechat_window_rects(wechat_app_name)
     article_window: dict[str, Any] | None = None
@@ -947,16 +1082,45 @@ def try_extract_url_via_tab_right_click(
     if popup_a:
         telemetry["popup_a_rect"] = popup_a
         telemetry["popup_a_offset"] = off_a
-        _press_menu_arrow_down_then_return(int(copy_link_index))
-        time.sleep(0.45)  # let WeChat write to pasteboard
-        clipboard_after = ""
+        clipboard_probe = f"ANTI_FOMO_WECHAT_TAB_COPY_PROBE_{int(time.time() * 1000)}"
+        clipboard_probe_written = False
         try:
-            clipboard_after = read_clipboard_text() or ""
+            write_clipboard_text(clipboard_probe)
+            clipboard_probe_written = True
         except Exception:
-            clipboard_after = ""
-        clipboard_changed = bool(
-            clipboard_after and clipboard_after.strip() != clipboard_before.strip()
+            clipboard_probe_written = False
+        clicked_a = _click_wechat_tab_menu_action(
+            popup=popup_a,
+            action="copy_link",
+            legacy_item_index=int(copy_link_index),
         )
+        if clicked_a:
+            telemetry["popup_a_click"] = {"x": clicked_a[0], "y": clicked_a[1]}
+            telemetry["popup_a_click_method"] = clicked_a[2]
+        else:
+            _press_menu_arrow_down_then_return(int(copy_link_index))
+            telemetry["popup_a_click_method"] = "keyboard_fallback"
+        clipboard_after = ""
+        clipboard_deadline = time.time() + 1.4
+        while time.time() < clipboard_deadline:
+            time.sleep(0.14)
+            try:
+                clipboard_after = read_clipboard_text() or ""
+            except Exception:
+                clipboard_after = ""
+            if clipboard_probe_written:
+                if clipboard_after and clipboard_after.strip() != clipboard_probe:
+                    break
+            elif clipboard_after and clipboard_after.strip() != clipboard_before.strip():
+                break
+        if clipboard_probe_written:
+            clipboard_changed = bool(
+                clipboard_after and clipboard_after.strip() != clipboard_probe
+            )
+        else:
+            clipboard_changed = bool(
+                clipboard_after and clipboard_after.strip() != clipboard_before.strip()
+            )
         telemetry["clipboard_a_changed"] = clipboard_changed
         if clipboard_changed:
             candidate = normalize_http_url(clipboard_after.strip()) or ""
@@ -964,6 +1128,12 @@ def try_extract_url_via_tab_right_click(
                 telemetry["path_taken"] = "copy_link"
                 return candidate, ai_opened, telemetry
             # Restore old clipboard so the user's manual copy isn't lost.
+            try:
+                if clipboard_before:
+                    write_clipboard_text(clipboard_before)
+            except Exception:
+                pass
+        elif clipboard_probe_written:
             try:
                 if clipboard_before:
                     write_clipboard_text(clipboard_before)
@@ -979,7 +1149,17 @@ def try_extract_url_via_tab_right_click(
         return None, ai_opened, telemetry
     telemetry["popup_b_rect"] = popup_b
     telemetry["popup_b_offset"] = off_b
-    _press_menu_arrow_down_then_return(int(open_in_browser_index))
+    clicked_b = _click_wechat_tab_menu_action(
+        popup=popup_b,
+        action="open_in_browser",
+        legacy_item_index=int(open_in_browser_index),
+    )
+    if clicked_b:
+        telemetry["popup_b_click"] = {"x": clicked_b[0], "y": clicked_b[1]}
+        telemetry["popup_b_click_method"] = clicked_b[2]
+    else:
+        _press_menu_arrow_down_then_return(int(open_in_browser_index))
+        telemetry["popup_b_click_method"] = "keyboard_fallback"
 
     deadline = time.time() + max(1.0, float(browser_wait_sec))
     front = ""
@@ -1055,6 +1235,21 @@ def resolve_point(x: int, y: int, *, coordinate_mode: str, app_name: str) -> tup
             return win_x + x, win_y + y
     except Exception:
         pass
+    return x, y
+
+
+def _resolve_point_in_window_rect(
+    x: int,
+    y: int,
+    *,
+    coordinate_mode: str,
+    window_rect: tuple[int, int, int, int] | None,
+) -> tuple[int, int]:
+    if coordinate_mode == "absolute" or not window_rect:
+        return x, y
+    win_x, win_y, win_width, win_height = window_rect
+    if win_width >= 300 and win_height >= 300:
+        return win_x + x, win_y + y
     return x, y
 
 
@@ -2382,10 +2577,18 @@ def validate_article_preview(
         return False, f"chat_ui:{strong_hits[0]}"
 
     weak_hits = [token for token in weak_chat_tokens if token.lower() in lowered]
-    timestamp_hits = len(re.findall(r"\b\d{1,2}:\d{2}\b", combined))
+    # Use digit lookarounds instead of \b: Chinese characters are Unicode
+    # word chars, so "昨天 22:41" or "荷10:59" can otherwise evade the
+    # boundary-based pattern and be misclassified as article text.
+    timestamp_hits = len(re.findall(r"(?<!\d)\d{1,2}:\d{2}(?!\d)", combined))
+    relative_chat_day_hits = sum(combined.count(token) for token in ("昨天", "昨日", "前天"))
     bracket_hits = combined.count("［") + combined.count("[")
-    if timestamp_hits >= 3:
+    if timestamp_hits >= 4:
         return False, f"chat_timestamps:{timestamp_hits}"
+    if timestamp_hits >= 2 and relative_chat_day_hits >= 1:
+        return False, f"chat_timestamps:{timestamp_hits}:relative_day:{relative_chat_day_hits}"
+    if timestamp_hits >= 2 and any(token in combined for token in ("@所有人", "群聊", "视频号直播", "微信扫码")):
+        return False, f"chat_timestamps:{timestamp_hits}:chat_context"
     if bracket_hits >= 4 and len(weak_hits) >= 1:
         return False, "chat_list_brackets"
     if len(weak_hits) >= 3 and text_length < 320:
@@ -2708,6 +2911,7 @@ def ensure_batch_result(summary: dict[str, Any], batch_index: int) -> dict[str, 
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_copy_link": 0,
         "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
@@ -2715,6 +2919,7 @@ def ensure_batch_result(summary: dict[str, Any], batch_index: int) -> dict[str, 
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_copy_link": 0,
         "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_seen": 0,
@@ -3709,7 +3914,42 @@ def click_menu_item(app_name: str, menu_bar_item: str, menu_item: str) -> None:
     )
 
 
+def _raise_wechat_window_named(app_name: str, preferred_names: tuple[str, ...]) -> bool:
+    names_literal = "{" + ",".join(f'"{name}"' for name in preferred_names) + "}"
+    try:
+        output = _applescript(
+            [
+                'tell application "System Events"',
+                f'tell process "{app_name}"',
+                "set frontmost to true",
+                f"set preferredNames to {names_literal}",
+                "repeat with w in windows",
+                "  try",
+                "    set wn to name of w as text",
+                "  on error",
+                '    set wn to ""',
+                "  end try",
+                "  if preferredNames contains wn then",
+                "    try",
+                "      perform action \"AXRaise\" of w",
+                "    end try",
+                "    return \"raised\"",
+                "  end if",
+                "end repeat",
+                "return \"missing\"",
+                "end tell",
+                "end tell",
+            ]
+        )
+        time.sleep(0.18)
+        return "raised" in str(output or "")
+    except Exception:
+        return False
+
+
 def switch_to_main_wechat_window(app_name: str) -> None:
+    if _raise_wechat_window_named(app_name, ("微信", "WeChat")):
+        return
     try:
         click_menu_item(app_name, "窗口", "微信")
         return
@@ -3740,6 +3980,206 @@ def capture_region(region: dict[str, Any], output_path: Path) -> None:
     if run.returncode != 0:
         message = "\n".join(part for part in [run.stdout.strip(), run.stderr.strip()] if part).strip()
         raise RuntimeError(message or "screencapture failed")
+
+
+def _find_first_blue_icon_center_in_capture(path: Path) -> tuple[int, int] | None:
+    """Find the first large blue app-entry icon in a WeChat conversation list crop.
+
+    In current WeChat 4.x, the public-account aggregate row uses a large blue
+    book icon. Its vertical position changes with window size, so fixed
+    `public_account_origin.y` becomes unstable. This helper intentionally scans
+    only the left icon column and returns the topmost sufficiently large blue
+    component; lower blue service/mail icons are ignored by topmost ordering.
+    """
+    if Image is None:
+        return None
+    try:
+        with Image.open(path) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 40 or height < 80:
+                return None
+            # Limit to the list icon column, not message previews or unread dots.
+            left = min(max(0, int(width * 0.02)), width - 1)
+            right = min(width, max(left + 40, int(width * 0.24)))
+            top = min(height - 1, max(0, int(height * 0.08)))
+            bottom = height
+            row_counts: dict[int, list[int]] = {}
+            pixels = rgb.load()
+            for y in range(top, bottom):
+                xs: list[int] = []
+                for x in range(left, right):
+                    r, g, b = pixels[x, y]
+                    if b >= 145 and g >= 85 and r <= 130 and (b - r) >= 55 and (b - g) >= 15:
+                        xs.append(x)
+                if len(xs) >= 8:
+                    row_counts[y] = xs
+            if not row_counts:
+                return None
+            groups: list[list[int]] = []
+            current: list[int] = []
+            for y in sorted(row_counts):
+                if not current or y <= current[-1] + 2:
+                    current.append(y)
+                else:
+                    groups.append(current)
+                    current = [y]
+            if current:
+                groups.append(current)
+            for group in groups:
+                if len(group) < 12:
+                    continue
+                xs = [x for y in group for x in row_counts.get(y, [])]
+                if len(xs) < 180:
+                    continue
+                return int(sum(xs) / len(xs)), int(sum(group) / len(group))
+    except Exception:
+        return None
+    return None
+
+
+def _locate_public_account_entry_screen_point(
+    *,
+    wechat_app_name: str,
+    window_rect: tuple[int, int, int, int] | None,
+) -> tuple[int, int] | None:
+    _ = wechat_app_name
+    if Image is None or not window_rect:
+        return None
+    win_x, win_y, win_width, win_height = window_rect
+    if win_width < 700 or win_height < 500:
+        return None
+    # Conversation list panel starts after the vertical nav rail. Keep the crop
+    # narrow so blue icons in the content pane do not get selected.
+    crop = {
+        "x": win_x + 64,
+        "y": win_y + 48,
+        "width": min(360, max(120, int(win_width * 0.28))),
+        "height": min(max(260, win_height - 90), 900),
+    }
+    temp_dir = TMP_DIR / "wechat_agent_visual"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = temp_dir / f"public_account_entry_{int(time.time() * 1000)}.png"
+    try:
+        capture_region(crop, temp_path)
+        center = _find_first_blue_icon_center_in_capture(temp_path)
+        if center is None:
+            return None
+        return crop["x"] + center[0], crop["y"] + center[1]
+    except Exception:
+        return None
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _find_article_card_centers_in_capture(path: Path) -> list[tuple[int, int]]:
+    """Return visible article-card centers from a WeChat content crop."""
+    if Image is None:
+        return []
+    try:
+        with Image.open(path) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 260 or height < 180:
+                return []
+            pixels = rgb.load()
+            row_xs: dict[int, list[int]] = {}
+            step = 4
+            for y in range(0, height, step):
+                xs: list[int] = []
+                for x in range(0, width, step):
+                    r, g, b = pixels[x, y]
+                    if r > 238 and g > 238 and b > 238:
+                        continue
+                    if r > 220 and g > 220 and b > 220 and max(r, g, b) - min(r, g, b) < 18:
+                        continue
+                    xs.append(x)
+                if len(xs) >= 18:
+                    row_xs[y] = xs
+            if not row_xs:
+                return []
+
+            groups: list[list[int]] = []
+            current: list[int] = []
+            for y in sorted(row_xs):
+                if not current or y <= current[-1] + step * 2:
+                    current.append(y)
+                else:
+                    groups.append(current)
+                    current = [y]
+            if current:
+                groups.append(current)
+
+            centers: list[tuple[int, int]] = []
+            for group in groups:
+                if (group[-1] - group[0]) < 48:
+                    continue
+                xs = [x for y in group for x in row_xs.get(y, [])]
+                if len(xs) < 600:
+                    continue
+                left = min(xs)
+                right = max(xs)
+                if (right - left) < 180:
+                    continue
+                centers.append(((left + right) // 2, (group[0] + group[-1]) // 2))
+            return _dedupe_points(centers)[:8]
+    except Exception:
+        return []
+
+
+def _locate_visible_article_card_relative_points(
+    *,
+    window_rect: tuple[int, int, int, int] | None,
+) -> list[tuple[int, int]]:
+    """Locate article-card click points relative to the current WeChat window."""
+    if Image is None or not window_rect:
+        return []
+    win_x, win_y, win_width, win_height = window_rect
+    if win_width < 900 or win_height < 600:
+        return []
+    crop_left_rel = max(380, int(win_width * 0.22))
+    crop_top_rel = max(72, int(win_height * 0.05))
+    crop_width = max(260, min(win_width - crop_left_rel - 40, int(win_width * 0.74)))
+    crop_height = max(220, min(win_height - crop_top_rel - 90, 1100))
+    if crop_width <= 0 or crop_height <= 0:
+        return []
+    crop = {
+        "x": win_x + crop_left_rel,
+        "y": win_y + crop_top_rel,
+        "width": crop_width,
+        "height": crop_height,
+    }
+    temp_dir = TMP_DIR / "wechat_agent_visual"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = temp_dir / f"article_cards_{int(time.time() * 1000)}.png"
+    try:
+        capture_region(crop, temp_path)
+        centers = _find_article_card_centers_in_capture(temp_path)
+        return [(crop_left_rel + x, crop_top_rel + y) for x, y in centers]
+    except Exception:
+        return []
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _first_public_account_row_relative_point(
+    window_rect: tuple[int, int, int, int] | None,
+) -> tuple[int, int] | None:
+    if not window_rect:
+        return None
+    _, _, win_width, win_height = window_rect
+    if win_width < 700 or win_height < 500:
+        return None
+    return (
+        min(220, max(150, int(win_width * 0.08))),
+        min(170, max(116, int(win_height * 0.1))),
+    )
 
 
 def file_sha1(path: Path) -> str:
@@ -3850,7 +4290,11 @@ def run_cycle(
     min_capture_file_size_kb = _coerce_int(config.get("min_capture_file_size_kb"), 45, 1, 2048)
     allow_ocr_fallback = _coerce_bool(config.get("article_allow_ocr_fallback"), False)
     allow_targeted_ocr_fallback = _coerce_bool(config.get("article_allow_targeted_ocr_fallback"), True)
+    strict_url_only = _coerce_bool(config.get("article_strict_url_only"), False)
     if article_url_strategy == "browser_first":
+        allow_ocr_fallback = False
+        allow_targeted_ocr_fallback = False
+    if strict_url_only:
         allow_ocr_fallback = False
         allow_targeted_ocr_fallback = False
     verify_with_ocr = _coerce_bool(config.get("article_verify_with_ocr"), True)
@@ -3898,10 +4342,20 @@ def run_cycle(
             (public_x - 15, public_y),
         ]
     public_points = _dedupe_points(public_points)
+    active_feed_window_rect: tuple[int, int, int, int] | None = None
+    active_article_card_points: list[tuple[int, int]] = []
 
     def open_public_account_feed(scroll_pages: int) -> None:
-        nonlocal effective_capture_region_cfg
+        nonlocal effective_capture_region_cfg, active_feed_window_rect, active_article_card_points
+        active_article_card_points = []
         usable_window, rect = _ensure_wechat_front_ready(bundle_id, app_name)
+        try:
+            switch_to_main_wechat_window(app_name)
+            time.sleep(0.18)
+            rect = get_front_window_rect(app_name)
+            usable_window = rect[2] >= 900 and rect[3] >= 600
+        except Exception:
+            pass
         if not usable_window:
             try:
                 switch_to_main_wechat_window(app_name)
@@ -3921,6 +4375,7 @@ def run_cycle(
             if not usable_window:
                 rect_text = "unknown" if rect is None else f"{rect[2]}x{rect[3]}"
                 raise RuntimeError(f"wechat_window_too_small:{rect_text}")
+        active_feed_window_rect = rect
         effective_capture_region_cfg = _calibrate_article_capture_region(
             capture_region_cfg,
             coordinate_mode=coordinate_mode,
@@ -3953,8 +4408,26 @@ def run_cycle(
                 rect_text = "unknown" if rect_after_cmd is None else f"{rect_after_cmd[2]}x{rect_after_cmd[3]}"
                 raise RuntimeError(f"wechat_window_too_small_after_cmd1:{rect_text}")
         time.sleep(0.18)
-        for point_index, (point_x, point_y) in enumerate(public_points[:2]):
-            click_x, click_y = resolve_point(point_x, point_y, coordinate_mode=coordinate_mode, app_name=app_name)
+        located_public_point = _locate_public_account_entry_screen_point(
+            wechat_app_name=app_name,
+            window_rect=active_feed_window_rect,
+        )
+        if located_public_point:
+            click_candidates = [
+                located_public_point,
+                (located_public_point[0] + 28, located_public_point[1]),
+            ]
+        else:
+            click_candidates = [
+                _resolve_point_in_window_rect(
+                    point_x,
+                    point_y,
+                    coordinate_mode=coordinate_mode,
+                    window_rect=active_feed_window_rect,
+                )
+                for point_x, point_y in public_points[:2]
+            ]
+        for point_index, (click_x, click_y) in enumerate(click_candidates[:2]):
             click_at(click_x, click_y)
             time.sleep(0.18 if point_index == 0 else 0.12)
             if not is_unexpected_front_process(get_front_process_name(), wechat_app_name=app_name):
@@ -3962,12 +4435,29 @@ def run_cycle(
                 # misses on different window sizes without wandering into content.
                 continue
         time.sleep(0.22)
+        active_article_card_points = _locate_visible_article_card_relative_points(
+            window_rect=active_feed_window_rect,
+        )
+        if not active_article_card_points:
+            account_row_point = _first_public_account_row_relative_point(active_feed_window_rect)
+            if account_row_point:
+                click_x, click_y = _resolve_point_in_window_rect(
+                    account_row_point[0],
+                    account_row_point[1],
+                    coordinate_mode=coordinate_mode,
+                    window_rect=active_feed_window_rect,
+                )
+                click_at(click_x, click_y)
+                time.sleep(0.8)
         for _ in range(feed_reset_page_up):
             key_code(116)  # PageUp
             time.sleep(0.18)
         for _ in range(max(0, scroll_pages)):
             key_code(121)  # PageDown
             time.sleep(page_down_wait)
+        active_article_card_points = _locate_visible_article_card_relative_points(
+            window_rect=active_feed_window_rect,
+        )
 
     def recover_feed_state(*, batch_index: int, row_index: int, reason: str) -> None:
         recovery_actions = summary.setdefault("recovery_actions", [])
@@ -4034,6 +4524,7 @@ def run_cycle(
         "output_language": language,
         "coordinate_mode": coordinate_mode,
         "article_url_strategy": article_url_strategy,
+        "article_strict_url_only": strict_url_only,
         "rows_per_batch": rows_per_batch,
         "batches_per_cycle": batches_per_cycle,
         "start_batch_index": start_batch_index,
@@ -4047,6 +4538,7 @@ def run_cycle(
         "submitted_url_direct": 0,
         "submitted_url_share_copy": 0,
         "submitted_url_resolved": 0,
+        "submitted_url_tab_copy_link": 0,
         "submitted_url_tab_browser_open": 0,
         "submitted_ocr": 0,
         "deduplicated_existing": 0,
@@ -4054,6 +4546,7 @@ def run_cycle(
         "deduplicated_existing_url_direct": 0,
         "deduplicated_existing_url_share_copy": 0,
         "deduplicated_existing_url_resolved": 0,
+        "deduplicated_existing_url_tab_copy_link": 0,
         "deduplicated_existing_url_tab_browser_open": 0,
         "deduplicated_existing_ocr": 0,
         "skipped_seen": 0,
@@ -4145,13 +4638,26 @@ def run_cycle(
         row_height: int,
         attempt_idx: int,
     ) -> tuple[list[tuple[int, int]], int]:
-        row_click_points = _build_article_row_click_points(
-            row_x=row_x,
-            row_y=row_y,
-            row_height=row_height,
-            route_issue_streak=route_issue_streak,
-            duplicate_article_streak=duplicate_article_streak,
-        )
+        row_click_points: list[tuple[int, int]]
+        if active_article_card_points:
+            base = active_article_card_points[min(row_idx, len(active_article_card_points) - 1)]
+            row_click_points = _dedupe_points(
+                [
+                    base,
+                    (base[0] + 48, base[1]),
+                    (base[0] - 48, base[1]),
+                    (base[0], base[1] + 34),
+                    (base[0], base[1] - 34),
+                ]
+            )
+        else:
+            row_click_points = _build_article_row_click_points(
+                row_x=row_x,
+                row_y=row_y,
+                row_height=row_height,
+                route_issue_streak=route_issue_streak,
+                duplicate_article_streak=duplicate_article_streak,
+            )
         trap = _get_row_trap_state(batch_idx, row_idx)
         if bool(trap.get("skip_row")):
             return row_click_points, -1
@@ -4580,6 +5086,9 @@ def run_cycle(
         elif route_kind == "resolved":
             summary["submitted_url_resolved"] += 1
             increment_batch_metric(summary, batch_idx, "submitted_url_resolved")
+        elif route_kind == "tab_copy_link":
+            summary["submitted_url_tab_copy_link"] += 1
+            increment_batch_metric(summary, batch_idx, "submitted_url_tab_copy_link")
         elif route_kind == "tab_browser_open":
             summary["submitted_url_tab_browser_open"] += 1
             increment_batch_metric(summary, batch_idx, "submitted_url_tab_browser_open")
@@ -4602,6 +5111,9 @@ def run_cycle(
             elif route_kind == "resolved":
                 summary["deduplicated_existing_url_resolved"] += 1
                 increment_batch_metric(summary, batch_idx, "deduplicated_existing_url_resolved")
+            elif route_kind == "tab_copy_link":
+                summary["deduplicated_existing_url_tab_copy_link"] += 1
+                increment_batch_metric(summary, batch_idx, "deduplicated_existing_url_tab_copy_link")
             elif route_kind == "tab_browser_open":
                 summary["deduplicated_existing_url_tab_browser_open"] += 1
                 increment_batch_metric(summary, batch_idx, "deduplicated_existing_url_tab_browser_open")
@@ -4739,11 +5251,11 @@ def run_cycle(
                             break
                         active_row_candidate_index = candidate_index
                         click_point_x, click_point_y = row_click_points[candidate_index]
-                        item_x, item_y = resolve_point(
+                        item_x, item_y = _resolve_point_in_window_rect(
                             click_point_x,
                             click_point_y,
                             coordinate_mode=coordinate_mode,
-                            app_name=app_name,
+                            window_rect=active_feed_window_rect,
                         )
                         # Snapshot windows BEFORE the click so we can
                         # diff after the click and identify the new
@@ -4891,6 +5403,20 @@ def run_cycle(
                             if tab_telemetry.get("popup_b_offset"):
                                 ox, oy = tab_telemetry["popup_b_offset"]
                                 tab_detail_parts.append(f"offB={ox}x{oy}")
+                            if tab_telemetry.get("popup_a_click_method"):
+                                click = tab_telemetry.get("popup_a_click") or {}
+                                tab_detail_parts.append(
+                                    "clickA="
+                                    f"{tab_telemetry.get('popup_a_click_method')}"
+                                    f"@{click.get('x','?')},{click.get('y','?')}"
+                                )
+                            if tab_telemetry.get("popup_b_click_method"):
+                                click = tab_telemetry.get("popup_b_click") or {}
+                                tab_detail_parts.append(
+                                    "clickB="
+                                    f"{tab_telemetry.get('popup_b_click_method')}"
+                                    f"@{click.get('x','?')},{click.get('y','?')}"
+                                )
                             if tab_telemetry.get("clipboard_a_changed") is not None:
                                 tab_detail_parts.append(
                                     f"clipA={'1' if tab_telemetry.get('clipboard_a_changed') else '0'}"
@@ -4905,17 +5431,22 @@ def run_cycle(
                                 row_index=row_idx,
                                 stage="url_extract_tab_right_click",
                                 outcome="success" if tab_url else "info",
-                                detail=tab_url
-                                or (":".join(tab_detail_parts) or "miss"),
+                                detail=(
+                                    f"{tab_url}|{':'.join(tab_detail_parts)}"
+                                    if tab_url
+                                    else (":".join(tab_detail_parts) or "miss")
+                                ),
                             )
                             emit_progress()
                             if tab_url and is_allowed_article_url(tab_url):
                                 article_url = tab_url
-                                # Reuse existing route_kind so dedup
-                                # metrics + tab cleanup keep working.
-                                article_url_route_kind = "tab_browser_open"
+                                article_url_route_kind = (
+                                    "tab_copy_link"
+                                    if path_taken == "copy_link"
+                                    else "tab_browser_open"
+                                )
                                 article_url_stage_label = (
-                                    "copy_link_url"
+                                    "tab_copy_link_url"
                                     if path_taken == "copy_link"
                                     else "tab_browser_open_url"
                                 )
@@ -5071,13 +5602,14 @@ def run_cycle(
                             ):
                                 reset_non_article_view_streak()
                                 row_done = True
-                                # Close the article tab/window we opened
-                                # via "使用默认浏览器打开" so they don't pile
+                                # Close the article tab/window we opened for
+                                # tab-based URL extraction so they don't pile
                                 # up. Skips silently if the front WeChat
                                 # window no longer matches (user may have
                                 # switched contexts).
                                 if (
-                                    article_url_route_kind == "tab_browser_open"
+                                    article_url_route_kind
+                                    in {"tab_browser_open", "tab_copy_link"}
                                     and ai_opened_article_window
                                     and bool(
                                         config.get(
@@ -5496,6 +6028,129 @@ def run_cycle(
                                 )
                                 row_done = True
                                 break
+                            if bool(config.get("wechat_tab_right_click_enabled", True)):
+                                append_stage_log(
+                                    summary,
+                                    batch_index=batch_idx,
+                                    row_index=row_idx,
+                                    stage="url_extract_tab_right_click_after_render",
+                                    outcome="info",
+                                    detail="start",
+                                )
+                                emit_progress()
+                                tab_url, ai_opened_after_render, tab_telemetry = (
+                                    try_extract_url_via_tab_right_click(
+                                        wechat_app_name=app_name,
+                                        windows_before_click=None,
+                                        copy_link_index=int(
+                                            config.get(
+                                                "wechat_tab_menu_copy_link_index", 7
+                                            )
+                                        ),
+                                        open_in_browser_index=int(
+                                            config.get(
+                                                "wechat_tab_menu_open_in_browser_index", 4
+                                            )
+                                        ),
+                                    )
+                                )
+                                path_taken = str(tab_telemetry.get("path_taken") or "")
+                                tab_detail_parts = [f"path={path_taken or 'unknown'}"]
+                                popup_a = tab_telemetry.get("popup_a_rect")
+                                popup_b = tab_telemetry.get("popup_b_rect")
+                                if popup_a:
+                                    tab_detail_parts.append(
+                                        f"popA={int(popup_a.get('w') or 0)}x{int(popup_a.get('h') or 0)}"
+                                    )
+                                if popup_b:
+                                    tab_detail_parts.append(
+                                        f"popB={int(popup_b.get('w') or 0)}x{int(popup_b.get('h') or 0)}"
+                                    )
+                                if tab_telemetry.get("popup_a_click_method"):
+                                    click = tab_telemetry.get("popup_a_click") or {}
+                                    tab_detail_parts.append(
+                                        "clickA="
+                                        f"{tab_telemetry.get('popup_a_click_method')}"
+                                        f"@{click.get('x','?')},{click.get('y','?')}"
+                                    )
+                                if tab_telemetry.get("popup_b_click_method"):
+                                    click = tab_telemetry.get("popup_b_click") or {}
+                                    tab_detail_parts.append(
+                                        "clickB="
+                                        f"{tab_telemetry.get('popup_b_click_method')}"
+                                        f"@{click.get('x','?')},{click.get('y','?')}"
+                                    )
+                                if tab_telemetry.get("clipboard_a_changed") is not None:
+                                    tab_detail_parts.append(
+                                        f"clipA={'1' if tab_telemetry.get('clipboard_a_changed') else '0'}"
+                                    )
+                                if tab_telemetry.get("front_after_b"):
+                                    tab_detail_parts.append(
+                                        f"frontB={tab_telemetry['front_after_b']}"
+                                    )
+                                append_stage_log(
+                                    summary,
+                                    batch_index=batch_idx,
+                                    row_index=row_idx,
+                                    stage="url_extract_tab_right_click_after_render",
+                                    outcome="success" if tab_url else "info",
+                                    detail=(
+                                        f"{tab_url}|{':'.join(tab_detail_parts)}"
+                                        if tab_url
+                                        else (":".join(tab_detail_parts) or "miss")
+                                    ),
+                                )
+                                emit_progress()
+                                if tab_url and is_allowed_article_url(tab_url):
+                                    if try_submit_article_url(
+                                        tab_url,
+                                        batch_idx=batch_idx,
+                                        row_idx=row_idx,
+                                        attempt_idx=attempt_idx,
+                                        stage_label=(
+                                            "tab_copy_link_after_render_url"
+                                            if path_taken == "copy_link"
+                                            else "tab_browser_open_after_render_url"
+                                        ),
+                                        stage_detail=tab_url,
+                                        route_kind=(
+                                            "tab_copy_link"
+                                            if path_taken == "copy_link"
+                                            else "tab_browser_open"
+                                        ),
+                                        related_digests=[
+                                            item
+                                            for item in [
+                                                preview_digest,
+                                                preview_title_digest,
+                                            ]
+                                            if item
+                                        ],
+                                    ):
+                                        reset_non_article_view_streak()
+                                        row_done = True
+                                        tracked_window = (
+                                            ai_opened_after_render
+                                            or ai_opened_article_window
+                                        )
+                                        if (
+                                            tracked_window
+                                            and bool(
+                                                config.get(
+                                                    "wechat_tab_close_after_extract",
+                                                    True,
+                                                )
+                                            )
+                                        ):
+                                            try:
+                                                close_ai_opened_article_window(
+                                                    bundle_id=bundle_id,
+                                                    wechat_app_name=app_name,
+                                                    tracked_window=tracked_window,
+                                                )
+                                            except Exception:
+                                                pass
+                                        break
                             url_resolve_candidate_limit, url_resolve_timeout_sec, url_resolve_skip_reason = (
                                 _plan_preview_url_resolve_budget(
                                     preview=preview,
@@ -5661,6 +6316,28 @@ def run_cycle(
                                 row_idx=row_idx,
                                 reason=duplicate_reason,
                             )
+                            row_done = True
+                            break
+
+                        if strict_url_only and str(preview_source_url or "").startswith("https://wechat.local/article/"):
+                            append_stage_log(
+                                summary,
+                                batch_index=batch_idx,
+                                row_index=row_idx,
+                                stage="ocr_ingest",
+                                outcome="error",
+                                detail="blocked:strict_url_only_wechat_local",
+                            )
+                            summary["url_only_skip_count"] = int(summary.get("url_only_skip_count") or 0) + 1
+                            append_row_result(
+                                summary,
+                                batch_index=batch_idx,
+                                row_index=row_idx,
+                                status="skipped_invalid_article",
+                                detail="strict_url_only_wechat_local",
+                                attempts=attempt_idx + 1,
+                            )
+                            emit_progress()
                             row_done = True
                             break
 
@@ -5872,6 +6549,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--start-batch-index", type=int, default=0, help="Start feed scan from batch index")
     parser.add_argument("--output-language", default=None, help="zh-CN|zh-TW|en|ja|ko")
     parser.add_argument("--api-base", default=None, help="Override API base")
+    parser.add_argument(
+        "--strict-url-only",
+        action="store_true",
+        help="Require a real mp.weixin URL path; block OCR/wechat.local article ingestion",
+    )
     parser.add_argument("--init-config-only", action="store_true", help="Create config file then exit")
     return parser.parse_args(argv)
 
@@ -5882,6 +6564,8 @@ def run_once(paths: AgentPaths, args: argparse.Namespace) -> int:
         config["api_base"] = str(args.api_base).rstrip("/")
     if args.output_language:
         config["output_language"] = args.output_language
+    if args.strict_url_only:
+        config["article_strict_url_only"] = True
 
     state = load_state(paths.state_file)
 

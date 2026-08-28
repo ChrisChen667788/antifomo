@@ -34,6 +34,7 @@ from app.services.research.entity_policy import (
     looks_like_fragment_entity_name,
     looks_like_placeholder_entity_name,
     strip_entity_leading_noise,
+    text_has_industry_conflict,
 )
 from app.services.research.entity_ranking import EntityRankingHeuristicDependencies, rank_top_entities
 from app.services.research.organization_identity import (
@@ -150,6 +151,9 @@ def is_company_like_entity_name(
     if not normalized:
         return False
     if normalized in seed_companies or is_lightweight_entity_name(normalized) or normalized in SPECIAL_ENTITY_ALIASES:
+        return True
+    finance_target = role == "target" and any(label == "金融" or "金融" in label for label in theme_labels)
+    if finance_target and any(token in normalized for token in ("银行", "证券", "保险", "基金", "资管", "信托", "交易所")):
         return True
     if any(
         token in normalized
@@ -358,6 +362,7 @@ def filtered_rank_fallback_values(
             or looks_like_insufficient(normalized)
             or looks_like_source_artifact_text(normalized)
             or looks_like_scope_prompt_noise_bound(normalized)
+            or text_has_industry_conflict(normalized, scope_hints=scope_hints)
         ):
             continue
         extracted = extract_rank_entity_candidates(normalized, scope_hints=scope_hints)
@@ -371,6 +376,7 @@ def filtered_rank_fallback_values(
                 or contains_low_value_entity_token(compact)
                 or looks_like_placeholder_entity_name(compact)
                 or looks_like_scope_prompt_noise_bound(compact)
+                or text_has_industry_conflict(compact, scope_hints=scope_hints)
             ):
                 continue
             if theme_labels and not is_theme_aligned_entity_name(compact, role=role, theme_labels=theme_labels):
@@ -391,6 +397,7 @@ def build_entity_specific_contact_rows(
     entity_names: list[str],
     output_language: str,
     limit: int,
+    scope_hints: dict[str, object] | None = None,
 ) -> list[str]:
     if not entity_names:
         return []
@@ -400,6 +407,7 @@ def build_entity_specific_contact_rows(
         for name in entity_names
         if normalize_text(name) and "待验证" not in normalize_text(name) and "待驗證" not in normalize_text(name)
         and (is_plausible_entity_name(normalize_text(name)) or is_lightweight_entity_name(normalize_text(name)))
+        and not text_has_industry_conflict(normalize_text(name), scope_hints=scope_hints)
     ]
     if not normalized_entities:
         return []
@@ -447,7 +455,11 @@ def build_entity_specific_contact_rows(
 
     def add_row(row: str, score: int) -> None:
         normalized = normalize_text(row)
-        if not normalized or not is_useful_public_contact_row_bound(normalized):
+        if (
+            not normalized
+            or not is_useful_public_contact_row_bound(normalized)
+            or text_has_industry_conflict(normalized, scope_hints=scope_hints)
+        ):
             return
         current = scored_rows.get(normalized)
         if current is None or score > current:
@@ -537,6 +549,7 @@ def build_entity_specific_team_rows(
         for name in entity_names
         if normalize_text(name) and "待验证" not in normalize_text(name) and "待驗證" not in normalize_text(name)
         and (is_plausible_entity_name(normalize_text(name)) or is_lightweight_entity_name(normalize_text(name)))
+        and not text_has_industry_conflict(normalize_text(name), scope_hints=scope_hints)
     ]
     if not normalized_entities:
         return []
@@ -574,7 +587,7 @@ def build_entity_specific_team_rows(
 
     def add_row(row: str, score: int) -> None:
         normalized = normalize_text(row)
-        if not normalized:
+        if not normalized or text_has_industry_conflict(normalized, scope_hints=scope_hints):
             return
         current = scored_rows.get(normalized)
         if current is None or score > current:
@@ -592,6 +605,8 @@ def build_entity_specific_team_rows(
                 if not sentence or entity not in sentence:
                     continue
                 if text_has_region_conflict(sentence, scope_hints=scope_hints):
+                    continue
+                if text_has_industry_conflict(sentence, scope_hints=scope_hints):
                     continue
                 if not any(token in sentence for token in team_keywords):
                     continue

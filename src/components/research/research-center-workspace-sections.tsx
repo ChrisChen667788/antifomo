@@ -38,12 +38,12 @@ export function ResearchCenterWorkspaceSections({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">{t("research.compareSnapshotKicker", "Compare Snapshots")}</p>
+                <p className="af-kicker">{t("research.compareSnapshotKicker", "已保存对比")}</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
-                  {t("research.compareSnapshotTitle", "已保存对比快照")}
+                  {t("research.compareSnapshotTitle", "已保存对比")}
                 </h3>
                 <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                  {t("research.compareSnapshotWorkspaceDesc", "冻结当前 compare 结果，便于复盘、转发和后续与新版本继续对照。")}
+                  {t("research.compareSnapshotWorkspaceDesc", "保存当前对比结果，便于后续查看。")}
                 </p>
               </div>
             </div>
@@ -105,7 +105,7 @@ export function ResearchCenterWorkspaceSections({
                     ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link href={buildCompareSnapshotHref(snapshot.id)} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-                        {t("research.compareOpenSnapshot", "打开快照")}
+                        {t("research.compareOpenSnapshot", "打开对比")}
                       </Link>
                       {snapshot.tracking_topic_id ? (
                         <Link href={buildTopicWorkspaceHref(snapshot.tracking_topic_id)} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
@@ -117,7 +117,7 @@ export function ResearchCenterWorkspaceSections({
                 ))
               ) : (
                 <p className="text-sm text-[var(--af-text-tertiary)]">
-                  {t("research.compareSnapshotEmpty", "还没有保存的对比快照，先在对比矩阵里固定一次结果。")}
+                  {t("research.compareSnapshotEmpty", "还没有保存的对比结果。")}
                 </p>
               )}
             </div>
@@ -126,7 +126,7 @@ export function ResearchCenterWorkspaceSections({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">{t("research.centerSavedViewsKicker", "Saved Views")}</p>
+                <p className="af-kicker">{t("research.centerSavedViewsKicker", "保存视图")}</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
                   {t("research.centerSavedViewsTitle", "保存视图")}
                 </h3>
@@ -184,7 +184,7 @@ export function ResearchCenterWorkspaceSections({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="af-kicker">{t("research.centerTrackingKicker", "Tracking Topics")}</p>
+                <p className="af-kicker">{t("research.centerTrackingKicker", "长期专题")}</p>
                 <h3 className="mt-2 text-lg font-semibold text-[var(--af-text-primary)]">
                   {t("research.centerTrackingTitle", "长期跟踪专题")}
                 </h3>
@@ -289,7 +289,7 @@ export function ResearchCenterWorkspaceSections({
                         {t("research.centerApplyTopic", "应用专题")}
                       </button>
                       <button type="button" onClick={() => void handleCreateWatchlist(topic)} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">
-                        {t("research.centerCreateWatchlist", "设为 Watchlist")}
+                        {t("research.centerCreateWatchlist", "设为监控")}
                       </button>
                       {topic.last_report_entry_id ? (
                         <Link href={`/knowledge/${topic.last_report_entry_id}`} className="af-btn af-btn-secondary border px-3 py-1.5 text-xs">

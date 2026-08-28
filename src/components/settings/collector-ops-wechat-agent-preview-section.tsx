@@ -64,11 +64,9 @@ export function CollectorOpsWechatAgentPreviewSection({
             </span>
           </div>
           <p className="mt-2">
-            {text("wechatAgentPreviewOCRProvider")}: {wechatAgentOCRPreview.provider}
+            识别质量 {Math.round(wechatAgentOCRPreview.confidence * 100)}%
             {" · "}
-            conf={wechatAgentOCRPreview.confidence.toFixed(3)}
-            {" · "}
-            len={wechatAgentOCRPreview.text_length}
+            文本 {wechatAgentOCRPreview.text_length} 字
           </p>
           {wechatAgentOCRPreview.quality_reason ? (
             <p className="mt-1 text-[var(--af-warning)]">

@@ -112,6 +112,9 @@ def test_solution_delivery_markdown_serializes_complete_pack_sections() -> None:
     assert "Advisory-grade 交付产物" in markdown
     assert "解决方案架构就绪度" in markdown
     assert "解决方案架构师工作台" in markdown
+    assert "架构交付导出包" in markdown
+    assert "集成依赖 workshop 清单" in markdown
+    assert "客户技术 workshop 议程" in markdown
     assert "交付质量自审" in markdown
     assert "语义挑战者审查记录" in markdown
     assert "四类专用文档编译器" in markdown

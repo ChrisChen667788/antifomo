@@ -258,6 +258,35 @@ def build_solution_delivery_markdown(
         *[f"- {item}" for item in pack.clarification_questions],
         "",
     ]
+    industry_context = pack.industry_skill_context
+    if industry_context.status == "available":
+        lines.extend(
+            [
+                "## 本地行业资料技能",
+                f"- 本地索引版本: {industry_context.catalog_version or '待确认'}",
+                f"- 已调用技能: {'；'.join(skill.name for skill in industry_context.selected_skills) or '待确认'}",
+                f"- 覆盖资料: {industry_context.source_document_count} 份（仅作行业框架与规范性校验）",
+                "- 证据边界: 本地资料不计入公开来源支撑度、客户事实或正式项目证据；对外引用前必须回查原件和官方来源。",
+            ]
+        )
+        for skill in industry_context.selected_skills:
+            lines.extend(
+                [
+                    f"### {skill.name}",
+                    f"- 调用原因: {skill.selection_reason or '按当前场景匹配'}",
+                    f"- 资料类型: {'；'.join(f'{label} {count} 份' for label, count in skill.document_type_counts.items()) or '待确认'}",
+                    *[f"- 规范: {item}" for item in skill.guidance[:3]],
+                    *[f"- 本地参考要点（待核验）: {item}" for item in skill.reference_highlights[:2]],
+                    *[
+                        f"- 参考资料: {reference.title}"
+                        + (f"（{reference.published_year}）" if reference.published_year else "")
+                        for reference in skill.references[:4]
+                    ],
+                ]
+            )
+        if industry_context.warnings:
+            lines.extend(["", "### 资料库提示", *[f"- {item}" for item in industry_context.warnings[:4]]])
+        lines.append("")
     if pack.compiled_documents:
         lines.extend(["## 四类专用文档编译器"])
         for document in pack.compiled_documents:
@@ -398,6 +427,74 @@ def build_solution_delivery_markdown(
                 )
         if workbench.next_meeting_agenda:
             lines.extend(["", "### 下一次客户会议议程", *[f"- {item}" for item in workbench.next_meeting_agenda[:6]]])
+    architecture_exports = pack.architecture_export_bundle
+    if (
+        architecture_exports.adr_table
+        or architecture_exports.dependency_workshop_checklist
+        or architecture_exports.customer_technical_workshop_agenda
+    ):
+        lines.extend(["", architecture_exports.export_markdown or "## 架构交付导出包"])
+    engineering = pack.architecture_decision_engineering
+    lines.extend(
+        [
+            "",
+            "## QAW / ATAM / ADR / C4 架构决策工程",
+            f"- 状态: {engineering.status}",
+            f"- 摘要: {engineering.summary or '待完成架构决策工程。'}",
+            f"- QAW 场景: {len(engineering.quality_attribute_scenarios)}",
+            f"- ADR: {len(engineering.adrs)}",
+            f"- C4 视图: {len(engineering.c4_views)}",
+            f"- 追溯链覆盖: {engineering.traceability_coverage_percent}%",
+            f"- 孤立组件: {engineering.orphan_component_count}",
+        ]
+    )
+    for scenario in engineering.quality_attribute_scenarios:
+        lines.append(
+            f"- {scenario.scenario_id} | {scenario.quality_attribute} | {scenario.response_measure} | {scenario.status}"
+        )
+    for adr in engineering.adrs:
+        lines.extend(
+            [
+                f"- {adr.adr_id} | {adr.title} | {adr.status} | {adr.risk_level}",
+                f"  - 选项: {'；'.join(f'{option.option_type}:{option.name}' for option in adr.options)}",
+                f"  - 回滚: {'；'.join(adr.rollback_conditions[:2]) if adr.rollback_conditions else '待补'}",
+                f"  - 验证: {'；'.join(adr.validation_action_ids) if adr.validation_action_ids else '待补'}",
+            ]
+        )
+    proof = pack.proof_of_architecture
+    lines.extend(
+        [
+            "",
+            "## Proof of Architecture 与验收证据",
+            f"- 状态: {proof.status}",
+            f"- 摘要: {proof.summary or '待运行可执行验证。'}",
+            f"- 质量场景测试覆盖: {proof.scenario_test_coverage_percent}%",
+            f"- 高风险 ADR 证据覆盖: {proof.high_risk_decision_evidence_percent}%",
+            "",
+            "### 机器可读验证项",
+        ]
+    )
+    for check in proof.checks:
+        lines.append(
+            f"- {check.check_id} | {check.category} | {check.status} | {check.threshold} | "
+            f"{check.artifact_path or '待补 artifact'}"
+        )
+    lines.extend(
+        [
+            "",
+            "### 客户版证据边界",
+            *[f"- 已确认: {item}" for item in proof.customer_evidence.confirmed_findings],
+            *[f"- 假设: {item}" for item in proof.customer_evidence.assumptions],
+            *[f"- 限制: {item}" for item in proof.customer_evidence.limitations],
+            *[f"- 待验证: {item}" for item in proof.customer_evidence.pending_validations],
+            "",
+            "### 内部证据附录",
+            *[f"- 已确认: {item}" for item in proof.internal_evidence.confirmed_findings],
+            *[f"- 限制: {item}" for item in proof.internal_evidence.limitations],
+            *[f"- 待验证: {item}" for item in proof.internal_evidence.pending_validations],
+            *[f"- Artifact: {item}" for item in proof.internal_evidence.artifact_paths],
+        ]
+    )
     lines.extend(["", "## 交付质量自审"])
     for profile in (pack.solution_quality_profile, pack.project_proposal_quality_profile):
         lines.extend(

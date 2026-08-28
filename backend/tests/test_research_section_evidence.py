@@ -267,3 +267,37 @@ def test_build_sections_adds_next_verification_steps_for_low_evidence_sections()
     assert "未达到稳定推进门槛" in opportunity_section.insufficiency_summary
     assert opportunity_section.next_verification_steps
     assert any("官方" in step or "采购公告" in step for step in opportunity_section.next_verification_steps)
+
+
+def test_section_evidence_matches_paraphrased_chinese_entity_and_project_terms() -> None:
+    result = ResearchReportResult(
+        report_title="长三角政务AI需求调研",
+        executive_summary="南京政务AI进入平台化建设阶段。",
+        consulting_angle="用于需求与方案研判。",
+        commercial_opportunities=[
+            "南京建邺区：优先挖掘九天大模型属地部署、数字政府场景应用和平台运营机会。",
+            "围绕模型管理平台、知识库治理和政务服务智能体形成试点。",
+        ],
+    )
+    source = SourceDocument(
+        title="南京市建邺区人民政府：中国移动九天大模型产业创新基地落户",
+        url="https://www.njjy.gov.cn/ai-base",
+        domain="www.njjy.gov.cn",
+        snippet="建邺区政府与江苏移动推动九天通用基座大模型属地部署。",
+        search_query="南京 建邺 政务 人工智能",
+        source_type="policy",
+        content_status="extracted",
+        excerpt="南京移动负责大模型管理平台和数字政府应用场景承建开发，并承担生态引入工作。",
+        source_label="南京市建邺区人民政府",
+        source_tier="official",
+    )
+
+    section = next(
+        item
+        for item in _build_sections(result, "zh-CN", [source])
+        if item.title == "项目与商机判断"
+    )
+
+    assert section.evidence_count == 1
+    assert section.evidence_links[0].url == source.url
+    assert section.source_tier_counts == {"official": 1}

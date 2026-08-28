@@ -148,7 +148,7 @@ export function RecommenderTuner() {
       <section className="af-glass rounded-[30px] p-5 md:p-6">
         <p className="af-kicker">{t("tuner.featureScores", "Feature Scores (0-100)")}</p>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Slider label={t("tuner.topicPreference", "Topic Preference")} value={topic} onChange={setTopic} />
+          <Slider label={t("tuner.topicPreference", "Topic preference")} value={topic} onChange={setTopic} />
           <Slider label={t("tuner.sourcePreference", "Source Preference")} value={source} onChange={setSource} />
           <Slider label={t("tuner.itemQuality", "Item Quality")} value={quality} onChange={setQuality} />
           <Slider label={t("tuner.freshness", "Freshness")} value={freshness} onChange={setFreshness} />
@@ -193,7 +193,7 @@ export function RecommenderTuner() {
         <p className="af-kicker">{t("tuner.result", "Result")}</p>
         <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
           <p>
-            {t("tuner.rawScore", "Raw Score")}: {result.scoreRaw}
+            {t("tuner.rawScore", "基础分")}: {result.scoreRaw}
           </p>
           <p>
             {t("tuner.finalScore", "Final Score")}: {result.finalScore}

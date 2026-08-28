@@ -94,19 +94,19 @@ export function CollectorOpsWechatAgentBatchSection({
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold">
                 {wechatAgentBatchStatus.route_quality.route_stability === "good"
-                  ? "Route Quality · 健康"
+                  ? "采集质量 · 健康"
                   : wechatAgentBatchStatus.route_quality.route_stability === "poor"
-                    ? "Route Quality · 退化"
-                    : "Route Quality · 观察中"}
+                    ? "采集质量 · 待优化"
+                    : "采集质量 · 观察中"}
               </span>
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px]">
-                URL-first {wechatAgentBatchStatus.route_quality.url_first_share}%
+                链接优先 {wechatAgentBatchStatus.route_quality.url_first_share}%
               </span>
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px]">
-                OCR {wechatAgentBatchStatus.route_quality.ocr_share}%
+                内容补录 {wechatAgentBatchStatus.route_quality.ocr_share}%
               </span>
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px]">
-                Accessibility {wechatAgentBatchStatus.route_quality.accessibility_hit_rate}%
+                自动操作 {wechatAgentBatchStatus.route_quality.accessibility_hit_rate}%
               </span>
               <span className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px]">
                 模板命中 {wechatAgentBatchStatus.route_quality.template_hit_rate}%
@@ -157,9 +157,9 @@ export function CollectorOpsWechatAgentBatchSection({
             <div className="mt-3 rounded-xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] p-3 text-xs text-[var(--af-text-secondary)]">
               <p className="font-semibold text-[var(--af-text-primary)]">{text("wechatAgentBatchLive")}</p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                <StatCard label="Batch" value={wechatAgentBatchStatus.live_report_batch ?? "-"} />
-                <StatCard label="Row" value={wechatAgentBatchStatus.live_report_row ?? "-"} />
-                <StatCard label="Stage" value={wechatAgentBatchStatus.live_report_stage ?? "-"} />
+                <StatCard label="批次" value={wechatAgentBatchStatus.live_report_batch ?? "-"} />
+                <StatCard label="行号" value={wechatAgentBatchStatus.live_report_row ?? "-"} />
+                <StatCard label="阶段" value={wechatAgentBatchStatus.live_report_stage ?? "-"} />
                 <StatCard label={text("wechatAgentBatchLiveCheckpoint")} value={formatTs(wechatAgentBatchStatus.live_report_checkpoint_at ?? null)} />
               </div>
               {wechatAgentBatchStatus.live_report_detail ? (

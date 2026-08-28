@@ -90,7 +90,7 @@ export function evidenceModeMeta(value: string, t: KnowledgeTranslateFn) {
     return {
       label: t("research.evidenceStrong", "强证据"),
       className: "af-state-panel-success",
-      note: t("research.evidenceStrongNote", "当前结果有较稳定的主题命中、官方源和多域名交叉支撑。"),
+      note: t("research.evidenceStrongNote", "当前结果有较稳定的主题匹配、官方来源和多来源交叉支撑。"),
     };
   }
   if (value === "provisional") {
@@ -143,9 +143,9 @@ export function followupResolutionMeta(value?: string) {
     return { label: "已按追问纠偏", className: "af-state-panel-success" };
   }
   if (value === "reused") {
-    return { label: "沿用基线", className: "af-state-panel-info" };
+    return { label: "沿用初始版本", className: "af-state-panel-info" };
   }
-  return { label: "基线生成", className: "border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]" };
+  return { label: "初始生成", className: "border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]" };
 }
 
 export function factorBucket(score: number) {

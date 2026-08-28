@@ -135,8 +135,16 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("session_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("task_type", sa.String(length=50), nullable=False),
-        sa.Column("input_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("output_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "input_payload",
+            postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.JSON(), "sqlite"),
+            nullable=True,
+        ),
+        sa.Column(
+            "output_payload",
+            postgresql.JSONB(astext_type=sa.Text()).with_variant(sa.JSON(), "sqlite"),
+            nullable=True,
+        ),
         sa.Column("status", sa.String(length=20), server_default=sa.text("'pending'"), nullable=False),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -195,4 +203,3 @@ def downgrade() -> None:
     op.drop_table("item_tags")
     op.drop_table("items")
     op.drop_table("users")
-

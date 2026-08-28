@@ -214,7 +214,7 @@ export function KnowledgeEditForm({ item }: { item: ApiKnowledgeEntry }) {
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-500">
           {actionEntry
-            ? t("research.actionEditHint", "直接调整行动对象、执行窗口、步骤与证据，系统会自动重建行动卡正文。")
+            ? t("research.actionEditHint", "直接调整行动对象、执行窗口、步骤与依据。")
             : t("knowledge.subtitle", "将沉淀下来的结构化理解整理成可复用记录。")}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">

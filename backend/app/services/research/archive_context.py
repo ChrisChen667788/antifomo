@@ -181,6 +181,14 @@ def merge_scope_hints_with_archive_context(
     if not archive_context_items:
         return scope_hints
 
+    target_intent_text = normalize_text(f"{keyword} {research_focus or ''}")
+    has_target_intent = bool(scope_hints.get("prefer_company_entities")) or bool(scope_hints.get("clients")) or any(
+        token in target_intent_text
+        for token in ("具体账户", "目标账户", "重点账户", "具体客户", "目标客户", "甲方", "公司名单", "企业名单")
+    )
+    if not has_target_intent:
+        return scope_hints
+
     queryworthy_items = [item for item in archive_context_items if archive_item_is_queryworthy(item)]
     if not queryworthy_items:
         return scope_hints
@@ -247,7 +255,7 @@ def merge_scope_hints_with_archive_context(
     )
     return {
         **scope_hints,
-        "clients": merged_clients if bool(scope_hints.get("prefer_company_entities")) or bool(scope_hints.get("clients")) else list(scope_hints.get("clients", []) or []),
+        "clients": merged_clients,
         "company_anchors": merged_company_anchors,
         "archive_targets": trusted_targets,
         "archive_target_departments": trusted_departments,

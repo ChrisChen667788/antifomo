@@ -1,8 +1,14 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { ApiSession, CollectorDaemonStatus, WechatAgentBatchStatus } from "@/lib/api/types";
+import type {
+  ApiSession,
+  CollectorDaemonStatus,
+  CollectorWechatFavoriteImportBatch,
+  WechatAgentBatchStatus,
+} from "@/lib/api/types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   finishSession,
   getCollectorDaemonStatus,
@@ -10,7 +16,9 @@ import {
   getSession,
   getWechatAgentBatchStatus,
   getWechatAgentStatus,
+  listWechatFavoriteImportBatches,
   pauseSession,
+  runCollectorDaemonOnce,
   runWechatAgentBatch,
   runWechatAgentOnce,
   resumeSession,
@@ -34,6 +42,11 @@ import {
   sourceCoverageLabel,
   type FocusDuration,
 } from "@/lib/focus-runtime-model";
+import {
+  DEFAULT_FOCUS_WECHAT_BATCH_CONFIG,
+  resolveFocusWechatBatchConfigFromWindow,
+  type FocusWechatBatchConfig,
+} from "@/lib/focus-wechat-batch-config";
 
 const FOCUS_BUBBLES = [
   { left: "16%", size: 10, duration: "7.8s", delay: "0s", drift: "-14px" },
@@ -46,7 +59,31 @@ const FEED_MODE_KEY = "anti_fomo_feed_mode";
 const SESSION_ID_KEY = "anti_fomo_session_id";
 const SESSION_GOAL_KEY = "anti_fomo_session_goal";
 const FOCUS_WECHAT_AGENT_KEY = "anti_fomo_focus_wechat_agent_owned";
+const WECHAT_FAVORITES_FOCUS_GOAL_KEY = "anti_fomo_wechat_favorites_focus_goal";
 type FocusTransportMode = "idle" | "bootstrapping" | "live" | "local";
+
+function favoriteBatchStatusLabel(status: string) {
+  if (status === "ready") return "可处理";
+  if (status === "processing") return "解析中";
+  if (status === "failed") return "有失败";
+  if (status === "reviewed") return "已处理";
+  if (status === "empty") return "空批次";
+  return status || "未知";
+}
+
+function favoriteBatchChipClass(status: string) {
+  if (status === "ready") return "af-chip-success";
+  if (status === "processing") return "af-chip-info";
+  if (status === "failed") return "af-chip-danger";
+  if (status === "reviewed") return "af-chip";
+  return "af-chip-warning";
+}
+
+function favoriteBatchProgress(batch: CollectorWechatFavoriteImportBatch | null) {
+  if (!batch?.item_ids.length) return 0;
+  const handled = batch.ready + batch.failed + batch.triaged;
+  return Math.min(100, Math.round((handled / batch.item_ids.length) * 100));
+}
 
 export function FocusTimer() {
   const { t, preferences } = useAppPreferences();
@@ -67,6 +104,11 @@ export function FocusTimer() {
   const [newItemsCount, setNewItemsCount] = useState(0);
   const [collectorDaemonStatus, setCollectorDaemonStatus] = useState<CollectorDaemonStatus | null>(null);
   const [wechatBatchStatus, setWechatBatchStatus] = useState<WechatAgentBatchStatus | null>(null);
+  const [latestFavoritesBatch, setLatestFavoritesBatch] =
+    useState<CollectorWechatFavoriteImportBatch | null>(null);
+  const [focusWechatBatchConfig, setFocusWechatBatchConfig] = useState<FocusWechatBatchConfig>(
+    DEFAULT_FOCUS_WECHAT_BATCH_CONFIG,
+  );
   const durationRef = useRef<FocusDuration>(25);
   const focusBootstrapTokenRef = useRef(0);
 
@@ -210,14 +252,44 @@ export function FocusTimer() {
     const storedGoal = window.localStorage.getItem(SESSION_GOAL_KEY) || "";
     const storedSessionId = window.localStorage.getItem(SESSION_ID_KEY) || "";
     const storedOwnsWechatAgent = window.localStorage.getItem(FOCUS_WECHAT_AGENT_KEY) === "1";
+    const storedWechatFavoritesGoal = window.localStorage.getItem(WECHAT_FAVORITES_FOCUS_GOAL_KEY) || "";
+    setFocusWechatBatchConfig(resolveFocusWechatBatchConfigFromWindow());
     if (storedGoal) {
       setGoal(storedGoal);
+    } else if (storedWechatFavoritesGoal) {
+      setGoal(storedWechatFavoritesGoal);
+      window.localStorage.setItem(SESSION_GOAL_KEY, storedWechatFavoritesGoal);
     }
     if (storedSessionId) {
       setSessionId(storedSessionId);
     }
     setFocusOwnsWechatAgent(storedOwnsWechatAgent);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshLatestFavoritesBatch = async () => {
+      try {
+        const result = await listWechatFavoriteImportBatches({ limit: 1, includeReviewed: false });
+        if (!cancelled) {
+          setLatestFavoritesBatch(result.items[0] || null);
+        }
+      } catch {
+        // keep last visible batch snapshot on transient failures
+      }
+    };
+
+    void refreshLatestFavoritesBatch();
+    const poller = window.setInterval(() => {
+      void refreshLatestFavoritesBatch();
+    }, running || Boolean(sessionId) ? 10000 : 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poller);
+    };
+  }, [running, sessionId]);
 
   useEffect(() => {
     const activeSessionId = sessionId || window.localStorage.getItem(SESSION_ID_KEY) || "";
@@ -372,6 +444,8 @@ export function FocusTimer() {
   const progress = clampProgress(((totalSeconds - secondsLeft) / totalSeconds) * 100);
   const batchProgress = getBatchProgress(wechatBatchStatus);
   const showBatchCard = hasBatchSnapshot(wechatBatchStatus);
+  const favoritesImportProgress = favoriteBatchProgress(latestFavoritesBatch);
+  const showFavoritesImportCard = Boolean(latestFavoritesBatch?.item_ids.length);
   const showSourceCollectorCard = Boolean(
     collectorDaemonStatus &&
       (running ||
@@ -419,6 +493,8 @@ export function FocusTimer() {
 
   const bootstrapFocusCollection = async (bootstrapToken: number) => {
     try {
+      const resolvedBatchConfig = resolveFocusWechatBatchConfigFromWindow();
+      setFocusWechatBatchConfig(resolvedBatchConfig);
       const headlessReady = await ensureHeadlessSourceCollector().catch(() => false);
       if (!isFocusBootstrapActive(bootstrapToken)) {
         return;
@@ -427,13 +503,36 @@ export function FocusTimer() {
         headlessReady
           ? t(
               "focus.headlessCollectEnabled",
-              "源页面采集已接入，微信真链采集将作为补充。",
+              "自动采集已开启，已立即检查剪贴板和来源列表。",
             )
           : t(
               "focus.headlessCollectFailed",
-              "源页面采集暂不可用，正在尝试微信真链采集。",
+              "自动采集暂不可用，正在尝试微信文章采集。",
             ),
       );
+      void runCollectorDaemonOnce({
+        output_language: preferences.language,
+        max_collect_per_cycle: resolvedBatchConfig.maxCollectPerCycle,
+      })
+        .then((result) => {
+          if (!isFocusBootstrapActive(bootstrapToken)) {
+            return;
+          }
+          if (result?.status) {
+            setCollectorDaemonStatus(result.status);
+          }
+          if ((result?.status?.favorites_auto_discovered_count || 0) > 0) {
+            setSessionMessage(
+              t(
+                "focus.clipboardCollectReady",
+                "已检测到剪贴板中的公众号链接，正在导入解析。",
+              ),
+            );
+          }
+        })
+        .catch(() => {
+          // keep the timer flow alive even when the collector run-once probe fails
+        });
 
       const status = await getWechatAgentStatus().catch(() => ({ running: false }));
       if (!isFocusBootstrapActive(bootstrapToken)) {
@@ -465,8 +564,9 @@ export function FocusTimer() {
 
       const batchResult = await runWechatAgentBatch({
         output_language: preferences.language,
-        total_items: 12,
-        segment_items: 6,
+        total_items: resolvedBatchConfig.totalItems,
+        segment_items: resolvedBatchConfig.segmentItems,
+        start_batch_index: resolvedBatchConfig.startBatchIndex,
       }).catch(() => null);
       if (!isFocusBootstrapActive(bootstrapToken)) {
         return;
@@ -490,7 +590,8 @@ export function FocusTimer() {
       window.sessionStorage.removeItem("anti_fomo_focus_start_loop_after_batch");
       await runWechatAgentOnce({
         output_language: preferences.language,
-        max_items: 6,
+        max_items: resolvedBatchConfig.runOnceMaxItems,
+        start_batch_index: resolvedBatchConfig.startBatchIndex,
       }).catch(() => null);
       if (!isFocusBootstrapActive(bootstrapToken)) {
         return;
@@ -569,7 +670,7 @@ export function FocusTimer() {
     setSessionMessage(
       t(
         "focus.sessionBootstrapping",
-        "倒计时已开始，后台正在接入专注会话与采集。",
+        "倒计时已开始，正在准备本轮记录和采集。",
       ),
     );
     void bootstrapFocusSession(bootstrapToken, selectedDuration);
@@ -629,7 +730,7 @@ export function FocusTimer() {
   const focusStatusTitle = paused
     ? t("focus.status.pausedTitle", "已暂停专注会话")
     : running && transportMode === "bootstrapping"
-      ? t("focus.status.bootstrappingTitle", "倒计时已启动，后台正在接入")
+      ? t("focus.status.bootstrappingTitle", "倒计时已启动")
       : running && transportMode === "local"
         ? t("focus.status.localTitle", "正在本地模式下专注")
         : running
@@ -897,17 +998,24 @@ export function FocusTimer() {
           </div>
         </div>
         {sessionMessage ? <p className="mt-3 text-xs text-slate-500">{sessionMessage}</p> : null}
+        {focusWechatBatchConfig.overrideActive ? (
+          <p className="mt-3 text-xs text-slate-500" data-testid="focus-wechat-batch-override">
+            测试批量：{focusWechatBatchConfig.totalItems} 条 · 每段{" "}
+            {focusWechatBatchConfig.segmentItems} 条 · 起始批次{" "}
+            {focusWechatBatchConfig.startBatchIndex}
+          </p>
+        ) : null}
       </section>
 
       {showSourceCollectorCard ? (
         <section className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="af-kicker">{t("focus.sourceCollectorKicker", "源页面采集")}</p>
+              <p className="af-kicker">{t("focus.sourceCollectorKicker", "自动采集")}</p>
               <p className="mt-2 text-base font-semibold text-slate-900">
                 {collectorDaemonStatus?.running
-                  ? t("focus.sourceCollectorRunning", "Headless 正在后台增量扫描")
-                  : t("focus.sourceCollectorLatest", "最近一轮源页面结果")}
+                  ? t("focus.sourceCollectorRunning", "正在整理最新内容")
+                  : t("focus.sourceCollectorLatest", "最近一轮采集结果")}
               </p>
               <p className="mt-1 text-sm text-slate-500">
                 {t("focus.sourceCollectorSourceCount", "已配置源")}{" "}
@@ -936,7 +1044,7 @@ export function FocusTimer() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
-              <p>{t("focus.sourceCollectorBodyRate", "正文命中")}</p>
+              <p>{t("focus.sourceCollectorBodyRate", "正文获取")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">
                 {formatRatioPercent(collectorDaemonStatus?.last_run_body_success_rate)}
               </p>
@@ -948,7 +1056,7 @@ export function FocusTimer() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
-              <p>{t("focus.sourceCollectorUrlFallback", "链接兜底")}</p>
+              <p>{t("focus.sourceCollectorUrlFallback", "链接补充")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">
                 {collectorDaemonStatus?.last_run_url_count || 0}
               </p>
@@ -965,7 +1073,25 @@ export function FocusTimer() {
                 {collectorDaemonStatus?.last_run_failed_count || 0}
               </p>
             </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>剪贴板链接</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {collectorDaemonStatus?.favorites_auto_discovered_count || 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>收藏导入</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                {(collectorDaemonStatus?.favorites_auto_imported_count || 0) +
+                  (collectorDaemonStatus?.favorites_auto_deduplicated_count || 0)}
+              </p>
+            </div>
           </div>
+          {collectorDaemonStatus?.favorites_auto_message ? (
+            <p className="mt-3 text-xs text-slate-500">
+              微信收藏：{collectorDaemonStatus.favorites_auto_message}
+            </p>
+          ) : null}
           {collectorDaemonStatus?.coverage_recommendation ? (
             <p className="mt-3 text-xs text-slate-500">{collectorDaemonStatus.coverage_recommendation}</p>
           ) : null}
@@ -1017,6 +1143,14 @@ export function FocusTimer() {
               wechatBatchStatus?.submitted_url_resolved || 0,
               wechatBatchStatus?.live_report_submitted_url_resolved || 0,
             );
+            const submittedUrlTabCopyLink = Math.max(
+              wechatBatchStatus?.submitted_url_tab_copy_link || 0,
+              wechatBatchStatus?.live_report_submitted_url_tab_copy_link || 0,
+            );
+            const submittedUrlTabBrowserOpen = Math.max(
+              wechatBatchStatus?.submitted_url_tab_browser_open || 0,
+              wechatBatchStatus?.live_report_submitted_url_tab_browser_open || 0,
+            );
             const submittedOcr = Math.max(
               wechatBatchStatus?.submitted_ocr || 0,
               wechatBatchStatus?.live_report_submitted_ocr || 0,
@@ -1065,13 +1199,13 @@ export function FocusTimer() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
-              <p>{t("focus.collectorSubmittedUrl", "链接入队")}</p>
+              <p>{t("focus.collectorSubmittedUrl", "链接导入")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">
                 {submittedUrl}
               </p>
             </div>
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
-              <p>{t("focus.collectorSubmittedOcr", "OCR 补录")}</p>
+              <p>{t("focus.collectorSubmittedOcr", "内容补录")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">
                 {submittedOcr}
               </p>
@@ -1095,7 +1229,7 @@ export function FocusTimer() {
               </p>
             </div>
           </div>
-          <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-500 md:grid-cols-3">
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-500 md:grid-cols-5">
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
               <p>{t("focus.collectorUrlDirect", "直接真链")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{submittedUrlDirect}</p>
@@ -1107,6 +1241,14 @@ export function FocusTimer() {
             <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
               <p>{t("focus.collectorUrlResolved", "真链恢复")}</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{submittedUrlResolved}</p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.collectorUrlTabCopy", "标签复制")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{submittedUrlTabCopyLink}</p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/70 px-3 py-2">
+              <p>{t("focus.collectorUrlTabBrowser", "标签浏览器")}</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{submittedUrlTabBrowserOpen}</p>
             </div>
           </div>
           {wechatBatchStatus?.last_message ? (
@@ -1122,6 +1264,61 @@ export function FocusTimer() {
               </>
             );
           })()}
+        </section>
+      ) : null}
+
+      {showFavoritesImportCard ? (
+        <section className="mt-5 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-muted)] px-4 py-4 text-sm text-[var(--af-text-secondary)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="af-kicker">微信收藏批处理</p>
+              <p className="mt-2 text-base font-semibold text-[var(--af-text-primary)]">
+                {latestFavoritesBatch?.status === "processing"
+                  ? "最近导入正在解析"
+                  : "最近导入可继续整理"}
+              </p>
+              <p className="mt-1 text-sm text-[var(--af-text-tertiary)]">
+                总计 {latestFavoritesBatch?.item_ids.length || 0} · 可处理{" "}
+                {latestFavoritesBatch?.ready || 0} · 解析中{" "}
+                {latestFavoritesBatch?.processing || 0} · 失败{" "}
+                {latestFavoritesBatch?.failed || 0} · 已处理{" "}
+                {latestFavoritesBatch?.triaged || 0}
+              </p>
+            </div>
+            <span
+              className={`af-chip px-3 py-1 text-xs font-medium ${favoriteBatchChipClass(
+                latestFavoritesBatch?.status || "",
+              )}`}
+            >
+              {favoriteBatchStatusLabel(latestFavoritesBatch?.status || "")}
+            </span>
+          </div>
+          <div className="af-progress-track mt-3 h-2 overflow-hidden rounded-full">
+            <div
+              className="af-progress-fill h-full rounded-full transition-all duration-500"
+              style={{ width: `${favoritesImportProgress}%` }}
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/" className="af-btn af-btn-secondary px-3 py-1.5 text-xs">
+              回首页处理队列
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (!goal) {
+                  const suggestedGoal =
+                    window.localStorage.getItem(WECHAT_FAVORITES_FOCUS_GOAL_KEY) ||
+                    "清理刚导入的微信收藏，保留值得沉淀的文章并形成知识库条目";
+                  setGoal(suggestedGoal);
+                  window.localStorage.setItem(SESSION_GOAL_KEY, suggestedGoal);
+                }
+              }}
+              className="af-btn af-btn-secondary px-3 py-1.5 text-xs"
+            >
+              使用收藏清理目标
+            </button>
+          </div>
         </section>
       ) : null}
 

@@ -37,11 +37,109 @@ _ROLE_PATTERN = re.compile(
     r"[:：]?\s*(?P<entity>[A-Za-z0-9\u4e00-\u9fff·（）()]{2,60})"
 )
 
-_ASSUMPTION_TOKENS = ("待核验", "待确认", "假设", "建议口径", "预计", "暂按", "可能")
-_RECOMMENDATION_TOKENS = ("建议", "推荐", "应当", "优先", "宜", "需要")
+_ASSUMPTION_TOKENS = (
+    "待核验",
+    "待确认",
+    "假设",
+    "建议口径",
+    "预计",
+    "将积极",
+    "将提升",
+    "暂按",
+    "可能",
+    "媒体线索",
+    "线索指向",
+    "该信号支持",
+    "当前来源未",
+    "现有来源未",
+    "当前证据未",
+    "当前有效公开材料",
+    "来源未提供",
+    "不代表已",
+    "尚未证实",
+    "未证实",
+    "未披露",
+    "未发现",
+    "强于",
+    "弱于",
+    "尚未",
+    "尚无可验证",
+    "未确认",
+    "需补充",
+    "需复核",
+    "需回查",
+    "需调取",
+    "当前未见",
+    "本轮公开证据",
+    "公开摘要未",
+    "覆盖不足",
+    "以招标文件",
+    "为准",
+    "不能基于现有来源",
+    "续建机会",
+    "潜在机会",
+    "机会判断",
+    "本报告将其定义为",
+)
+_RECOMMENDATION_TOKENS = (
+    "建议",
+    "推荐",
+    "应当",
+    "应以",
+    "应先",
+    "应从",
+    "应提供",
+    "应重点",
+    "应将",
+    "不应",
+    "不宜",
+    "不能将",
+    "不能据此",
+    "不得",
+    "优先",
+    "需要",
+    "需在",
+    "需以",
+    "需由",
+    "需按",
+    "需经",
+    "需反查",
+    "需下载",
+    "须",
+    "核验",
+    "准备",
+    "跟踪",
+    "追踪",
+    "关注",
+    "避免",
+    "宜采用",
+    "宜通过",
+    "宜将",
+    "宜定位为",
+    "可切入",
+    "可拆为",
+    "明确信息公示",
+)
+_ADVISORY_SECTION_TOKENS = (
+    "解决方案设计",
+    "销售策略",
+    "投标规划",
+    "陌生拜访",
+    "生态伙伴建议",
+    "下一步行动",
+    "solution design",
+    "sales strategy",
+    "bidding strategy",
+    "outreach strategy",
+    "next actions",
+)
 _PROCUREMENT_TOKENS = ("采购", "招标", "中标", "投标", "预算金额", "项目编号")
 _COMPLIANCE_TOKENS = ("等保", "信创", "密码", "数据安全", "网络安全", "合规")
 _SCENARIO_TOKENS = ("方案", "情景", "场景", "区间", "范围", "分档", "基准", "乐观", "悲观", "上限", "下限")
+_SOURCE_ATTRIBUTION_PATTERN = re.compile(
+    r"^(?:资料|证据|参考|发布)?来源\s*[:：]",
+    re.IGNORECASE,
+)
 
 _METRIC_TOKENS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("budget_amount", ("预算金额", "项目预算", "投资估算", "总投资", "预算")),
@@ -175,16 +273,23 @@ def _extract_numeric_facts(value: str) -> list[ResearchDeliveryNumericFactOut]:
     return rows[:12]
 
 
-def _claim_type(value: str, numeric_facts: Sequence[ResearchDeliveryNumericFactOut]) -> str:
+def _claim_type(
+    value: str,
+    numeric_facts: Sequence[ResearchDeliveryNumericFactOut],
+    *,
+    section_title: str = "",
+) -> str:
     if any(token in value for token in _ASSUMPTION_TOKENS):
         return "assumption"
+    if any(token in normalize_text(section_title).casefold() for token in _ADVISORY_SECTION_TOKENS):
+        return "recommendation"
     if any(token in value for token in _RECOMMENDATION_TOKENS):
         return "recommendation"
     if any(token in value for token in _PROCUREMENT_TOKENS):
         return "procurement"
     if any(token in value for token in _COMPLIANCE_TOKENS):
         return "compliance"
-    if numeric_facts:
+    if any(fact.metric != "calendar_year" for fact in numeric_facts):
         return "numeric"
     return "fact"
 
@@ -473,7 +578,7 @@ def build_delivery_evidence_ledger(
         section = normalize_text(raw_section)
         text = normalize_text(raw_text)
         key = (section, text)
-        if not text or key in seen_rows:
+        if not text or _SOURCE_ATTRIBUTION_PATTERN.match(text) or key in seen_rows:
             continue
         seen_rows.add(key)
         normalized_rows.append(key)
@@ -500,7 +605,7 @@ def build_delivery_evidence_ledger(
     claims: list[ResearchDeliveryClaimOut] = []
     for section_title, text in normalized_rows:
         numeric_facts = _extract_numeric_facts(text)
-        claim_type = _claim_type(text, numeric_facts)
+        claim_type = _claim_type(text, numeric_facts, section_title=section_title)
         claim = ResearchDeliveryClaimOut(
             claim_id=_stable_id("clm", section_title, claim_type, text),
             section_title=section_title,

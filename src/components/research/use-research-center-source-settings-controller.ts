@@ -20,16 +20,16 @@ const DEFAULT_SOURCE_SETTINGS: ApiResearchSourceSettings = {
   connector_statuses: [
     {
       key: "public_open_source_adapters",
-      label: "公开招采与行业源适配器",
+      label: "公开招采与行业来源",
       status: "active",
-      detail: "当前已接入公开招投标、政策讲话、行业媒体与聚合源；不绕过登录墙和付费墙。",
+      detail: "当前仅使用公开可访问来源。",
       requires_authorization: false,
     },
     {
       key: "curated_wechat_channels",
       label: "精选公众号观察池",
       status: "active",
-      detail: "优先补充公众号观察池，当前包含 云技术 / 智能超参数 / 数说123之算力大模型。",
+      detail: "补充云、算力和大模型主题线索。",
       requires_authorization: false,
     },
   ],

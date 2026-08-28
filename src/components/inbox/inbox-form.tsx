@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ApiResearchJob,
+  ApiResearchIndustrySkillLibrary,
   ApiKnowledgeEntry,
   ApiResearchReport,
   createItem,
@@ -12,6 +13,7 @@ import {
   createResearchConversation,
   createResearchJob,
   createTask,
+  getResearchIndustrySkills,
   getResearchJob,
   listKnowledgeEntries,
   refreshResearchSolutionIntelligence,
@@ -22,7 +24,10 @@ import { useAppPreferences } from "@/components/settings/app-preferences-provide
 import { LegacyResearchProgressCard } from "@/components/inbox/legacy-research-progress-card";
 import { ResearchHistoryList } from "@/components/inbox/research-history-list";
 import { ResearchReportCard } from "@/components/inbox/research-report-card";
+import { ResearchRecoveryCard } from "@/components/inbox/research-recovery-card";
+import { ResearchExperienceFeedback } from "@/components/inbox/research-experience-feedback";
 import { MultiFormatImportPanel } from "@/components/inbox/multiformat-import-panel";
+import { IndustrySkillPicker } from "@/components/inbox/industry-skill-picker";
 import { ResearchActionCardsPanel } from "@/components/research/research-action-cards-panel";
 import { dedupeByKey, dedupeTextList } from "@/lib/display-list";
 import { getGuardedRewriteReasonLabels, isGuardedBacklog } from "@/lib/research-diagnostics";
@@ -85,6 +90,11 @@ export function InboxForm() {
   });
   const [exportingFormalDocument, setExportingFormalDocument] = useState<ResearchFormalExportFormat>("");
   const [refreshingSolutionIntelligence, setRefreshingSolutionIntelligence] = useState(false);
+  const [industrySkillLibrary, setIndustrySkillLibrary] = useState<ApiResearchIndustrySkillLibrary | null>(null);
+  const [loadingIndustrySkills, setLoadingIndustrySkills] = useState(false);
+  const [useIndustrySkills, setUseIndustrySkills] = useState(true);
+  const [industrySkillIds, setIndustrySkillIds] = useState<string[]>([]);
+  const [industrySkillSelectionTouched, setIndustrySkillSelectionTouched] = useState(false);
   const [exportingSolutionArtifact, setExportingSolutionArtifact] = useState<
     "" | "market_intelligence_markdown" | "solution_delivery_markdown" | "solution_delivery_pptx"
   >("");
@@ -92,25 +102,51 @@ export function InboxForm() {
   const [savingResearchActions, setSavingResearchActions] = useState(false);
   const [seededConversationJobId, setSeededConversationJobId] = useState("");
   const researchDiagnostics = researchReport?.source_diagnostics || null;
+  const industrySkillQuery = [
+    researchReport?.keyword,
+    deliverySupplement.solution_scenario,
+    deliverySupplement.target_customer || deliverySupplement.project_owner,
+    deliverySupplement.vertical_scene,
+    deliverySupplement.supplemental_context,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const autoIndustrySkillIds = (industrySkillLibrary?.suggested_skills || []).slice(0, 3).map((skill) => skill.skill_id);
+  const effectiveIndustrySkillIds = industrySkillSelectionTouched ? industrySkillIds : autoIndustrySkillIds;
   const guardedReasonLabels = dedupeTextList(
     researchDiagnostics ? getGuardedRewriteReasonLabels(researchDiagnostics) : [],
   );
   const followupDiagnostics = researchReport?.followup_diagnostics || null;
-  const followupFilters = dedupeTextList([
-    ...(followupDiagnostics?.rebuilt_regions || []),
-    ...(followupDiagnostics?.rebuilt_industries || []),
-    ...(followupDiagnostics?.rebuilt_clients || []),
-  ]);
   const supportedTargetAccounts = dedupeTextList(researchDiagnostics?.supported_target_accounts || []);
   const unsupportedTargetAccounts = dedupeTextList(researchDiagnostics?.unsupported_target_accounts || []);
-  const enabledSourceLabels = dedupeTextList(researchDiagnostics?.enabled_source_labels || []);
-  const matchedSourceLabels = dedupeTextList(researchDiagnostics?.matched_source_labels || []);
-  const topicAnchorTerms = dedupeTextList(researchDiagnostics?.topic_anchor_terms || []);
-  const matchedThemeLabels = dedupeTextList(researchDiagnostics?.matched_theme_labels || []);
   const coreEntities = dedupeByKey(
     researchReport?.entity_graph?.entities || [],
     (entity) => String(entity?.canonical_name || "").trim(),
     6,
+  );
+  const researchInteractionState =
+    researchJob?.interaction_state
+    || researchReport?.interaction_state
+    || researchJob?.clarification_packet?.interaction_state
+    || researchReport?.clarification_packet?.interaction_state
+    || "ready";
+  const researchClarificationPacket =
+    researchJob?.clarification_packet || researchReport?.clarification_packet;
+  const researchFormalDeliveryAllowed = Boolean(
+    researchJob?.formal_delivery_allowed
+    ?? researchClarificationPacket?.formal_delivery_allowed
+    ?? (
+      researchReport?.research_evidence_gate?.formal_report_allowed
+      && researchReport?.research_citation_gate?.passed
+    ),
+  );
+  const showResearchReport = Boolean(
+    researchReport
+    && (
+      researchFormalDeliveryAllowed
+      || researchInteractionState === "provisional"
+      || researchClarificationPacket?.can_view_provisional
+    ),
   );
 
   useEffect(() => {
@@ -134,9 +170,23 @@ export function InboxForm() {
           setResearchMessage(t("inbox.researchCompleted", "研报已生成，可继续保存、导出或生成行动卡。"));
           return;
         }
+        if (job.status === "needs_evidence" && job.report) {
+          setResearching(false);
+          setResearchMessage(
+            job.interaction_state === "provisional"
+              ? "已生成可阅读草稿；补少量资料后可继续完成正式交付。"
+              : job.interaction_state === "system_degraded"
+                ? "系统能力暂时降级，已保留任务参数和已有证据。"
+                : t(
+                    "inbox.researchNeedsEvidence",
+                    "已保留有效来源，请按提示补充少量信息后继续。",
+                  ),
+          );
+          return;
+        }
         if (job.status === "failed") {
           setResearching(false);
-          setResearchError(job.error || t("inbox.error.researchFailed", "关键词研究失败，请稍后重试。"));
+          setResearchMessage("系统执行未完成，已保留任务参数，可从当前任务重试。");
           return;
         }
         window.setTimeout(() => {
@@ -168,7 +218,12 @@ export function InboxForm() {
   }, [researchJob?.id, researching, t]);
 
   useEffect(() => {
-    if (!researchJob?.id || !researchJob.report || researchJob.status !== "succeeded") {
+    if (
+      !researchJob?.id
+      || !researchJob.report
+      || researchJob.status !== "succeeded"
+      || researchJob.interaction_state !== "ready"
+    ) {
       return undefined;
     }
     if (seededConversationJobId === researchJob.id) {
@@ -200,7 +255,61 @@ export function InboxForm() {
     }
     setFollowupResearchFocus(researchReport.research_focus || researchReport.followup_context?.supplemental_requirements || "");
     setDeliverySupplement(buildResearchDeliverySupplement(researchReport));
+    setIndustrySkillIds([]);
+    setIndustrySkillSelectionTouched(false);
   }, [researchReport]);
+
+  useEffect(() => {
+    if (!researchReport) {
+      setIndustrySkillLibrary(null);
+      setLoadingIndustrySkills(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingIndustrySkills(true);
+    void getResearchIndustrySkills(industrySkillQuery)
+      .then((library) => {
+        if (!cancelled) setIndustrySkillLibrary(library);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIndustrySkillLibrary({
+            status: "unavailable",
+            catalog_version: "",
+            document_count: 0,
+            skill_count: 0,
+            available_industries: [],
+            knowledge_base: {
+              status: "unavailable",
+              document_count: 0,
+              full_text_document_count: 0,
+              ocr_document_count: 0,
+              ocr_pending_count: 0,
+              unsupported_count: 0,
+              passage_count: 0,
+              keyword_index_status: "unavailable",
+              vector_index_status: "unavailable",
+              vector_model: "",
+              requested_vector_model: "",
+              vector_fallback_reason: "",
+              hybrid_search_enabled: false,
+              warnings: [],
+            },
+            suggested_skills: [],
+            warnings: ["本地行业资料库暂不可读取，本次不会使用该资料技能。"],
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingIndustrySkills(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    researchReport,
+    industrySkillQuery,
+  ]);
 
   useEffect(() => {
     const refreshResearchHistory = async () => {
@@ -269,7 +378,7 @@ export function InboxForm() {
       .filter(Boolean);
 
     if (urls.length === 0) {
-      setError(t("inbox.error.enterBatch", "请先输入批量 URL（每行一个）。"));
+      setError(t("inbox.error.enterBatch", "请先输入链接，每行一个。"));
       return;
     }
 
@@ -411,8 +520,14 @@ export function InboxForm() {
     triggerFileDownload(filename, content, mimeType);
   };
 
+  const requireFormalDelivery = () => {
+    if (researchFormalDeliveryAllowed) return true;
+    setResearchMessage("当前是受限草稿，请先按恢复卡补齐证据并通过交付检查。");
+    return false;
+  };
+
   const saveCurrentResearch = async (asFocusReference = false) => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     if (asFocusReference) {
       setSavingResearchAsFocus(true);
     } else {
@@ -455,7 +570,7 @@ export function InboxForm() {
   };
 
   const exportCurrentResearch = async (format: "markdown" | "word" | "pdf") => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     setExportingResearchFormat(format);
     setResearchMessage("");
     try {
@@ -478,7 +593,7 @@ export function InboxForm() {
           ? t("inbox.researchExportedWord", "研究报告 Word 已导出")
           : format === "pdf"
             ? t("inbox.researchExportedPdf", "研究报告 PDF 已导出")
-            : t("inbox.researchExported", "研究报告 Markdown 已导出"),
+            : t("inbox.researchExported", "研究报告已导出"),
       );
     } catch {
       setResearchMessage(
@@ -486,7 +601,7 @@ export function InboxForm() {
           ? t("inbox.researchExportWordFailed", "导出 Word 失败，请稍后重试")
           : format === "pdf"
             ? t("inbox.researchExportPdfFailed", "导出 PDF 失败，请稍后重试")
-            : t("inbox.researchExportFailed", "导出 Markdown 失败，请稍后重试"),
+            : t("inbox.researchExportFailed", "导出失败，请稍后重试"),
       );
     } finally {
       setExportingResearchFormat("");
@@ -494,7 +609,7 @@ export function InboxForm() {
   };
 
   const exportFormalResearchDocument = async (format: Exclude<ResearchFormalExportFormat, "">) => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     setExportingFormalDocument(format);
     setResearchMessage("");
     const taskType =
@@ -540,7 +655,7 @@ export function InboxForm() {
   };
 
   const refreshSolutionIntelligence = async () => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     setRefreshingSolutionIntelligence(true);
     setResearchMessage("");
     try {
@@ -550,10 +665,17 @@ export function InboxForm() {
         target_customer: deliverySupplement.target_customer || deliverySupplement.project_owner,
         vertical_scene: deliverySupplement.vertical_scene,
         supplemental_context: deliverySupplement.supplemental_context,
+        use_industry_skills: useIndustrySkills,
+        industry_skill_ids: effectiveIndustrySkillIds,
         detail_level: "review_draft",
       });
       setResearchReport(nextReport);
-      setResearchMessage("已按当前场景/客户/垂直场景重建近三年情报包和方案交付大纲。");
+      const usedSkillCount = nextReport.solution_delivery_pack?.industry_skill_context?.selected_skills.length || 0;
+      setResearchMessage(
+        usedSkillCount
+          ? `已按当前场景重建情报包与方案大纲，并调用 ${usedSkillCount} 个本地行业资料技能。`
+          : "已按当前场景/客户/垂直场景重建近三年情报包和方案交付大纲。",
+      );
     } catch {
       setResearchMessage("重建近三年情报包和方案交付大纲失败，请稍后重试。");
     } finally {
@@ -564,7 +686,7 @@ export function InboxForm() {
   const exportSolutionArtifact = async (
     kind: "market_intelligence_markdown" | "solution_delivery_markdown" | "solution_delivery_pptx",
   ) => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     setExportingSolutionArtifact(kind);
     setResearchMessage("");
     const taskType =
@@ -604,7 +726,7 @@ export function InboxForm() {
   };
 
   const planResearchActions = async () => {
-    if (!researchReport) return;
+    if (!researchReport || !requireFormalDelivery()) return;
     setPlanningResearchActions(true);
     setResearchMessage("");
     try {
@@ -625,7 +747,7 @@ export function InboxForm() {
   };
 
   const saveCurrentResearchActions = async (asFocusReference = false) => {
-    if (!researchReport || researchActionCards.length === 0) return;
+    if (!researchReport || researchActionCards.length === 0 || !requireFormalDelivery()) return;
     setSavingResearchActions(true);
     setResearchMessage("");
     try {
@@ -654,7 +776,7 @@ export function InboxForm() {
     researchJob?.message ||
     t(
       "inbox.researchingDesc",
-      "正在汇总公开网页和公众号结果，并整理政策、预算、项目分期和销售/投标建议。",
+      "正在整理来源、提炼结论和下一步建议。",
     );
   const researchKeywordGroups = buildResearchKeywordGroups(
     researchJob?.keyword || researchKeyword,
@@ -667,8 +789,8 @@ export function InboxForm() {
       : t("inbox.mode.fast", "极速调研");
   const researchModeHint =
     activeResearchMode === "deep"
-      ? t("inbox.mode.deepHint", "多轮扩搜 + 定向信息源 + 更长综合研判，通常 5 分钟以上。")
-      : t("inbox.mode.fastHint", "优先官方与高信号来源，3 分钟内给出可执行初版。");
+      ? t("inbox.mode.deepHint", "更全面，预计 5 分钟以上。")
+      : t("inbox.mode.fastHint", "更快得到初版，约 3 分钟。");
   const researchEstimatedMinutes =
     researchJob?.estimated_seconds && researchJob.estimated_seconds > 0
       ? Math.max(1, Math.round(researchJob.estimated_seconds / 60))
@@ -690,7 +812,7 @@ export function InboxForm() {
       key,
       label:
         diagnosticStage?.label ||
-        (key === "fetch" ? "取数" : key === "clean" ? "清洗" : "分析"),
+        (key === "fetch" ? "收集" : key === "clean" ? "整理" : "生成"),
       value: Number(diagnosticStage?.value || 0),
       summary: diagnosticStage?.summary || defaultResearchPipelineSummary(key),
       status: statusValue,
@@ -739,7 +861,7 @@ export function InboxForm() {
 
           <section className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
             <label className="block text-sm font-semibold text-[var(--af-text-secondary)]">
-              {t("inbox.batchInput", "批量 URL 输入（每行一个，适合 30 篇公众号测试）")}
+              {t("inbox.batchInput", "批量 URL 输入")}
             </label>
             <textarea
               rows={6}
@@ -769,7 +891,7 @@ export function InboxForm() {
                 disabled={submitting}
                 className="af-btn af-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {t("inbox.submitBatch", "批量提交 URL")}
+                {t("inbox.submitBatch", "批量提交链接")}
               </button>
             </div>
             {batchMessage ? <p className="mt-2 text-xs text-emerald-700">{batchMessage}</p> : null}
@@ -818,14 +940,11 @@ export function InboxForm() {
             <p className="mt-1.5 max-w-[560px] text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">
               {t(
                 "inbox.keywordDesc",
-                "围绕公开网页和公众号内容，整理预算、招标、生态与客户线索。",
+                "整理机会、客户和下一步建议。",
               )}
             </p>
           </div>
-          <span
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-accent-soft)] text-[10px] font-semibold leading-none text-[var(--af-accent)]"
-            style={{ writingMode: "vertical-rl", textOrientation: "upright" }}
-          >
+          <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--af-accent)]">
             {t("inbox.keywordBadgeCn", "研究")}
           </span>
         </div>
@@ -847,7 +966,7 @@ export function InboxForm() {
           onChange={(event) => setResearchFocus(event.target.value)}
           placeholder={t(
             "inbox.keywordPromptPlaceholder",
-            "例如：围绕某行业/区域/项目方向，研究甲方需求、预算口径、竞品厂商、已落地案例、行业名单和可能招投标时间。",
+            "例如：研究某行业/区域的客户需求、预算、竞品和落地案例。",
           )}
           className="af-input mt-3 min-h-[104px] resize-none px-4 py-3 text-[13px] leading-6"
         />
@@ -883,7 +1002,7 @@ export function InboxForm() {
           <p className="text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">
             {t(
               "inbox.keywordHelper",
-              "建议输入“行业 + 场景 + 项目阶段/预算/中标/招标”等组合关键词，结果会更聚焦可推进的业务线索。",
+              "输入行业、场景或目标客户即可开始。",
             )}
           </p>
           <p className="text-[10px] leading-[1.7] text-[var(--af-text-tertiary)]">{researchModeHint}</p>
@@ -915,12 +1034,28 @@ export function InboxForm() {
           estimatedMinutes={researchEstimatedMinutes}
           keywordGroups={researchKeywordGroups}
           modeHint={researchModeHint}
-          activePipelineLabel={activePipelineStage?.label || "取数"}
+          activePipelineLabel={activePipelineStage?.label || "收集"}
           pipelineStages={researchPipelineStages}
         />
       ) : null}
 
-      {researchReport ? (
+      {researchJob?.clarification_packet?.active ? (
+        <ResearchRecoveryCard
+          job={researchJob}
+          onParentUpdated={(parentJob) => {
+            setResearchJob(parentJob);
+            if (parentJob.report) setResearchReport(parentJob.report);
+          }}
+          onRecoveryStarted={(childJob) => {
+            setResearchJob(childJob);
+            setResearching(true);
+            setResearchError("");
+            setResearchMessage("已保留当前证据，正在补检缺口并更新受影响章节。");
+          }}
+        />
+      ) : null}
+
+      {showResearchReport && researchReport ? (
         <div className="mt-5 space-y-5">
           <ResearchReportCard
             report={researchReport}
@@ -933,7 +1068,7 @@ export function InboxForm() {
             generatedAtLabel={t("inbox.researchGeneratedAt", "生成于")}
             saveLabel={t("inbox.researchSave", "加入知识库")}
             focusSaveLabel={t("inbox.researchSaveToFocus", "加入 Focus 参考")}
-            exportLabel={t("inbox.researchExport", "导出 Markdown")}
+            exportLabel={t("inbox.researchExport", "导出原文")}
             exportWordLabel={t("inbox.researchExportWord", "导出 Word")}
             exportPdfLabel={t("inbox.researchExportPdf", "导出 PDF")}
             savedLabel={t("inbox.researchOpenKnowledge", "查看知识卡片")}
@@ -944,6 +1079,8 @@ export function InboxForm() {
             exporting={exportingResearchFormat === "markdown"}
             exportingWord={exportingResearchFormat === "word"}
             exportingPdf={exportingResearchFormat === "pdf"}
+            formalDeliveryAllowed={researchFormalDeliveryAllowed}
+            runMetrics={researchJob?.metrics}
             onSave={() => {
               void saveCurrentResearch(false);
             }}
@@ -964,7 +1101,7 @@ export function InboxForm() {
               <ResearchActionCardsPanel
                 t={t}
                 title={t("research.actionCardsTitle", "下一步推进剧本")}
-                subtitle={t("research.actionCardsHint", "把账户、销售、投标与生态判断拆成可执行动作。")}
+                subtitle={t("research.actionCardsHint", "把结论整理成可执行动作。")}
                 cards={researchActionCards}
                 planning={planningResearchActions}
                 saving={savingResearchActions}
@@ -980,6 +1117,10 @@ export function InboxForm() {
               />
             }
           />
+          {researchJob?.id && !researching ? (
+            <ResearchExperienceFeedback jobId={researchJob.id} />
+          ) : null}
+          {researchFormalDeliveryAllowed ? (
           <section className="af-glass rounded-[30px] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -988,7 +1129,7 @@ export function InboxForm() {
                   补充信息并更新研报
                 </h3>
                 <p className="mt-2 text-sm text-[var(--af-text-tertiary)]">
-                  在当前研报基础上补充新信息、新证据和新需求，可继续生成新版研报，或直接导出可行性研究报告与项目建议书。
+                  补充新信息后更新研报，也可以直接导出正式文档。
                 </p>
               </div>
               <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs text-[var(--af-text-tertiary)]">
@@ -999,12 +1140,12 @@ export function InboxForm() {
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <p className="text-sm font-semibold text-[var(--af-text-primary)]">补充后重新整理</p>
                 <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                  把补充信息加入当前研报后，重新整理公开信息并输出新版研报。
+                  加入新的背景、证据或要求后重新生成。
                 </p>
                 {followupDiagnostics?.enabled ? (
                   <div className="mt-4 rounded-[20px] border border-amber-200/80 bg-amber-50/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                      补充信息状态
+                      更新状态
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
                       {followupDiagnostics.summary || "补充信息已纳入本次更新。"}
@@ -1014,63 +1155,9 @@ export function InboxForm() {
                         关注重点：{followupDiagnostics.planning_focus}
                       </p>
                     ) : null}
-                    {followupDiagnostics.input_sections?.length ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {followupDiagnostics.input_sections.map((label) => (
-                          <span key={`followup-input-${label}`} className="rounded-full bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    {followupFilters.length ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {followupFilters.map((label) => (
-                          <span
-                            key={`followup-filter-${label}`}
-                            className="rounded-full border border-amber-200 bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-amber-700"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    {followupDiagnostics.decomposition_queries?.length ? (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">优先补证子查询</p>
-                        <div className="space-y-2">
-                          {followupDiagnostics.decomposition_queries.slice(0, 4).map((query) => (
-                            <div key={`followup-query-${query}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-2 text-xs leading-5 text-[var(--af-text-secondary)]">
-                              {query}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {(followupDiagnostics.title_resolution || followupDiagnostics.summary_resolution) &&
-                    followupDiagnostics.enabled ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
-                          标题：
-                          {followupDiagnostics.title_resolution === "corrected"
-                            ? "已按追问纠偏"
-                            : followupDiagnostics.title_resolution === "reused"
-                              ? "沿用基线"
-                              : "基线生成"}
-                        </span>
-                        <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-[11px] text-[var(--af-text-secondary)]">
-                          摘要：
-                          {followupDiagnostics.summary_resolution === "corrected"
-                            ? "已按追问纠偏"
-                            : followupDiagnostics.summary_resolution === "reused"
-                              ? "沿用基线"
-                              : "基线生成"}
-                        </span>
-                      </div>
-                    ) : null}
                     {followupDiagnostics.impacted_sections?.length ? (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">重点影响章节</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">重点更新</p>
                         <div className="grid grid-cols-1 gap-2">
                           {followupDiagnostics.impacted_sections.slice(0, 4).map((section) => (
                             <div key={`followup-impact-${section.section_title}`} className="rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-3 text-xs leading-5 text-[var(--af-text-secondary)]">
@@ -1085,7 +1172,7 @@ export function InboxForm() {
                                         : "bg-[var(--af-surface-muted)] text-[var(--af-text-secondary)]"
                                   }`}
                                 >
-                                  影响度 {section.impact_score}
+                                  {section.impact_label === "high" ? "重点" : section.impact_label === "medium" ? "更新" : "参考"}
                                 </span>
                               </div>
                               <p className="mt-2">{section.reason}</p>
@@ -1123,7 +1210,7 @@ export function InboxForm() {
                   rows={4}
                   value={deliverySupplement.supplemental_context}
                   onChange={(event) => updateDeliverySupplementField("supplemental_context", event.target.value)}
-                  placeholder="补充你人工掌握的新背景、新约束、新判断，作为待交叉验证输入。"
+                  placeholder="补充新的背景、约束或判断。"
                   className="af-input mt-2 resize-none leading-6"
                 />
                 <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
@@ -1133,7 +1220,7 @@ export function InboxForm() {
                   rows={4}
                   value={deliverySupplement.supplemental_evidence}
                   onChange={(event) => updateDeliverySupplementField("supplemental_evidence", event.target.value)}
-                  placeholder="可粘贴新来源摘要、口径说明、会议纪要片段或待核验线索。"
+                  placeholder="粘贴新来源、会议纪要或待核验线索。"
                   className="af-input mt-2 resize-none leading-6"
                 />
                 <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--af-text-tertiary)]">
@@ -1143,12 +1230,12 @@ export function InboxForm() {
                   rows={4}
                   value={deliverySupplement.supplemental_requirements}
                   onChange={(event) => updateDeliverySupplementField("supplemental_requirements", event.target.value)}
-                  placeholder="例如：优先补业主单位、预算口径、项目边界、落地节奏与实施约束。"
+                  placeholder="例如：优先补项目边界、预算口径和落地节奏。"
                   className="af-input mt-2 resize-none leading-6"
                 />
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-xs text-[var(--af-text-tertiary)]">
-                    当前会带入上一版标题、执行摘要，以及上面三块补充信息后重新生成。
+                    将基于当前研报和补充信息更新。
                   </p>
                   <button
                     type="button"
@@ -1178,7 +1265,7 @@ export function InboxForm() {
               <div className="rounded-[24px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
                 <p className="text-sm font-semibold text-[var(--af-text-primary)]">正式文档与方案交付输出</p>
                 <p className="mt-1 text-xs leading-5 text-[var(--af-text-tertiary)]">
-                  先确认具体场景、目标客户和垂直场景，再导出近三年情报包、方案/PPT 大纲、可研和项目建议书。
+                  填写关键信息后导出可交付文件。
                 </p>
                 <div className="mt-4 grid grid-cols-1 gap-3">
                   <div>
@@ -1189,7 +1276,7 @@ export function InboxForm() {
                       type="text"
                       value={deliverySupplement.solution_scenario}
                       onChange={(event) => updateDeliverySupplementField("solution_scenario", event.target.value)}
-                      placeholder="例如：电商数字人 / 文旅AIGC平台 / AI营销平台 / 政务AI解决方案"
+                      placeholder="例如：文旅 AIGC 平台"
                       className="af-input mt-2"
                     />
                   </div>
@@ -1213,8 +1300,22 @@ export function InboxForm() {
                       type="text"
                       value={deliverySupplement.vertical_scene}
                       onChange={(event) => updateDeliverySupplementField("vertical_scene", event.target.value)}
-                      placeholder="例如：景区数字人导览 / 私域AI营销助手 / 政务热线AI坐席"
+                      placeholder="例如：景区数字人导览"
                       className="af-input mt-2"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <IndustrySkillPicker
+                      library={industrySkillLibrary}
+                      loading={loadingIndustrySkills}
+                      enabled={useIndustrySkills}
+                      selectedSkillIds={effectiveIndustrySkillIds}
+                      disabled={refreshingSolutionIntelligence}
+                      onEnabledChange={setUseIndustrySkills}
+                      onSelectionChange={(skillIds) => {
+                        setIndustrySkillSelectionTouched(true);
+                        setIndustrySkillIds(skillIds);
+                      }}
                     />
                   </div>
                   <div>
@@ -1297,7 +1398,7 @@ export function InboxForm() {
                     disabled={!!exportingSolutionArtifact}
                     className="af-btn af-btn-secondary border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {exportingSolutionArtifact === "market_intelligence_markdown" ? "导出中..." : "导出近三年情报包 Markdown"}
+                    {exportingSolutionArtifact === "market_intelligence_markdown" ? "导出中..." : "导出近三年情报包"}
                   </button>
                   <button
                     type="button"
@@ -1307,7 +1408,7 @@ export function InboxForm() {
                     disabled={!!exportingSolutionArtifact}
                     className="af-btn af-btn-primary px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {exportingSolutionArtifact === "solution_delivery_markdown" ? "导出中..." : "导出方案交付包 / PPT 大纲 Markdown"}
+                    {exportingSolutionArtifact === "solution_delivery_markdown" ? "导出中..." : "导出方案交付包 / PPT 大纲"}
                   </button>
                   <button
                     type="button"
@@ -1411,6 +1512,7 @@ export function InboxForm() {
               </div>
             </div>
           </section>
+          ) : null}
           <section className="af-glass rounded-[30px] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -1427,9 +1529,13 @@ export function InboxForm() {
               </span>
             </div>
             {researchReport.source_diagnostics ? (
-              <div className="mt-4 rounded-2xl border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+              <details className="mt-4 rounded-lg border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--af-text-secondary)]">
+                  来源检查明细
+                </summary>
+                <div className="mt-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--af-text-tertiary)]">
-                  {t("inbox.researchDiagnostics", "来源检查")}
+                  {t("inbox.researchDiagnostics", "来源概览")}
                 </p>
                 {isGuardedBacklog(researchReport.source_diagnostics) ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
@@ -1445,49 +1551,27 @@ export function InboxForm() {
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                   <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    {t("inbox.researchDiagnosticsEnabled", "启用源")} {enabledSourceLabels.length}
+                    来源 {researchReport.source_count}
                   </span>
                   <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    {t("inbox.researchDiagnosticsAdapters", "命中公开源")} {researchReport.source_diagnostics.adapter_hit_count}
+                    官方 {Math.round(researchReport.source_diagnostics.official_source_ratio * 100)}%
                   </span>
                   <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    {t("inbox.researchDiagnosticsSearch", "命中搜索源")} {researchReport.source_diagnostics.search_hit_count}
+                    质量 {qualityLabel(researchReport.source_diagnostics.retrieval_quality)}
                   </span>
-                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    近 {researchReport.source_diagnostics.recency_window_years} 年窗口
-                  </span>
-                  {researchReport.source_diagnostics.filtered_old_source_count ? (
-                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                      剔除过旧来源 {researchReport.source_diagnostics.filtered_old_source_count}
-                    </span>
-                  ) : null}
                   {researchReport.source_diagnostics.filtered_region_conflict_count ? (
                     <span className="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
-                      拦截越界区域 {researchReport.source_diagnostics.filtered_region_conflict_count}
+                      区域需复核 {researchReport.source_diagnostics.filtered_region_conflict_count}
                     </span>
                   ) : null}
-                  {researchReport.source_diagnostics.strict_topic_source_count ? (
-                    <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                      严格主题保留 {researchReport.source_diagnostics.strict_topic_source_count}
-                    </span>
-                  ) : null}
-                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    检索质量 {qualityLabel(researchReport.source_diagnostics.retrieval_quality)}
-                  </span>
-                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    严格命中 {Math.round(researchReport.source_diagnostics.strict_match_ratio * 100)}%
-                  </span>
-                  <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                    官方源 {Math.round(researchReport.source_diagnostics.official_source_ratio * 100)}%
-                  </span>
                   {researchReport.source_diagnostics.unique_domain_count ? (
                     <span className="rounded-full bg-[var(--af-surface-muted)] px-2.5 py-1 text-[var(--af-text-secondary)]">
-                      覆盖域名 {researchReport.source_diagnostics.unique_domain_count}
+                      覆盖 {researchReport.source_diagnostics.unique_domain_count} 个来源域
                     </span>
                   ) : null}
                   {researchReport.source_diagnostics.expansion_triggered ? (
                     <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
-                      已触发扩搜补证
+                      已补充搜索
                     </span>
                   ) : null}
                 </div>
@@ -1508,7 +1592,7 @@ export function InboxForm() {
                 {researchReport.source_diagnostics.normalized_entity_count ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                     <span className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
-                      实体归一化 {researchReport.source_diagnostics.normalized_entity_count}
+                      识别对象 {researchReport.source_diagnostics.normalized_entity_count}
                     </span>
                     <span className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
                       甲方 {researchReport.source_diagnostics.normalized_target_count}
@@ -1533,43 +1617,8 @@ export function InboxForm() {
                     ))}
                   </div>
                 ) : null}
-                {enabledSourceLabels.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {enabledSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2.5 py-1 text-xs text-[var(--af-text-secondary)]">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {matchedSourceLabels.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {matchedSourceLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {topicAnchorTerms.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {topicAnchorTerms.map((label) => (
-                      <span key={label} className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs text-violet-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                {matchedThemeLabels.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {matchedThemeLabels.map((label) => (
-                      <span key={label} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+                </div>
+              </details>
             ) : null}
             <div className="mt-4 space-y-4">
               {[
@@ -1621,7 +1670,15 @@ export function InboxForm() {
                               <span className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-2 py-0.5">
                                 {source.domain || "web"}
                               </span>
-                              <span>{source.search_query}</span>
+                              <span>
+                                {source.source_origin === "user_supplied"
+                                  ? "用户补充"
+                                  : source.source_origin === "snapshot_cache"
+                                    ? "沿用已有证据"
+                                    : source.source_origin === "adapter"
+                                      ? "定向来源"
+                                      : "公开检索"}
+                              </span>
                             </div>
                             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--af-text-primary)]">{source.title}</p>
                             <p className="mt-1 text-sm leading-6 text-[var(--af-text-secondary)]">{source.snippet}</p>

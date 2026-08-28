@@ -94,18 +94,18 @@ function localText(language: AppLanguage, key: string): string {
       ko: "새로고침",
     },
     ping: {
-      "zh-CN": "发送 Ping",
-      "zh-TW": "發送 Ping",
-      en: "Send Ping",
+      "zh-CN": "检查连接",
+      "zh-TW": "檢查連線",
+      en: "Check connection",
       ja: "Ping 送信",
       ko: "Ping 보내기",
     },
     markdown: {
-      "zh-CN": "导出 Markdown",
-      "zh-TW": "導出 Markdown",
-      en: "Export Markdown",
-      ja: "Markdown 出力",
-      ko: "Markdown 내보내기",
+      "zh-CN": "导出原文",
+      "zh-TW": "導出原文",
+      en: "Export source text",
+      ja: "本文を出力",
+      ko: "본문 내보내기",
     },
     readingList: {
       "zh-CN": "导出稍后读",
@@ -136,9 +136,9 @@ function localText(language: AppLanguage, key: string): string {
       ko: "내보내기 채널을 사용할 수 있습니다.",
     },
     messagePingDone: {
-      "zh-CN": "Ping 已返回 pong。",
-      "zh-TW": "Ping 已返回 pong。",
-      en: "Ping returned pong.",
+      "zh-CN": "连接正常。",
+      "zh-TW": "連線正常。",
+      en: "Connection is healthy.",
       ja: "Ping は pong を返しました。",
       ko: "Ping 이 pong 을 반환했습니다.",
     },
@@ -215,27 +215,27 @@ function localText(language: AppLanguage, key: string): string {
     gatewayReady: {
       "zh-CN": "官方服务：已连通",
       "zh-TW": "官方服務：已連通",
-      en: "Official gateway: reachable",
+      en: "Official service: reachable",
     },
     gatewayMissing: {
       "zh-CN": "官方服务：未配置",
       "zh-TW": "官方服務：未配置",
-      en: "Official gateway: not configured",
+      en: "Official service: not configured",
     },
     gatewayDown: {
       "zh-CN": "官方服务：已配置但未连通",
       "zh-TW": "官方服務：已配置但未連通",
-      en: "Official gateway: configured but unreachable",
+      en: "Official service: configured but unreachable",
     },
     gatewayUrl: {
       "zh-CN": "服务地址",
       "zh-TW": "服務位址",
-      en: "Gateway URL",
+      en: "Service URL",
     },
     gatewayHint: {
-      "zh-CN": "若要切到官方服务，需要先完成登录并启动对应服务。",
-      "zh-TW": "若要切到官方服務，需要先完成登入並啟動對應服務。",
-      en: "To switch to the Tencent official path, complete CodeBuddy login and start the official gateway first.",
+      "zh-CN": "切换官方服务前，请先完成登录并启动服务。",
+      "zh-TW": "切換官方服務前，請先完成登入並啟動服務。",
+      en: "Sign in and start the service before switching to the official path.",
     },
     rolesTitle: {
       "zh-CN": "当前实际作用",
@@ -243,9 +243,9 @@ function localText(language: AppLanguage, key: string): string {
       en: "Current Roles",
     },
     verifyHint: {
-      "zh-CN": "验证方法：先点 Ping，再触发导出任务；成功后下方会出现真实返回结果。",
-      "zh-TW": "驗證方式：先點 Ping，再觸發導出任務；成功後下方會出現真實返回結果。",
-      en: "Verification: ping first, then trigger an export task. Real output appears below on success.",
+      "zh-CN": "先检查连接，再执行一次导出验证。",
+      "zh-TW": "先檢查連線，再執行一次導出驗證。",
+      en: "Check the connection, then run one export test.",
     },
   };
   return pickText(language, map[key], key);
@@ -379,6 +379,9 @@ export function WorkBuddyPanel() {
                 ? "Tencent official account: connected"
                 : localText(language, "modeOfficialOff")}
             </p>
+            {health?.configured_model ? (
+              <p className="mt-2 text-xs text-slate-500">Model: {health.configured_model}</p>
+            ) : null}
             <div className="mt-3 space-y-1 text-xs text-slate-500">
               <p>
                 {health?.official_cli_detected

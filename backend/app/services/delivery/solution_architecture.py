@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from app.schemas.research import (
+    ResearchArchitectureAdrTableRowOut,
+    ResearchArchitectureDependencyWorkshopItemOut,
+    ResearchArchitectureStakeholderBriefOut,
+    ResearchArchitectureWorkshopAgendaItemOut,
     ResearchCustomerScenarioOut,
     ResearchDeliveryQualityMetricOut,
     ResearchMarketIntelligencePackOut,
@@ -10,6 +14,7 @@ from app.schemas.research import (
     ResearchSolutionArchitectureBlueprintSectionOut,
     ResearchSolutionArchitectureDecisionRecordOut,
     ResearchSolutionArchitectureReadinessOut,
+    ResearchSolutionArchitectureExportBundleOut,
     ResearchSolutionArchitectWorkbenchOut,
     ResearchSolutionCapabilityArchitectureMappingOut,
     ResearchSolutionDecisionCriterionOut,
@@ -18,6 +23,8 @@ from app.schemas.research import (
     ResearchSolutionStakeholderOut,
 )
 from app.services.content_extractor import normalize_text
+from app.services.delivery.decision_engineering import build_architecture_decision_engineering
+from app.services.delivery.executable_validation import build_proof_of_architecture
 
 
 _ARCHITECTURE_TERMS = ("架构", "接口", "API", "数据流", "系统边界", "集成", "中台", "私有化", "多租户", "运维")
@@ -630,4 +637,265 @@ def build_solution_architect_workbench(
         architecture_decision_records=architecture_decision_records,
         integration_dependencies=integration_dependencies,
         next_meeting_agenda=agenda,
+    )
+
+
+def _architecture_export_markdown(
+    bundle: ResearchSolutionArchitectureExportBundleOut,
+) -> str:
+    lines = [
+        "## 架构交付导出包",
+        f"- 框架: {bundle.framework_label}",
+        f"- ADR 决策: {len(bundle.adr_table)} 条",
+        f"- 依赖 workshop 项: {len(bundle.dependency_workshop_checklist)} 条",
+        f"- 技术 workshop 议程: {len(bundle.customer_technical_workshop_agenda)} 项",
+        "",
+        "### ADR 表",
+        "| 决策 | 选定方向 | Owner | 状态 | 关键风险 |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for row in bundle.adr_table:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    row.decision or "待补",
+                    row.selected_direction or "待确认",
+                    row.owner or "解决方案架构师",
+                    row.status,
+                    "；".join(row.risks[:2]) or "待补",
+                ]
+            )
+            + " |"
+        )
+    lines.extend(["", "### 集成依赖 workshop 清单"])
+    for item in bundle.dependency_workshop_checklist:
+        lines.extend(
+            [
+                f"- {item.dependency}（{item.risk_level} / {item.owner or '待确认 owner'}）",
+                f"  - 输入材料: {'；'.join(item.required_inputs[:4]) if item.required_inputs else '待补'}",
+                f"  - 核心问题: {'；'.join(item.workshop_questions[:3]) if item.workshop_questions else '待补'}",
+                f"  - 预期决策: {item.expected_decision or '待确认'}",
+            ]
+        )
+    brief = bundle.stakeholder_brief
+    lines.extend(
+        [
+            "",
+            "### Stakeholder Brief",
+            f"- 标题: {brief.title or '待补'}",
+            f"- 受众: {brief.audience or '待确认'}",
+            f"- 摘要: {brief.summary or '待补'}",
+            "- 关键信息:",
+            *[f"  - {message}" for message in brief.key_messages],
+            "- 决策问题:",
+            *[f"  - {question}" for question in brief.stakeholder_questions[:6]],
+        ]
+    )
+    lines.extend(["", "### 客户技术 workshop 议程"])
+    for item in bundle.customer_technical_workshop_agenda:
+        lines.extend(
+            [
+                f"- {item.topic}（{item.duration_minutes} 分钟 / {item.owner or '待确认 owner'}）",
+                f"  - 问题: {'；'.join(item.questions[:3]) if item.questions else '待补'}",
+                f"  - 输出: {'；'.join(item.expected_outputs[:3]) if item.expected_outputs else '待补'}",
+            ]
+        )
+    return "\n".join(lines).strip()
+
+
+def build_solution_architecture_export_bundle(
+    report: ResearchReportDocument,
+    *,
+    market_pack: ResearchMarketIntelligencePackOut,
+    pack: ResearchSolutionDeliveryPackOut,
+    architecture: ResearchSolutionArchitectureReadinessOut,
+    workbench: ResearchSolutionArchitectWorkbenchOut,
+) -> ResearchSolutionArchitectureExportBundleOut:
+    customer = pack.target_customer or (report.target_accounts[0] if report.target_accounts else "待确认客户")
+    scene = pack.vertical_scene or pack.scenario or report.keyword
+    adr_rows = [
+        ResearchArchitectureAdrTableRowOut(
+            decision=record.decision,
+            context=record.context,
+            selected_direction=record.selected_direction,
+            options=record.options,
+            tradeoffs=record.tradeoffs,
+            risks=record.risks,
+            validation_evidence=record.validation_evidence,
+            owner="解决方案架构师",
+            status="review_ready" if record.validation_evidence else "draft",
+        )
+        for record in workbench.architecture_decision_records
+    ]
+    dependency_items = [
+        ResearchArchitectureDependencyWorkshopItemOut(
+            dependency=dependency.dependency,
+            owner=dependency.operational_owner or "待确认 owner",
+            risk_level=dependency.risk_level,
+            source_system=dependency.source_system,
+            required_inputs=_dedupe_strings(
+                [
+                    dependency.api_or_data_contract,
+                    dependency.auth_boundary,
+                    dependency.deployment_assumption,
+                    *dependency.evidence[:3],
+                ],
+                limit=6,
+            ),
+            workshop_questions=_dedupe_strings(
+                [
+                    f"{dependency.source_system or dependency.dependency} 的当前责任 owner 是谁？",
+                    "一期必须打通、二期可延后和暂不接入的边界分别是什么？",
+                    "测试环境、样例数据、权限申请和安全评审窗口何时可用？",
+                    dependency.validation_action,
+                ],
+                limit=5,
+            ),
+            expected_decision="确认 owner、输入材料、接口/数据契约、风险等级和下一步验证动作。",
+            validation_action=dependency.validation_action,
+            evidence=dependency.evidence,
+        )
+        for dependency in workbench.integration_dependencies
+    ]
+    stakeholder_questions = _dedupe_strings(
+        [
+            question
+            for stakeholder in workbench.stakeholders
+            for question in stakeholder.decision_questions
+        ],
+        limit=10,
+    )
+    required_materials = _dedupe_strings(
+        [
+            material
+            for stakeholder in workbench.stakeholders
+            for material in stakeholder.required_materials
+        ],
+        limit=10,
+    )
+    decision_criteria = _dedupe_strings(
+        [
+            f"{criterion.criterion}: {criterion.validation_action or criterion.why_it_matters}"
+            for criterion in workbench.decision_criteria
+        ],
+        limit=8,
+    )
+    stakeholder_brief = ResearchArchitectureStakeholderBriefOut(
+        title=f"{customer} {scene} stakeholder brief",
+        audience="业务牵头人 / 信息化负责人 / 安全合规负责人 / 采购预算负责人",
+        summary=(
+            f"围绕 {scene} 把业务价值、系统集成、安全合规和采购节奏拆成可确认问题，"
+            "用于客户会前对齐和会后材料责任分工。"
+        ),
+        key_messages=_dedupe_strings(
+            [
+                architecture.summary,
+                report.executive_summary,
+                f"架构就绪度 {architecture.overall_score}/100，状态 {architecture.status}。",
+                f"来源支撑度 {pack.source_support_score}/100，正式对客前按证据口径处理假设。",
+                *pack.intelligence_summary[:2],
+            ],
+            limit=6,
+        ),
+        stakeholder_questions=stakeholder_questions,
+        required_materials=required_materials,
+        decision_criteria=decision_criteria,
+    )
+    agenda_items: list[ResearchArchitectureWorkshopAgendaItemOut] = []
+    for index, criterion in enumerate(workbench.decision_criteria[:4], start=1):
+        agenda_items.append(
+            ResearchArchitectureWorkshopAgendaItemOut(
+                topic=criterion.criterion,
+                owner="解决方案架构师" if index == 1 else "客户侧 owner",
+                duration_minutes=20 if index <= 2 else 15,
+                questions=_dedupe_strings(
+                    [
+                        criterion.validation_action,
+                        criterion.why_it_matters,
+                        *stakeholder_questions[index - 1 : index + 2],
+                    ],
+                    limit=4,
+                ),
+                expected_outputs=_dedupe_strings(
+                    [
+                        "确认可写入方案的事实、假设和待核验项。",
+                        "形成下一步材料责任人和时间点。",
+                        *(criterion.evidence[:2] or []),
+                    ],
+                    limit=4,
+                ),
+                source_refs=criterion.evidence,
+            )
+        )
+    for dependency in dependency_items[:3]:
+        agenda_items.append(
+            ResearchArchitectureWorkshopAgendaItemOut(
+                topic=f"依赖确认：{dependency.dependency}",
+                owner=dependency.owner,
+                duration_minutes=15,
+                questions=dependency.workshop_questions,
+                expected_outputs=[
+                    dependency.expected_decision,
+                    dependency.validation_action or "输出依赖确认结论和风险处理方式。",
+                ],
+                source_refs=dependency.evidence,
+            )
+        )
+    if not agenda_items:
+        agenda_items.append(
+            ResearchArchitectureWorkshopAgendaItemOut(
+                topic=f"{customer} {scene} 技术边界确认",
+                owner="解决方案架构师",
+                duration_minutes=30,
+                questions=architecture.stakeholder_questions[:4],
+                expected_outputs=["确认系统边界、数据边界、安全边界和下一步材料责任。"],
+                source_refs=[market_pack.source_scope_summary],
+            )
+        )
+    bundle = ResearchSolutionArchitectureExportBundleOut(
+        adr_table=adr_rows,
+        dependency_workshop_checklist=dependency_items,
+        stakeholder_brief=stakeholder_brief,
+        customer_technical_workshop_agenda=agenda_items[:8],
+    )
+    bundle.export_markdown = _architecture_export_markdown(bundle)
+    return bundle
+
+
+def build_solution_architecture_delivery(
+    report: ResearchReportDocument,
+    *,
+    market_pack: ResearchMarketIntelligencePackOut,
+    pack: ResearchSolutionDeliveryPackOut,
+) -> ResearchSolutionDeliveryPackOut:
+    architecture = build_solution_architecture_readiness(report, market_pack=market_pack, pack=pack)
+    workbench = build_solution_architect_workbench(
+        report,
+        market_pack=market_pack,
+        pack=pack,
+        architecture=architecture,
+    )
+    export_bundle = build_solution_architecture_export_bundle(
+        report,
+        market_pack=market_pack,
+        pack=pack,
+        architecture=architecture,
+        workbench=workbench,
+    )
+    engineering = build_architecture_decision_engineering(
+        report,
+        pack=pack,
+        architecture=architecture,
+        workbench=workbench,
+    )
+    proof = build_proof_of_architecture(report, engineering=engineering)
+    return pack.model_copy(
+        update={
+            "architecture_readiness": architecture,
+            "architect_workbench": workbench,
+            "architecture_export_bundle": export_bundle,
+            "architecture_decision_engineering": engineering,
+            "proof_of_architecture": proof,
+        }
     )

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from app.services.research.entity_ranking import rank_report_entities
+from app.services.research.entity_authenticity_gate import (
+    enforce_report_entity_authenticity,
+    sanitize_report_result_entities,
+)
 from app.services.research.entity_ranking_runtime import (
     build_entity_specific_contact_rows,
     build_entity_specific_team_rows,
@@ -142,6 +146,8 @@ def build_report_runtime_owner_ports() -> ReportRuntimeOwnerPorts:
             evidence_density_level=evidence_density_level,
             source_quality_level=source_quality_level,
             enrich_report_for_delivery=enrich_report_for_delivery,
+            sanitize_report_result_entities=sanitize_report_result_entities,
+            enforce_report_entity_authenticity=enforce_report_entity_authenticity,
             build_guarded_rewrite_title=bound_build_guarded_rewrite_title,
             source_max_age_years=SOURCE_MAX_AGE_YEARS,
         ),

@@ -13,6 +13,7 @@ from app.services.research.entity_policy import (
     PHONE_PATTERN,
     REGION_TOKENS,
     is_plausible_entity_name,
+    text_has_industry_conflict,
 )
 from app.services.research.entity_ranking_runtime import (
     build_entity_specific_team_rows,
@@ -63,6 +64,8 @@ def _extract_matching_sentences(
             if any(keyword in lowered for keyword in normalized_keywords):
                 if scope_hints and text_has_region_conflict(text, scope_hints=scope_hints):
                     continue
+                if scope_hints and text_has_industry_conflict(text, scope_hints=scope_hints):
+                    continue
                 sentences.append(truncate_text(text, 110))
     return dedupe_strings(sentences, limit)
 
@@ -80,6 +83,8 @@ def _extract_money_signals(
             end = min(len(text), match.end() + 26)
             candidate = truncate_text(text[start:end], 110)
             if scope_hints and text_has_region_conflict(candidate, scope_hints=scope_hints):
+                continue
+            if scope_hints and text_has_industry_conflict(candidate, scope_hints=scope_hints):
                 continue
             signals.append(candidate)
     if not signals:
@@ -490,7 +495,14 @@ def _ensure_minimum_rows(
     min_count: int = 3,
     limit: int = 6,
 ) -> list[str]:
-    rows = dedupe_strings(primary + backup, limit)
+    rows = dedupe_strings(
+        [
+            row
+            for row in [*primary, *backup]
+            if not text_has_industry_conflict(str(row), scope_hints=scope_hints)
+        ],
+        limit,
+    )
     if len(rows) >= min_count:
         return rows
     fill = _build_dimension_fallback_rows(
@@ -500,7 +512,14 @@ def _ensure_minimum_rows(
         dimension_label=dimension_label,
         limit=max(min_count, 3),
     )
-    return dedupe_strings(rows + fill, limit)
+    return dedupe_strings(
+        [
+            row
+            for row in [*rows, *fill]
+            if not text_has_industry_conflict(str(row), scope_hints=scope_hints)
+        ],
+        limit,
+    )
 
 def _extract_people_signals(sources: list[SourceDocument], *, limit: int) -> list[str]:
     rows = _extract_matching_sentences(

@@ -324,12 +324,12 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
                       </span>
                       {meta.diagnostics.uniqueDomainCount > 0 ? (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
-                          域名 {meta.diagnostics.uniqueDomainCount}
+                          来源 {meta.diagnostics.uniqueDomainCount}
                         </span>
                       ) : null}
                       {meta.diagnostics.normalizedEntityCount > 0 ? (
                         <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-700">
-                          归一化实体 {meta.diagnostics.normalizedEntityCount}
+                          实体校正 {meta.diagnostics.normalizedEntityCount}
                         </span>
                       ) : null}
                       {meta.diagnostics.scopeRegions.map((value) => (
@@ -359,17 +359,17 @@ export function ResearchHistoryList({ items }: { items: ApiKnowledgeEntry[] }) {
                       ))}
                       {meta.diagnostics.filteredOldSourceCount > 0 ? (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-500">
-                          剔除过旧来源 {meta.diagnostics.filteredOldSourceCount}
+                          过滤旧来源 {meta.diagnostics.filteredOldSourceCount}
                         </span>
                       ) : null}
                       {meta.diagnostics.filteredRegionConflictCount > 0 ? (
                         <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] text-rose-700">
-                          拦截越界区域 {meta.diagnostics.filteredRegionConflictCount}
+                          区域冲突 {meta.diagnostics.filteredRegionConflictCount}
                         </span>
                       ) : null}
                       {meta.diagnostics.correctiveTriggered ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] text-amber-700">
-                          已触发纠错检索
+                          已补充核查
                         </span>
                       ) : null}
                     </div>

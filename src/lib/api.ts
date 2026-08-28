@@ -20,7 +20,12 @@ export {
   createResearchReport,
   createResearchJob,
   getResearchJob,
+  getResearchJobClarification,
   getResearchJobTimeline,
+  submitResearchJobClarification,
+  submitResearchExperienceFeedback,
+  getResearchExperienceMetrics,
+  getResearchExperienceReadiness,
   listResearchConversations,
   createResearchConversation,
   getResearchConversation,
@@ -46,6 +51,18 @@ export {
   revokeResearchExperimentRollout,
   getResearchFollowupDeltaEvaluation,
   getResearchDeliveryExportDiagnostics,
+  getResearchUpgradeDiagnosticsPreview,
+  getResearchAssurancePreview,
+  getResearchIndustrySkills,
+  searchResearchIndustryKnowledge,
+  getResearchIndustryKnowledgeRetrievalBenchmark,
+  runResearchIndustryKnowledgeRetrievalBenchmark,
+  getResearchIndustryKnowledgeRetrievalAssurance,
+  exportResearchIndustryKnowledgeRetrievalApprovalTemplate,
+  exportResearchIndustryKnowledgeRetrievalEvidenceTemplates,
+  getResearchIndustryKnowledgeRetrievalEvidenceOperations,
+  exportResearchIndustryKnowledgeRetrievalEvidenceOperationsTemplates,
+  buildResearchIndustryKnowledgeDeliveryReview,
   buildResearchSectionRetrievalPacks,
   buildResearchSolutionDeliveryPack,
   refreshResearchSolutionIntelligence,
@@ -105,6 +122,9 @@ export {
 export {
   getCollectorStatus,
   getCollectorDaemonStatus,
+  getCollectorDaemonConfig,
+  updateCollectorDaemonConfig,
+  verifyCollectorBrowserExtension,
   startCollectorDaemon,
   stopCollectorDaemon,
   runCollectorDaemonOnce,
@@ -166,11 +186,23 @@ export {
 
 export {
   getApiHealth,
+  getInternalSkillGovernance,
   getLLMConfig,
+  getModelControlPlane,
+  getReleaseReadiness,
   runLLMDryRun,
+  scanSupportedModels,
+  upgradeToStrongestModels,
 } from "@/lib/api/system";
 
+export {
+  getCompetitiveLandscape,
+  getCompetitiveLandscapePreview,
+  seedCompetitiveLandscape,
+} from "@/lib/api/competitive-intelligence";
+
 export type * from "@/lib/api/types";
+export type * from "@/lib/api/type-contracts/competitive-intelligence";
 
 export function toFeedCardLabel(action: string | null): "立即深读" | "稍后精读" | "可放心忽略" {
   if (action === "deep_read") return "立即深读";

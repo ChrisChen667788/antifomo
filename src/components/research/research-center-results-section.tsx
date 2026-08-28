@@ -35,7 +35,7 @@ export function ResearchCenterResultsSection({
           <section className="af-glass rounded-[30px] p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="af-kicker">{t("research.centerResultKicker", "Workspace")}</p>
+                <p className="af-kicker">{t("research.centerResultKicker", "工作台")}</p>
                 <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[var(--af-text-primary)]">
                   {t("research.centerResultTitle", "研究结果工作台")}
                 </h3>
@@ -56,7 +56,7 @@ export function ResearchCenterResultsSection({
               </div>
             ) : (
               <p className="mt-4 text-sm text-[var(--af-text-tertiary)]">
-                {t("research.centerNoFilterHint", "当前展示全部研报与行动卡，可从左侧按区域、行业或动作类型快速收窄。")}
+                {t("research.centerNoFilterHint", "当前展示全部内容，可从左侧快速筛选。")}
               </p>
             )}
           </section>
@@ -141,12 +141,12 @@ export function ResearchCenterResultsSection({
                                 官方源 {Math.round(diagnosticsMeta.officialSourceRatio * 100)}%
                               </span>
                               <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
-                                严格命中 {Math.round(diagnosticsMeta.strictMatchRatio * 100)}%
+                                主题匹配 {Math.round(diagnosticsMeta.strictMatchRatio * 100)}%
                               </span>
                             </div>
                             <p className="mt-2 text-xs leading-5 text-[var(--af-text-tertiary)]">
                               {diagnosticsMeta.correctiveTriggered
-                                ? "已补充核验，优先看新增官方来源和严格命中结果。"
+                                ? "已补充核验，优先查看新增官方来源和主题匹配结果。"
                                 : diagnosticsMeta.expansionTriggered
                                   ? "已扩展来源，建议继续核对关键实体和范围。"
                                   : "当前展示的是本次来源可信度摘要。"}
@@ -373,14 +373,14 @@ export function ResearchCenterResultsSection({
                             来源质量 {diagnosticsMeta.retrievalQuality === "high" ? "高" : diagnosticsMeta.retrievalQuality === "medium" ? "中" : "低"}
                           </span>
                           <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
-                            严格命中 {Math.round(diagnosticsMeta.strictMatchRatio * 100)}%
+                            主题匹配 {Math.round(diagnosticsMeta.strictMatchRatio * 100)}%
                           </span>
                           <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
                             官方源 {Math.round(diagnosticsMeta.officialSourceRatio * 100)}%
                           </span>
                           {diagnosticsMeta.uniqueDomainCount > 0 ? (
                             <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
-                              域名 {diagnosticsMeta.uniqueDomainCount}
+                              来源 {diagnosticsMeta.uniqueDomainCount}
                             </span>
                           ) : null}
                           {diagnosticsMeta.scopeRegions.map((value) => (
@@ -410,17 +410,17 @@ export function ResearchCenterResultsSection({
                           ))}
                           {diagnosticsMeta.filteredOldSourceCount > 0 ? (
                             <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
-                              {t("research.sourceDiagnosticsFilteredOld", "剔除过旧来源")} {diagnosticsMeta.filteredOldSourceCount}
+                              {t("research.sourceDiagnosticsFilteredOld", "过滤旧来源")} {diagnosticsMeta.filteredOldSourceCount}
                             </span>
                           ) : null}
                           {diagnosticsMeta.filteredRegionConflictCount > 0 ? (
                             <span className="rounded-full af-chip af-chip-danger px-2.5 py-1 text-[11px] ">
-                              拦截越界区域 {diagnosticsMeta.filteredRegionConflictCount}
+                              区域冲突 {diagnosticsMeta.filteredRegionConflictCount}
                             </span>
                           ) : null}
                           {diagnosticsMeta.strictTopicSourceCount > 0 ? (
                             <span className="rounded-full af-chip px-2.5 py-1 text-[11px] ">
-                              {t("research.sourceDiagnosticsStrictTopic", "严格主题保留")} {diagnosticsMeta.strictTopicSourceCount}
+                              {t("research.sourceDiagnosticsStrictTopic", "主题相关来源")} {diagnosticsMeta.strictTopicSourceCount}
                             </span>
                           ) : null}
                           {diagnosticsMeta.normalizedEntityCount > 0 ? (

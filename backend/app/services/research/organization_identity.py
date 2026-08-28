@@ -4,6 +4,7 @@ from functools import lru_cache
 import re
 
 from app.services.content_extractor import extract_domain, normalize_text
+from app.services.research.entity_authenticity import evaluate_organization_name, repair_organization_candidate
 from app.services.research.entity_policy import (
     COMPACT_ENTITY_PATTERN,
     ENTITY_SUFFIX_TOKENS,
@@ -334,10 +335,27 @@ def extract_rank_entity_candidates(
         if any(alias in text for alias in org_surface_variants(canonical))
     )
     filtered: list[str] = []
+    known_names = (
+        *KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS,
+        *SPECIAL_ENTITY_ALIASES,
+        *KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
+        *scope_org_names(scope_hints),
+    )
     for candidate in candidates:
+        candidate = repair_organization_candidate(candidate, known_names=known_names)
         normalized = resolve_known_org_name(candidate, scope_hints=scope_hints)
         normalized = strip_entity_leading_noise(trim_product_spec_from_entity_name(normalized))
-        if not (is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
+        decision = evaluate_organization_name(
+            normalized,
+            known_names=known_names,
+            trusted_known_names=(
+                *KNOWN_COMPANY_PUBLIC_SOURCE_SEEDS,
+                *SPECIAL_ENTITY_ALIASES,
+                *KNOWN_LIGHTWEIGHT_ENTITY_NAMES,
+            ),
+        )
+        normalized = decision.normalized_name
+        if not (decision.accepted or is_plausible_entity_name(normalized) or is_lightweight_entity_name(normalized)):
             continue
         if looks_like_fragment_entity_name(normalized):
             continue

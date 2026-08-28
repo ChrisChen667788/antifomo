@@ -311,7 +311,7 @@ export function FeedDeck({ items, onItemTriaged }: FeedDeckProps) {
             ) : null}
             {(current.topicMatchScore !== undefined || current.sourceMatchScore !== undefined) ? (
               <p className="mt-3 text-xs text-[var(--af-text-tertiary)]">
-                {t("feed.deck.preferenceScore", "偏好命中")} · Topic {Math.round(current.topicMatchScore ?? 0)} / Source{" "}
+                {t("feed.deck.preferenceScore", "偏好匹配")} · 主题 {Math.round(current.topicMatchScore ?? 0)} / 来源{" "}
                 {Math.round(current.sourceMatchScore ?? 0)}
               </p>
             ) : null}

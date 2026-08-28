@@ -20,10 +20,7 @@ export function ResearchCenterSourceSettingsSection({
                 {t("research.centerSourcePanelKicker", "Research Sources")}
               </p>
               <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
-                {t(
-                  "research.centerSourcePanelDesc",
-                  "将公开招投标与行业媒体流并入研报线索池。当前仅抓取公开页面，不绕过登录或付费墙。",
-                )}
+                {t("research.centerSourcePanelDesc", "使用公开可访问来源补充线索。")}
               </p>
             </div>
             <div className="rounded-full border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--af-text-tertiary)]">
@@ -73,7 +70,7 @@ export function ResearchCenterSourceSettingsSection({
                 title: t("research.centerSourceCcgp", "政府采购合规聚合"),
                 desc: t(
                   "research.centerSourceCcgpDesc",
-                  "以公开、合规、稳定的采购聚合源替代直抓政府采购网，补充采购人、预算和中标线索。",
+                  "补充采购人、预算和中标线索。",
                 ),
                 enabled: !!sourceSettings?.enable_ccgp_feed,
               },
@@ -100,7 +97,7 @@ export function ResearchCenterSourceSettingsSection({
                 title: t("research.centerSourceCuratedWechat", "精选公众号观察池"),
                 desc: t(
                   "research.centerSourceCuratedWechatDesc",
-                  "优先把云技术、智能超参数、数说123之算力大模型纳入公众号观察池，增强云、算力和大模型主题线索。",
+                  "补充云、算力和大模型主题线索。",
                 ),
                 enabled: !!sourceSettings?.enable_curated_wechat_channels,
               },

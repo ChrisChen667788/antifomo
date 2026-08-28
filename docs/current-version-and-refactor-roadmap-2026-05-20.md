@@ -1,15 +1,16 @@
 # Current Version, History, and Refactor Roadmap
 
-Updated: 2026-06-21
+Updated: 2026-08-14
 
-This document is the completion record and operating baseline for the modular architecture, measured research workflow, day/night design-system work, and the `1.8.0` professional-report quality line through `2026-06-22`.
+This document is the completion record and operating baseline for the modular architecture, measured research workflow, the `1.8.0` professional-report compiler, the `1.9.1` executable architecture-evidence line, the locally implemented `2.2.0-development` Decision Program, and the `2.2.1` through `2.9.5-development` clarification, field-quality, customer-delivery-truth, retrieval-assurance, and evidence-operations line through `2026-08-14`.
 
 ## Current State
 
 Current release metadata:
 
 - Previous major product baseline: `1.0.0+20260520`.
-- Current release: `1.8.0+20260622`, completing the professional-report quality line through P2.7 while retaining LangGraph parity, independent review, live-budget controls, and the `1.7.2` expert scope corrections.
+- Current development version: `2.9.5+20260814`, adding immutable retrieval evidence envelopes, artifact inventory/lineage, freshness, role separation, incident/revocation records, canonical evidence-package digests, independent audit handoff, and a second fail-closed release gate on top of retrieval assurance.
+- Release promotion: `blocked` until the clarification line's real cross-industry task and feedback thresholds, the existing 100+30 expert calibration, three-industry blind evaluation, customer acceptance, and final Office/visual/security artifacts are complete and valid; automated tests and generated manifests do not substitute for human approval.
 - Local databases, environment files, private miniapp configuration, and backup artifacts remain ignored and outside release commits.
 
 Current completion status:
@@ -17,6 +18,16 @@ Current completion status:
 - WeChat-heavy local-first intake is connected end to end.
 - Homepage triage can recover the latest WeChat Favorites import queue after reload.
 - Research generation, compare, archive, delivery export, focus sessions, collector operations, and knowledge/commercial hub are usable product surfaces.
+- Decision Studio is available at `/studio`; its API is rooted at `/api/decision-studio`, and its model route is visible in the system model control plane.
+- Decision Studio artifacts are compiled only from accepted Claims with passage-level source-revision lineage; source replacement, revocation, or expiry marks dependent artifacts stale and blocks reuse.
+- Evidence-light research now returns a bounded draft or a structured recovery request instead of an empty terminal result when policy permits; accepted evidence is retained across idempotent parent/child continuation.
+- Inbox research defaults to outcome, missing input, and next action; raw gate enums, version labels, query plans, and pipeline diagnostics are kept behind an advanced disclosure.
+- Formal report saves, action plans, solution packs, and formal export tasks fail closed until both evidence and citation delivery gates pass.
+- Research-experience telemetry aggregates recovery conversion, provenance, replay, stale continuation, user feedback, and cross-industry sample coverage without treating generated fixtures as human acceptance.
+- The Research Assurance control plane aggregates 15 post-2.5.0 engineering and evidence rounds from persisted reports and actual artifacts; it is intentionally read-only and maintains `blocked` for missing human or visual evidence.
+- The retrieval assurance control plane independently aggregates 15 `2.6.6-2.8.0` rounds. It binds every review/approval/runtime artifact to the same fixed retrieval snapshot and preserves `baseline_hybrid` until external evidence is complete.
+- The retrieval evidence-operations control plane independently aggregates 15 `2.8.1-2.9.5` rounds. It adds artifact inventory, binding, freshness, chronology, incident/revocation and independent-handoff verification, then feeds the result into release readiness without changing the production default.
+- The release state remains `blocked`: local implementation tests do not satisfy 300-query human qrels, expert calibration, three-industry blind evaluation, customer acceptance, production signing/benchmark, or final Office/visual/security evidence.
 - Research Center is now split into a controller hook plus focused presentation sections; the page shell is mostly composition.
 - Collector Ops now separates request/action orchestration from daemon and WeChat-agent presentation sections.
 - Collector Ops WeChat agent presentation is now split by runtime status, batch route quality, logs, preview/OCR, and configuration.
@@ -42,7 +53,8 @@ Current completion status:
 
 Latest verified checks from the current work line:
 
-- `npm run check` passed: ESLint, 16 frontend tests, production build, and 345 backend tests.
+- 2026-07-26 verification passed: 565 backend tests, 31 frontend tests, ESLint, the Next.js production build, the live `20260726_0029` migration, readiness API smoke, formal-delivery HTTP `409` guard, and desktop/mobile recovery-card browser checks. Human acceptance and release evidence remain blocked.
+- 2026-07-16 verification passed: ESLint, 25 frontend tests, the production build including `/studio`, 472 backend tests, the reversible Decision Studio migration check, and a real BGE-M3/MPS semantic-index smoke test using an externally configured Hugging Face cache.
 - `npm run security:scan` and `npm run security:scan:history` passed for the current tree and all local refs.
 - The research evaluation dataset is locked at `1.2.0`; all 100 cases pass the zero-cost deterministic/LangGraph parity gate. Live-provider evaluation remains blocked until the scope-corrected cases receive independent post-change approval and an explicit budget is approved.
 - The screenshot manifest validates 30 accepted files across light and dark themes; `npm run repo:screenshots` passed after P2.2.
@@ -1809,3 +1821,18 @@ Verified:
 - `npm run lint`
 - `npm run build`
 - `git diff --check`
+
+### 2026-07-16: Decision Studio 2.0.1-2.0.6 Release Program
+
+Scope:
+
+- Added preview-first, idempotent activation from existing `KnowledgeEntry` and succeeded `ResearchJob` records into provenance-bound Decision Notebooks.
+- Added 13 server-owned acceptance calculators spanning retrieval, parsing, formal documents, Claim compilation, independent report/entity review, permissions, Skill security, cross-artifact consistency, Office/visual checks, performance/cost, and recovery/audit reliability.
+- Added append-only `decision_validation_runs`, Alembic revision `20260716_0027`, canonical input digests, reviewer separation, attestations, raw artifact references, and a SHA-256 audit chain.
+- Added release-program, validation, activation, audit-export, and reliability-probe APIs plus CI-oriented CLI commands.
+- Extended `/studio` with real-data activation and a 2.0.1-2.0.6 milestone console; updated package/readiness metadata to `2.0.6-development`.
+
+Evidence policy:
+
+- Engineering implementation is complete locally, but release promotion remains `blocked` until every external suite has real raw artifacts and reviewer evidence and all inherited `1.8.4-1.9.1` gates pass.
+- Full thresholds, API contracts, commands, and promotion rules are maintained in `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`.

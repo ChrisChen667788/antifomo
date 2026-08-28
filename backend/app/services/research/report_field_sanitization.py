@@ -2,9 +2,230 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+import re
 from typing import Pattern
 
 from app.services.content_extractor import normalize_text
+
+
+_TENDER_TIME_PATTERN = re.compile(
+    r"(?:20\d{2}(?:年|年度)?|Q[1-4]|[一二三四1-4]季度|上半年|下半年|本季度|下季度|"
+    r"\d{1,2}\s*月|未来|近期|本月|下月|财政周期|预算周期|窗口期)",
+    re.IGNORECASE,
+)
+_TENDER_EVENT_TOKENS = (
+    "采购",
+    "招标",
+    "招采",
+    "中标",
+    "开标",
+    "比选",
+    "立项",
+    "预算",
+    "合同",
+    "采购意向",
+    "申报",
+    "窗口",
+)
+_PERSON_ROW_PATTERN = re.compile(
+    r"^(?P<name>[\u4e00-\u9fa5·]{2,4})(?P<role>书记|市长|副市长|局长|副局长|厅长|副厅长|"
+    r"主任|副主任|董事长|总经理|总裁|副总裁|院长|校长|负责人)[：:]"
+)
+_PERSON_NAME_NOISE_TOKENS = (
+    "省长",
+    "市长",
+    "书记",
+    "局长",
+    "厅长",
+    "主任",
+    "政府",
+    "国资",
+    "数据",
+    "公司",
+    "集团",
+    "中心",
+    "部门",
+    "单位",
+    "委",
+    "局",
+)
+_PEER_MOVE_ACTION_TOKENS = (
+    "发布",
+    "建设",
+    "采购",
+    "招标",
+    "中标",
+    "成交",
+    "上线",
+    "落地",
+    "启动",
+    "推进",
+    "扩容",
+    "签约",
+    "合作",
+    "部署",
+    "投入",
+    "试点",
+)
+_OUTLOOK_TOKENS = (
+    "未来",
+    "预计",
+    "预期",
+    "有望",
+    "趋势",
+    "演进",
+    "走向",
+    "或将",
+    "将从",
+    "会从",
+    "五年",
+    "到2030",
+    "至2030",
+    "到2035",
+    "至2035",
+)
+_OUTLOOK_CHANGE_TOKENS = (
+    "二期",
+    "三期",
+    "四期",
+    "扩容",
+    "升级",
+    "平台化",
+    "统建",
+    "根据规划",
+)
+_STRATEGIC_DIRECTION_TOKENS = (
+    "战略",
+    "方向",
+    "目标",
+    "重点",
+    "推进",
+    "深化",
+    "提升",
+    "打造",
+    "构建",
+    "转向",
+    "一体化",
+    "智能化",
+    "数字化",
+    "平台化",
+    "统建",
+)
+_COMPETITION_TOKENS = (
+    "竞争",
+    "竞品",
+    "替代",
+    "差异化",
+    "优势",
+    "劣势",
+    "壁垒",
+    "份额",
+    "中标",
+    "入围",
+    "既有厂商",
+)
+_PROJECT_PHASE_TOKENS = (
+    "一期",
+    "二期",
+    "三期",
+    "四期",
+    "扩建",
+    "扩容",
+    "续建",
+    "落地",
+    "试点",
+    "分布",
+)
+_FIELD_LABEL_NOISE_PREFIXES = (
+    "在",
+    "随着",
+    "推广",
+    "落实",
+    "根据",
+    "有关",
+    "相关",
+)
+_GENERIC_DEPARTMENT_LABELS = {
+    "政府办公室",
+    "政府办公厅",
+    "数据局",
+    "大数据局",
+    "政务服务部门",
+    "采购部",
+    "采购部门",
+    "信息中心",
+}
+_DOCUMENT_TITLE_TOKENS = (
+    "关于印发",
+    "最新公报",
+    "政府办公室(厅)文件",
+    "公开 招标 公告",
+    "公开招标公告",
+    "再迎利好",
+    "市县动态",
+    "打造智慧政务新标杆",
+    "网易订阅",
+)
+_PROCUREMENT_DOCUMENT_TITLE_PATTERN = re.compile(
+    r"关于.{2,80}(?:采购|招标|中标|成交|项目).{0,16}(?:公告|公示|通知)$"
+)
+_PLACEHOLDER_QUANTITY_PATTERN = re.compile(r"(?:^|[^A-Za-z])(?:N|X|XX)\s*(?:项|个|家|条)(?:[^A-Za-z]|$)", re.IGNORECASE)
+
+
+def _looks_like_document_title_row(value: str) -> bool:
+    normalized = normalize_text(value)
+    return (
+        any(token in normalized for token in _DOCUMENT_TITLE_TOKENS)
+        or "|" in normalized
+        or "｜" in normalized
+        or "_网易" in normalized
+        or bool(_PROCUREMENT_DOCUMENT_TITLE_PATTERN.search(normalized))
+        or (" - " in normalized and any(token in normalized for token in ("政府", "科技局", "人民政府")))
+    )
+
+
+def _is_tender_timeline_row(value: str) -> bool:
+    return bool(_TENDER_TIME_PATTERN.search(value)) and any(token in value for token in _TENDER_EVENT_TOKENS)
+
+
+def _is_key_person_row(value: str) -> bool:
+    match = _PERSON_ROW_PATTERN.match(value)
+    if not match:
+        return False
+    name = match.group("name")
+    return not any(token in name for token in _PERSON_NAME_NOISE_TOKENS)
+
+
+def _is_peer_move_row(value: str) -> bool:
+    normalized = normalize_text(value)
+    if _looks_like_document_title_row(normalized) or _PLACEHOLDER_QUANTITY_PATTERN.search(normalized):
+        return False
+    parts = re.split(r"[：:]", normalized, maxsplit=1)
+    if len(parts) == 2:
+        label, detail = (normalize_text(part) for part in parts)
+        if (
+            not label
+            or len(label) > 36
+            or label.startswith(("区）", "区)"))
+            or any(token in label for token in ("是国内", "省内各", "各云中心"))
+        ):
+            return False
+    else:
+        detail = normalized
+    return len(detail) >= 8 and any(token in detail for token in _PEER_MOVE_ACTION_TOKENS)
+
+
+def _is_outlook_row(value: str) -> bool:
+    normalized = normalize_text(value)
+    if _looks_like_document_title_row(normalized):
+        return False
+    if any(token in normalized for token in _OUTLOOK_TOKENS):
+        return True
+    return "根据规划" in normalized and any(token in normalized for token in _OUTLOOK_CHANGE_TOKENS)
+
+
+def _is_project_distribution_row(value: str) -> bool:
+    return bool(re.match(r"^[^：:]{2,18}[：:]", value)) or any(token in value for token in _PROJECT_PHASE_TOKENS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +302,23 @@ def is_useful_department_row(value: str, *, deps: ReportFieldSanitizationDepende
     normalized = normalize_text(value)
     if not normalized or deps.looks_like_insufficient(normalized):
         return False
+    if deps.looks_like_source_artifact_text(normalized):
+        return False
     if deps.contains_low_value_entity_token(normalized):
+        return False
+    label = normalize_text(normalized.split("：", 1)[0].split(":", 1)[0])
+    detail = normalize_text(re.split(r"[：:]", normalized, maxsplit=1)[1]) if re.search(r"[：:]", normalized) else ""
+    if (
+        not label
+        or len(label) > 40
+        or any(char in label for char in "/|｜")
+        or label.startswith(_FIELD_LABEL_NOISE_PREFIXES)
+        or label in _GENERIC_DEPARTMENT_LABELS
+        or "或" in label
+        or label.count("（") != label.count("）")
+        or label.count("(") != label.count(")")
+        or _looks_like_document_title_row(detail)
+    ):
         return False
     if any(token in normalized for token in deps.department_hint_tokens):
         return True
@@ -136,6 +373,13 @@ def sanitize_entity_row(field_key: str, value: str, *, deps: ReportFieldSanitiza
             alias in candidate for alias in deps.partner_connector_aliases
         ):
             return ""
+        if any(
+            token in candidate
+            for token in ("建设工程咨询", "招标代理", "采购代理", "工程造价咨询")
+        ):
+            return ""
+    if field_key in {"client_peer_moves", "winner_peer_moves"}:
+        return normalized
     if not has_name_hint and not has_context_hint and candidate == normalized:
         return ""
     if candidate != normalized and ("：" in normalized or ":" in normalized):
@@ -153,9 +397,43 @@ def sanitize_generic_row(field_key: str, value: str, *, deps: ReportFieldSanitiz
         return ""
     if deps.looks_like_source_artifact_text(normalized):
         return ""
+    if normalized.startswith("随着由"):
+        normalized = f"由{normalized[len('随着由'):]}"
+    if normalized.endswith(("…", "...")) and field_key in {
+        "strategic_directions",
+        "leadership_focus",
+        "flagship_products",
+        "five_year_outlook",
+    }:
+        return ""
     if field_key == "budget_signals" and not deps.is_actionable_budget_row(normalized):
         return ""
+    if field_key == "tender_timeline" and not _is_tender_timeline_row(normalized):
+        return ""
+    if field_key == "project_distribution" and not _is_project_distribution_row(normalized):
+        return ""
+    if field_key == "strategic_directions":
+        if _looks_like_document_title_row(normalized) or not any(
+            token in normalized for token in _STRATEGIC_DIRECTION_TOKENS
+        ):
+            return ""
+    if field_key == "key_people" and not _is_key_person_row(normalized):
+        return ""
+    if field_key == "five_year_outlook" and not _is_outlook_row(normalized):
+        return ""
+    if field_key == "competition_analysis" and not any(token in normalized for token in _COMPETITION_TOKENS):
+        return ""
+    if field_key == "account_team_signals":
+        label = normalize_text(normalized.split("：", 1)[0].split(":", 1)[0])
+        if not label or not (
+            deps.is_plausible_entity_name(label)
+            or deps.is_lightweight_entity_name(label)
+            or deps.department_pattern.fullmatch(label)
+        ):
+            return ""
     if field_key == "benchmark_cases":
+        if _looks_like_document_title_row(normalized):
+            return ""
         if not any(token in normalized for token in deps.case_hint_tokens):
             return ""
         if normalized.startswith(("行业", "產業", "行业案例", "案例拆解")) or "拆解" in normalized:
@@ -167,6 +445,14 @@ def sanitize_generic_row(field_key: str, value: str, *, deps: ReportFieldSanitiz
             return ""
         if normalized.startswith(("相关负责人表示", "有关负责人表示")):
             return ""
+        if normalized.startswith("这背后"):
+            return ""
+        if _PLACEHOLDER_QUANTITY_PATTERN.search(normalized):
+            return ""
+        if "：" not in normalized and ":" not in normalized and not any(
+            token in normalized for token in ("上线", "落地", "部署", "建成", "中标", "成交", "试点", "投产", "启用")
+        ):
+            return ""
         if any(token in normalized for token in ("营商环境", "服务保障", "全力支持项目落地", "共同培育")) and not any(
             token in normalized for token in ("中标", "部署", "平台", "试点", "案例")
         ):
@@ -174,6 +460,15 @@ def sanitize_generic_row(field_key: str, value: str, *, deps: ReportFieldSanitiz
         if len(normalized) > 96 and "：" not in normalized and ":" not in normalized:
             return ""
     if field_key == "flagship_products" and not any(token in normalized for token in deps.product_hint_tokens):
+        return ""
+    if field_key == "flagship_products" and normalized.startswith("随着") and (
+        len(normalized) > 120 or "打开手机" in normalized
+    ):
+        return ""
+    if field_key == "flagship_products" and normalized.startswith(("加强", "推进", "统一", "整合")) and not re.search(
+        r"[：:]",
+        normalized,
+    ):
         return ""
     if deps.contains_low_value_entity_token(normalized):
         return ""
@@ -188,11 +483,14 @@ def sanitize_report_field_rows(
 ) -> list[str]:
     cleaned: list[str] = []
     seen: set[str] = set()
+    compact_rows: dict[str, int] = {}
     canonical_rows: dict[str, str] = {}
     canonical_order: list[str] = []
     for raw in values:
         normalized = normalize_text(str(raw))
         if not normalized:
+            continue
+        if field_key in {"client_peer_moves", "winner_peer_moves"} and not _is_peer_move_row(normalized):
             continue
         if field_key == "public_contact_channels":
             candidate = normalized if is_useful_public_contact_row(normalized, deps=deps) else ""
@@ -218,7 +516,17 @@ def sanitize_report_field_rows(
                 continue
         if candidate in seen:
             continue
+        compact_key = re.sub(r"\s+", "", candidate).casefold()
+        existing_index = compact_rows.get(compact_key)
+        if existing_index is not None:
+            existing = cleaned[existing_index]
+            if candidate.count(" ") < existing.count(" "):
+                seen.discard(existing)
+                cleaned[existing_index] = candidate
+                seen.add(candidate)
+            continue
         seen.add(candidate)
+        compact_rows[compact_key] = len(cleaned)
         cleaned.append(candidate)
     for canonical_key in canonical_order:
         candidate = normalize_text(canonical_rows.get(canonical_key, ""))
