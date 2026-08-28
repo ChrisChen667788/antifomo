@@ -302,6 +302,7 @@ def test_delivery_review_route_generates_strategy_isolated_artifacts(tmp_path, m
 
     from app.api import research as research_api
     from app.main import app
+    from app.schemas.research import ResearchIndustrySkillContextOut
 
     report = _report().model_copy(
         update={
@@ -329,6 +330,23 @@ def test_delivery_review_route_generates_strategy_isolated_artifacts(tmp_path, m
     )
     monkeypatch.setattr(research_api, "resolve_library_dir", lambda: tmp_path / "industry-skills")
     monkeypatch.setattr(research_api, "register_industry_knowledge_delivery_review_artifacts", lambda **_kwargs: [])
+
+    def unavailable_industry_context(*, retrieval_strategy, **_kwargs):
+        return ResearchIndustrySkillContextOut(
+            status="unavailable",
+            query="fixture",
+            retrieval_strategy=retrieval_strategy,
+            retrieval_strategy_label="",
+            rerank_backend="unavailable",
+        )
+
+    # The label written into a review artifact is a versioned strategy-catalog
+    # fact, not a property of an optional local industry library.  Force the
+    # no-library state so this test stays deterministic in a clean CI checkout.
+    monkeypatch.setattr(
+        "app.services.research_solution_intelligence_service.build_industry_skill_context",
+        unavailable_industry_context,
+    )
 
     with TestClient(app) as client:
         response = client.post(

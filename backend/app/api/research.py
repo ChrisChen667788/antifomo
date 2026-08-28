@@ -999,6 +999,7 @@ def build_research_industry_knowledge_delivery_review(
     artifacts: list[ResearchIndustryKnowledgeDeliveryReviewArtifactOut] = []
     warnings: list[str] = []
     for strategy in STRATEGY_KEYS:
+        strategy_spec = INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGIES[strategy]
         pack = build_solution_delivery_pack(
             report,
             scenario=payload.scenario or case.query,
@@ -1022,8 +1023,9 @@ def build_research_industry_knowledge_delivery_review(
                 f"- 固定查询：{case.query}",
                 f"- 原始研报：{report.report_title}",
                 f"- 原始研报摘要哈希：`{source_report_digest}`",
-                f"- 本地检索策略：{context.retrieval_strategy_label or strategy}",
+                f"- 本地检索策略：{strategy_spec.label}",
                 f"- 策略标识：`{strategy}`",
+                f"- 本地资料上下文状态：{context.status}",
                 f"- 实际复排：{context.rerank_applied} ({context.rerank_backend})",
                 "",
                 "## 完整方案交付稿",
@@ -1042,7 +1044,7 @@ def build_research_industry_knowledge_delivery_review(
         artifacts.append(
             ResearchIndustryKnowledgeDeliveryReviewArtifactOut(
                 strategy=strategy,
-                strategy_label=INDUSTRY_KNOWLEDGE_RETRIEVAL_STRATEGIES[strategy].label,
+                strategy_label=strategy_spec.label,
                 report_artifact_path=industry_knowledge_benchmark_artifact_reference(path),
             )
         )
