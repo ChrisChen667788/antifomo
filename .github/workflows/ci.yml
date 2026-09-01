@@ -222,7 +222,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: next-build
-          path: .
+          # upload-artifact archives the contents of `.next` at the artifact
+          # root. Extracting into `.` would overwrite the repository's
+          # package.json with `.next/package.json`, leaving `npm run start`
+          # without its scripts.
+          path: .next
 
       - name: Install Chrome
         id: chrome
