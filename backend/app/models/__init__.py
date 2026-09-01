@@ -63,6 +63,11 @@ from app.models.product_strategy_artifact_acceptance_entities import (
     ProductStrategyArtifactAcceptanceInitializationAudit,
     ProductStrategyArtifactAcceptanceRevision,
 )
+from app.models.product_strategy_iteration_entities import (
+    ProductStrategyIteration,
+    ProductStrategyIterationInitializationAudit,
+    ProductStrategyIterationRevision,
+)
 from app.models.research_entities import (
     ResearchCompareSnapshot,
     ResearchCanonicalEntity,
@@ -135,6 +140,9 @@ __all__ = [
     "ProductStrategyArtifactAcceptanceDraft",
     "ProductStrategyArtifactAcceptanceInitializationAudit",
     "ProductStrategyArtifactAcceptanceRevision",
+    "ProductStrategyIteration",
+    "ProductStrategyIterationInitializationAudit",
+    "ProductStrategyIterationRevision",
     "ProductStrategySource",
     "ResearchCompareSnapshot",
     "ResearchCanonicalEntity",

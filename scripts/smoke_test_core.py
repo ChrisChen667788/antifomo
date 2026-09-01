@@ -507,6 +507,7 @@ def run_miniapp_syntax_checks() -> list[CheckResult]:
     targets = [
         "miniapp/app.js",
         "miniapp/utils/api.js",
+        "miniapp/utils/data-source-state.js",
         "miniapp/pages/feed/index.js",
         "miniapp/pages/inbox/index.js",
         "miniapp/pages/item/index.js",

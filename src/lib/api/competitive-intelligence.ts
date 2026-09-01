@@ -8,12 +8,16 @@ import type {
   ApiProductStrategyDecisionContextPackets,
   ApiProductStrategyDecisionContextPacketsInitialization,
   ApiProductStrategyDecisionContextPacketsPreview,
+  ApiProductStrategyIterationProgram,
+  ApiProductStrategyIterationProgramInitialization,
+  ApiProductStrategyIterationProgramPreview,
   ApiProductStrategySeedLandscape,
 } from "@/lib/api/type-contracts/competitive-intelligence";
 
 const COMPETITIVE_LANDSCAPE_PATH = "/api/product-strategy/competitive-landscape";
 const DECISION_CONTEXT_PACKETS_PATH = "/api/product-strategy/decision-context-packets";
 const ARTIFACT_ACCEPTANCE_PATH = "/api/product-strategy/artifact-acceptance";
+const ITERATION_PROGRAM_PATH = "/api/product-strategy/iteration-program";
 
 export function getCompetitiveLandscapePreview(): Promise<ApiProductStrategyCompetitiveLandscapePreview> {
   return request<ApiProductStrategyCompetitiveLandscapePreview>(`${COMPETITIVE_LANDSCAPE_PATH}/preview`);
@@ -53,6 +57,20 @@ export function getArtifactAcceptance(): Promise<ApiProductStrategyArtifactAccep
 
 export function initializeArtifactAcceptance(): Promise<ApiProductStrategyArtifactAcceptanceInitialization> {
   return request<ApiProductStrategyArtifactAcceptanceInitialization>(`${ARTIFACT_ACCEPTANCE_PATH}/initialize`, {
+    method: "POST",
+  });
+}
+
+export function getIterationProgramPreview(): Promise<ApiProductStrategyIterationProgramPreview> {
+  return request<ApiProductStrategyIterationProgramPreview>(`${ITERATION_PROGRAM_PATH}/preview`);
+}
+
+export function getIterationProgram(): Promise<ApiProductStrategyIterationProgram> {
+  return request<ApiProductStrategyIterationProgram>(ITERATION_PROGRAM_PATH);
+}
+
+export function initializeIterationProgram(): Promise<ApiProductStrategyIterationProgramInitialization> {
+  return request<ApiProductStrategyIterationProgramInitialization>(`${ITERATION_PROGRAM_PATH}/initialize`, {
     method: "POST",
   });
 }

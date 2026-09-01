@@ -475,3 +475,162 @@ export interface ApiProductStrategyArtifactAcceptanceInitializationCounts {
   preserved_human?: number | null;
   existing?: number | null;
 }
+
+export interface ApiProductStrategyIterationProgramInstructionEvidence {
+  kind: "user_instruction";
+  actor_identity_status: "unverified";
+  scope: "product_strategy_iteration_program_only";
+  instruction: string;
+  recorded_at: string;
+  authorization_scope: string;
+  does_not_approve_artifact_acceptance: true;
+  does_not_authorize_execution: true;
+  does_not_approve_release: true;
+  requires_human_evidence_review: true;
+}
+
+export interface ApiProductStrategyIterationProgramAgentSource {
+  catalog_key: string;
+  product_key: string;
+  vendor: string;
+  product_name: string;
+  source_title: string;
+  source_url: string;
+  source_kind: string;
+  source_digest: string;
+  observed_at: string;
+  expires_at: string;
+  evidence: ApiProductStrategyEvidence;
+  vendor_claim: string;
+  claimed_capabilities: string[];
+  current_model_signal: string;
+  lesson: string;
+  anti_fomo_decision: string;
+}
+
+export interface ApiProductStrategyIterationProgramFieldChange {
+  field: string;
+  before: unknown;
+  after: unknown;
+  change_type: "added" | "removed" | "modified";
+}
+
+export interface ApiProductStrategyIterationProgramFieldLevelDiff {
+  from_revision: number | null;
+  to_revision: number;
+  changed_fields: ApiProductStrategyIterationProgramFieldChange[];
+  auto_acceptance_forbidden: true;
+  release_gate_mutated: false;
+}
+
+export interface ApiProductStrategyIterationProgramRevision {
+  id: string | null;
+  iteration_key: string;
+  revision: number;
+  previous_revision_digest: string | null;
+  revision_digest: string;
+  event_type: string;
+  snapshot: Record<string, unknown>;
+  field_level_diff: ApiProductStrategyIterationProgramFieldLevelDiff;
+  is_immutable: true;
+  seed_managed: boolean;
+  created_at: string | null;
+}
+
+export interface ApiProductStrategyIterationProgramItem {
+  id: string | null;
+  iteration_key: string;
+  project_scope: "anti-fomo";
+  version: string;
+  sequence: number;
+  title: string;
+  workstream: string;
+  decision: ApiProductStrategyDecision;
+  purpose: string;
+  scope_boundary: string;
+  implementation_status: "planning_control_plane_implemented";
+  feature_implementation_status: "gated_or_pending_evidence";
+  external_evidence_status: "pending";
+  acceptance_status: "hold";
+  dependencies: string[];
+  source_basis: string[];
+  delivery_artifacts: string[];
+  acceptance_criteria: string[];
+  external_evidence_requirements: string[];
+  can_auto_accept: false;
+  can_auto_execute: false;
+  can_auto_approve_release: false;
+  requires_human_evidence_review: true;
+  production_status: "not_authorized";
+  revision: number;
+  revision_digest: string;
+  seed_managed: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  revisions: ApiProductStrategyIterationProgramRevision[];
+  initial_field_level_diff: ApiProductStrategyIterationProgramFieldLevelDiff | null;
+}
+
+export interface ApiProductStrategyIterationProgramGovernance {
+  instruction_kind: "user_instruction";
+  actor_identity_status: "unverified";
+  scope: "product_strategy_iteration_program_only";
+  iterations_require_explicit_initialization: true;
+  vendor_claim_is_not_independent_verification: true;
+  source_change_requires_human_review: true;
+  office_and_visual_acceptance_remain_gated: true;
+  can_auto_accept: false;
+  can_auto_execute: false;
+  can_auto_approve_release: false;
+  release_gate_mutated: false;
+  production_status: "not_authorized";
+  note: string;
+}
+
+export interface ApiProductStrategyIterationProgramInitializationAudit {
+  id: string | null;
+  event_key: string;
+  project_scope: "anti-fomo";
+  event_type: string;
+  instruction_evidence: ApiProductStrategyIterationProgramInstructionEvidence;
+  iteration_program_digest: string;
+  iteration_keys: string[];
+  event_digest: string;
+  can_auto_accept: false;
+  can_auto_execute: false;
+  can_auto_approve_release: false;
+  release_gate_mutated: false;
+  created_at: string | null;
+}
+
+export interface ApiProductStrategyIterationProgram {
+  iteration_program_version: "2.10.3-2.11.7";
+  observed_at: string;
+  expires_at: string;
+  program_digest: string;
+  read_only: boolean;
+  initialized: boolean;
+  persistent_snapshot_digest: string | null;
+  instruction_evidence: ApiProductStrategyIterationProgramInstructionEvidence;
+  governance: ApiProductStrategyIterationProgramGovernance;
+  agent_sources: ApiProductStrategyIterationProgramAgentSource[];
+  iterations: ApiProductStrategyIterationProgramItem[];
+  initialization_audit: ApiProductStrategyIterationProgramInitializationAudit | null;
+}
+
+export type ApiProductStrategyIterationProgramPreview = ApiProductStrategyIterationProgram;
+
+export interface ApiProductStrategyIterationProgramInitializationCounts {
+  created: number;
+  existing_seed_managed?: number | null;
+  preserved_human?: number | null;
+  existing?: number | null;
+}
+
+export interface ApiProductStrategyIterationProgramInitialization extends ApiProductStrategyIterationProgram {
+  initialization: {
+    iterations: ApiProductStrategyIterationProgramInitializationCounts;
+    revisions: ApiProductStrategyIterationProgramInitializationCounts;
+    initialization_audit: ApiProductStrategyIterationProgramInitializationCounts;
+  };
+}

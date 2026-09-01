@@ -198,6 +198,9 @@ export {
 export {
   getCompetitiveLandscape,
   getCompetitiveLandscapePreview,
+  getIterationProgram,
+  getIterationProgramPreview,
+  initializeIterationProgram,
   seedCompetitiveLandscape,
 } from "@/lib/api/competitive-intelligence";
 

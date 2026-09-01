@@ -14,6 +14,11 @@ import type { FeedItem } from "@/lib/mock-data";
 import { FeedDeck } from "@/components/feed/feed-deck";
 import { WechatFavoritesImportPanel } from "@/components/feed/wechat-favorites-import-panel";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
+import { DataSourceStateBadge } from "@/components/ui/data-source-state-badge";
+import {
+  resolveDataSourceState,
+  type DataSourceState,
+} from "@/lib/data-source-state";
 import { resolveItemTitle } from "@/lib/item-title";
 
 const FEED_MODE_KEY = "anti_fomo_feed_mode";
@@ -114,6 +119,7 @@ function mapApiItemsToFeed(
       preferenceVersion: item.preference_version || undefined,
       status: item.status,
       ingestRoute: item.ingest_route,
+      fallbackUsed: item.fallback_used,
     };
   });
 }
@@ -125,7 +131,7 @@ export function FeedHomeClient() {
   const [mode, setMode] = useState<"normal" | "focus">("normal");
   const [goalText, setGoalText] = useState("");
   const [message, setMessage] = useState("");
-  const [dataSource, setDataSource] = useState<"api" | "empty" | "api_offline">("empty");
+  const [dataSource, setDataSource] = useState<DataSourceState>("empty");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [importReview, setImportReview] = useState<ImportReviewState>(EMPTY_IMPORT_REVIEW);
   const [retryingImportFailures, setRetryingImportFailures] = useState(false);
@@ -162,7 +168,7 @@ export function FeedHomeClient() {
       total: batch.item_ids.length,
       failedItemIds: batch.failed_item_ids,
     });
-    setDataSource("api");
+    setDataSource(resolveDataSourceState({ items: readyItems }));
     if (reviewIds.length) {
       window.localStorage.setItem(WECHAT_IMPORT_BATCH_KEY, batch.id);
       window.localStorage.setItem(WECHAT_IMPORT_REVIEW_KEY, reviewIds.join(","));
@@ -216,7 +222,7 @@ export function FeedHomeClient() {
       total: ids.length,
       failedItemIds: failedItems.map((item) => item.id),
     });
-    setDataSource("api");
+    setDataSource(resolveDataSourceState({ items: readyItems }));
     setMessage(nextMessage);
     return true;
   }, [setNormalFeedItems, t]);
@@ -233,19 +239,20 @@ export function FeedHomeClient() {
         goalText: nextGoalText || undefined,
         includePending: false,
       });
+      const nextDataSource = resolveDataSourceState({ items: response.items });
       if (response.items.length > 0) {
         setNormalFeedItems(response.items);
         setMessage("");
-        setDataSource("api");
+        setDataSource(nextDataSource);
       } else {
         setItems([]);
         setMessage(t("feed.status.noRealData", "暂无真实数据，当前不再自动回退演示卡片。"));
-        setDataSource("empty");
+        setDataSource(nextDataSource);
       }
     } catch {
       setItems([]);
       setMessage(t("feed.status.apiOfflineNoMock", "暂时无法读取实时数据，当前不再自动显示演示卡片。"));
-      setDataSource("api_offline");
+      setDataSource(resolveDataSourceState({ isUnavailable: true }));
     } finally {
       setLastRefreshedAt(
         new Date().toLocaleTimeString(preferences.language, { hour12: false }),
@@ -416,14 +423,9 @@ export function FeedHomeClient() {
               {t("feed.status.itemsUnit", "条")}
             </p>
             <p className="mt-1 text-xs text-[var(--af-text-tertiary)]">
-              {t("feed.status.dataSource", "数据源")}：
-              {dataSource === "api"
-                ? t("data.api", "实时数据")
-                : dataSource === "api_offline"
-                  ? t("feed.status.apiOffline", "实时数据暂不可用")
-                  : t("feed.status.noRealDataShort", "无真实数据")} ·{" "}
               {t("feed.status.lastRefreshed", "最近刷新")}：{lastRefreshedAt || "--:--:--"}
             </p>
+            <DataSourceStateBadge state={dataSource} className="mt-3 max-w-xl" />
           </div>
 
           <div className="flex items-center gap-2 text-sm">

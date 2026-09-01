@@ -23,6 +23,10 @@ vi.mock("@/components/competitive-intelligence/competitive-artifact-acceptance",
   CompetitiveArtifactAcceptance: () => <div data-testid="competitive-artifact-acceptance" />,
 }));
 
+vi.mock("@/components/competitive-intelligence/competitive-iteration-program", () => ({
+  CompetitiveIterationProgram: () => <div data-testid="competitive-iteration-program" />,
+}));
+
 const previewFixture: ApiProductStrategyCompetitiveLandscapePreview = {
   catalog_version: "2.10.0",
   catalog_digest: "a".repeat(64),

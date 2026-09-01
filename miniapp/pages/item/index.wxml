@@ -12,6 +12,10 @@
   <view class="hero-title">{{i18n.title}}</view>
   <view class="hero-subtitle">{{i18n.subtitle}}</view>
 
+  <view class="af-status-banner af-status-banner-{{sourceStateTone}}" wx:if="{{sourceStateMessage}}">
+    {{sourceStateMessage}}
+  </view>
+
   <view class="glass-card section af-state-card" wx:if="{{loading}}">
     <view class="af-state-head">
       <view class="af-state-icon-wrap af-state-icon-loading">

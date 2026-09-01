@@ -49,6 +49,10 @@
     </view>
   </view>
 
+  <view class="af-status-banner af-status-banner-{{sourceStateTone}}" wx:if="{{sourceStateMessage}}">
+    {{sourceStateMessage}}
+  </view>
+
   <view class="latest-run glass-card" wx:if="{{latestRun}}">
     <view class="latest-run-head">
       <view class="latest-run-copy">

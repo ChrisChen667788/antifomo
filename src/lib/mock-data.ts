@@ -23,6 +23,8 @@ export interface FeedItem {
   recommendationScore?: number;
   status?: string;
   ingestRoute?: string | null;
+  /** True when the collector explicitly used an available-content fallback. */
+  fallbackUsed?: boolean;
 }
 
 export interface SessionMetrics {

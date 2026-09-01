@@ -10,6 +10,8 @@ from app.schemas.product_strategy import (
     CompetitiveLandscapeOut,
     DecisionContextPacketInitializationOut,
     DecisionContextPacketLandscapeOut,
+    IterationProgramInitializationOut,
+    IterationProgramLandscapeOut,
     ProductStrategySeedOut,
 )
 from app.services.product_strategy.artifact_acceptance_catalog import preview_artifact_acceptance
@@ -22,6 +24,11 @@ from app.services.product_strategy.context_packet_catalog import preview_decisio
 from app.services.product_strategy.context_packet_service import (
     get_persisted_decision_context_packets,
     initialize_decision_context_packets,
+)
+from app.services.product_strategy.iteration_program_catalog import preview_iteration_program
+from app.services.product_strategy.iteration_program_service import (
+    get_persisted_iteration_program,
+    initialize_iteration_program,
 )
 from app.services.product_strategy.catalog import preview_competitive_landscape
 from app.services.product_strategy.service import get_persisted_competitive_landscape, seed_competitive_landscape
@@ -105,3 +112,24 @@ def initialize_artifact_acceptance_templates(db: Session = Depends(get_db)) -> d
                 "can_auto_approve_release": False,
             },
         ) from error
+
+
+@router.get("/iteration-program/preview", response_model=IterationProgramLandscapeOut)
+def get_iteration_program_preview() -> dict:
+    """Read-only 2.10.3–2.11.7 plan and official-agent observation preview."""
+
+    return preview_iteration_program()
+
+
+@router.get("/iteration-program", response_model=IterationProgramLandscapeOut)
+def get_iteration_program(db: Session = Depends(get_db)) -> dict:
+    """Return only explicitly materialized fifteen-version control records."""
+
+    return get_persisted_iteration_program(db)
+
+
+@router.post("/iteration-program/initialize", response_model=IterationProgramInitializationOut)
+def initialize_product_strategy_iteration_program(db: Session = Depends(get_db)) -> dict:
+    """Persist a reviewable program; it never accepts, executes, or releases."""
+
+    return initialize_iteration_program(db)

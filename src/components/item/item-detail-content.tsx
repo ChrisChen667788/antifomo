@@ -7,6 +7,8 @@ import { ItemDetailActions } from "@/components/item/item-detail-actions";
 import { ItemInsightPanel } from "@/components/item/item-insight-panel";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { AppIcon } from "@/components/ui/app-icon";
+import { DataSourceStateBadge } from "@/components/ui/data-source-state-badge";
+import type { DataSourceState } from "@/lib/data-source-state";
 import {
   buildHighlightKeywords,
   extractKeyParagraphs,
@@ -32,6 +34,7 @@ export interface DetailItemViewModel {
   topicMatchScore?: number;
   sourceMatchScore?: number;
   preferenceVersion?: string;
+  dataSourceState: DataSourceState;
   diagnostics?: {
     ingestRoute: string;
     contentAcquisitionStatus: string;
@@ -142,6 +145,7 @@ export function ItemDetailContent({ item }: { item: DetailItemViewModel }) {
             <p className="mt-2 text-sm text-slate-500">
               {t("item.source", "来源")}：{item.source || t("common.unknownSource", "未知来源")}
             </p>
+            <DataSourceStateBadge state={item.dataSourceState} className="mt-3 max-w-xl" />
           </div>
           <Link
             href="/"

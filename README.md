@@ -17,14 +17,17 @@ Anti-FOMO is an open-source AI research workspace for solution architects, indus
 
 Start here:
 - [Quick Start](#quick-start)
-- [Public roadmap](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [Public roadmap](./docs/public-roadmap.md) and [discussion issue](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [Product surface map](./docs/product-surface-map.md)
 - [2026 competitive landscape and post-2.0.6 roadmap](./docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md)
-- [Good first issue](https://github.com/ChrisChen667788/antifomo/issues/2)
-- [Help wanted: WeChat collection reliability](https://github.com/ChrisChen667788/antifomo/issues/3)
+- [Visible data-source states](./docs/product-surface-map.md#shared-state-language)
+- [WeChat collection reliability evidence](./docs/wechat-collector-reliability-benchmark.md)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
 - [Product whitepaper](./docs/product-whitepaper.md)
 - [Launch kit](./docs/open-source-launch-kit.md)
 - [Growth copy kit](./docs/open-source-growth-copy.md)
+- [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
+- [Repeatable competitive evidence capture](./docs/competitive-evidence-capture.md)
 
 ## Why Anti-FOMO
 
@@ -130,6 +133,33 @@ The full release-grade screenshot coverage is maintained in [Feature Screenshot 
     </td>
   </tr>
 </table>
+
+Latest governed product-strategy evidence was regenerated on `2026-09-01` from the read-only local `/competitive` preview. The mobile image is a simulated CSS viewport, not a physical-device claim; browser metrics are local samples, not a production SLA.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="Governed fifteen-version iteration train in a desktop browser" />
+      <p><strong>2.10.3–2.11.7 governed train</strong><br />Fifteen HOLD-gated slices, current model/Agent signals, and the unchanged production boundary.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png" alt="Office and visual artifact acceptance gates" />
+      <p><strong>Office / visual evidence gates</strong><br />Missing evidence stays visible as HOLD; preview initialization cannot accept an artifact or release.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-mobile-viewport.png" alt="Governed iteration train in a simulated mobile viewport" />
+      <p><strong>Mobile CSS viewport</strong><br />A `390 × 844` browser emulation for responsive review, explicitly not physical-device evidence.</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-browser-performance.svg" alt="Local competitive-preview browser metric summary" />
+      <p><strong>Local browser metrics</strong><br />Three navigation samples per viewport with an environment and claim-boundary manifest.</p>
+    </td>
+  </tr>
+</table>
+
+The reproducible PNG/GIF/MP4 and manifest workflow is documented in [Competitive evidence capture](./docs/competitive-evidence-capture.md).
 
 ## What you get today
 
@@ -258,10 +288,11 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current development version: `2.9.5+20260814` (retrieval assurance and evidence-operations lane)
+- current release-evidence baseline: `2.9.5+20260814` (retrieval assurance and evidence-operations lane; promotion still blocked)
 - `2.10.0-development` Competitive Capability Observatory is locally implemented; it records vendor claims, local implementation state, and proposed backlog separately, without changing release semver, the production default, or release-readiness
 - `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
-- current local engineering slice: `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
+- `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
+- current product-strategy train: `2.10.3-2.11.7-development`; the local plan/revision/API/UI control plane, official Agent source register, desktop/mobile-viewport/performance capture workflow, and weekly competitor-source monitor are implemented, while feature acceptance, external execution, physical-device, customer, and production evidence remain gated
 - release promotion remains blocked until the real cross-industry clarification tasks and feedback, pending human qrels, 100+30 expert calibration, three-industry blind review, customer acceptance, production Skill governance, and final Office/visual/security evidence are complete
 - web build passes
 - frontend and backend test suites pass via `npm run check`
@@ -272,6 +303,7 @@ Current code baseline:
 - the post-`2.9.5` competitive research, decisions, and acceptance boundaries are documented in `docs/competitive-capability-observatory-v2.10.0.md`
 - the approved-context scope, revision/audit contract, and hard non-authorization gates are documented in `docs/reviewable-decision-context-packets-v2.10.1.md`
 - the HOLD-only delivery-artifact acceptance, field-level revision-diff, and Office/visual evidence boundary is documented in `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
+- the current domestic/international model and Agent comparison, product strengths/weaknesses, and governed fifteen-version train are documented in `docs/competitive-agent-landscape-and-iteration-program-2026-08-31.md`
 - major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
 - product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`
 - public repository sanitized for open-source release
@@ -297,6 +329,9 @@ Built-in launch assets:
 - [Growth copy kit](./docs/open-source-growth-copy.md)
 - [Product whitepaper](./docs/product-whitepaper.md)
 - [Open-source backlog](./docs/open-source-backlog.md)
+- [Public roadmap](./docs/public-roadmap.md)
+- [Product surface map](./docs/product-surface-map.md)
+- [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
 - [GitHub hero asset](./docs/assets/github-hero.svg)
 - [GitHub social preview](./docs/assets/github-social-preview.png)
 - [Repo banner](./public/repo-banner.png)

@@ -17,14 +17,17 @@ Anti-FOMO 是一个开源 AI 研究工作台，适合解决方案架构师、行
 
 先看这里：
 - [快速开始](#快速开始)
-- [公开路线图](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [公开路线图](./docs/public-roadmap.md) 与 [讨论 issue](https://github.com/ChrisChen667788/antifomo/issues/1)
+- [产品界面地图](./docs/product-surface-map.md)
 - [2026 竞品格局与 2.0.6 后路线图](./docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md)
-- [适合新贡献者的入口](https://github.com/ChrisChen667788/antifomo/issues/2)
-- [微信采集可靠性 help wanted](https://github.com/ChrisChen667788/antifomo/issues/3)
+- [可见数据源状态语义](./docs/product-surface-map.md#shared-state-language)
+- [微信采集可靠性证据](./docs/wechat-collector-reliability-benchmark.md)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
 - [产品白皮书](./docs/product-whitepaper.md)
 - [开源宣发素材包](./docs/open-source-launch-kit.md)
 - [增长文案包](./docs/open-source-growth-copy.md)
+- [GitHub 宣发检查清单](./docs/github-launch-polish-checklist.md)
+- [可复现竞品页面证据采集](./docs/competitive-evidence-capture.md)
 
 ## 为什么做 Anti-FOMO
 
@@ -132,6 +135,33 @@ Anti-FOMO 关注的是整条工作链路：
     </td>
   </tr>
 </table>
+
+最新受治理产品策略证据已于 `2026-09-01` 从本地只读 `/competitive` 预览重新生成。移动端图片是模拟 CSS 视口，不是物理真机声明；浏览器指标是本地采样，不是生产 SLA。
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="桌面浏览器中的十五版本受治理迭代列车" />
+      <p><strong>2.10.3–2.11.7 受治理列车</strong><br />15 个 HOLD 切片、当前模型/Agent 信号与不变的生产边界。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png" alt="Office 与视觉交付物验收门禁" />
+      <p><strong>Office / 视觉证据门禁</strong><br />证据缺失时明确保持 HOLD，预览初始化不能验收交付物或发布。</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-mobile-viewport.png" alt="模拟移动视口中的受治理迭代列车" />
+      <p><strong>移动 CSS 视口</strong><br />`390 × 844` 浏览器模拟用于响应式复核，明确不是物理真机证据。</p>
+    </td>
+    <td width="50%">
+      <img src="./docs/assets/competitive-evidence/competitive-browser-performance.svg" alt="竞品策略预览的本地浏览器指标" />
+      <p><strong>本地浏览器指标</strong><br />每个视口 3 次导航样本，并附环境与声明边界清单。</p>
+    </td>
+  </tr>
+</table>
+
+可复现 PNG/GIF/MP4 与 manifest 流程见 [竞品页面证据采集](./docs/competitive-evidence-capture.md)。
 
 ## 当前已经能做什么
 
@@ -276,10 +306,11 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前开发版本：`2.9.5+20260814`（检索保证与证据运营线）
+- 当前发布证据基线：`2.9.5+20260814`（检索保证与证据运营线；晋级仍保持阻断）
 - `2.10.0-development` 竞品能力证据台账已在本地实现；它分开记录厂商声明、本地工程状态和拟议待办，不改变发布语义版本、生产默认策略或 release-readiness
 - `2.10.1-development` 可复核决策上下文包可将 4 个 `build` / `integrate` / `defer` 决策初始化为仅限产品策略的可复核上下文，执行、发布与生产授权仍全部为否
-- 当前本地工程切片：`2.10.2-development` 交付物验收与修订差异；它把上述上下文绑定为仅 `HOLD` 的交付物复核草案，Office、视觉和可归属人工复核证据缺失时全部保持阻断，不能改变发布门禁
+- `2.10.2-development` 交付物验收与修订差异把上述上下文绑定为仅 `HOLD` 的交付物复核草案，Office、视觉和可归属人工复核证据缺失时全部保持阻断，不能改变发布门禁
+- 当前产品策略开发列车：`2.10.3-2.11.7-development`；本地计划/revision/API/UI 控制面、官方 Agent 来源寄存器、桌面/移动视口/性能捕获和每周竞品来源监测已实现，功能验收、外部执行、物理真机、客户与生产证据仍受门禁约束
 - 发布晋级仍为 `blocked`：真实跨行业澄清任务与反馈、human qrels、100+30 专家校准、三行业盲测、客户验收、生产 Skill 治理以及最终 Office/视觉/安全证据尚未完成
 - `2.0.1-2.0.6` 完整验证合同见 `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`
 - 经竞品调研优化的路线与已完成工程合同见 `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md`、`docs/decision-program-v2.0.7-v2.2.0.md`；真实外部验收仍保持阻断
@@ -287,6 +318,7 @@ npm run demo:simulate
 - `2.9.5` 之后的竞品研究、取舍与验收边界见 `docs/competitive-capability-observatory-v2.10.0.md`
 - 已批准上下文的范围、修订/审计契约和硬性非授权门禁见 `docs/reviewable-decision-context-packets-v2.10.1.md`
 - 仅 `HOLD` 的交付物验收、字段级修订差异和 Office/视觉证据边界见 `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
+- 最新国内外模型与 Agent 对比、产品优劣势及受治理 15 版本计划见 `docs/competitive-agent-landscape-and-iteration-program-2026-08-31.md`
 - LangGraph 已作为默认研究工作流，deterministic 引擎保留为即时回滚路径
 - 100 条研究评测集已锁定为 `1.2.0`，离线 deterministic/LangGraph parity 为 `100/100`
 - 真实 provider 评测仍要求完成修订后的独立复核，并获得明确预算批准
@@ -318,6 +350,9 @@ npm run demo:simulate
 - [增长文案包](./docs/open-source-growth-copy.md)
 - [产品白皮书](./docs/product-whitepaper.md)
 - [公开 backlog](./docs/open-source-backlog.md)
+- [公开路线图](./docs/public-roadmap.md)
+- [产品界面地图](./docs/product-surface-map.md)
+- [GitHub 宣发检查清单](./docs/github-launch-polish-checklist.md)
 - [GitHub hero 图](./docs/assets/github-hero.svg)
 - [GitHub social preview](./docs/assets/github-social-preview.png)
 - [仓库 banner](./public/repo-banner.png)

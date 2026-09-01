@@ -10,6 +10,11 @@ const { formatTime, scoreTo100 } = require("../../utils/format");
 const { trackEvent } = require("../../utils/analytics");
 const { t } = require("../../utils/i18n");
 const { getPreferenceClass } = require("../../utils/preferences");
+const {
+  getDataSourceStateCopy,
+  getDataSourceStateTone,
+  resolveDataSourceState
+} = require("../../utils/data-source-state");
 
 const SWIPE_MAX = 220;
 const SWIPE_THRESHOLD = 108;
@@ -186,6 +191,8 @@ Page({
     loading: true,
     loadError: false,
     apiMessage: "",
+    sourceStateMessage: "",
+    sourceStateTone: "info",
     feedbackState: {},
     prefClass: "",
     settingsLabel: "设置",
@@ -366,6 +373,7 @@ Page({
     })
       .then((res) => {
         const language = getApp().globalData.preferences.language;
+        const sourceState = resolveDataSourceState({ fromMock: res.fromMock, items: res.items || [] });
         const previousFeedbackState = this.data.feedbackState || {};
         const items = (res.items || []).map((item) => {
           const score100 = scoreTo100(item.score_value);
@@ -408,7 +416,9 @@ Page({
             loading: false,
             loadError: false,
             feedbackState,
-            apiMessage: res.fromMock ? this.data.i18n.localMockMode : ""
+            apiMessage: res.fromMock ? this.data.i18n.localMockMode : "",
+            sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+            sourceStateTone: getDataSourceStateTone(sourceState)
           },
           () => {
             this.syncCurrent();
@@ -417,7 +427,15 @@ Page({
         );
       })
       .catch(() => {
-        this.setData({ loading: false, loadError: true, latestRun: null });
+        const language = getApp().globalData.preferences.language;
+        const sourceState = resolveDataSourceState({ unavailable: true });
+        this.setData({
+          loading: false,
+          loadError: true,
+          latestRun: null,
+          sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+          sourceStateTone: getDataSourceStateTone(sourceState)
+        });
         wx.showToast({ title: this.data.i18n.loadingFailed, icon: "none" });
       });
   },

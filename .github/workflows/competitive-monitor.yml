@@ -1,0 +1,96 @@
+name: Competitive intelligence monitor
+
+on:
+  schedule:
+    # Weekly is intentionally stricter than the requested maximum 14-day interval.
+    - cron: "23 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: competitive-intelligence-monitor
+  cancel-in-progress: false
+
+jobs:
+  source-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate monitor logic
+        run: npm run competitive:monitor:test
+
+      - name: Generate official-source review report
+        run: npm run competitive:monitor -- --output-dir output/competitive-monitor
+
+      - name: Upload review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: competitive-monitor-${{ github.run_id }}
+          path: output/competitive-monitor
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create or update human-review issue
+        uses: actions/github-script@v8
+        env:
+          REPORT_PATH: output/competitive-monitor/competitive-monitor-report.json
+        with:
+          script: |
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync(process.env.REPORT_PATH, "utf8"));
+            await core.summary
+              .addHeading("Competitive intelligence monitor")
+              .addRaw(`Report digest: \`${report.report_digest}\`\n\n`)
+              .addTable([
+                [{data: "Metric", header: true}, {data: "Count", header: true}],
+                ["Official sources", String(report.summary.source_count)],
+                ["Fetched", String(report.summary.fetched_count)],
+                ["Fetch failures", String(report.summary.failed_count)],
+                ["Changed", String(report.summary.changed_count)],
+                ["Stale", String(report.summary.stale_count)],
+                ["Human review required", String(report.summary.review_required_count)],
+              ])
+              .write();
+
+            if (!report.review_required) return;
+
+            const title = "[competitive-watch] Official source review required";
+            const reviewRows = report.sources
+              .filter((source) => source.review_required)
+              .map((source) => `| [${source.product_name}](${source.source_url}) | ${source.evidence_status} | ${source.change_status} | ${source.review_reasons.join(", ")} |`)
+              .join("\n");
+            const body = [
+              "<!-- anti-fomo-competitive-watch -->",
+              "## Automated official-source review signal",
+              "",
+              `Run: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              `Generated: \`${report.generated_at}\``,
+              `Report digest: \`${report.report_digest}\``,
+              "",
+              "| Product | Evidence | Change | Review reasons |",
+              "| --- | --- | --- | --- |",
+              reviewRows,
+              "",
+              "This is a review signal only. Vendor claims are not independent verification, and this workflow cannot update the roadmap, execute tools, accept artifacts, or approve a release.",
+            ].join("\n");
+
+            const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title \"${title}\"`;
+            const existing = await github.rest.search.issuesAndPullRequests({q: query, per_page: 10});
+            const issue = existing.data.items.find((item) => item.title === title);
+            if (issue) {
+              await github.rest.issues.update({...context.repo, issue_number: issue.number, body});
+            } else {
+              await github.rest.issues.create({...context.repo, title, body});
+            }

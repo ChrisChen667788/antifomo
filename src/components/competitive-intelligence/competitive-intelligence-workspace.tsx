@@ -13,6 +13,7 @@ import {
 import { AppIcon } from "@/components/ui/app-icon";
 import { CompetitiveArtifactAcceptance } from "@/components/competitive-intelligence/competitive-artifact-acceptance";
 import { CompetitiveDecisionContextPackets } from "@/components/competitive-intelligence/competitive-decision-context-packets";
+import { CompetitiveIterationProgram } from "@/components/competitive-intelligence/competitive-iteration-program";
 
 type Landscape = ApiProductStrategyCompetitiveLandscapePreview | ApiProductStrategyCompetitiveLandscape;
 
@@ -241,6 +242,7 @@ export function CompetitiveIntelligenceWorkspace() {
 
       <CompetitiveDecisionContextPackets />
       <CompetitiveArtifactAcceptance />
+      <CompetitiveIterationProgram />
     </div>
   );
 }

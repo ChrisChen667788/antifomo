@@ -434,3 +434,156 @@ class ArtifactAcceptanceInitializationCountsOut(BaseModel):
 
 class ArtifactAcceptanceInitializationOut(ArtifactAcceptanceLandscapeOut):
     initialization: dict[str, ArtifactAcceptanceInitializationCountsOut]
+
+
+class IterationProgramInstructionEvidenceOut(BaseModel):
+    kind: Literal["user_instruction"]
+    actor_identity_status: Literal["unverified"]
+    scope: Literal["product_strategy_iteration_program_only"]
+    instruction: str
+    recorded_at: str
+    authorization_scope: str
+    does_not_approve_artifact_acceptance: Literal[True] = True
+    does_not_authorize_execution: Literal[True] = True
+    does_not_approve_release: Literal[True] = True
+    requires_human_evidence_review: Literal[True] = True
+
+
+class IterationProgramAgentSourceOut(BaseModel):
+    catalog_key: str
+    product_key: str
+    vendor: str
+    product_name: str
+    source_title: str
+    source_url: str
+    source_kind: str
+    source_digest: str = Field(min_length=64, max_length=64)
+    observed_at: str
+    expires_at: str
+    evidence: CompetitiveEvidenceOut
+    vendor_claim: str
+    claimed_capabilities: list[str]
+    current_model_signal: str
+    lesson: str
+    anti_fomo_decision: str
+
+
+class IterationProgramChangedFieldOut(BaseModel):
+    field: str
+    before: Any = None
+    after: Any = None
+    change_type: Literal["added", "removed", "modified"]
+
+
+class IterationProgramFieldLevelDiffOut(BaseModel):
+    from_revision: int | None = Field(default=None, ge=1)
+    to_revision: int = Field(ge=1)
+    changed_fields: list[IterationProgramChangedFieldOut]
+    auto_acceptance_forbidden: Literal[True] = True
+    release_gate_mutated: Literal[False] = False
+
+
+class IterationProgramRevisionOut(BaseModel):
+    id: str | None = None
+    iteration_key: str
+    revision: int = Field(ge=1)
+    previous_revision_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    revision_digest: str = Field(min_length=64, max_length=64)
+    event_type: str
+    snapshot: dict[str, Any]
+    field_level_diff: IterationProgramFieldLevelDiffOut
+    is_immutable: Literal[True] = True
+    seed_managed: bool = True
+    created_at: str | None = None
+
+
+class IterationProgramIterationOut(BaseModel):
+    id: str | None = None
+    iteration_key: str
+    project_scope: Literal["anti-fomo"]
+    version: str
+    sequence: int = Field(ge=1, le=15)
+    title: str
+    workstream: str
+    decision: Literal["build", "integrate", "defer", "explicitly_not_copy"]
+    purpose: str
+    scope_boundary: str
+    implementation_status: Literal["planning_control_plane_implemented"]
+    feature_implementation_status: Literal["gated_or_pending_evidence"]
+    external_evidence_status: Literal["pending"]
+    acceptance_status: Literal["hold"]
+    dependencies: list[str]
+    source_basis: list[str]
+    delivery_artifacts: list[str]
+    acceptance_criteria: list[str]
+    external_evidence_requirements: list[str]
+    can_auto_accept: Literal[False] = False
+    can_auto_execute: Literal[False] = False
+    can_auto_approve_release: Literal[False] = False
+    requires_human_evidence_review: Literal[True] = True
+    production_status: Literal["not_authorized"]
+    revision: int = Field(ge=1)
+    revision_digest: str = Field(min_length=64, max_length=64)
+    seed_managed: bool = True
+    created_at: str | None = None
+    updated_at: str | None = None
+    revisions: list[IterationProgramRevisionOut] = Field(default_factory=list)
+    initial_field_level_diff: IterationProgramFieldLevelDiffOut | None = None
+
+
+class IterationProgramGovernanceOut(BaseModel):
+    instruction_kind: Literal["user_instruction"]
+    actor_identity_status: Literal["unverified"]
+    scope: Literal["product_strategy_iteration_program_only"]
+    iterations_require_explicit_initialization: Literal[True] = True
+    vendor_claim_is_not_independent_verification: Literal[True] = True
+    source_change_requires_human_review: Literal[True] = True
+    office_and_visual_acceptance_remain_gated: Literal[True] = True
+    can_auto_accept: Literal[False] = False
+    can_auto_execute: Literal[False] = False
+    can_auto_approve_release: Literal[False] = False
+    release_gate_mutated: Literal[False] = False
+    production_status: Literal["not_authorized"]
+    note: str
+
+
+class IterationProgramInitializationAuditOut(BaseModel):
+    id: str | None = None
+    event_key: str
+    project_scope: Literal["anti-fomo"]
+    event_type: str
+    instruction_evidence: IterationProgramInstructionEvidenceOut
+    iteration_program_digest: str = Field(min_length=64, max_length=64)
+    iteration_keys: list[str]
+    event_digest: str = Field(min_length=64, max_length=64)
+    can_auto_accept: Literal[False] = False
+    can_auto_execute: Literal[False] = False
+    can_auto_approve_release: Literal[False] = False
+    release_gate_mutated: Literal[False] = False
+    created_at: str | None = None
+
+
+class IterationProgramLandscapeOut(BaseModel):
+    iteration_program_version: Literal["2.10.3-2.11.7"]
+    observed_at: str
+    expires_at: str
+    program_digest: str = Field(min_length=64, max_length=64)
+    read_only: bool
+    initialized: bool
+    persistent_snapshot_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    instruction_evidence: IterationProgramInstructionEvidenceOut
+    governance: IterationProgramGovernanceOut
+    agent_sources: list[IterationProgramAgentSourceOut]
+    iterations: list[IterationProgramIterationOut]
+    initialization_audit: IterationProgramInitializationAuditOut | None = None
+
+
+class IterationProgramInitializationCountsOut(BaseModel):
+    created: int = Field(ge=0)
+    existing_seed_managed: int | None = Field(default=None, ge=0)
+    preserved_human: int | None = Field(default=None, ge=0)
+    existing: int | None = Field(default=None, ge=0)
+
+
+class IterationProgramInitializationOut(IterationProgramLandscapeOut):
+    initialization: dict[str, IterationProgramInitializationCountsOut]

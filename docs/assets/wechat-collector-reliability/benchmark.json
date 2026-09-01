@@ -1,0 +1,74 @@
+{
+  "benchmark_version": "wechat-dedupe-synthetic-v1",
+  "generated_at": "2026-09-01T02:44:44.992607+00:00",
+  "evidence_scope": "deterministic_synthetic_helper_benchmark",
+  "physical_device_capture": false,
+  "live_wechat_automation": false,
+  "production_readiness_evidence": false,
+  "method": {
+    "baseline": "exact SHA-256 byte equality",
+    "candidate": "production 64-bit difference perceptual hash",
+    "perceptual_hamming_threshold": 10,
+    "fixture_count": 6,
+    "expected_duplicate_count": 4
+  },
+  "summary": {
+    "baseline_duplicate_detections": 1,
+    "perceptual_duplicate_detections": 4,
+    "baseline_duplicate_recall_percent": 25,
+    "perceptual_duplicate_recall_percent": 100,
+    "baseline_accepted_frames": 5,
+    "perceptual_accepted_frames": 2,
+    "accepted_frame_reduction_percent": 60
+  },
+  "frames": [
+    {
+      "frame_key": "base",
+      "expected_group": "article_a",
+      "exact_duplicate": false,
+      "perceptual_duplicate": false,
+      "perceptual_distance": null
+    },
+    {
+      "frame_key": "exact_copy",
+      "expected_group": "article_a",
+      "exact_duplicate": true,
+      "perceptual_duplicate": true,
+      "perceptual_distance": 0
+    },
+    {
+      "frame_key": "shift_1px",
+      "expected_group": "article_a",
+      "exact_duplicate": false,
+      "perceptual_duplicate": true,
+      "perceptual_distance": 3
+    },
+    {
+      "frame_key": "shift_3px",
+      "expected_group": "article_a",
+      "exact_duplicate": false,
+      "perceptual_duplicate": true,
+      "perceptual_distance": 9
+    },
+    {
+      "frame_key": "brightness_92pct",
+      "expected_group": "article_a",
+      "exact_duplicate": false,
+      "perceptual_duplicate": true,
+      "perceptual_distance": 3
+    },
+    {
+      "frame_key": "different_layout",
+      "expected_group": "article_b",
+      "exact_duplicate": false,
+      "perceptual_duplicate": false,
+      "perceptual_distance": null
+    }
+  ],
+  "limitations": [
+    "Synthetic UI-like frames only; no personal WeChat content is loaded.",
+    "This measures helper behavior, not end-to-end collector success or physical-device performance.",
+    "Threshold changes require a new benchmark version and human review before rollout."
+  ],
+  "report_digest": "e1764aa6004a8c43709d11d22c2e5a835cd9cf8529165787e5c9e2b61a0d39d2"
+}

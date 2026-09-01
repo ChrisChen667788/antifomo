@@ -6,6 +6,10 @@
   <view class="hero-title">{{i18n.title}}</view>
   <view class="hero-subtitle">{{i18n.subtitle}}</view>
 
+  <view class="af-status-banner af-status-banner-{{sourceStateTone}}" wx:if="{{sourceStateMessage}}">
+    {{sourceStateMessage}}
+  </view>
+
   <view class="glass-card toolbar section">
     <view class="line">
       <text class="label">{{i18n.filter}}：</text>

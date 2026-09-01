@@ -75,3 +75,7 @@ The code is isolated under `product_strategy` rather than folded into customer/t
 4. [LangHub product page](https://www.langhub.cn/?locale=zh)
 5. [百度 Dumate documentation](https://cloud.baidu.com/doc/Dumate/index.html)
 6. [Tencent QClaw documentation](https://intl.cloud.tencent.com/zh/document/product/1300/81043)
+
+## 2026-08-31 Follow-on
+
+The governed follow-on train is documented in [Anti-FOMO 国内外模型 / Agent 竞品分析与 15 版本迭代方案](competitive-agent-landscape-and-iteration-program-2026-08-31.md). The 2.10.3–2.11.7 local control plane, fresh official Agent register and weekly source-change monitor extend this ledger without rewriting its historical observations. All new vendor claims remain unverified, all fifteen iterations remain `HOLD`, and the release gate is unchanged.

@@ -1,0 +1,207 @@
+{
+  "schema_version": "anti-fomo-competitive-browser-metrics/v1",
+  "generated_at": "2026-09-01T02:41:31.086Z",
+  "source_mode": "read_only_preview",
+  "startup_behavior": "does_not_start_or_stop_services",
+  "claim_boundary": {
+    "local_browser_measurement_only": true,
+    "physical_device_capture": false,
+    "production_performance_benchmark": false,
+    "release_approval_evidence": false
+  },
+  "frontend_url": "http://127.0.0.1:3010",
+  "api_base": "http://127.0.0.1:8000",
+  "preview": {
+    "health_status": "ok",
+    "catalog_version": "2.10.0",
+    "catalog_digest": "647ce039e4182bdac4dbb80d87163b39c42dfc51b93676fe1321582b367f0432",
+    "products": 6,
+    "roadmap_cards": 6,
+    "iteration_program_version": "2.10.3-2.11.7",
+    "iteration_count": 15,
+    "agent_source_count": 7,
+    "preview_read_only": true
+  },
+  "browser_metrics": {
+    "desktop_browser": {
+      "viewport": {
+        "width": 1600,
+        "height": 1100,
+        "deviceScaleFactor": 1,
+        "physical_device_capture": false
+      },
+      "samples": [
+        {
+          "sample": 1,
+          "capture_ready_ms": 736.62,
+          "navigation": {
+            "response_end_ms": 4.2,
+            "dom_content_loaded_ms": 19,
+            "load_event_end_ms": 71.3,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 68,
+            "first_contentful_paint_ms": 68
+          },
+          "resources": {
+            "count": 70,
+            "transfer_size_bytes": 466457
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        },
+        {
+          "sample": 2,
+          "capture_ready_ms": 744.38,
+          "navigation": {
+            "response_end_ms": 3.6,
+            "dom_content_loaded_ms": 42.8,
+            "load_event_end_ms": 69.4,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 68,
+            "first_contentful_paint_ms": 68
+          },
+          "resources": {
+            "count": 70,
+            "transfer_size_bytes": 466457
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        },
+        {
+          "sample": 3,
+          "capture_ready_ms": 731.46,
+          "navigation": {
+            "response_end_ms": 6.9,
+            "dom_content_loaded_ms": 47,
+            "load_event_end_ms": 73.4,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 72,
+            "first_contentful_paint_ms": 72
+          },
+          "resources": {
+            "count": 70,
+            "transfer_size_bytes": 466457
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        }
+      ],
+      "median": {
+        "capture_ready_ms": 736.62,
+        "response_end_ms": 4.2,
+        "dom_content_loaded_ms": 42.8,
+        "load_event_end_ms": 71.3,
+        "first_paint_ms": 68,
+        "first_contentful_paint_ms": 68,
+        "resource_count": 70,
+        "resource_transfer_size_bytes": 466457
+      }
+    },
+    "mobile_viewport": {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 3,
+        "isMobile": true,
+        "hasTouch": true,
+        "physical_device_capture": false
+      },
+      "samples": [
+        {
+          "sample": 1,
+          "capture_ready_ms": 691.26,
+          "navigation": {
+            "response_end_ms": 7.8,
+            "dom_content_loaded_ms": 48.8,
+            "load_event_end_ms": 75.4,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 68,
+            "first_contentful_paint_ms": 68
+          },
+          "resources": {
+            "count": 36,
+            "transfer_size_bytes": 305534
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        },
+        {
+          "sample": 2,
+          "capture_ready_ms": 704.89,
+          "navigation": {
+            "response_end_ms": 3.1,
+            "dom_content_loaded_ms": 16.4,
+            "load_event_end_ms": 73.1,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 72,
+            "first_contentful_paint_ms": 72
+          },
+          "resources": {
+            "count": 36,
+            "transfer_size_bytes": 305534
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        },
+        {
+          "sample": 3,
+          "capture_ready_ms": 697.16,
+          "navigation": {
+            "response_end_ms": 8.3,
+            "dom_content_loaded_ms": 48.1,
+            "load_event_end_ms": 74.1,
+            "transfer_size_bytes": 6028
+          },
+          "paint": {
+            "first_paint_ms": 68,
+            "first_contentful_paint_ms": 68
+          },
+          "resources": {
+            "count": 36,
+            "transfer_size_bytes": 305534
+          },
+          "diagnostics": {
+            "console_messages": [],
+            "request_failures": [],
+            "page_errors": []
+          }
+        }
+      ],
+      "median": {
+        "capture_ready_ms": 697.16,
+        "response_end_ms": 7.8,
+        "dom_content_loaded_ms": 48.1,
+        "load_event_end_ms": 74.1,
+        "first_paint_ms": 68,
+        "first_contentful_paint_ms": 68,
+        "resource_count": 36,
+        "resource_transfer_size_bytes": 305534
+      }
+    }
+  }
+}

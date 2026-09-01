@@ -4,8 +4,11 @@ import {
   getArtifactAcceptancePreview,
   getDecisionContextPackets,
   getDecisionContextPacketsPreview,
+  getIterationProgram,
+  getIterationProgramPreview,
   initializeArtifactAcceptance,
   initializeDecisionContextPackets,
+  initializeIterationProgram,
 } from "@/lib/api/competitive-intelligence";
 
 const requestMock = vi.hoisted(() => vi.fn());
@@ -40,6 +43,18 @@ describe("decision-context packet API client", () => {
     expect(requestMock).toHaveBeenNthCalledWith(1, "/api/product-strategy/artifact-acceptance/preview");
     expect(requestMock).toHaveBeenNthCalledWith(2, "/api/product-strategy/artifact-acceptance");
     expect(requestMock).toHaveBeenNthCalledWith(3, "/api/product-strategy/artifact-acceptance/initialize", {
+      method: "POST",
+    });
+  });
+
+  it("uses the 2.10.3-2.11.7 iteration-program preview, persisted, and explicit initialize endpoints", async () => {
+    await getIterationProgramPreview();
+    await getIterationProgram();
+    await initializeIterationProgram();
+
+    expect(requestMock).toHaveBeenNthCalledWith(1, "/api/product-strategy/iteration-program/preview");
+    expect(requestMock).toHaveBeenNthCalledWith(2, "/api/product-strategy/iteration-program");
+    expect(requestMock).toHaveBeenNthCalledWith(3, "/api/product-strategy/iteration-program/initialize", {
       method: "POST",
     });
   });

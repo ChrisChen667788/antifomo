@@ -12,6 +12,11 @@ const { trackEvent } = require("../../utils/analytics");
 const { t } = require("../../utils/i18n");
 const { getPreferenceClass } = require("../../utils/preferences");
 const { buildOriginalViewModel } = require("../../utils/item-content-view");
+const {
+  getDataSourceStateCopy,
+  getDataSourceStateTone,
+  resolveDataSourceState
+} = require("../../utils/data-source-state");
 
 function buildArchiveHitMessage(language, res, fallbackAction) {
   const actionLabel = res.knowledge_trigger === "save"
@@ -257,6 +262,11 @@ Page({
       )
       .then(({ item, diagnosticsRes }) => {
         const diagnostics = buildItemDiagnostics(item, diagnosticsRes);
+        const sourceState = resolveDataSourceState({
+          fromMock: item._fromMock,
+          fallbackUsed: diagnostics.fallback_used,
+          itemCount: 1
+        });
         const message = item._fromMock
           ? this.data.i18n.localOnly
           : diagnosticsRes && diagnosticsRes._fromMock
@@ -288,11 +298,21 @@ Page({
           loading: false,
           loadError: false,
           message,
-          messageTone
+          messageTone,
+          sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+          sourceStateTone: getDataSourceStateTone(sourceState)
         }, () => this.triggerViewMotion());
       })
       .catch(() => {
-        this.setData({ loading: false, loadError: true, item: null });
+        const language = getApp().globalData.preferences.language;
+        const sourceState = resolveDataSourceState({ unavailable: true });
+        this.setData({
+          loading: false,
+          loadError: true,
+          item: null,
+          sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+          sourceStateTone: getDataSourceStateTone(sourceState)
+        });
         wx.showToast({ title: this.data.i18n.loadingFailed, icon: "none" });
       });
   },

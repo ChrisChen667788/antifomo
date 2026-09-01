@@ -2,6 +2,11 @@ const { listSavedItems } = require("../../utils/api");
 const { scoreTo100 } = require("../../utils/format");
 const { t } = require("../../utils/i18n");
 const { getPreferenceClass } = require("../../utils/preferences");
+const {
+  getDataSourceStateCopy,
+  getDataSourceStateTone,
+  resolveDataSourceState
+} = require("../../utils/data-source-state");
 
 function relevanceScore(item) {
   let score = item.score100 || 50;
@@ -24,6 +29,8 @@ Page({
     sortOptions: [],
     prefClass: "",
     settingsLabel: "设置",
+    sourceStateMessage: "",
+    sourceStateTone: "info",
     i18n: {}
   },
 
@@ -89,15 +96,28 @@ Page({
     this.setData({ loading: true });
     return listSavedItems(50)
       .then((res) => {
+        const language = getApp().globalData.preferences.language;
+        const sourceState = resolveDataSourceState({ fromMock: res.fromMock, items: res.items || [] });
         const sourceItems = (res.items || []).map((item) => ({
           ...item,
           score100: scoreTo100(item.score_value),
           tagsText: (item.tags || []).map((tag) => tag.tag_name || tag)
         }));
-        this.setData({ sourceItems, loading: false }, () => this.applyFilters());
+        this.setData({
+          sourceItems,
+          loading: false,
+          sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+          sourceStateTone: getDataSourceStateTone(sourceState)
+        }, () => this.applyFilters());
       })
       .catch(() => {
-        this.setData({ loading: false });
+        const language = getApp().globalData.preferences.language;
+        const sourceState = resolveDataSourceState({ unavailable: true });
+        this.setData({
+          loading: false,
+          sourceStateMessage: getDataSourceStateCopy(language, sourceState),
+          sourceStateTone: getDataSourceStateTone(sourceState)
+        });
       });
   },
 

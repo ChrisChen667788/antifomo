@@ -2,15 +2,24 @@ import { PageShell } from "@/components/layout/page-shell";
 import { SavedList } from "@/components/saved/saved-list";
 import type { FeedItem } from "@/lib/mock-data";
 import { listSavedItems, toFeedCardLabel } from "@/lib/api";
+import {
+  resolveDataSourceState,
+  type DataSourceState,
+} from "@/lib/data-source-state";
 import { resolveItemTitle } from "@/lib/item-title";
 
-async function loadSavedItems(): Promise<{ items: FeedItem[]; message: string }> {
+async function loadSavedItems(): Promise<{
+  items: FeedItem[];
+  message: string;
+  dataSourceState: DataSourceState;
+}> {
   try {
     const response = await listSavedItems(30);
     if (!response.items.length) {
       return {
         items: [],
         message: "暂无收藏数据。",
+        dataSourceState: resolveDataSourceState({ items: response.items }),
       };
     }
     return {
@@ -37,20 +46,23 @@ async function loadSavedItems(): Promise<{ items: FeedItem[]; message: string }>
         sourceMatchScore: item.source_match_score ?? undefined,
         preferenceVersion: item.preference_version || undefined,
         url: item.source_url || "#",
+        fallbackUsed: item.fallback_used,
       };
       }),
       message: "",
+      dataSourceState: resolveDataSourceState({ items: response.items }),
     };
   } catch {
     return {
       items: [],
       message: "收藏页暂时无法读取实时数据。",
+      dataSourceState: resolveDataSourceState({ isUnavailable: true }),
     };
   }
 }
 
 export default async function SavedPage() {
-  const { items, message } = await loadSavedItems();
+  const { items, message, dataSourceState } = await loadSavedItems();
   return (
     <PageShell
       title="收藏 / 稍后读"
@@ -63,7 +75,7 @@ export default async function SavedPage() {
           {message}
         </div>
       ) : null}
-      <SavedList items={items} />
+      <SavedList items={items} dataSourceState={dataSourceState} />
     </PageShell>
   );
 }

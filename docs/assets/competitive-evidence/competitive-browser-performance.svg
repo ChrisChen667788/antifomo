@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-label="Anti-FOMO competitive preview local browser metric summary">
+  <rect width="1200" height="430" fill="#f7fafc" />
+  <text x="48" y="68" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="32" font-weight="700" fill="#14213d">Anti-FOMO /competitive 浏览器采样</text>
+  <text x="48" y="103" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" fill="#5b667a">只读 preview · 本地环境 · 非生产压测 · 非真机测试</text>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+      <rect x="48" y="171" width="1104" height="112" rx="20" fill="#ffffff" stroke="#dbe4ee" />
+      <text x="78" y="205" font-size="22" font-weight="700" fill="#14213d">桌面浏览器</text>
+      <text x="78" y="234" font-size="15" fill="#5b667a">3 次本地浏览器导航采样的中位数</text>
+      <text x="455" y="203" font-size="15" fill="#5b667a">Ready</text>
+      <text x="455" y="230" font-size="25" font-weight="700" fill="#0f766e">737 ms</text>
+      <text x="650" y="203" font-size="15" fill="#5b667a">DCL</text>
+      <text x="650" y="230" font-size="25" font-weight="700" fill="#0f766e">43 ms</text>
+      <text x="825" y="203" font-size="15" fill="#5b667a">FCP</text>
+      <text x="825" y="230" font-size="25" font-weight="700" fill="#0f766e">68 ms</text>
+      <text x="1005" y="203" font-size="15" fill="#5b667a">Resources</text>
+      <text x="1005" y="230" font-size="25" font-weight="700" fill="#0f766e">456 KiB</text>
+
+      <rect x="48" y="313" width="1104" height="112" rx="20" fill="#ffffff" stroke="#dbe4ee" />
+      <text x="78" y="347" font-size="22" font-weight="700" fill="#14213d">移动 CSS 视口</text>
+      <text x="78" y="376" font-size="15" fill="#5b667a">3 次本地浏览器导航采样的中位数</text>
+      <text x="455" y="345" font-size="15" fill="#5b667a">Ready</text>
+      <text x="455" y="372" font-size="25" font-weight="700" fill="#0f766e">697 ms</text>
+      <text x="650" y="345" font-size="15" fill="#5b667a">DCL</text>
+      <text x="650" y="372" font-size="25" font-weight="700" fill="#0f766e">48 ms</text>
+      <text x="825" y="345" font-size="15" fill="#5b667a">FCP</text>
+      <text x="825" y="372" font-size="25" font-weight="700" fill="#0f766e">68 ms</text>
+      <text x="1005" y="345" font-size="15" fill="#5b667a">Resources</text>
+      <text x="1005" y="372" font-size="25" font-weight="700" fill="#0f766e">298 KiB</text></g>
+  <text x="48" y="405" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14" fill="#6b7280">Ready = 页面满足 /competitive 预览内容断言的总耗时；DCL/FCP 来自浏览器 Performance API。</text>
+</svg>

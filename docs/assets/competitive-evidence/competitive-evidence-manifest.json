@@ -1,0 +1,357 @@
+{
+  "schema_version": "anti-fomo-competitive-evidence/v1",
+  "generated_at": "2026-09-01T02:41:32.110Z",
+  "source_mode": "read_only_preview",
+  "startup_behavior": "does_not_start_or_stop_services",
+  "physical_device_capture": false,
+  "production_claim": false,
+  "release_approval_evidence": false,
+  "capture_scope": "local browser and simulated mobile CSS viewport",
+  "preview": {
+    "health_status": "ok",
+    "catalog_version": "2.10.0",
+    "catalog_digest": "647ce039e4182bdac4dbb80d87163b39c42dfc51b93676fe1321582b367f0432",
+    "products": 6,
+    "roadmap_cards": 6,
+    "iteration_program_version": "2.10.3-2.11.7",
+    "iteration_count": 15,
+    "agent_source_count": 7,
+    "preview_read_only": true
+  },
+  "capture_entries": [
+    {
+      "key": "competitive-preview-desktop-browser",
+      "filename": "competitive-preview-desktop-browser.png",
+      "formFactor": "desktop_browser",
+      "viewport": {
+        "width": 1600,
+        "height": 1100,
+        "deviceScaleFactor": 1
+      },
+      "description": "Read-only Competitive Capability Observatory overview in a desktop browser viewport.",
+      "file": "competitive-preview-desktop-browser.png",
+      "file_size_bytes": 282679,
+      "sha256": "6c64a79dc4d345164d18dafba8c21fef03e38b44186a2575223a0a2fef9de02e",
+      "browser_metrics": {
+        "capture_ready_ms": 795.66,
+        "navigation": {
+          "response_end_ms": 7.3,
+          "dom_content_loaded_ms": 63.2,
+          "load_event_end_ms": 95.3,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 208,
+          "first_contentful_paint_ms": 208
+        },
+        "resources": {
+          "count": 70,
+          "transfer_size_bytes": 466457
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-source-matrix-desktop-browser",
+      "filename": "competitive-source-matrix-desktop-browser.png",
+      "formFactor": "desktop_browser",
+      "viewport": {
+        "width": 1600,
+        "height": 1100,
+        "deviceScaleFactor": 1
+      },
+      "scrollText": "官方能力观察",
+      "description": "Official-source matrix in a desktop browser viewport; vendor claims remain unverified unless separately evidenced.",
+      "file": "competitive-source-matrix-desktop-browser.png",
+      "file_size_bytes": 364329,
+      "sha256": "efadb5da89d57fd6f48713fa0ad98466d2182d6a4d4c031b9ee88b9b7cc16532",
+      "browser_metrics": {
+        "capture_ready_ms": 752.69,
+        "navigation": {
+          "response_end_ms": 3.8,
+          "dom_content_loaded_ms": 42.3,
+          "load_event_end_ms": 70,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 72,
+          "first_contentful_paint_ms": 72
+        },
+        "resources": {
+          "count": 70,
+          "transfer_size_bytes": 466457
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-artifact-gates-desktop-browser",
+      "filename": "competitive-artifact-gates-desktop-browser.png",
+      "formFactor": "desktop_browser",
+      "viewport": {
+        "width": 1600,
+        "height": 1100,
+        "deviceScaleFactor": 1
+      },
+      "scrollSelector": "[data-testid='competitive-artifact-acceptance']",
+      "description": "Office and visual evidence HOLD gates in a desktop browser viewport.",
+      "file": "competitive-artifact-gates-desktop-browser.png",
+      "file_size_bytes": 337221,
+      "sha256": "d8c28b2ebcb5bef3307f6bc06a4eb45fb0c902aec3a25b8e7ba44014801dfea2",
+      "browser_metrics": {
+        "capture_ready_ms": 742.43,
+        "navigation": {
+          "response_end_ms": 6.5,
+          "dom_content_loaded_ms": 48.6,
+          "load_event_end_ms": 74.4,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 72,
+          "first_contentful_paint_ms": 72
+        },
+        "resources": {
+          "count": 70,
+          "transfer_size_bytes": 466457
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-preview-mobile-viewport",
+      "filename": "competitive-preview-mobile-viewport.png",
+      "formFactor": "mobile_viewport",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 3,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "description": "Read-only Competitive Capability Observatory overview in a simulated mobile CSS viewport, not a physical-device capture.",
+      "file": "competitive-preview-mobile-viewport.png",
+      "file_size_bytes": 449012,
+      "sha256": "877f751c690a7afb511af2504e4f59a5cb49d415030ec53400c58e382798c251",
+      "browser_metrics": {
+        "capture_ready_ms": 687.05,
+        "navigation": {
+          "response_end_ms": 3.3,
+          "dom_content_loaded_ms": 44.8,
+          "load_event_end_ms": 70.2,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 68,
+          "first_contentful_paint_ms": 68
+        },
+        "resources": {
+          "count": 36,
+          "transfer_size_bytes": 305534
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-artifact-gates-mobile-viewport",
+      "filename": "competitive-artifact-gates-mobile-viewport.png",
+      "formFactor": "mobile_viewport",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 3,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "scrollSelector": "[data-testid='competitive-artifact-acceptance']",
+      "description": "Office and visual evidence HOLD gates in a simulated mobile CSS viewport, not a physical-device capture.",
+      "file": "competitive-artifact-gates-mobile-viewport.png",
+      "file_size_bytes": 509501,
+      "sha256": "78258c59811f0e8c44d573780595ba62a621b5c4756ffe5b9267c768d5cdd2db",
+      "browser_metrics": {
+        "capture_ready_ms": 688.47,
+        "navigation": {
+          "response_end_ms": 4,
+          "dom_content_loaded_ms": 19.4,
+          "load_event_end_ms": 73.7,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 68,
+          "first_contentful_paint_ms": 68
+        },
+        "resources": {
+          "count": 36,
+          "transfer_size_bytes": 305534
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-iteration-program-desktop-browser",
+      "filename": "competitive-iteration-program-desktop-browser.png",
+      "formFactor": "desktop_browser",
+      "viewport": {
+        "width": 1600,
+        "height": 1100,
+        "deviceScaleFactor": 1
+      },
+      "scrollSelector": "[data-testid='competitive-iteration-program']",
+      "description": "The governed 2.10.3-2.11.7 iteration train and Agent-source watch in a desktop browser viewport.",
+      "file": "competitive-iteration-program-desktop-browser.png",
+      "file_size_bytes": 340241,
+      "sha256": "1f3a31ef82ce02d84a37d3933add185f67b123d14fb212dd599d3f514fa72fba",
+      "browser_metrics": {
+        "capture_ready_ms": 728.65,
+        "navigation": {
+          "response_end_ms": 4.7,
+          "dom_content_loaded_ms": 45.1,
+          "load_event_end_ms": 71,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 68,
+          "first_contentful_paint_ms": 68
+        },
+        "resources": {
+          "count": 70,
+          "transfer_size_bytes": 466457
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    },
+    {
+      "key": "competitive-iteration-program-mobile-viewport",
+      "filename": "competitive-iteration-program-mobile-viewport.png",
+      "formFactor": "mobile_viewport",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 3,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "scrollSelector": "[data-testid='competitive-iteration-program']",
+      "description": "The governed 2.10.3-2.11.7 iteration train in a simulated mobile CSS viewport, not a physical-device capture.",
+      "file": "competitive-iteration-program-mobile-viewport.png",
+      "file_size_bytes": 514019,
+      "sha256": "37b413f85098ad921808a0767a301ecef64ac52ec9a69988668b37a9ca26bf8a",
+      "browser_metrics": {
+        "capture_ready_ms": 688.7,
+        "navigation": {
+          "response_end_ms": 3.7,
+          "dom_content_loaded_ms": 42.1,
+          "load_event_end_ms": 82.2,
+          "transfer_size_bytes": 6028
+        },
+        "paint": {
+          "first_paint_ms": 64,
+          "first_contentful_paint_ms": 64
+        },
+        "resources": {
+          "count": 36,
+          "transfer_size_bytes": 305534
+        }
+      },
+      "diagnostics": {
+        "console_messages": [],
+        "request_failures": [],
+        "page_errors": []
+      },
+      "source_mode": "read_only_preview",
+      "physical_device_capture": false
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "docs/assets/competitive-evidence/competitive-preview-desktop-browser.png",
+      "file_size_bytes": 282679,
+      "sha256": "6c64a79dc4d345164d18dafba8c21fef03e38b44186a2575223a0a2fef9de02e"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-source-matrix-desktop-browser.png",
+      "file_size_bytes": 364329,
+      "sha256": "efadb5da89d57fd6f48713fa0ad98466d2182d6a4d4c031b9ee88b9b7cc16532"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png",
+      "file_size_bytes": 337221,
+      "sha256": "d8c28b2ebcb5bef3307f6bc06a4eb45fb0c902aec3a25b8e7ba44014801dfea2"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-preview-mobile-viewport.png",
+      "file_size_bytes": 449012,
+      "sha256": "877f751c690a7afb511af2504e4f59a5cb49d415030ec53400c58e382798c251"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-artifact-gates-mobile-viewport.png",
+      "file_size_bytes": 509501,
+      "sha256": "78258c59811f0e8c44d573780595ba62a621b5c4756ffe5b9267c768d5cdd2db"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png",
+      "file_size_bytes": 340241,
+      "sha256": "1f3a31ef82ce02d84a37d3933add185f67b123d14fb212dd599d3f514fa72fba"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-iteration-program-mobile-viewport.png",
+      "file_size_bytes": 514019,
+      "sha256": "37b413f85098ad921808a0767a301ecef64ac52ec9a69988668b37a9ca26bf8a"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-preview-demo.mp4",
+      "file_size_bytes": 297486,
+      "sha256": "53e48cd5093dcb2237d110b80ba9201428a21521f9a0e6c40adf4c1aeef9cdd2"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-preview-demo.gif",
+      "file_size_bytes": 4190642,
+      "sha256": "d6676d80aa29b521ca1bed43bc720737d69b5316ebd1cbbf3ac8aeadd8363fd4"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-browser-performance.json",
+      "file_size_bytes": 5777,
+      "sha256": "c775a65f9f22f26843db95536e10ff902b4b2c4ca2e70e642e2c8de5d695138a"
+    },
+    {
+      "file": "docs/assets/competitive-evidence/competitive-browser-performance.svg",
+      "file_size_bytes": 2835,
+      "sha256": "865aa5424b0d563ab09a90f9299f8aca289bcc6c253bd85bf403113d3b6faf25"
+    }
+  ]
+}

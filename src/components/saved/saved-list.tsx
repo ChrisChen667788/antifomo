@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { FeedItem } from "@/lib/mock-data";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
+import { DataSourceStateBadge } from "@/components/ui/data-source-state-badge";
+import type { DataSourceState } from "@/lib/data-source-state";
 
 type TagFilter = "all" | "ai" | "business" | "job";
 type SortMode = "latest" | "score" | "relevance";
 
 interface SavedListProps {
   items: FeedItem[];
+  dataSourceState: DataSourceState;
 }
 
 function relevanceScore(item: FeedItem): number {
@@ -20,7 +23,7 @@ function relevanceScore(item: FeedItem): number {
   return score;
 }
 
-export function SavedList({ items }: SavedListProps) {
+export function SavedList({ items, dataSourceState }: SavedListProps) {
   const { t } = useAppPreferences();
   const [tagFilter, setTagFilter] = useState<TagFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("latest");
@@ -87,6 +90,8 @@ export function SavedList({ items }: SavedListProps) {
           </select>
         </div>
       </div>
+
+      <DataSourceStateBadge state={dataSourceState} />
 
       <div className="space-y-3">
         {result.map((item, idx) => (
