@@ -712,13 +712,21 @@ export function FocusTimer() {
     void startFocus();
   };
 
-  const focusStateLabel = running
-    ? t("focus.state.running", "专注进行中")
+  const focusState = running
+    ? "running"
     : paused
-      ? t("focus.state.paused", "已暂停")
+      ? "paused"
       : secondsLeft === 0
-        ? t("focus.state.done", "本轮已完成")
-        : t("focus.state.ready", "准备开始");
+        ? "done"
+        : "ready";
+  const focusStateLabel =
+    focusState === "running"
+      ? t("focus.state.running", "专注进行中")
+      : focusState === "paused"
+        ? t("focus.state.paused", "已暂停")
+        : focusState === "done"
+          ? t("focus.state.done", "本轮已完成")
+          : t("focus.state.ready", "准备开始");
   const transportBadgeLabel =
     transportMode === "bootstrapping"
       ? t("focus.transport.bootstrapping", "接入中")
@@ -981,7 +989,11 @@ export function FocusTimer() {
         </p>
       </div>
 
-      <section className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600">
+      <section
+        className="mt-5 rounded-2xl border border-white/85 bg-white/55 px-4 py-4 text-sm text-slate-600"
+        data-focus-state={focusState}
+        data-focus-transport={transportMode}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl">
             <p className="af-kicker">{t("focus.statusKicker", "专注状态")}</p>

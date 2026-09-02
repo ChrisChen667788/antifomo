@@ -231,6 +231,7 @@ async function getSnapshot(page) {
   return page.evaluate(() => {
     const buttonTexts = [...document.querySelectorAll("button")].map((node) => node.textContent?.trim() || "");
     const chipTexts = [...document.querySelectorAll("span")].map((node) => node.textContent?.trim() || "").filter(Boolean);
+    const focusStatus = document.querySelector("[data-focus-state]");
     const countdown = [...document.querySelectorAll("p")]
       .map((node) => node.textContent?.trim() || "")
       .find((text) => /^\d{2}:\d{2}$/.test(text)) || null;
@@ -238,6 +239,9 @@ async function getSnapshot(page) {
       buttonTexts,
       chipTexts,
       countdown,
+      focusState: focusStatus?.getAttribute("data-focus-state") || null,
+      focusTransport: focusStatus?.getAttribute("data-focus-transport") || null,
+      focusStatusText: focusStatus?.textContent?.trim() || "",
       bodyText: document.body.innerText,
     };
   });
@@ -428,7 +432,11 @@ async function main() {
       pausedShowsResume: paused.buttonTexts.some((text) => ["继续", "Resume"].includes(text)),
       backendSessionPausedAfterPause: pausedSession.status === "paused",
       pausedKeepsSameCountdown: paused.countdown === pausedLater.countdown,
-      pausedDetailUpdated: /后端 session 与页面倒计时都已暂停|backend session and the page countdown are paused/i.test(paused.bodyText),
+      pausedDetailUpdated:
+        paused.focusState === "paused" &&
+        /点击继续后，会从当前剩余时间恢复|點擊繼續後，會從目前剩餘時間恢復|click resume to continue from the remaining time/i.test(
+          paused.focusStatusText,
+        ),
       resumedReturnsPauseButton: resumed.buttonTexts.some((text) => ["暂停", "Pause"].includes(text)),
       backendSessionRunningAfterResume: resumedSession.status === "running",
       resumedContinuesFromRemaining:
