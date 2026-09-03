@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.decision_program_entities import DecisionVerticalPack
@@ -45,6 +46,7 @@ VERTICAL_PACKS: tuple[dict[str, Any], ...] = (
 
 def seed_vertical_packs(db: Session) -> list[DecisionVerticalPack]:
     rows: list[DecisionVerticalPack] = []
+    expected_digests: dict[str, str] = {}
     for definition in VERTICAL_PACKS:
         content = {
             "source_registry": [{"authority": value, "source_class": "official", "verification_required": True} for value in definition["sources"]],
@@ -54,6 +56,7 @@ def seed_vertical_packs(db: Session) -> list[DecisionVerticalPack]:
             "rubric": definition["rubric"],
         }
         digest = canonical_digest(content)
+        expected_digests[definition["pack_key"]] = digest
         existing = db.scalar(
             select(DecisionVerticalPack)
             .where(DecisionVerticalPack.pack_key == definition["pack_key"])
@@ -86,7 +89,29 @@ def seed_vertical_packs(db: Session) -> list[DecisionVerticalPack]:
         )
         db.add(row)
         rows.append(row)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        if "decision_vertical_packs.pack_key" not in str(exc.orig):
+            raise
+        # The overview and vertical-pack endpoints can be requested together on
+        # first paint.  If both sessions observe an empty table, one wins the
+        # immutable (pack_key, version) insert and the other must reload that
+        # committed seed instead of surfacing a transient 500.
+        db.rollback()
+        recovered_rows: list[DecisionVerticalPack] = []
+        for definition in VERTICAL_PACKS:
+            existing = db.scalar(
+                select(DecisionVerticalPack)
+                .where(DecisionVerticalPack.pack_key == definition["pack_key"])
+                .where(DecisionVerticalPack.version == "1.0.0")
+            )
+            if existing is None:
+                raise
+            if existing.content_hash != expected_digests[definition["pack_key"]]:
+                raise ValueError(f"Immutable vertical pack changed: {definition['pack_key']}")
+            recovered_rows.append(existing)
+        rows = recovered_rows
     for row in rows:
         db.refresh(row)
     return rows

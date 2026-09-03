@@ -1394,6 +1394,11 @@ class ResearchClarificationPacketOut(BaseModel):
     can_view_provisional: bool = False
     formal_delivery_allowed: bool = False
     system_retryable: bool = False
+    recovery_attempt: int = 0
+    recovery_limit: int = 3
+    recovery_exhausted: bool = False
+    requires_evidence_input: bool = False
+    recovery_blocked_reason: str = ""
     questions: list[ResearchClarificationQuestionOut] = Field(default_factory=list)
     recovery_options: list[ResearchRecoveryOptionOut] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
@@ -3131,6 +3136,9 @@ class ResearchJobOut(BaseModel):
     root_job_id: str | None = None
     resumed_child_job_id: str | None = None
     recovery_attempt: int = 0
+    recovery_limit: int = 3
+    recovery_exhausted: bool = False
+    requires_evidence_input: bool = False
     accepted_snapshot_digest: str = ""
     formal_delivery_allowed: bool = False
 
@@ -3146,7 +3154,16 @@ class ResearchJobTimelineEventOut(BaseModel):
 class ResearchClarificationSubmitResponse(BaseModel):
     parent_job_id: str
     action: ResearchClarificationAction
+    outcome: Literal[
+        "recovery_started",
+        "idempotent_replay",
+        "provisional_viewed",
+        "recovery_blocked",
+    ] = "recovery_started"
+    message: str = ""
     idempotent_replay: bool = False
+    recovery_exhausted: bool = False
+    requires_evidence_input: bool = False
     child_job: ResearchJobOut | None = None
     parent_job: ResearchJobOut
 

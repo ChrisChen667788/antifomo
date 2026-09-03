@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResearchRecoveryCard } from "@/components/inbox/research-recovery-card";
 import type { ApiResearchJob } from "@/lib/api";
 
@@ -71,6 +71,8 @@ const parentJob = {
 } as ApiResearchJob;
 
 describe("ResearchRecoveryCard", () => {
+  afterEach(() => cleanup());
+
   beforeEach(() => {
     apiMock.submitResearchJobClarification.mockReset();
   });
@@ -117,5 +119,107 @@ describe("ResearchRecoveryCard", () => {
     });
     expect(onParentUpdated).toHaveBeenCalledWith(parentJob);
     expect(onRecoveryStarted).toHaveBeenCalledWith(childJob);
+  });
+
+  it("requires a verifiable URL or file before starting another evidence recovery", async () => {
+    const evidenceRequiredJob = {
+      ...parentJob,
+      recovery_attempt: 1,
+      recovery_limit: 3,
+      requires_evidence_input: true,
+    } as ApiResearchJob;
+    apiMock.submitResearchJobClarification.mockResolvedValue({
+      parent_job_id: evidenceRequiredJob.id,
+      action: "submit_answers",
+      idempotent_replay: false,
+      parent_job: evidenceRequiredJob,
+      child_job: {
+        ...evidenceRequiredJob,
+        id: "33333333-3333-3333-3333-333333333333",
+        status: "queued",
+        recovery_attempt: 2,
+      },
+    });
+
+    render(
+      <ResearchRecoveryCard
+        job={evidenceRequiredJob}
+        onParentUpdated={vi.fn()}
+        onRecoveryStarted={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("research-recovery-evidence-required")).toHaveTextContent(
+      "仅填写文字不会再启动重复复核",
+    );
+    const resumeButton = screen.getByRole("button", { name: "补充资料并续跑" });
+    expect(resumeButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("会议背景、范围、约束或必须回答的问题"), {
+      target: { value: "补充一段背景说明" },
+    });
+    expect(resumeButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("每行一个官网、政策、采购公告或项目链接"), {
+      target: { value: "example.gov.cn/policy" },
+    });
+    expect(resumeButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("每行一个官网、政策、采购公告或项目链接"), {
+      target: { value: "https://example.gov.cn/policy" },
+    });
+    expect(resumeButton).toBeEnabled();
+    fireEvent.click(resumeButton);
+
+    await waitFor(() => expect(apiMock.submitResearchJobClarification).toHaveBeenCalledTimes(1));
+    expect(apiMock.submitResearchJobClarification.mock.calls[0][1]).toMatchObject({
+      supplemental_urls: ["https://example.gov.cn/policy"],
+      supplemental_text: "补充一段背景说明",
+    });
+  });
+
+  it("closes exhausted recovery without exposing an action that creates another child", async () => {
+    const exhaustedJob = {
+      ...parentJob,
+      recovery_attempt: 3,
+      recovery_limit: 3,
+      recovery_exhausted: true,
+      requires_evidence_input: true,
+      clarification_packet: {
+        ...parentJob.clarification_packet!,
+        active: false,
+      },
+    } as ApiResearchJob;
+    apiMock.submitResearchJobClarification.mockResolvedValue({
+      parent_job_id: exhaustedJob.id,
+      action: "view_provisional",
+      idempotent_replay: false,
+      parent_job: exhaustedJob,
+      child_job: null,
+    });
+    const onRecoveryStarted = vi.fn();
+
+    render(
+      <ResearchRecoveryCard
+        job={exhaustedJob}
+        onParentUpdated={vi.fn()}
+        onRecoveryStarted={onRecoveryStarted}
+      />,
+    );
+
+    expect(screen.getByTestId("research-recovery-round-summary")).toHaveTextContent(
+      "系统不会再创建重复子任务",
+    );
+    expect(screen.getByTestId("research-recovery-exhausted")).toHaveTextContent(
+      "已完成本任务可用的补证复核轮次",
+    );
+    expect(screen.queryByRole("button", { name: "补充资料并续跑" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "先查看受限草稿" }));
+
+    await waitFor(() => expect(apiMock.submitResearchJobClarification).toHaveBeenCalledTimes(1));
+    expect(apiMock.submitResearchJobClarification.mock.calls[0][1]).toMatchObject({
+      action: "view_provisional",
+    });
+    expect(onRecoveryStarted).not.toHaveBeenCalled();
   });
 });

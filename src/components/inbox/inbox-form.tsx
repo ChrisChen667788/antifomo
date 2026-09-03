@@ -59,6 +59,7 @@ export function InboxForm() {
   const [researchHistory, setResearchHistory] = useState<ApiKnowledgeEntry[]>([]);
   const [researchReport, setResearchReport] = useState<ApiResearchReport | null>(null);
   const [researchJob, setResearchJob] = useState<ApiResearchJob | null>(null);
+  const [researchRecoveryParentJob, setResearchRecoveryParentJob] = useState<ApiResearchJob | null>(null);
   const [researchActionCards, setResearchActionCards] = useState<UiResearchActionCard[]>([]);
   const [savedResearchEntryId, setSavedResearchEntryId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -444,6 +445,7 @@ export function InboxForm() {
     setSavedResearchEntryId(null);
     setResearchActionCards([]);
     setResearchReport(null);
+    setResearchRecoveryParentJob(null);
     setSeededConversationJobId("");
     setResearching(true);
     const modeConfig = buildResearchModeConfig(researchMode);
@@ -770,6 +772,8 @@ export function InboxForm() {
   };
 
   const researchProgress = Math.max(0, Math.min(100, Number(researchJob?.progress_percent || 0)));
+  const researchRecoveryAttempt = Math.max(0, Number(researchJob?.recovery_attempt || 0));
+  const researchRecoveryLimit = Math.max(0, Number(researchJob?.recovery_limit || 0));
   const researchStageLabel =
     researchJob?.stage_label || t("inbox.researchingTitle", "正在整理公开信息");
   const researchStageMessage =
@@ -1027,7 +1031,11 @@ export function InboxForm() {
       {researching ? (
         <LegacyResearchProgressCard
           progress={researchProgress}
-          stateLabel={t("inbox.researchingState", "研究中")}
+          stateLabel={
+            researchRecoveryAttempt > 0
+              ? `补证复核中 · 第 ${researchRecoveryAttempt}${researchRecoveryLimit > 0 ? `/${researchRecoveryLimit}` : ""} 轮`
+              : t("inbox.researchingState", "研究中")
+          }
           stageLabel={researchStageLabel}
           stageMessage={researchStageMessage}
           modeLabel={researchModeLabel}
@@ -1035,14 +1043,29 @@ export function InboxForm() {
           keywordGroups={researchKeywordGroups}
           modeHint={researchModeHint}
           activePipelineLabel={activePipelineStage?.label || "收集"}
+          recoveryAttempt={researchRecoveryAttempt}
+          recoveryLimit={researchRecoveryLimit || undefined}
+          previousRound={
+            researchRecoveryAttempt > 0
+              ? {
+                  progress: Number(researchRecoveryParentJob?.progress_percent || 100),
+                  stageLabel: researchRecoveryParentJob?.stage_label || "研究执行已完成，等待补证",
+                  acceptedSourceCount:
+                    researchRecoveryParentJob?.clarification_packet?.accepted_source_count,
+                }
+              : null
+          }
           pipelineStages={researchPipelineStages}
         />
       ) : null}
 
-      {researchJob?.clarification_packet?.active ? (
+      {researchJob?.clarification_packet && (
+        researchJob.clarification_packet.active || researchJob.recovery_exhausted
+      ) ? (
         <ResearchRecoveryCard
           job={researchJob}
           onParentUpdated={(parentJob) => {
+            setResearchRecoveryParentJob(parentJob);
             setResearchJob(parentJob);
             if (parentJob.report) setResearchReport(parentJob.report);
           }}

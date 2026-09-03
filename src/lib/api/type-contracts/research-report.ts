@@ -281,6 +281,11 @@ export interface ApiResearchClarificationPacket {
   can_view_provisional: boolean;
   formal_delivery_allowed: boolean;
   system_retryable: boolean;
+  recovery_attempt?: number;
+  recovery_limit?: number;
+  recovery_exhausted?: boolean;
+  requires_evidence_input?: boolean;
+  recovery_blocked_reason?: string;
   questions: ApiResearchClarificationQuestion[];
   recovery_options: ApiResearchRecoveryOption[];
   next_steps: string[];
@@ -721,6 +726,9 @@ export interface ApiResearchJob {
   root_job_id?: string | null;
   resumed_child_job_id?: string | null;
   recovery_attempt?: number;
+  recovery_limit?: number;
+  recovery_exhausted?: boolean;
+  requires_evidence_input?: boolean;
   accepted_snapshot_digest?: string;
   formal_delivery_allowed?: boolean;
 }
@@ -763,7 +771,11 @@ export interface ApiResearchClarificationSubmitPayload {
 export interface ApiResearchClarificationSubmitResponse {
   parent_job_id: string;
   action: ApiResearchClarificationAction;
+  outcome?: "recovery_started" | "idempotent_replay" | "provisional_viewed" | "recovery_blocked";
+  message?: string;
   idempotent_replay: boolean;
+  recovery_exhausted?: boolean;
+  requires_evidence_input?: boolean;
   child_job?: ApiResearchJob | null;
   parent_job: ApiResearchJob;
 }

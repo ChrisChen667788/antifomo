@@ -49,6 +49,12 @@ _WORKER_ID = f"research-worker-{os.getpid()}-{uuid.uuid4().hex[:8]}"
 _JOBS_BACKFILL_ATTEMPTED = False
 _LEGACY_REPORT_READ_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
 
+# A clarification continuation is a new, fully metered research execution.  Keep
+# the limit explicit and server-side so a client cannot accidentally create an
+# unbounded parent/child chain when the evidence gate continues to reject every
+# candidate source.
+MAX_CLARIFICATION_RECOVERY_ATTEMPTS = 3
+
 STAGE_LABELS = {
     "queued": "已进入研究队列",
     "starting": "正在准备研究范围",
@@ -307,6 +313,107 @@ def _needs_evidence_message(report_payload: dict[str, Any] | None) -> str:
     return "证据或质量不足，当前结果暂不可交付"
 
 
+def _apply_clarification_recovery_policy(
+    clarification_packet: dict[str, Any] | None,
+    *,
+    status: str,
+    recovery_attempt: int,
+) -> tuple[dict[str, Any], bool, bool]:
+    packet = dict(clarification_packet or {})
+    attempt = max(0, int(recovery_attempt or 0))
+    active = bool(packet.get("active"))
+    accepted_source_count = max(0, int(packet.get("accepted_source_count") or 0))
+    recovery_exhausted = bool(
+        active
+        and status == "needs_evidence"
+        and attempt >= MAX_CLARIFICATION_RECOVERY_ATTEMPTS
+    )
+    requires_evidence_input = bool(
+        active
+        and status == "needs_evidence"
+        and accepted_source_count == 0
+        and attempt >= 1
+        and not recovery_exhausted
+    )
+    recovery_blocked_reason = ""
+    packet.update(
+        {
+            "recovery_attempt": attempt,
+            "recovery_limit": MAX_CLARIFICATION_RECOVERY_ATTEMPTS,
+            "recovery_exhausted": recovery_exhausted,
+            "requires_evidence_input": requires_evidence_input,
+        }
+    )
+
+    if recovery_exhausted:
+        recovery_blocked_reason = "recovery_limit_reached"
+        packet.update(
+            {
+                "interaction_state": "blocked",
+                "reason_code": recovery_blocked_reason,
+                "title": "补证复核已达到上限",
+                "summary": (
+                    f"历史任务已完成 {attempt} 次补证复核（当前上限 "
+                    f"{MAX_CLARIFICATION_RECOVERY_ATTEMPTS} 次），"
+                    "系统已停止自动创建子任务；当前结果仍受证据门禁保护。"
+                ),
+                "system_retryable": False,
+                "questions": [],
+                "recovery_options": [
+                    option
+                    for option in list(packet.get("recovery_options") or [])
+                    if isinstance(option, dict)
+                    and option.get("action") == "view_provisional"
+                    and bool(packet.get("can_view_provisional"))
+                ],
+                "next_steps": [
+                    "当前任务不会再自动续跑，已完成进度和证据快照保持不变。",
+                    "如需继续，请新建范围更明确的研究，并随任务附上官方 URL 或可核验文件。",
+                    "正式报告仍须通过原有证据、引用和交付质量门禁。",
+                ],
+            }
+        )
+    elif requires_evidence_input:
+        recovery_blocked_reason = "evidence_input_required"
+        recovery_options = [
+            {
+                "action": "submit_answers",
+                "label": "添加来源或文件后补证复核",
+                "description": "至少添加 1 个 http(s) 来源或 1 个可抽取文件；仅补充文字不会创建新任务。",
+                "recommended": True,
+            }
+        ]
+        if bool(packet.get("can_view_provisional")):
+            recovery_options.append(
+                {
+                    "action": "view_provisional",
+                    "label": "先查看受限草稿",
+                    "description": "不会解除正式交付保护。",
+                    "recommended": False,
+                }
+            )
+        packet.update(
+            {
+                "interaction_state": "awaiting_user",
+                "reason_code": recovery_blocked_reason,
+                "title": "需要可核验来源才能继续",
+                "summary": (
+                    "上一轮补证复核仍未采纳任何来源。为避免重复空跑，"
+                    "下一轮必须附上可核验 URL 或文件；文字答案可与来源一并提交，但不能单独启动续跑。"
+                ),
+                "recovery_options": recovery_options,
+                "next_steps": [
+                    "补充至少 1 个 http(s) 来源或 1 个可抽取文件。",
+                    "可同时回答范围、建设单位或覆盖问题，作为差量检索上下文。",
+                    "正式报告仍须通过原有证据、引用和交付质量门禁。",
+                ],
+            }
+        )
+
+    packet["recovery_blocked_reason"] = recovery_blocked_reason
+    return packet, recovery_exhausted, requires_evidence_input
+
+
 def _serialize_job(job: ResearchJob) -> ResearchJobOut:
     report_payload = job.report_payload
     if job.status == "succeeded":
@@ -347,6 +454,17 @@ def _serialize_job(job: ResearchJob) -> ResearchJobOut:
     )
     if effective_status == "failed" and not clarification_packet:
         clarification_packet = _system_degraded_packet()
+    clarification_packet, recovery_exhausted, requires_evidence_input = (
+        _apply_clarification_recovery_policy(
+            clarification_packet,
+            status=effective_status,
+            recovery_attempt=int(job.recovery_attempt or 0),
+        )
+    )
+    if recovery_exhausted:
+        interaction_state = "blocked"
+    elif requires_evidence_input:
+        interaction_state = "awaiting_user"
     formal_delivery_allowed = bool(
         isinstance(clarification_packet, dict)
         and clarification_packet.get("formal_delivery_allowed")
@@ -389,6 +507,9 @@ def _serialize_job(job: ResearchJob) -> ResearchJobOut:
         "root_job_id": str(job.root_job_id) if job.root_job_id else None,
         "resumed_child_job_id": str(job.resumed_child_job_id) if job.resumed_child_job_id else None,
         "recovery_attempt": int(job.recovery_attempt or 0),
+        "recovery_limit": MAX_CLARIFICATION_RECOVERY_ATTEMPTS,
+        "recovery_exhausted": recovery_exhausted,
+        "requires_evidence_input": requires_evidence_input,
         "accepted_snapshot_digest": accepted_snapshot_digest,
         "formal_delivery_allowed": formal_delivery_allowed,
     }
@@ -934,6 +1055,33 @@ def _clarification_answer_lines(payload: ResearchClarificationSubmitRequest) -> 
     return lines
 
 
+def _offered_recovery_actions(parent: ResearchJobOut) -> set[str]:
+    return {
+        option.action
+        for option in parent.clarification_packet.recovery_options
+    }
+
+
+def _validate_recovery_action(parent: ResearchJobOut, action: str) -> None:
+    offered_actions = _offered_recovery_actions(parent)
+    if action == "retry_system":
+        if (
+            parent.status != "failed"
+            or not parent.clarification_packet.system_retryable
+            or action not in offered_actions
+        ):
+            raise ValueError("当前任务不是可系统重试状态")
+        return
+    if action not in {"submit_answers", "continue_search"}:
+        raise ValueError("当前任务不支持该补证动作")
+    if (
+        parent.status != "needs_evidence"
+        or not parent.clarification_packet.active
+        or action not in offered_actions
+    ):
+        raise ValueError("当前任务未提供该补证动作")
+
+
 def _idempotent_child_job(
     *,
     parent_job_id: str,
@@ -980,6 +1128,8 @@ def submit_research_clarification(
             return ResearchClarificationSubmitResponse(
                 parent_job_id=job_id,
                 action=payload.action,
+                outcome="provisional_viewed",
+                message="已打开受限草稿；正式交付门禁保持不变。",
                 parent_job=refreshed_parent,
             )
 
@@ -1001,10 +1151,29 @@ def submit_research_clarification(
             return ResearchClarificationSubmitResponse(
                 parent_job_id=job_id,
                 action=payload.action,
+                outcome="idempotent_replay",
+                message="该补证请求已受理，返回原续跑任务。",
                 idempotent_replay=True,
+                recovery_exhausted=replay.recovery_exhausted,
+                requires_evidence_input=replay.requires_evidence_input,
                 child_job=replay,
                 parent_job=refreshed_parent,
             )
+
+        if parent.recovery_exhausted:
+            return ResearchClarificationSubmitResponse(
+                parent_job_id=job_id,
+                action=payload.action,
+                outcome="recovery_blocked",
+                message=(
+                    f"已达到 {parent.recovery_limit} 次补证复核上限，本次没有创建新任务。"
+                    "请新建范围更明确的研究，并附上官方 URL 或可核验文件。"
+                ),
+                recovery_exhausted=True,
+                parent_job=parent,
+            )
+
+        _validate_recovery_action(parent, payload.action)
 
         answer_lines = _clarification_answer_lines(payload)
         supplemental_text = normalize_text(payload.supplemental_text)
@@ -1025,6 +1194,24 @@ def submit_research_clarification(
             and not documents
         ):
             raise ValueError("请至少回答一个问题或补充一条来源/文档")
+        if (
+            parent.requires_evidence_input
+            and payload.action in {"submit_answers", "continue_search"}
+            and not urls
+            and not documents
+        ):
+            return ResearchClarificationSubmitResponse(
+                parent_job_id=job_id,
+                action=payload.action,
+                outcome="recovery_blocked",
+                message=(
+                    "连续补证后仍无合格来源，本次没有创建新任务。"
+                    "请至少添加 1 个 http(s) 来源或 1 个可抽取文件；"
+                    "文字答案可与来源一并提交，但不能单独再次续跑。"
+                ),
+                requires_evidence_input=True,
+                parent_job=parent,
+            )
 
         report = parent.report
         packet = parent.clarification_packet
@@ -1108,6 +1295,13 @@ def submit_research_clarification(
         return ResearchClarificationSubmitResponse(
             parent_job_id=parent.id,
             action=payload.action,
+            outcome="recovery_started",
+            message=(
+                f"已启动第 {child.recovery_attempt}/{child.recovery_limit} 次补证复核；"
+                "父任务进度和证据快照已保留。"
+            ),
+            recovery_exhausted=child.recovery_exhausted,
+            requires_evidence_input=child.requires_evidence_input,
             child_job=child,
             parent_job=refreshed_parent,
         )

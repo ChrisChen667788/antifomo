@@ -10,6 +10,13 @@ type LegacyResearchProgressCardProps = {
   keywordGroups: string[];
   modeHint: string;
   activePipelineLabel: string;
+  recoveryAttempt?: number;
+  recoveryLimit?: number;
+  previousRound?: {
+    progress: number;
+    stageLabel: string;
+    acceptedSourceCount?: number;
+  } | null;
   pipelineStages: Array<{
     key: "fetch" | "clean" | "analyze";
     label: string;
@@ -42,14 +49,25 @@ export function LegacyResearchProgressCard({
   keywordGroups,
   modeHint,
   activePipelineLabel,
+  recoveryAttempt = 0,
+  recoveryLimit,
+  previousRound,
   pipelineStages,
 }: LegacyResearchProgressCardProps) {
   const safeProgress = clampProgress(progress);
+  const isRecovery = recoveryAttempt > 0;
+  const displayedProgress = isRecovery && previousRound
+    ? clampProgress(previousRound.progress)
+    : safeProgress;
+  const safeRecoveryLimit = Math.max(0, Number(recoveryLimit || 0));
+  const recoveryRoundLabel = safeRecoveryLimit > 0
+    ? `第 ${recoveryAttempt}/${safeRecoveryLimit} 轮补证复核`
+    : `第 ${recoveryAttempt} 轮补证复核`;
   const ringSize = 90;
   const strokeWidth = 10;
   const radius = (ringSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const dashLength = circumference * Math.max(0.1, safeProgress / 100);
+  const dashLength = circumference * Math.max(0.1, displayedProgress / 100);
   const dashOffset = circumference - dashLength;
   const sweepLength = Math.max(circumference * 0.14, 18);
   const hintLines = splitModeHint(modeHint);
@@ -122,17 +140,45 @@ export function LegacyResearchProgressCard({
 
             <div className="af-progress-center">
               <span className="af-progress-percent">
-                {Math.round(safeProgress)}%
+                {Math.round(displayedProgress)}%
               </span>
               <span className="af-progress-pill">
                 {modeLabel}
               </span>
-              <span className="af-progress-center-label">进度</span>
+              <span className="af-progress-center-label">{isRecovery ? "上轮完成" : "进度"}</span>
             </div>
           </div>
 
           <div className="af-progress-copy">
             <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-400">{stateLabel}</p>
+            {isRecovery ? (
+              <div
+                className="mt-2 rounded-xl border border-sky-100 bg-sky-50/80 px-3 py-2.5 text-[12px] leading-5 text-sky-800"
+                data-testid="research-recovery-progress-context"
+              >
+                <p className="font-semibold">{recoveryRoundLabel} · 本轮 {Math.round(safeProgress)}%</p>
+                <p className="mt-0.5 text-sky-700">
+                  上一轮研究已 100% 完成；因证据门禁未通过，当前正在独立补证复核。原任务与已有证据均已保留，并未归零。
+                </p>
+                {previousRound ? (
+                  <p className="mt-1 text-sky-700" data-testid="research-previous-round-summary">
+                    上一轮：{previousRound.stageLabel} · {Math.round(clampProgress(previousRound.progress))}%
+                    {typeof previousRound.acceptedSourceCount === "number"
+                      ? ` · 已保留 ${previousRound.acceptedSourceCount} 条有效来源`
+                      : ""}
+                  </p>
+                ) : null}
+                <div
+                  className="mt-2 h-1.5 overflow-hidden rounded-full bg-sky-100"
+                  aria-label={`本轮补证复核进度 ${Math.round(safeProgress)}%`}
+                >
+                  <div
+                    className="h-full rounded-full bg-sky-500 transition-[width]"
+                    style={{ width: `${safeProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <h3 className="mt-1.5 text-[30px] font-semibold tracking-[-0.05em] text-slate-900 md:text-[34px]">
               {stageLabel}
             </h3>
