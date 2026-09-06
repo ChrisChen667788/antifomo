@@ -292,6 +292,7 @@ Current code baseline:
 - `2.10.0-development` Competitive Capability Observatory is locally implemented; it records vendor claims, local implementation state, and proposed backlog separately, without changing release semver, the production default, or release-readiness
 - `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
 - `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
+- `2.10.5-development` Office Evidence Receipts bind DOCX/PPTX hashes, artifact revisions, OpenXML checks, Microsoft Office or headless PDF render hashes, and page-level visual hashes; local render evidence remains HOLD and cannot substitute for named human or customer acceptance
 - current product-strategy train: `2.10.3-2.11.7-development`; the local plan/revision/API/UI control plane, official Agent source register, desktop/mobile-viewport/performance capture workflow, and weekly competitor-source monitor are implemented, while feature acceptance, external execution, physical-device, customer, and production evidence remain gated
 - release promotion remains blocked until the real cross-industry clarification tasks and feedback, pending human qrels, 100+30 expert calibration, three-industry blind review, customer acceptance, production Skill governance, and final Office/visual/security evidence are complete
 - web build passes
@@ -303,6 +304,7 @@ Current code baseline:
 - the post-`2.9.5` competitive research, decisions, and acceptance boundaries are documented in `docs/competitive-capability-observatory-v2.10.0.md`
 - the approved-context scope, revision/audit contract, and hard non-authorization gates are documented in `docs/reviewable-decision-context-packets-v2.10.1.md`
 - the HOLD-only delivery-artifact acceptance, field-level revision-diff, and Office/visual evidence boundary is documented in `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
+- the immutable local Office file/render receipt and its non-acceptance boundary are documented in `docs/office-evidence-receipts-v2.10.5.md`
 - the current domestic/international model and Agent comparison, product strengths/weaknesses, and governed fifteen-version train are documented in `docs/competitive-agent-landscape-and-iteration-program-2026-08-31.md`
 - major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
 - product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`

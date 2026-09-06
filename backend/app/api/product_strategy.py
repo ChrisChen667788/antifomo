@@ -12,6 +12,9 @@ from app.schemas.product_strategy import (
     DecisionContextPacketLandscapeOut,
     IterationProgramInitializationOut,
     IterationProgramLandscapeOut,
+    OfficeEvidenceReceiptCreateOut,
+    OfficeEvidenceReceiptCreateRequest,
+    OfficeEvidenceReceiptLandscapeOut,
     ProductStrategySeedOut,
 )
 from app.services.product_strategy.artifact_acceptance_catalog import preview_artifact_acceptance
@@ -29,6 +32,11 @@ from app.services.product_strategy.iteration_program_catalog import preview_iter
 from app.services.product_strategy.iteration_program_service import (
     get_persisted_iteration_program,
     initialize_iteration_program,
+)
+from app.services.product_strategy.office_evidence_service import (
+    OfficeEvidenceError,
+    create_office_evidence_receipt,
+    list_office_evidence_receipts,
 )
 from app.services.product_strategy.catalog import preview_competitive_landscape
 from app.services.product_strategy.service import get_persisted_competitive_landscape, seed_competitive_landscape
@@ -109,6 +117,46 @@ def initialize_artifact_acceptance_templates(db: Session = Depends(get_db)) -> d
                 "unusable_context_packet_keys": error.unusable_packet_keys,
                 "can_auto_accept": False,
                 "can_auto_execute": False,
+                "can_auto_approve_release": False,
+            },
+        ) from error
+
+
+@router.get("/office-evidence-receipts", response_model=OfficeEvidenceReceiptLandscapeOut)
+def get_office_evidence_receipts(db: Session = Depends(get_db)) -> dict:
+    """Return immutable 2.10.5 local Office evidence without changing HOLD."""
+
+    return list_office_evidence_receipts(db)
+
+
+@router.post("/office-evidence-receipts", response_model=OfficeEvidenceReceiptCreateOut, status_code=201)
+def register_office_evidence_receipt(
+    payload: OfficeEvidenceReceiptCreateRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Validate and persist a local Office receipt; never accept or release it."""
+
+    try:
+        return create_office_evidence_receipt(
+            db,
+            artifact_key=payload.artifact_key,
+            file_name=payload.file_name,
+            media_type=payload.media_type,
+            file_base64=payload.file_base64,
+            source_version=payload.source_version,
+            required_texts=payload.required_texts,
+            rendered_pdf_base64=payload.rendered_pdf_base64,
+            render_engine=payload.render_engine,
+        )
+    except OfficeEvidenceError as error:
+        status_code = status.HTTP_409_CONFLICT if error.code == "artifact_acceptance_draft_required" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": error.code,
+                "message": str(error),
+                "acceptance_status": "hold",
+                "can_auto_accept": False,
                 "can_auto_approve_release": False,
             },
         ) from error

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 2.10.5 Office evidence receipts
+
+- Added immutable receipts binding a 2.10.2 artifact revision to DOCX/PPTX SHA-256, OpenXML validation, Office-exported PDF SHA-256, and page-level render hashes.
+- Added optional Microsoft Word/PowerPoint exported-PDF evidence ingestion; the server independently validates and renders the PDF while retaining `rendered_unreviewed` rather than human acceptance.
+- Added the Office evidence API and workspace panel with strict file limits, path/media validation, digest-based idempotency, and local-only storage references.
+- Kept artifact acceptance and release status at `HOLD`/`blocked`; local Office opening and rendering do not establish reviewer identity, customer acceptance, or production authorization.
+
 ### 2.10.0-2.10.2 product-strategy evidence and HOLD-only artifact-review line
 
 - Added a first-party-source Competitive Capability Observatory that keeps vendor claims, local implementation state, proposed roadmap decisions, and blocked release evidence separate.

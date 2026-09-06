@@ -436,6 +436,77 @@ class ArtifactAcceptanceInitializationOut(ArtifactAcceptanceLandscapeOut):
     initialization: dict[str, ArtifactAcceptanceInitializationCountsOut]
 
 
+class OfficeEvidenceReceiptCreateRequest(BaseModel):
+    artifact_key: str = Field(min_length=1, max_length=180)
+    file_name: str = Field(min_length=1, max_length=240)
+    media_type: str = Field(default="", max_length=160)
+    file_base64: str = Field(min_length=1)
+    source_version: str = Field(default="unspecified", max_length=120)
+    required_texts: list[str] = Field(default_factory=list, max_length=20)
+    rendered_pdf_base64: str | None = None
+    render_engine: Literal["microsoft_word_manual_export", "microsoft_powerpoint_manual_export"] | None = None
+
+
+class OfficeEvidenceRenderedPageOut(BaseModel):
+    file_name: str
+    size_bytes: int = Field(ge=1)
+    sha256: str = Field(min_length=64, max_length=64)
+
+
+class OfficeEvidenceReceiptOut(BaseModel):
+    id: str
+    receipt_key: str
+    artifact_key: str
+    artifact_revision: int = Field(ge=1)
+    artifact_revision_digest: str = Field(min_length=64, max_length=64)
+    file_name: str
+    media_type: str
+    file_size_bytes: int = Field(ge=1)
+    file_sha256: str = Field(min_length=64, max_length=64)
+    storage_ref: str
+    source_version: str
+    validator_version: Literal["anti-fomo-office-receipt-v1"]
+    structure_status: Literal["pass", "fail"]
+    office_roundtrip_status: Literal["passed", "failed", "unavailable"]
+    visual_evidence_status: Literal["rendered_unreviewed", "missing"]
+    page_count: int = Field(ge=0)
+    rendered_pdf_sha256: str | None = Field(default=None, min_length=64, max_length=64)
+    rendered_pages: list[OfficeEvidenceRenderedPageOut]
+    validation: dict[str, Any]
+    receipt_digest: str = Field(min_length=64, max_length=64)
+    evidence_level: Literal["local_runtime_evidence"]
+    human_review_status: Literal["missing"]
+    acceptance_status: Literal["hold"]
+    blocking_status: Literal["blocked"]
+    can_auto_accept: Literal[False] = False
+    can_auto_approve_release: Literal[False] = False
+    production_status: Literal["not_authorized"]
+    release_impact: Literal["none"]
+    created_at: str | None = None
+
+
+class OfficeEvidenceReceiptLandscapeOut(BaseModel):
+    office_evidence_version: Literal["2.10.5"]
+    receipts: list[OfficeEvidenceReceiptOut]
+    receipt_count: int = Field(ge=0)
+    local_roundtrip_passed_count: int = Field(ge=0)
+    rendered_unreviewed_count: int = Field(ge=0)
+    acceptance_status: Literal["hold"]
+    blocking_status: Literal["blocked"]
+    requires_named_human_review: Literal[True] = True
+    can_auto_accept: Literal[False] = False
+    can_auto_approve_release: Literal[False] = False
+    production_status: Literal["not_authorized"]
+    release_impact: Literal["none"]
+    note: str
+
+
+class OfficeEvidenceReceiptCreateOut(BaseModel):
+    outcome: Literal["created", "existing"]
+    deduplicated: bool
+    receipt: OfficeEvidenceReceiptOut
+
+
 class IterationProgramInstructionEvidenceOut(BaseModel):
     kind: Literal["user_instruction"]
     actor_identity_status: Literal["unverified"]

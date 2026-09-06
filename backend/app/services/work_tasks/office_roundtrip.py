@@ -222,7 +222,7 @@ def _validate_openxml_package(
 
 def validate_pdf_bytes(artifact_bytes: bytes, *, required_preview_text: list[str] | None = None) -> dict[str, object]:
     del required_preview_text
-    starts_ok = artifact_bytes.startswith(b"%PDF-1.4")
+    starts_ok = re.match(rb"%PDF-1\.[0-9]", artifact_bytes) is not None
     ends_ok = artifact_bytes.rstrip().endswith(b"%%EOF")
     page_count = len(re.findall(rb"/Type /Page\b", artifact_bytes))
     has_vector_layout = b" re f" in artifact_bytes and b" re S" in artifact_bytes

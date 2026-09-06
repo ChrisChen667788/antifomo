@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 
 import pytest
+import base64
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -108,3 +109,75 @@ def test_artifact_acceptance_initializes_only_after_context_packets_and_stays_ho
     assert repeat_payload["initialization"]["drafts"]["existing_seed_managed"] == 4
     assert repeat_payload["initialization"]["revisions"]["existing"] == 4
     assert repeat_payload["initialization"]["initialization_audit"]["existing"] == 1
+
+
+def test_office_evidence_receipt_api_records_local_proof_but_keeps_hold(
+    client: TestClient,
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.services.product_strategy import office_evidence_service as service
+
+    monkeypatch.setattr(service, "OFFICE_EVIDENCE_STORAGE_ROOT", tmp_path / "office")
+    monkeypatch.setattr(service, "_structural_validation", lambda *_args, **_kwargs: {"status": "pass"})
+    monkeypatch.setattr(
+        service,
+        "_run_headless_roundtrip",
+        lambda *_args, **_kwargs: {
+            "office_roundtrip_status": "passed",
+            "visual_evidence_status": "rendered_unreviewed",
+            "page_count": 2,
+            "rendered_pdf_sha256": "d" * 64,
+            "rendered_pages": [
+                {"file_name": "page-1.png", "size_bytes": 200, "sha256": "e" * 64},
+                {"file_name": "page-2.png", "size_bytes": 240, "sha256": "f" * 64},
+            ],
+            "engine": "libreoffice_headless",
+            "failure_reason": "",
+        },
+    )
+    monkeypatch.setattr(service, "_runtime_capability_summary", lambda: {"platform": "test"})
+
+    empty = client.get("/api/product-strategy/office-evidence-receipts")
+    assert empty.status_code == 200, empty.text
+    assert empty.json()["receipt_count"] == 0
+    assert empty.json()["acceptance_status"] == "hold"
+
+    missing = client.post(
+        "/api/product-strategy/office-evidence-receipts",
+        json={
+            "artifact_key": "missing",
+            "file_name": "review.docx",
+            "media_type": "",
+            "file_base64": base64.b64encode(b"fixture").decode("ascii"),
+            "source_version": "2.10.5-test",
+        },
+    )
+    assert missing.status_code == 409, missing.text
+    assert missing.json()["detail"]["code"] == "artifact_acceptance_draft_required"
+
+    assert client.post("/api/product-strategy/decision-context-packets/initialize").status_code == 200
+    artifacts = client.post("/api/product-strategy/artifact-acceptance/initialize").json()["artifacts"]
+    created = client.post(
+        "/api/product-strategy/office-evidence-receipts",
+        json={
+            "artifact_key": artifacts[0]["artifact_key"],
+            "file_name": "review.docx",
+            "media_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "file_base64": base64.b64encode(b"fixture").decode("ascii"),
+            "source_version": "2.10.5-test",
+            "required_texts": ["结论"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    receipt = created.json()["receipt"]
+    assert receipt["office_roundtrip_status"] == "passed"
+    assert receipt["visual_evidence_status"] == "rendered_unreviewed"
+    assert receipt["acceptance_status"] == "hold"
+    assert receipt["human_review_status"] == "missing"
+    assert receipt["release_impact"] == "none"
+
+    listed = client.get("/api/product-strategy/office-evidence-receipts")
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["receipt_count"] == 1
+    assert listed.json()["rendered_unreviewed_count"] == 1

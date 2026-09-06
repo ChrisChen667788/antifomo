@@ -68,6 +68,7 @@ from app.models.product_strategy_iteration_entities import (
     ProductStrategyIterationInitializationAudit,
     ProductStrategyIterationRevision,
 )
+from app.models.product_strategy_office_evidence_entities import ProductStrategyOfficeEvidenceReceipt
 from app.models.research_entities import (
     ResearchCompareSnapshot,
     ResearchCanonicalEntity,
@@ -143,6 +144,7 @@ __all__ = [
     "ProductStrategyIteration",
     "ProductStrategyIterationInitializationAudit",
     "ProductStrategyIterationRevision",
+    "ProductStrategyOfficeEvidenceReceipt",
     "ProductStrategySource",
     "ResearchCompareSnapshot",
     "ResearchCanonicalEntity",

@@ -476,6 +476,77 @@ export interface ApiProductStrategyArtifactAcceptanceInitializationCounts {
   existing?: number | null;
 }
 
+export interface ApiProductStrategyOfficeEvidenceRenderedPage {
+  file_name: string;
+  size_bytes: number;
+  sha256: string;
+}
+
+export interface ApiProductStrategyOfficeEvidenceReceipt {
+  id: string;
+  receipt_key: string;
+  artifact_key: string;
+  artifact_revision: number;
+  artifact_revision_digest: string;
+  file_name: string;
+  media_type: string;
+  file_size_bytes: number;
+  file_sha256: string;
+  storage_ref: string;
+  source_version: string;
+  validator_version: "anti-fomo-office-receipt-v1";
+  structure_status: "pass" | "fail";
+  office_roundtrip_status: "passed" | "failed" | "unavailable";
+  visual_evidence_status: "rendered_unreviewed" | "missing";
+  page_count: number;
+  rendered_pdf_sha256: string | null;
+  rendered_pages: ApiProductStrategyOfficeEvidenceRenderedPage[];
+  validation: Record<string, unknown>;
+  receipt_digest: string;
+  evidence_level: "local_runtime_evidence";
+  human_review_status: "missing";
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  production_status: "not_authorized";
+  release_impact: "none";
+  created_at: string | null;
+}
+
+export interface ApiProductStrategyOfficeEvidenceLandscape {
+  office_evidence_version: "2.10.5";
+  receipts: ApiProductStrategyOfficeEvidenceReceipt[];
+  receipt_count: number;
+  local_roundtrip_passed_count: number;
+  rendered_unreviewed_count: number;
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  requires_named_human_review: true;
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  production_status: "not_authorized";
+  release_impact: "none";
+  note: string;
+}
+
+export interface ApiProductStrategyOfficeEvidenceCreateRequest {
+  artifact_key: string;
+  file_name: string;
+  media_type: string;
+  file_base64: string;
+  source_version: string;
+  required_texts?: string[];
+  rendered_pdf_base64?: string;
+  render_engine?: "microsoft_word_manual_export" | "microsoft_powerpoint_manual_export";
+}
+
+export interface ApiProductStrategyOfficeEvidenceCreateResponse {
+  outcome: "created" | "existing";
+  deduplicated: boolean;
+  receipt: ApiProductStrategyOfficeEvidenceReceipt;
+}
+
 export interface ApiProductStrategyIterationProgramInstructionEvidence {
   kind: "user_instruction";
   actor_identity_status: "unverified";

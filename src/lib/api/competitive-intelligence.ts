@@ -11,6 +11,9 @@ import type {
   ApiProductStrategyIterationProgram,
   ApiProductStrategyIterationProgramInitialization,
   ApiProductStrategyIterationProgramPreview,
+  ApiProductStrategyOfficeEvidenceCreateRequest,
+  ApiProductStrategyOfficeEvidenceCreateResponse,
+  ApiProductStrategyOfficeEvidenceLandscape,
   ApiProductStrategySeedLandscape,
 } from "@/lib/api/type-contracts/competitive-intelligence";
 
@@ -18,6 +21,7 @@ const COMPETITIVE_LANDSCAPE_PATH = "/api/product-strategy/competitive-landscape"
 const DECISION_CONTEXT_PACKETS_PATH = "/api/product-strategy/decision-context-packets";
 const ARTIFACT_ACCEPTANCE_PATH = "/api/product-strategy/artifact-acceptance";
 const ITERATION_PROGRAM_PATH = "/api/product-strategy/iteration-program";
+const OFFICE_EVIDENCE_RECEIPTS_PATH = "/api/product-strategy/office-evidence-receipts";
 
 export function getCompetitiveLandscapePreview(): Promise<ApiProductStrategyCompetitiveLandscapePreview> {
   return request<ApiProductStrategyCompetitiveLandscapePreview>(`${COMPETITIVE_LANDSCAPE_PATH}/preview`);
@@ -58,6 +62,19 @@ export function getArtifactAcceptance(): Promise<ApiProductStrategyArtifactAccep
 export function initializeArtifactAcceptance(): Promise<ApiProductStrategyArtifactAcceptanceInitialization> {
   return request<ApiProductStrategyArtifactAcceptanceInitialization>(`${ARTIFACT_ACCEPTANCE_PATH}/initialize`, {
     method: "POST",
+  });
+}
+
+export function getOfficeEvidenceReceipts(): Promise<ApiProductStrategyOfficeEvidenceLandscape> {
+  return request<ApiProductStrategyOfficeEvidenceLandscape>(OFFICE_EVIDENCE_RECEIPTS_PATH);
+}
+
+export function createOfficeEvidenceReceipt(
+  payload: ApiProductStrategyOfficeEvidenceCreateRequest,
+): Promise<ApiProductStrategyOfficeEvidenceCreateResponse> {
+  return request<ApiProductStrategyOfficeEvidenceCreateResponse>(OFFICE_EVIDENCE_RECEIPTS_PATH, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
