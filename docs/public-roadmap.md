@@ -2,7 +2,7 @@
 
 This page is the stable, repository-local companion to the [public roadmap issue](https://github.com/ChrisChen667788/antifomo/issues/1). It explains the product direction in contributor-sized themes without treating a local implementation, demo fixture, or documentation update as a production release approval.
 
-For the detailed, evidence-governed post-`2.9.5` plan, see the [Competitive Capability Observatory](./competitive-capability-observatory-v2.10.0.md), [reviewable decision contexts](./reviewable-decision-context-packets-v2.10.1.md), [artifact acceptance boundary](./artifact-acceptance-and-revision-diff-v2.10.2.md), and the current [2.10.3–2.11.7 Agent landscape and governed iteration train](./competitive-agent-landscape-and-iteration-program-2026-08-31.md).
+For the detailed, evidence-governed post-`2.9.5` plan, see the [Competitive Capability Observatory](./competitive-capability-observatory-v2.10.0.md), [reviewable decision contexts](./reviewable-decision-context-packets-v2.10.1.md), [artifact acceptance boundary](./artifact-acceptance-and-revision-diff-v2.10.2.md), the [2.10.6–2.10.8 evidence closure](./2.10.6-2.10.8-evidence-closure.md), the [2.10.9–2.11.8 control-plane closure](./2.10.9-2.11.8-control-plane-closure.md), and the current [2.10.3–2.11.8 Agent landscape and governed iteration train](./competitive-agent-landscape-and-iteration-program-2026-08-31.md).
 
 ## Operating boundary
 

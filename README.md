@@ -7,7 +7,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
-![Anti-FOMO hero](./docs/assets/github-hero.svg)
+<p align="center">
+  <img src="./docs/assets/github-hero-20260910.png" alt="Anti-FOMO — from noise to informed decisions. An optical lens turns scattered information into traceable research." width="1200" />
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#product-screenshots">Product Screenshots</a> ·
+  <a href="./docs/public-roadmap.md">Roadmap</a> ·
+  <a href="https://github.com/ChrisChen667788/antifomo/discussions">Community</a>
+</p>
+
+<p align="center"><sub>Conceptual brand artwork. Actual product captures and evidence boundaries are documented below.</sub></p>
 
 Turn noisy web and WeChat signals into evidence-backed research reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
@@ -140,7 +151,7 @@ Latest governed product-strategy evidence was regenerated on `2026-09-01` from t
   <tr>
     <td width="50%">
       <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="Governed fifteen-version iteration train in a desktop browser" />
-      <p><strong>2.10.3–2.11.7 governed train</strong><br />Fifteen HOLD-gated slices, current model/Agent signals, and the unchanged production boundary.</p>
+      <p><strong>2.10.3–2.11.8 governed train</strong><br />Sixteen HOLD-gated slices, including the ten-version follow-on control plane, current model/Agent signals, and the unchanged production boundary.</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png" alt="Office and visual artifact acceptance gates" />
@@ -293,7 +304,7 @@ Current code baseline:
 - `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
 - `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
 - `2.10.5-development` Office Evidence Receipts bind DOCX/PPTX hashes, artifact revisions, OpenXML checks, Microsoft Office or headless PDF render hashes, and page-level visual hashes; local render evidence remains HOLD and cannot substitute for named human or customer acceptance
-- current product-strategy train: `2.10.3-2.11.7-development`; the local plan/revision/API/UI control plane, official Agent source register, desktop/mobile-viewport/performance capture workflow, and weekly competitor-source monitor are implemented, while feature acceptance, external execution, physical-device, customer, and production evidence remain gated
+- current product-strategy train: `2.10.3-2.11.8-development`; the local plan/revision/API/UI control plane, ten-version follow-on evidence contracts, official Agent source register, desktop/mobile-viewport/performance capture workflow, and weekly competitor-source monitor are implemented, while feature acceptance, external execution, physical-device, customer, and production evidence remain gated
 - release promotion remains blocked until the real cross-industry clarification tasks and feedback, pending human qrels, 100+30 expert calibration, three-industry blind review, customer acceptance, production Skill governance, and final Office/visual/security evidence are complete
 - web build passes
 - frontend and backend test suites pass via `npm run check`
@@ -334,8 +345,21 @@ Built-in launch assets:
 - [Public roadmap](./docs/public-roadmap.md)
 - [Product surface map](./docs/product-surface-map.md)
 - [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
-- [GitHub hero asset](./docs/assets/github-hero.svg)
+- [GitHub hero asset](./docs/assets/github-hero-20260910.png)
+- [Hero design direction, references, and generation prompt](./docs/readme-visual-design-2026-09-10.md)
 - [GitHub social preview](./docs/assets/github-social-preview.png)
 - [Repo banner](./public/repo-banner.png)
 
 If Anti-FOMO is useful for your workflow, star the repo. That is still the simplest way to help the project reach more users, contributors, and design partners.
+
+## Star History
+
+Thank you for following Anti-FOMO. This chart is served by [Star History](https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&type=date) and may take up to 24 hours to refresh.
+
+<a href="https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date&amp;theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date" />
+    <img alt="Anti-FOMO GitHub Star History chart" src="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date" width="800" />
+  </picture>
+</a>

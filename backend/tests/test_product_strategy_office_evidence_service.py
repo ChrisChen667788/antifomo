@@ -88,7 +88,8 @@ def test_receipt_binds_artifact_revision_and_remains_hold(
         assert receipt["can_auto_accept"] is False
         assert receipt["can_auto_approve_release"] is False
         assert receipt["release_impact"] == "none"
-        assert (service.OFFICE_EVIDENCE_STORAGE_ROOT / receipt["file_sha256"] / "source.docx").exists()
+        relative_source = receipt["storage_ref"].removeprefix("office-evidence/")
+        assert (service.OFFICE_EVIDENCE_STORAGE_ROOT / relative_source).exists()
 
         repeated = service.create_office_evidence_receipt(
             db,
@@ -96,7 +97,8 @@ def test_receipt_binds_artifact_revision_and_remains_hold(
             file_name="review.docx",
             media_type="",
             file_base64=payload,
-            source_version="ignored-on-dedupe",
+            source_version="2.10.5-test",
+            required_texts=["证据"],
         )
         assert repeated["outcome"] == "existing"
         assert repeated["deduplicated"] is True
@@ -165,3 +167,33 @@ def test_receipt_rejects_unbound_or_unsafe_inputs(tmp_path, monkeypatch: pytest.
                 rendered_pdf_base64=base64.b64encode(b"%PDF-1.4\n%%EOF").decode("ascii"),
             )
         assert incomplete.value.code == "incomplete_render_evidence"
+
+
+def test_same_source_with_supplemental_word_pdf_gets_a_new_receipt(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(service, "OFFICE_EVIDENCE_STORAGE_ROOT", tmp_path / "office")
+    monkeypatch.setattr(service, "_structural_validation", lambda *_args, **_kwargs: {"status": "pass"})
+    monkeypatch.setattr(service, "_run_headless_roundtrip", lambda *_args, **_kwargs: _render_result())
+    monkeypatch.setattr(service, "_run_supplied_render_evidence", lambda *_args, **_kwargs: _render_result())
+    monkeypatch.setattr(service, "_runtime_capability_summary", lambda: {"platform": "test"})
+
+    for db in _session():
+        initialize_decision_context_packets(db)
+        artifact = initialize_artifact_acceptance(db)["artifacts"][0]
+        payload = base64.b64encode(b"deterministic-office-fixture").decode("ascii")
+        first = service.create_office_evidence_receipt(
+            db, artifact_key=artifact["artifact_key"], file_name="review.docx", media_type="",
+            file_base64=payload, source_version="2.10.5-test", required_texts=["证据"],
+        )
+        manual_pdf = base64.b64encode(b"%PDF-1.7\n/Type /Page\n%%EOF").decode("ascii")
+        second = service.create_office_evidence_receipt(
+            db, artifact_key=artifact["artifact_key"], file_name="review.docx", media_type="",
+            file_base64=payload, source_version="2.10.5-test", required_texts=["证据"],
+            rendered_pdf_base64=manual_pdf, render_engine="microsoft_word_manual_export",
+        )
+        assert first["outcome"] == "created"
+        assert second["outcome"] == "created"
+        assert second["receipt"]["receipt_key"] != first["receipt"]["receipt_key"]
+        assert second["receipt"]["receipt_digest"] != first["receipt"]["receipt_digest"]
+        assert len(db.scalars(select(ProductStrategyOfficeEvidenceReceipt)).all()) == 2

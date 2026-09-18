@@ -7,7 +7,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
-![Anti-FOMO hero](./docs/assets/github-hero.svg)
+<p align="center">
+  <img src="./docs/assets/github-hero-20260910.png" alt="Anti-FOMO：让信息成为有据可循的判断。透镜将碎片化信息汇聚成可追溯的研究。" width="1200" />
+</p>
+
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#产品截图">产品截图</a> ·
+  <a href="./docs/public-roadmap.md">路线图</a> ·
+  <a href="https://github.com/ChrisChen667788/antifomo/discussions">交流讨论</a>
+</p>
+
+<p align="center"><sub>此图为产品概念主视觉；实际界面截图与验收证据边界见下文。</sub></p>
 
 把嘈杂的网页与微信信息流，变成有证据的研报、解决方案架构蓝图、专注执行和可交付动作。
 
@@ -141,8 +152,8 @@ Anti-FOMO 关注的是整条工作链路：
 <table>
   <tr>
     <td width="50%">
-      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="桌面浏览器中的十五版本受治理迭代列车" />
-      <p><strong>2.10.3–2.11.7 受治理列车</strong><br />15 个 HOLD 切片、当前模型/Agent 信号与不变的生产边界。</p>
+      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="桌面浏览器中的受治理迭代列车历史捕获" />
+      <p><strong>2.10.3–2.11.8 受治理列车</strong><br />16 个 HOLD 切片（含后续十版本控制面）、当前模型/Agent 信号与不变的生产边界。</p>
     </td>
     <td width="50%">
       <img src="./docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png" alt="Office 与视觉交付物验收门禁" />
@@ -310,7 +321,7 @@ npm run demo:simulate
 - `2.10.0-development` 竞品能力证据台账已在本地实现；它分开记录厂商声明、本地工程状态和拟议待办，不改变发布语义版本、生产默认策略或 release-readiness
 - `2.10.1-development` 可复核决策上下文包可将 4 个 `build` / `integrate` / `defer` 决策初始化为仅限产品策略的可复核上下文，执行、发布与生产授权仍全部为否
 - `2.10.2-development` 交付物验收与修订差异把上述上下文绑定为仅 `HOLD` 的交付物复核草案，Office、视觉和可归属人工复核证据缺失时全部保持阻断，不能改变发布门禁
-- 当前产品策略开发列车：`2.10.3-2.11.7-development`；本地计划/revision/API/UI 控制面、官方 Agent 来源寄存器、桌面/移动视口/性能捕获和每周竞品来源监测已实现，功能验收、外部执行、物理真机、客户与生产证据仍受门禁约束
+- 当前产品策略开发列车：`2.10.3-2.11.8-development`；本地计划/revision/API/UI 控制面、后续十版本证据合同、官方 Agent 来源寄存器、桌面/移动视口/性能捕获和每周竞品来源监测已实现，功能验收、外部执行、物理真机、客户与生产证据仍受门禁约束
 - 发布晋级仍为 `blocked`：真实跨行业澄清任务与反馈、human qrels、100+30 专家校准、三行业盲测、客户验收、生产 Skill 治理以及最终 Office/视觉/安全证据尚未完成
 - `2.0.1-2.0.6` 完整验证合同见 `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`
 - 经竞品调研优化的路线与已完成工程合同见 `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md`、`docs/decision-program-v2.0.7-v2.2.0.md`；真实外部验收仍保持阻断
@@ -353,8 +364,21 @@ npm run demo:simulate
 - [公开路线图](./docs/public-roadmap.md)
 - [产品界面地图](./docs/product-surface-map.md)
 - [GitHub 宣发检查清单](./docs/github-launch-polish-checklist.md)
-- [GitHub hero 图](./docs/assets/github-hero.svg)
+- [GitHub 产品主视觉](./docs/assets/github-hero-20260910.png)
+- [设计方向、参考来源与生成提示词](./docs/readme-visual-design-2026-09-10.md)
 - [GitHub social preview](./docs/assets/github-social-preview.png)
 - [仓库 banner](./public/repo-banner.png)
 
 如果 Anti-FOMO 对你的工作流有价值，点一个 star 依然是最直接的支持方式。它能显著提升仓库曝光，也能帮助后续用户和贡献者更快发现它。
+
+## Star 趋势
+
+感谢你关注 Anti-FOMO。下图由 [Star History](https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&type=date) 提供，缓存更新可能延迟约 24 小时。
+
+<a href="https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date&amp;theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date" />
+    <img alt="Anti-FOMO 在 GitHub 上的 Star 趋势图" src="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date" width="800" />
+  </picture>
+</a>

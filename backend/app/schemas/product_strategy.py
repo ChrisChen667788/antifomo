@@ -573,7 +573,7 @@ class IterationProgramIterationOut(BaseModel):
     iteration_key: str
     project_scope: Literal["anti-fomo"]
     version: str
-    sequence: int = Field(ge=1, le=15)
+    sequence: int = Field(ge=1, le=16)
     title: str
     workstream: str
     decision: Literal["build", "integrate", "defer", "explicitly_not_copy"]
@@ -635,7 +635,7 @@ class IterationProgramInitializationAuditOut(BaseModel):
 
 
 class IterationProgramLandscapeOut(BaseModel):
-    iteration_program_version: Literal["2.10.3-2.11.7"]
+    iteration_program_version: Literal["2.10.3-2.11.8"]
     observed_at: str
     expires_at: str
     program_digest: str = Field(min_length=64, max_length=64)

@@ -51,10 +51,10 @@ def test_iteration_program_preview_and_explicit_initialization_are_gated(client:
     preview = client.get("/api/product-strategy/iteration-program/preview")
     assert preview.status_code == 200, preview.text
     preview_payload = preview.json()
-    assert preview_payload["iteration_program_version"] == "2.10.3-2.11.7"
+    assert preview_payload["iteration_program_version"] == "2.10.3-2.11.8"
     assert preview_payload["read_only"] is True
     assert preview_payload["initialized"] is False
-    assert len(preview_payload["iterations"]) == 15
+    assert len(preview_payload["iterations"]) == 16
     assert len(preview_payload["agent_sources"]) >= 7
     assert preview_payload["governance"]["vendor_claim_is_not_independent_verification"] is True
     assert preview_payload["governance"]["can_auto_execute"] is False
@@ -70,9 +70,9 @@ def test_iteration_program_preview_and_explicit_initialization_are_gated(client:
     payload = initialized.json()
     assert payload["read_only"] is False
     assert payload["initialized"] is True
-    assert len(payload["iterations"]) == 15
-    assert payload["initialization"]["iterations"]["created"] == 15
-    assert payload["initialization"]["revisions"]["created"] == 15
+    assert len(payload["iterations"]) == 16
+    assert payload["initialization"]["iterations"]["created"] == 16
+    assert payload["initialization"]["revisions"]["created"] == 16
     assert payload["initialization_audit"]["release_gate_mutated"] is False
     assert all(iteration["acceptance_status"] == "hold" for iteration in payload["iterations"])
     assert all(iteration["can_auto_accept"] is False for iteration in payload["iterations"])
@@ -80,5 +80,16 @@ def test_iteration_program_preview_and_explicit_initialization_are_gated(client:
     repeated = client.post("/api/product-strategy/iteration-program/initialize")
     assert repeated.status_code == 200, repeated.text
     repeat = repeated.json()
-    assert repeat["initialization"]["iterations"]["existing_seed_managed"] == 15
-    assert repeat["initialization"]["revisions"]["existing"] == 15
+    assert repeat["initialization"]["iterations"]["existing_seed_managed"] == 16
+    assert repeat["initialization"]["revisions"]["existing"] == 16
+
+
+def test_agent_landscape_refresh_status_is_read_only_and_marks_expired_sources(client: TestClient) -> None:
+    response = client.get("/api/product-strategy/agent-landscape/refresh-status")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["catalog_version"] == "2.10.3-2.11.8"
+    assert payload["refresh_required"] is True
+    assert payload["review_only"] is True
+    assert payload["roadmap_mutated"] is False
+    assert payload["release_gate_mutated"] is False

@@ -84,7 +84,7 @@ const CAPTURES = [
     formFactor: "desktop_browser",
     viewport: { width: 1600, height: 1100, deviceScaleFactor: 1 },
     scrollSelector: "[data-testid='competitive-iteration-program']",
-    description: "The governed 2.10.3-2.11.7 iteration train and Agent-source watch in a desktop browser viewport.",
+    description: "The governed 2.10.3-2.11.8 iteration train and Agent-source watch in a desktop browser viewport.",
   },
   {
     key: "competitive-iteration-program-mobile-viewport",
@@ -92,7 +92,7 @@ const CAPTURES = [
     formFactor: "mobile_viewport",
     viewport: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
     scrollSelector: "[data-testid='competitive-iteration-program']",
-    description: "The governed 2.10.3-2.11.7 iteration train in a simulated mobile CSS viewport, not a physical-device capture.",
+    description: "The governed 2.10.3-2.11.8 iteration train in a simulated mobile CSS viewport, not a physical-device capture.",
   },
 ];
 
@@ -234,7 +234,7 @@ async function verifyLocalPreview({ frontendUrl, apiBase }) {
   }
   if (
     !iterationProgramPreview?.read_only
-    || iterationProgramPreview.iteration_program_version !== "2.10.3-2.11.7"
+    || iterationProgramPreview.iteration_program_version !== "2.10.3-2.11.8"
     || iterationProgramPreview.iterations?.length !== 15
     || iterationProgramPreview.agent_sources?.length !== 7
   ) {

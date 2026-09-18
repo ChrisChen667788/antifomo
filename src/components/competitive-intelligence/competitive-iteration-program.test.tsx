@@ -20,7 +20,7 @@ const diff = {
 };
 
 const fixture: ApiProductStrategyIterationProgramPreview = {
-  iteration_program_version: "2.10.3-2.11.7",
+  iteration_program_version: "2.10.3-2.11.8",
   observed_at: "2026-08-31T00:00:00Z",
   expires_at: "2026-09-14T00:00:00Z",
   program_digest: "a".repeat(64),
@@ -31,7 +31,7 @@ const fixture: ApiProductStrategyIterationProgramPreview = {
     kind: "user_instruction",
     actor_identity_status: "unverified",
     scope: "product_strategy_iteration_program_only",
-    instruction: "完成后续15个版本",
+    instruction: "完成后续10个版本",
     recorded_at: "2026-08-31T00:00:00Z",
     authorization_scope: "仅产品策略控制面",
     does_not_approve_artifact_acceptance: true,
@@ -132,8 +132,8 @@ describe("CompetitiveIterationProgram", () => {
 
     render(<CompetitiveIterationProgram />);
 
-    expect(await screen.findByText("15 版本受治理迭代与 Agent 能力观察")).toBeInTheDocument();
-    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(await screen.findByText("16 版本受治理迭代与 Agent 能力观察")).toBeInTheDocument();
+    expect(await screen.findByText("Codex")).toBeInTheDocument();
     expect(screen.getByText("产品策略来源变更复核")).toBeInTheDocument();
     expect(screen.getAllByText("HOLD").length).toBeGreaterThan(0);
     expect(screen.getByText(/不能自动执行、验收或发布/)).toBeInTheDocument();
@@ -148,14 +148,14 @@ describe("CompetitiveIterationProgram", () => {
       initialized: true,
       persistent_snapshot_digest: "d".repeat(64),
       initialization: {
-        iterations: { created: 15 },
-        revisions: { created: 15 },
+        iterations: { created: 16 },
+        revisions: { created: 16 },
         initialization_audit: { created: 1 },
       },
     });
 
     render(<CompetitiveIterationProgram />);
-    fireEvent.click(await screen.findByRole("button", { name: "初始化 15 版本台账" }));
+    fireEvent.click(await screen.findByRole("button", { name: "初始化 16 版本台账" }));
 
     expect(apiMock.initializeIterationProgram).toHaveBeenCalledOnce();
     expect(await screen.findByText("本地台账已初始化")).toBeInTheDocument();

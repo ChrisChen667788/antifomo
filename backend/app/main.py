@@ -18,6 +18,8 @@ from app.api.knowledge import router as knowledge_router
 from app.api.mobile import router as mobile_router
 from app.api.preferences import router as preferences_router
 from app.api.product_strategy import router as product_strategy_router
+from app.api.product_strategy_operations import router as product_strategy_operations_router
+from app.api.product_strategy_human_acceptance import router as product_strategy_human_acceptance_router
 from app.api.sessions import router as sessions_router
 from app.api.research import router as research_router
 from app.api.system import router as system_router
@@ -99,3 +101,5 @@ app.include_router(system_router)
 app.include_router(decision_studio_router)
 app.include_router(decision_program_router)
 app.include_router(product_strategy_router)
+app.include_router(product_strategy_operations_router)
+app.include_router(product_strategy_human_acceptance_router)

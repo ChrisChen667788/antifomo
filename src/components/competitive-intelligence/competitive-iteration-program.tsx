@@ -32,7 +32,7 @@ export function CompetitiveIterationProgram() {
         ]);
         if (active) setSnapshot(persisted?.initialized ? persisted : preview);
       } catch {
-        if (active) setError("无法读取 2.10.3–2.11.7 迭代控制面；请确认后端已加载最新 product-strategy 路由。");
+        if (active) setError("无法读取 2.10.3–2.11.8 迭代控制面；请确认后端已加载最新 product-strategy 路由。");
       } finally {
         if (active) setLoading(false);
       }
@@ -49,7 +49,7 @@ export function CompetitiveIterationProgram() {
   );
 
   const initialize = async () => {
-    if (!window.confirm("将 15 个受治理迭代记录写入本地台账。它不会批准执行、Office/视觉验收或生产发布，是否继续？")) {
+    if (!window.confirm("将 16 个受治理迭代记录写入本地台账。它不会批准执行、Office/视觉验收或生产发布，是否继续？")) {
       return;
     }
     setInitializing(true);
@@ -70,8 +70,8 @@ export function CompetitiveIterationProgram() {
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
-          <p className="af-kicker">2.10.3–2.11.7 Development</p>
-          <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">15 版本受治理迭代与 Agent 能力观察</h3>
+          <p className="af-kicker">2.10.3–2.11.8 Development</p>
+          <h3 className="mt-2 text-xl font-semibold text-[var(--af-text-primary)]">16 版本受治理迭代与 Agent 能力观察</h3>
           <p className="mt-2 text-sm leading-6 text-[var(--af-text-secondary)]">
             将执行提案、来源变更、Office/视觉证据、权限、回滚、性能、双周竞品监测和独立审计交接放进同一条可复核链；本地控制面完成不等于功能验收或生产授权。
           </p>
@@ -83,7 +83,7 @@ export function CompetitiveIterationProgram() {
           </span>
           {snapshot && !snapshot.initialized ? (
             <button className="af-btn af-btn-primary px-3 py-2 text-xs" type="button" disabled={initializing} onClick={() => void initialize()}>
-              {initializing ? "初始化中..." : "初始化 15 版本台账"}
+              {initializing ? "初始化中..." : "初始化 16 版本台账"}
             </button>
           ) : null}
         </div>
@@ -143,7 +143,7 @@ export function CompetitiveIterationProgram() {
 
           <div className="mt-6">
             <p className="af-kicker">Iteration Train</p>
-            <h4 className="mt-1 text-base font-semibold text-[var(--af-text-primary)]">15 个版本的开发与证据边界</h4>
+            <h4 className="mt-1 text-base font-semibold text-[var(--af-text-primary)]">16 个版本的开发与证据边界</h4>
             <div className="mt-3 space-y-2">
               {snapshot.iterations.map((iteration) => (
                 <details key={iteration.iteration_key} className="group rounded-[18px] border border-[var(--af-border-subtle)] bg-[var(--af-surface-elevated)] p-4" open={iteration.sequence <= 2}>

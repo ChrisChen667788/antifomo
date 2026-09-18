@@ -494,9 +494,9 @@ export interface ApiProductStrategyOfficeEvidenceReceipt {
   file_sha256: string;
   storage_ref: string;
   source_version: string;
-  validator_version: "anti-fomo-office-receipt-v1";
+  validator_version: "anti-fomo-office-receipt-v1" | "anti-fomo-office-receipt-v2";
   structure_status: "pass" | "fail";
-  office_roundtrip_status: "passed" | "failed" | "unavailable";
+  office_roundtrip_status: "passed" | "failed" | "unavailable" | "supplied_unverified";
   visual_evidence_status: "rendered_unreviewed" | "missing";
   page_count: number;
   rendered_pdf_sha256: string | null;
@@ -539,12 +539,201 @@ export interface ApiProductStrategyOfficeEvidenceCreateRequest {
   required_texts?: string[];
   rendered_pdf_base64?: string;
   render_engine?: "microsoft_word_manual_export" | "microsoft_powerpoint_manual_export";
+  expected_artifact_revision_digest?: string;
 }
 
 export interface ApiProductStrategyOfficeEvidenceCreateResponse {
   outcome: "created" | "existing";
   deduplicated: boolean;
   receipt: ApiProductStrategyOfficeEvidenceReceipt;
+}
+
+export type ApiProductStrategyVisualCaptureKind = "office_page" | "desktop_browser" | "mobile_viewport";
+export type ApiProductStrategyVisualCheckStatus = "pass" | "fail" | "unknown";
+
+export interface ApiProductStrategyVisualChecklistItem {
+  status: ApiProductStrategyVisualCheckStatus;
+  note: string;
+}
+
+export type ApiProductStrategyVisualChecklist = Record<
+  "clipping" | "overlap" | "legibility" | "assets" | "pagination",
+  ApiProductStrategyVisualChecklistItem
+>;
+
+export interface ApiProductStrategyVisualViewport {
+  width: number;
+  height: number;
+  device_scale_factor: number;
+}
+
+export interface ApiProductStrategyVisualEvidenceCreateRequest {
+  office_receipt_key: string;
+  expected_office_receipt_digest: string;
+  surface_key: string;
+  capture_kind: ApiProductStrategyVisualCaptureKind;
+  source_version: string;
+  file_name: string;
+  image_base64: string;
+  viewport?: ApiProductStrategyVisualViewport | null;
+  office_page_number?: number | null;
+  checklist: ApiProductStrategyVisualChecklist;
+  notes: string;
+  previous_revision_digest?: string | null;
+}
+
+export interface ApiProductStrategyVisualFieldDiff {
+  field_path: string;
+  before: unknown;
+  after: unknown;
+  change_type: "added" | "removed" | "changed";
+}
+
+export interface ApiProductStrategyVisualEvidenceRevision {
+  id: string;
+  revision_key: string;
+  office_receipt_key: string;
+  office_receipt_digest: string;
+  artifact_key: string;
+  artifact_revision: number;
+  artifact_revision_digest: string;
+  surface_key: string;
+  capture_kind: ApiProductStrategyVisualCaptureKind;
+  source_version: string;
+  file_name: string;
+  image_sha256: string;
+  image_width: number;
+  image_height: number;
+  viewport: ApiProductStrategyVisualViewport | null;
+  office_page_number: number | null;
+  checklist: ApiProductStrategyVisualChecklist;
+  notes: string;
+  revision: number;
+  previous_revision_digest: string | null;
+  revision_digest: string;
+  field_level_diff: ApiProductStrategyVisualFieldDiff[];
+  review_status: "needs_revision" | "recorded_unverified";
+  human_review_status: "missing";
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  production_status: "not_authorized";
+  created_at: string;
+}
+
+export interface ApiProductStrategyVisualEvidenceCreateResponse {
+  outcome: "created" | "existing";
+  deduplicated: boolean;
+  revision: ApiProductStrategyVisualEvidenceRevision;
+}
+
+export interface ApiProductStrategyVisualEvidenceLandscape {
+  visual_evidence_version: "2.10.6";
+  revisions: ApiProductStrategyVisualEvidenceRevision[];
+  revision_count: number;
+  needs_revision_count: number;
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  note: string;
+}
+
+export interface ApiProductStrategyResponsiveEvidence {
+  responsive_evidence_version: "2.11.3";
+  desktop_browser_count: number;
+  mobile_viewport_count: number;
+  office_page_count: number;
+  latest_revision_digests: string[];
+  physical_device_capture: false;
+  production_performance_benchmark: false;
+  blockers: string[];
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  production_status: "not_authorized";
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  note: string;
+}
+
+export type ApiProductStrategyHumanAcceptanceDecision = "approve" | "reject" | "request_revision";
+
+export interface ApiProductStrategyHumanAcceptanceCreateRequest {
+  idempotency_key: string;
+  office_receipt_key: string;
+  expected_office_receipt_digest: string;
+  expected_artifact_revision_digest: string;
+  visual_revision_digests: string[];
+  reviewer_identity: string;
+  author_identity: string;
+  decision: ApiProductStrategyHumanAcceptanceDecision;
+  review_scope: string;
+  rationale: string;
+  previous_event_digest?: string | null;
+}
+
+export interface ApiProductStrategyHumanAcceptanceEvent {
+  event_key: string;
+  idempotency_key: string;
+  event_digest: string;
+  sequence: number;
+  previous_event_digest: string | null;
+  artifact_key: string;
+  artifact_revision: number;
+  artifact_revision_digest: string;
+  office_receipt_key: string;
+  office_receipt_digest: string;
+  visual_revision_digests: string[];
+  reviewer_identity: string;
+  author_identity: string;
+  decision: ApiProductStrategyHumanAcceptanceDecision;
+  review_scope: string;
+  rationale: string;
+  identity_status: "self_attested";
+  separation_of_duties_status: "self_attested_distinct";
+  evidence_issues: string[];
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  production_status: "not_authorized";
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  release_gate_mutated: false;
+  created_at: string;
+}
+
+export interface ApiProductStrategyHumanAcceptanceCreateResponse {
+  outcome: "created" | "existing";
+  deduplicated: boolean;
+  event: ApiProductStrategyHumanAcceptanceEvent;
+}
+
+export interface ApiProductStrategyHumanAcceptanceLandscape {
+  human_acceptance_version: "2.10.7";
+  events: ApiProductStrategyHumanAcceptanceEvent[];
+  event_count: number;
+  identity_status: "self_attested";
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  note: string;
+}
+
+export interface ApiProductStrategyReleaseEvidenceBridge {
+  bridge_version: "2.10.8";
+  artifact_key: string;
+  artifact_revision: number;
+  artifact_revision_digest: string;
+  office_receipts: Array<Record<string, unknown>>;
+  visual_revisions: Array<Record<string, unknown>>;
+  human_events: Array<Record<string, unknown>>;
+  upstream: Record<string, unknown>;
+  blockers: string[];
+  bridge_digest: string;
+  read_only: true;
+  acceptance_status: "hold";
+  blocking_status: "blocked";
+  production_status: "not_authorized";
+  can_auto_accept: false;
+  can_auto_approve_release: false;
+  release_gate_mutated: false;
 }
 
 export interface ApiProductStrategyIterationProgramInstructionEvidence {
@@ -675,7 +864,7 @@ export interface ApiProductStrategyIterationProgramInitializationAudit {
 }
 
 export interface ApiProductStrategyIterationProgram {
-  iteration_program_version: "2.10.3-2.11.7";
+  iteration_program_version: "2.10.3-2.11.8";
   observed_at: string;
   expires_at: string;
   program_digest: string;

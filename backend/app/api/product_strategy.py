@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -37,6 +39,16 @@ from app.services.product_strategy.office_evidence_service import (
     OfficeEvidenceError,
     create_office_evidence_receipt,
     list_office_evidence_receipts,
+)
+from app.schemas.product_strategy_visual_evidence import (
+    ResponsiveEvidenceOut, VisualEvidenceCreateOut, VisualEvidenceCreateRequest, VisualEvidenceLandscapeOut,
+)
+from app.services.product_strategy.visual_evidence_service import (
+    CONFLICT_CODES,
+    VisualEvidenceError,
+    create_visual_evidence_revision,
+    list_visual_evidence_revisions,
+    responsive_evidence_summary,
 )
 from app.services.product_strategy.catalog import preview_competitive_landscape
 from app.services.product_strategy.service import get_persisted_competitive_landscape, seed_competitive_landscape
@@ -162,16 +174,58 @@ def register_office_evidence_receipt(
         ) from error
 
 
+@router.get("/visual-evidence-revisions", response_model=VisualEvidenceLandscapeOut)
+def get_visual_evidence_revisions(db: Session = Depends(get_db)) -> dict:
+    return list_visual_evidence_revisions(db)
+
+
+@router.post("/visual-evidence-revisions", response_model=VisualEvidenceCreateOut, status_code=201)
+def register_visual_evidence_revision(payload: VisualEvidenceCreateRequest, db: Session = Depends(get_db)) -> dict:
+    try:
+        return create_visual_evidence_revision(db, payload=payload)
+    except VisualEvidenceError as error:
+        raise HTTPException(
+            status_code=409 if error.code in CONFLICT_CODES else 400,
+            detail={"code": error.code, "message": str(error), "acceptance_status": "hold", "can_auto_accept": False},
+        ) from error
+
+
+@router.get("/responsive-evidence", response_model=ResponsiveEvidenceOut)
+def get_responsive_evidence(db: Session = Depends(get_db)) -> dict:
+    """Return a read-only 2.11.3 desktop/mobile coverage summary."""
+    return responsive_evidence_summary(db)
+
+
 @router.get("/iteration-program/preview", response_model=IterationProgramLandscapeOut)
 def get_iteration_program_preview() -> dict:
-    """Read-only 2.10.3–2.11.7 plan and official-agent observation preview."""
+    """Read-only 2.10.3–2.11.8 plan and official-agent observation preview."""
 
     return preview_iteration_program()
 
 
+@router.get("/agent-landscape/refresh-status")
+def get_agent_landscape_refresh_status() -> dict:
+    """Expose source freshness as a review signal; never refreshes or rewrites the catalog."""
+    snapshot = preview_iteration_program(now=datetime.now(UTC))
+    stale = [source for source in snapshot["agent_sources"] if source["evidence"]["status"] == "stale"]
+    return {
+        "catalog_version": snapshot["iteration_program_version"],
+        "observed_at": snapshot["observed_at"],
+        "expires_at": snapshot["expires_at"],
+        "source_count": len(snapshot["agent_sources"]),
+        "stale_source_count": len(stale),
+        "refresh_required": bool(stale),
+        "review_only": True,
+        "roadmap_mutated": False,
+        "release_gate_mutated": False,
+        "production_status": "not_authorized",
+        "note": "来源刷新只产生人工复核信号；厂商声明不等于独立评测，也不会自动改变路线图或发布状态。",
+    }
+
+
 @router.get("/iteration-program", response_model=IterationProgramLandscapeOut)
 def get_iteration_program(db: Session = Depends(get_db)) -> dict:
-    """Return only explicitly materialized fifteen-version control records."""
+    """Return only explicitly materialized sixteen-version control records."""
 
     return get_persisted_iteration_program(db)
 

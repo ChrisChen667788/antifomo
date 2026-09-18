@@ -127,8 +127,10 @@ function sourceAnalysis(source, observation, now) {
 }
 
 export async function analyzeRegister(register, { fetchImpl = fetch, now = new Date() } = {}) {
-  const sources = [];
-  for (const source of register.sources) {
+  // Fetch in parallel so a stale or unavailable vendor cannot multiply the
+  // per-source timeout into a 13-source serial wait. Preserve register order
+  // for deterministic reports and digest stability.
+  const sources = await Promise.all(register.sources.map(async (source) => {
     let observation;
     try {
       observation = await fetchOfficialSource({ ...source, observed_at: register.observed_at, expires_at: register.expires_at }, fetchImpl);
@@ -143,8 +145,8 @@ export async function analyzeRegister(register, { fetchImpl = fetch, now = new D
         error: error instanceof Error ? error.message : String(error),
       };
     }
-    sources.push(sourceAnalysis({ ...source, observed_at: register.observed_at, expires_at: register.expires_at }, observation, now));
-  }
+    return sourceAnalysis({ ...source, observed_at: register.observed_at, expires_at: register.expires_at }, observation, now);
+  }));
 
   const summary = {
     source_count: sources.length,

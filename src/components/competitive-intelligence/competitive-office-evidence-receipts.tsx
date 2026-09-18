@@ -92,6 +92,7 @@ export function CompetitiveOfficeEvidenceReceipts() {
         media_type: file.type,
         file_base64: await fileToBase64(file),
         source_version: sourceVersion.trim() || "unspecified",
+        expected_artifact_revision_digest: selectedArtifact?.revision_digest,
         ...(renderedPdf
           ? {
               rendered_pdf_base64: await fileToBase64(renderedPdf),
@@ -106,7 +107,7 @@ export function CompetitiveOfficeEvidenceReceipts() {
       setMessage(
         result.deduplicated
           ? "相同文件摘要已存在，已返回原有不可变收据。"
-          : "已记录本地结构与无头渲染证据；人工验收和发布状态仍为 HOLD。",
+          : "已记录文件和渲染证据，等待视觉复核。",
       );
       setFile(null);
       setRenderedPdf(null);
@@ -147,7 +148,7 @@ export function CompetitiveOfficeEvidenceReceipts() {
       {snapshot ? (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric label="不可变收据" value={`${snapshot.receipt_count} 条`} />
-          <Metric label="本地 roundtrip" value={`${snapshot.local_roundtrip_passed_count} 条`} />
+          <Metric label="自动 Office 往返通过" value={`${snapshot.local_roundtrip_passed_count} 条`} />
           <Metric label="已渲染待人工复核" value={`${snapshot.rendered_unreviewed_count} 条`} />
           <Metric label="验收状态" value="HOLD" />
         </div>
@@ -230,8 +231,11 @@ export function CompetitiveOfficeEvidenceReceipts() {
                   <span className={receipt.structure_status === "pass" ? "af-chip af-chip-success" : "af-chip bg-rose-100 text-rose-700"}>
                     结构 {receipt.structure_status}
                   </span>
-                  <span className={receipt.office_roundtrip_status === "passed" ? "af-chip af-chip-success" : "af-chip af-chip-warning"}>
-                    roundtrip {receipt.office_roundtrip_status}
+                  <span className="af-chip af-chip-warning">
+                    {receipt.office_roundtrip_status === "supplied_unverified" ||
+                    String((receipt.validation.roundtrip as { engine?: string } | undefined)?.engine ?? "").endsWith("manual_export")
+                      ? "伴随 PDF 已渲染 · 导出来源待核实"
+                      : `roundtrip ${receipt.office_roundtrip_status}`}
                   </span>
                   <span className="af-chip bg-rose-100 text-rose-700">人工验收缺失</span>
                 </div>

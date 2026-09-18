@@ -15,6 +15,9 @@ import { CompetitiveArtifactAcceptance } from "@/components/competitive-intellig
 import { CompetitiveDecisionContextPackets } from "@/components/competitive-intelligence/competitive-decision-context-packets";
 import { CompetitiveIterationProgram } from "@/components/competitive-intelligence/competitive-iteration-program";
 import { CompetitiveOfficeEvidenceReceipts } from "@/components/competitive-intelligence/competitive-office-evidence-receipts";
+import { CompetitiveVisualEvidence } from "@/components/competitive-intelligence/competitive-visual-evidence";
+import { CompetitiveOperationsWorkbench } from "@/components/competitive-intelligence/competitive-operations-workbench";
+import { CompetitiveHumanAcceptance } from "@/components/competitive-intelligence/competitive-human-acceptance";
 
 type Landscape = ApiProductStrategyCompetitiveLandscapePreview | ApiProductStrategyCompetitiveLandscape;
 
@@ -244,6 +247,9 @@ export function CompetitiveIntelligenceWorkspace() {
       <CompetitiveDecisionContextPackets />
       <CompetitiveArtifactAcceptance />
       <CompetitiveOfficeEvidenceReceipts />
+      <CompetitiveVisualEvidence />
+      <CompetitiveHumanAcceptance />
+      <CompetitiveOperationsWorkbench />
       <CompetitiveIterationProgram />
     </div>
   );
