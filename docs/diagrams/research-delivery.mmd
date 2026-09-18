@@ -1,0 +1,13 @@
+flowchart TD
+  I[Inbox question] --> P[Research Plan]
+  P -->|Ask / read-only| E[Evidence query]
+  P -->|Plan approved| X[Execute bounded steps]
+  E --> F{Fresh + sufficient?}
+  F -- no --> H[HOLD: show gap and recovery action]
+  H --> E
+  F -- yes --> C[Compare / Claim Graph]
+  C --> B[Blueprint / ADR / risks]
+  B --> R[Human review]
+  R -->|accept| O[Focus / action / export]
+  R -->|return| C
+  O --> Z[Receipt + digest + archive]

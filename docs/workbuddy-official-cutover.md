@@ -1,5 +1,7 @@
 # WorkBuddy Official Cutover
 
+This document describes a local compatibility/CLI bridge. It is not evidence that Anti-FOMO is an official Tencent-hosted WorkBuddy Enterprise tenant. For the product comparison and the fail-closed envelope planned before broader execution, see [Marketing overhaul 2026-09](./marketing-overhaul-2026-09.md) and [Current product status](./current-product-status.md).
+
 ## Current State
 
 - Official Tencent `CodeBuddy` CLI is installed locally.

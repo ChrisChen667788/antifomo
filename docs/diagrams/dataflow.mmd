@@ -1,0 +1,16 @@
+flowchart TD
+  S[URL / WeChat / file / RSS] --> C[Capture]
+  C --> N[Normalize + canonicalize]
+  N --> D{Duplicate?}
+  D -- yes --> R[Reuse existing source revision]
+  D -- no --> H[Source health + freshness]
+  H --> Q[Recoverable queue]
+  Q --> T[Research retrieval]
+  T --> CL[Claim / evidence ledger]
+  CL --> V[Version compare]
+  V --> A[Architecture readiness]
+  A --> AR[Human review]
+  AR -->|accepted| X[Artifact + action receipt]
+  AR -->|hold / reject| B[補证 / revise / replay]
+  B --> T
+  X --> AH[Audit handoff]

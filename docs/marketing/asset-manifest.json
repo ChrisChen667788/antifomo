@@ -1,0 +1,38 @@
+{
+  "schema_version": "anti-fomo-marketing-assets/v1",
+  "updated_at": "2026-09-18",
+  "source_mode": "local_repo",
+  "production_claim": false,
+  "release_approval_evidence": false,
+  "assets": [
+    {
+      "path": "docs/assets/antifomo-signal-loop.svg",
+      "role": "animated_readme_signal_loop",
+      "dimensions": "1600x650",
+      "source": "hand-authored_svg",
+      "evidence_tier": "demo"
+    },
+    {
+      "path": "docs/assets/antifomo-signal-loop.gif",
+      "role": "animated_readme_signal_loop_preview",
+      "dimensions": "760x309",
+      "source": "rendered_from_checked_in_svg",
+      "duration_seconds": 6,
+      "fps": 10,
+      "file_size_limit_bytes": 6291456,
+      "evidence_tier": "demo"
+    },
+    {
+      "path": "docs/assets/antifomo-control-plane.svg",
+      "role": "architecture_and_governance_overview",
+      "dimensions": "1600x820",
+      "source": "hand-authored_svg",
+      "evidence_tier": "demo"
+    },
+    {
+      "path": "docs/marketing/DEMO-SCRIPT.md",
+      "role": "30_second_storyboard_and_render_contract",
+      "evidence_tier": "planned"
+    }
+  ]
+}

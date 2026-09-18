@@ -20,6 +20,12 @@
 
 <p align="center"><sub>此图为产品概念主视觉；实际界面截图与验收证据边界见下文。</sub></p>
 
+<p align="center">
+  <a href="./docs/marketing/DEMO-SCRIPT.md"><img src="./docs/assets/antifomo-signal-loop.gif" alt="Anti-FOMO 动态信号到行动流程：采集、证据、方案与动作" width="1200" /></a>
+</p>
+
+<p align="center"><sub>动态 SVG 是可复现的宣传演示；不是实时吞吐、生产 SLA 或客户验收证据。</sub></p>
+
 把嘈杂的网页与微信信息流，变成有证据的研报、解决方案架构蓝图、专注执行和可交付动作。
 
 Anti-FOMO 是一个开源 AI 研究工作台，适合解决方案架构师、行业咨询顾问、BD / 售前、策略团队和需要持续盯高信号内容的人。它不是“收藏稍后读 + AI 摘要”的叠加，而是把完整闭环重新接起来：
@@ -35,6 +41,11 @@ Anti-FOMO 是一个开源 AI 研究工作台，适合解决方案架构师、行
 - [微信采集可靠性证据](./docs/wechat-collector-reliability-benchmark.md)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
 - [产品白皮书](./docs/product-whitepaper.md)
+- [当前产品状态与证据图例](./docs/current-product-status.md)
+- [价值地图](./docs/value-map.md)
+- [营销翻修、WorkBuddy 对比与后续十版本方案](./docs/marketing-overhaul-2026-09.md)
+- [30 秒动图脚本与渲染门禁](./docs/marketing/DEMO-SCRIPT.md)
+- [架构/数据流/工作流图源](./docs/diagrams/architecture.mmd)
 - [开源宣发素材包](./docs/open-source-launch-kit.md)
 - [增长文案包](./docs/open-source-growth-copy.md)
 - [GitHub 宣发检查清单](./docs/github-launch-polish-checklist.md)
@@ -317,7 +328,7 @@ npm run demo:simulate
 当前代码基线：
 
 - 本地优先、可直接运行的产品原型
-- 当前发布证据基线：`2.9.5+20260814`（检索保证与证据运营线；晋级仍保持阻断）
+- 最新已晋级的发布证据基线仍是 `2.9.5+20260814`；当前 `2.10.3–2.11.8` 为仅开发线，晋级仍保持阻断
 - `2.10.0-development` 竞品能力证据台账已在本地实现；它分开记录厂商声明、本地工程状态和拟议待办，不改变发布语义版本、生产默认策略或 release-readiness
 - `2.10.1-development` 可复核决策上下文包可将 4 个 `build` / `integrate` / `defer` 决策初始化为仅限产品策略的可复核上下文，执行、发布与生产授权仍全部为否
 - `2.10.2-development` 交付物验收与修订差异把上述上下文绑定为仅 `HOLD` 的交付物复核草案，Office、视觉和可归属人工复核证据缺失时全部保持阻断，不能改变发布门禁

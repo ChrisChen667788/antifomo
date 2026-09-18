@@ -20,6 +20,12 @@
 
 <p align="center"><sub>Conceptual brand artwork. Actual product captures and evidence boundaries are documented below.</sub></p>
 
+<p align="center">
+  <a href="./docs/marketing/DEMO-SCRIPT.md"><img src="./docs/assets/antifomo-signal-loop.gif" alt="Anti-FOMO animated signal-to-action loop: collect, evidence, architecture, and action" width="1200" /></a>
+</p>
+
+<p align="center"><sub>The animated SVG is a reproducible marketing demo, not live throughput, a production SLA, or customer acceptance evidence.</sub></p>
+
 Turn noisy web and WeChat signals into evidence-backed research reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
 Anti-FOMO is an open-source AI research workspace for solution architects, industry consultants, pre-sales teams, BD teams, strategy operators, and builders who need more than read-later apps and generic AI summaries. It closes the loop:
@@ -35,6 +41,11 @@ Start here:
 - [WeChat collection reliability evidence](./docs/wechat-collector-reliability-benchmark.md)
 - [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
 - [Product whitepaper](./docs/product-whitepaper.md)
+- [Current product status and evidence legend](./docs/current-product-status.md)
+- [Value map](./docs/value-map.md)
+- [Marketing overhaul, WorkBuddy comparison, and next ten-version plan](./docs/marketing-overhaul-2026-09.md)
+- [30-second demo script and render guardrails](./docs/marketing/DEMO-SCRIPT.md)
+- [Architecture/data-flow/workflow sources](./docs/diagrams/architecture.mmd)
 - [Launch kit](./docs/open-source-launch-kit.md)
 - [Growth copy kit](./docs/open-source-growth-copy.md)
 - [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
@@ -299,7 +310,7 @@ npm run demo:simulate
 Current code baseline:
 
 - active local-first product prototype
-- current release-evidence baseline: `2.9.5+20260814` (retrieval assurance and evidence-operations lane; promotion still blocked)
+- latest promoted release-evidence baseline remains `2.9.5+20260814`; the active `2.10.3–2.11.8` line is development-only and promotion remains blocked
 - `2.10.0-development` Competitive Capability Observatory is locally implemented; it records vendor claims, local implementation state, and proposed backlog separately, without changing release semver, the production default, or release-readiness
 - `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
 - `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate

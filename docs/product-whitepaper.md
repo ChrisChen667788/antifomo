@@ -1,6 +1,8 @@
 # Anti-FOMO Product Whitepaper
 
-Development version: `2.9.5+20260814`
+Development line: `2.10.3–2.11.8-development`
+
+Canonical status and evidence legend: [docs/current-product-status.md](./current-product-status.md). Marketing narrative and the governed WorkBuddy integration plan: [docs/marketing-overhaul-2026-09.md](./marketing-overhaul-2026-09.md).
 
 Release promotion: `blocked` pending real cross-industry clarification tasks and feedback, human retrieval qrels, real 100+30 expert review/calibration, three-industry blind evaluation, customer acceptance, production Skill governance, and final Office/visual/security evidence.
 
@@ -14,7 +16,7 @@ Most information tools solve one step: saving links, summarizing content, search
 
 `collect -> clean -> research -> compare -> focus -> action`
 
-The 2.9.5 development line keeps the local-first and framework-neutral workflow contract while adding retrieval evidence operations on top of fixed-evidence assurance and controlled candidate promotion. The product now inventories, binds, ages, and independently hands off the fixed benchmark, complete-report review, approval, shadow/drift, incident, and rollback records; `baseline_hybrid` remains the default until external evidence is complete. Research and formal documents still fail closed behind scope, source admission, current-revision passage citations, trusted critical sources, Claim consistency, and material-gap gates.
+The current 2.10.3–2.11.8 development line keeps the local-first and framework-neutral workflow contract while extending retrieval evidence operations with visual/human acceptance receipts, governed execution records and controlled candidate promotion. The product inventories, binds, ages, and hands off fixed benchmark, complete-report review, approval, shadow/drift, incident, rollback and audit records; `baseline_hybrid` remains the default until external evidence is complete. Research and formal documents still fail closed behind scope, source admission, current-revision passage citations, trusted critical sources, Claim consistency, and material-gap gates.
 
 ## Problem
 

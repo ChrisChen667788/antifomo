@@ -4,6 +4,8 @@ This page is the stable, repository-local companion to the [public roadmap issue
 
 For the detailed, evidence-governed post-`2.9.5` plan, see the [Competitive Capability Observatory](./competitive-capability-observatory-v2.10.0.md), [reviewable decision contexts](./reviewable-decision-context-packets-v2.10.1.md), [artifact acceptance boundary](./artifact-acceptance-and-revision-diff-v2.10.2.md), the [2.10.6–2.10.8 evidence closure](./2.10.6-2.10.8-evidence-closure.md), the [2.10.9–2.11.8 control-plane closure](./2.10.9-2.11.8-control-plane-closure.md), and the current [2.10.3–2.11.8 Agent landscape and governed iteration train](./competitive-agent-landscape-and-iteration-program-2026-08-31.md).
 
+The refreshed commercial narrative and the next ten governed versions (`2.12.0`–`2.21.0`) are in [Marketing overhaul 2026-09](./marketing-overhaul-2026-09.md). The canonical current-state and evidence labels are in [Current product status](./current-product-status.md).
+
 ## Operating boundary
 
 The current release baseline remains `baseline_hybrid`; release promotion remains blocked until the required independent retrieval, human review, Office, visual, security, performance, recovery, and customer-acceptance evidence exists. A roadmap card answers *what the product should make reviewable next*; it never grants a release or an automation permission on its own.

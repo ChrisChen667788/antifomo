@@ -2,6 +2,8 @@
 
 This file is the practical copy pack for sharing Anti-FOMO after the repository has gone public.
 
+For the refreshed story, visual assets, evidence legend and WorkBuddy integration positioning, use [Marketing overhaul 2026-09](./marketing-overhaul-2026-09.md), [Chinese copy](./marketing/MARKETING-zh.md), and [English copy](./marketing/MARKETING-en.md).
+
 It complements:
 
 - `docs/open-source-launch-kit.md`

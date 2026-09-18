@@ -1,10 +1,12 @@
 # Anti-FOMO Open Source Launch Kit
 
+The current narrative, visual system, WorkBuddy comparison and next ten-version plan live in [Marketing overhaul 2026-09](./marketing-overhaul-2026-09.md). Use [current product status](./current-product-status.md) for the evidence legend before publishing any metric or outcome claim.
+
 ## One-line pitch
 
 Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
 
-Current development line: `2.9.5+20260814`, adding retrieval evidence operations on top of the Assurance Command Center: fixed result and package digests, artifact inventory/lineage, freshness, role separation, incident/revocation records, audit handoff, and release-readiness aggregation. Release promotion remains blocked until real cross-industry clarification tasks and feedback, human qrels, real 100+30 expert calibration, independent retrieval review, three-industry blind evaluation, three-sector customer acceptance, production Skill/connector governance, and Office/visual/security/performance/recovery evidence are complete.
+Current development line: `2.10.3–2.11.8-development`, extending retrieval evidence operations with visual/human acceptance receipts, governed execution records, audit handoff and source-freshness controls. Release promotion remains blocked until the independent retrieval, human, customer, production Skill/connector, Office/visual/security/performance and recovery evidence listed in [current product status](./current-product-status.md) is complete.
 
 ## GitHub About
 
@@ -124,6 +126,9 @@ The commercial product narrative lives in `docs/product-whitepaper.md`.
 
 ## Social assets
 
+- `docs/assets/antifomo-signal-loop.gif`: 6-second reproducible signal-to-action preview for README and social posts.
+- `docs/assets/antifomo-signal-loop.svg`: source animation with inspectable paths and evidence-boundary copy.
+- `docs/assets/antifomo-control-plane.svg`: architecture and governance overview.
 - `docs/assets/github-hero.svg`: primary README hero
 - `docs/assets/screenshots/`: real product screenshots for README, repo posts, and release notes
 - `docs/assets/github-social-preview.png`: ready-to-upload GitHub social preview image
@@ -134,6 +139,14 @@ Refresh screenshots with:
 ```bash
 npm run repo:screenshots
 ```
+
+Refresh the lightweight marketing GIF with:
+
+```bash
+npm run marketing:gif
+```
+
+The GIF is a conceptual workflow preview. Use the real screenshots and the [current product status](./current-product-status.md) when making capability or performance claims.
 
 ## Manual GitHub social preview suggestion
 

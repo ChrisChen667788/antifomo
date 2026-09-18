@@ -1,0 +1,14 @@
+flowchart LR
+  U[Browser / extension / miniapp / CLI] --> N[Next.js surfaces]
+  N --> API[FastAPI routers]
+  API --> IN[Collection + source health]
+  API --> RS[Research + retrieval]
+  API --> PS[Product strategy + operations]
+  API --> WB[WorkBuddy bridge]
+  IN --> DB[(SQLite / migrations)]
+  RS --> IDX[(Retrieval index)]
+  PS --> LEDGER[(Evidence / receipt ledger)]
+  WB --> LEDGER
+  N -. read-only preview .-> PS
+  LEDGER --> G[Human review / HOLD / audit handoff]
+  G --> OUT[Reports / blueprints / action cards / Office exports]
