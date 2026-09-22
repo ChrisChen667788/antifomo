@@ -34,7 +34,7 @@ npm run demo:start
 4. 代码改动覆盖相关失败、取消和恢复路径；界面改动说明所检查的状态与视口。
 5. 排除 `.env`、`.tmp`、数据库、客户标识、AppID、令牌和本地构建产物。
 
-当前 [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11)欢迎逐行评论和修改建议。独立代码贡献请提交小 PR，合并与发布分别评审。
+[PR #11 的讨论](https://github.com/ChrisChen667788/antifomo/pull/11)记录了证据控制面与宣发包的变更。新代码贡献请从 `main` 创建范围明确的小 PR；也欢迎逐行评论和可复现的 Issue。合并与发布分别评审。
 
 ## 证据与宣传口径
 

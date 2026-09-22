@@ -1,6 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.0",
   "catalog_version": "2.11.4",
+  "generated_at": "2026-09-22T11:57:49.761Z",
   "observed_at": "2026-08-31T00:00:00Z",
   "expires_at": "2026-09-14T00:00:00Z",
   "cadence_days": 7,
@@ -20,6 +21,15 @@
     "can_auto_approve_release": false,
     "create_review_signal_only": true
   },
+  "summary": {
+    "source_count": 13,
+    "fetched_count": 12,
+    "failed_count": 1,
+    "changed_count": 9,
+    "baseline_missing_count": 0,
+    "stale_count": 13,
+    "review_required_count": 13
+  },
   "sources": [
     {
       "product_key": "workbuddy",
@@ -27,7 +37,11 @@
       "product_name": "WorkBuddy",
       "source_title": "Tencent Cloud WorkBuddy product page",
       "source_url": "https://intl.cloud.tencent.com/zh/products/workbuddy",
-      "monitor_url": "https://www.workbuddy.cn/docs/workbuddy/Overview",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "The official product page presents an office-oriented AI Agent workspace with task orchestration, office-tool connections, and result delivery.",
       "core_capabilities": [
         "office agent workspace",
@@ -41,11 +55,7 @@
       "next_step": "Retain a controlled, allowlisted external-result return boundary with provenance and fail-closed review.",
       "risk": "A vendor product claim does not prove official account integration or authorize task execution.",
       "baseline_content_sha256": "37b8c5d24a045f5335b2d1481e4c38c1b26a5a52e53c977490a7a3733e06b060",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://www.workbuddy.cn/docs/workbuddy/Overview",
         "http_status": 200,
@@ -54,20 +64,15 @@
         "normalized_text_sha256": "bdb418d6aac4c2793c9903e65c6da97a9f5d05649d139b84e07c5531cf080c2d",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The monitored overview still describes natural-language tasks, planning, office artifacts and authorized local file access.",
-          "The current navigation includes enterprise, Buddy Apps, team collaboration and automation; a broader product scope must be reviewed before revising the older comparison."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "trae",
@@ -75,6 +80,11 @@
       "product_name": "TRAE",
       "source_title": "TRAE official documentation",
       "source_url": "https://docs.trae.cn/",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Official documentation presents an AI-native development environment that uses repository context to assist engineering work.",
       "core_capabilities": [
         "repository context",
@@ -87,11 +97,7 @@
       "next_step": "Keep scoped context and verification patterns without adding autonomous code, terminal, or repository writes.",
       "risk": "AI IDE execution would materially expand the product and permission boundary.",
       "baseline_content_sha256": "bd3fa96625f951d0393d7ca92c2a986d055c12d8552954dd1e0f189698dc434a",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://docs.trae.cn/",
         "http_status": 200,
@@ -100,20 +106,15 @@
         "normalized_text_sha256": "21e5c1f24ae9c51edbd30e8a1783f6b2f6acfc16984f836edab15a1446270e95",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The official overview now distinguishes TraeCode, TraeWork, Plugin, CLI and Enterprise.",
-          "The historical IDE-only product scope is incomplete: TraeWork also lists office, code and design modes. Review scope before changing the not-copy decision."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "qwen_work",
@@ -121,6 +122,11 @@
       "product_name": "QwenWork",
       "source_title": "QwenWork official product introduction",
       "source_url": "https://qwenwork.cn/docs/product-introduction",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "The official introduction presents a natural-language office platform for documents, data, and editable deliverables with DingTalk ecosystem integration.",
       "core_capabilities": [
         "office deliverables",
@@ -134,11 +140,7 @@
       "next_step": "Build editable artifact lineage and real Office/visual receipts without claiming a QwenWork or DingTalk connector.",
       "risk": "Generated files and ecosystem access require explicit data permissions and attributable acceptance.",
       "baseline_content_sha256": "a7c67f43b1e8b3bb9cc4f05551bebe3b8875bd2027c0808fb5897b92118ec417",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://qwenwork.cn/docs/product-introduction",
         "http_status": 200,
@@ -147,20 +149,15 @@
         "normalized_text_sha256": "b1ba42a491832d828788668c3363a93213688e17a72d10f24462728a2305cfd5",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The official introduction still lists document/data/artifact tasks and DingTalk integration.",
-          "The page also lists scheduled cloud tasks and client browser automation; these are vendor claims, not tested Anti-FOMO integrations."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "langhub",
@@ -168,6 +165,11 @@
       "product_name": "LangHub",
       "source_title": "LangHub official product page",
       "source_url": "https://www.langhub.cn/?locale=zh",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "The official page emphasizes a context workspace that aligns intent, tool chains, plans, validation, and rollback.",
       "core_capabilities": [
         "persistent context",
@@ -181,11 +183,7 @@
       "next_step": "Build consented project context, retention, change preview, and project-scoped undo.",
       "risk": "Silent cross-project memory would undermine consent and provenance.",
       "baseline_content_sha256": "a7a83459d566ddcc1e99f71a3e25ff4d553ab673d5785bcfd9b2b498b34f9d00",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://www.langhub.cn/?locale=zh",
         "http_status": 200,
@@ -194,20 +192,14 @@
         "normalized_text_sha256": "a7a83459d566ddcc1e99f71a3e25ff4d553ab673d5785bcfd9b2b498b34f9d00",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The normalized monitored page is unchanged against the historical baseline.",
-          "Persistent context, planning, change preview and rollback remain stated on the page; unchanged content does not renew semantic review."
-        ]
-      }
+      "change_status": "unchanged",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "baidu_dumate",
@@ -215,6 +207,11 @@
       "product_name": "DuMate",
       "source_title": "Baidu DuMate official documentation",
       "source_url": "https://cloud.baidu.com/doc/Dumate/index.html",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Official documentation presents a desktop office agent for local file, data, and office-automation tasks.",
       "core_capabilities": [
         "desktop agent",
@@ -228,11 +225,7 @@
       "next_step": "Require sandbox, minimum permissions, audit, dry-run, and rollback design before any desktop-agent reconsideration.",
       "risk": "Desktop control and arbitrary local-file writes are high-impact actions.",
       "baseline_content_sha256": "37d54b0476db87ef19f6c3feeb70775492047deff53727c2f1e5499b643484ce",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://cloud.baidu.com/doc/Dumate/index.html",
         "http_status": 200,
@@ -241,20 +234,15 @@
         "normalized_text_sha256": "3e0fcf0f6f8a2c7883a0bb5014fd455fb51873bdb0bb30cd0230b490ca017fa9",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The official introduction still describes desktop file, data and office automation.",
-          "Navigation now uses Baidu Dazi alongside the Dumate page title. Check branding and scope before changing the historical product record."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "tencent_qclaw",
@@ -262,6 +250,11 @@
       "product_name": "Tencent QClaw",
       "source_title": "Tencent Cloud QClaw official documentation",
       "source_url": "https://intl.cloud.tencent.com/zh/document/product/1300/81043",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Official documentation presents a local AI Agent based on the OpenClaw ecosystem that can receive office, creative, and development tasks through messaging entry points.",
       "core_capabilities": [
         "local AI agent",
@@ -275,11 +268,7 @@
       "next_step": "Keep messaging inputs from directly authorizing device actions; preserve explicit proposals and human approvals only.",
       "risk": "Remote message-triggered device execution creates privilege and prompt-injection risk.",
       "baseline_content_sha256": "39ba23a20b335e375539179b8862413e97187ba8be866c1a8ed76d672116ccb0",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://intl.cloud.tencent.com/zh/document/product/1300/81043",
         "http_status": 200,
@@ -288,20 +277,15 @@
         "normalized_text_sha256": "75c98e2f963bbe45aedbce0f5fe3dea616d1bfd2f73dd7ed2c6d842ad862a247",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The official TokenHub integration page still describes local OpenClaw-based execution and WeChat-triggered tasks.",
-          "This page is a model-configuration guide; its local-data and safety wording remains an untested vendor assertion."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "openai_codex",
@@ -309,7 +293,11 @@
       "product_name": "Codex",
       "source_title": "OpenAI Codex product page",
       "source_url": "https://openai.com/codex/",
-      "monitor_url": "https://raw.githubusercontent.com/openai/codex/main/README.md",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Codex is presented as a coding agent for parallel engineering workflows, code changes, tests, reviews, and scheduled background work.",
       "core_capabilities": [
         "parallel agents",
@@ -323,11 +311,7 @@
       "next_step": "Retain scoped context, diff, verification, and handoff patterns without adding autonomous code execution.",
       "risk": "Repository or terminal actions would materially expand Anti-FOMO permissions.",
       "baseline_content_sha256": "889ec19da8e428ba04cb7e3055a3865247539b006a8ad3d70b36fab3ff252dcd",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://raw.githubusercontent.com/openai/codex/main/README.md",
         "http_status": 200,
@@ -336,20 +320,14 @@
         "normalized_text_sha256": "889ec19da8e428ba04cb7e3055a3865247539b006a8ad3d70b36fab3ff252dcd",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The normalized CLI README is unchanged and supports local coding-agent, IDE/app/web entry and installation observations.",
-          "The monitored CLI README does not establish the historical GPT model names, broad scheduling or comparative superiority claims. Those need separate official references."
-        ]
-      }
+      "change_status": "unchanged",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "anthropic_claude_code",
@@ -357,6 +335,11 @@
       "product_name": "Claude Code",
       "source_title": "Claude Code official getting-started documentation",
       "source_url": "https://docs.anthropic.com/en/docs/claude-code/getting-started",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Claude Code is presented as a terminal-based coding agent with project context and enterprise deployment options.",
       "core_capabilities": [
         "terminal workflow",
@@ -370,11 +353,7 @@
       "next_step": "Keep local permissions, identity, audit, dry-run, and rollback as hard prerequisites for any future tool integration.",
       "risk": "Unbounded local execution and file write access conflict with the current product boundary.",
       "baseline_content_sha256": "4cd80ad63d1192766458a76e017a2e7a865df59bb0d6c534f5c05cf0026e6f52",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://code.claude.com/docs/en/getting-started",
         "http_status": 200,
@@ -383,20 +362,15 @@
         "normalized_text_sha256": "9d0091733819727b753609566715c2b2a50e0d170ab0289abd97482d93b3b14c",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The legacy official URL redirects to code.claude.com/docs/en/getting-started, whose title is Advanced setup.",
-          "The setup page supports terminal and enterprise deployment context, but does not establish the historical strongest-model statement. Confirm model and comparative claims separately."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "google_gemini_enterprise",
@@ -404,6 +378,11 @@
       "product_name": "Gemini Enterprise Agent Platform",
       "source_title": "Gemini Enterprise Agent Platform agents overview",
       "source_url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/agents",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Google documents agent identity, tool registries, policy governance, evaluation, observability, and managed agent runtime capabilities.",
       "core_capabilities": [
         "agent identity",
@@ -417,11 +396,7 @@
       "next_step": "Build a signed skill inventory, permission preview, offline evaluation, and read-only release linkage.",
       "risk": "A broad platform build would dilute Anti-FOMO's decision-evidence differentiation.",
       "baseline_content_sha256": null,
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "failed",
         "final_url": null,
         "http_status": null,
@@ -430,19 +405,15 @@
         "normalized_text_sha256": null,
         "error": "fetch failed"
       },
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "Node monitor fetch failed in this environment, so no new machine observation or comparison baseline is accepted.",
-          "An independent web read reached the official agents overview updated 2026-09-21 and found lifecycle, identity, registry, governance and observability descriptions. It is not substituted for a monitor hash.",
-          "The overview does not establish the historical Gemini model names; baseline capture and model evidence remain pending."
-        ]
-      }
+      "change_status": "unknown",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "source_fetch_failed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "microsoft_copilot_studio",
@@ -450,6 +421,11 @@
       "product_name": "Microsoft Copilot Studio",
       "source_title": "Microsoft Copilot Studio documentation",
       "source_url": "https://learn.microsoft.com/microsoft-copilot-studio",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Microsoft documents agent creation, testing, evaluation, publishing, monitoring, connector governance, and audit controls.",
       "core_capabilities": [
         "low-code agents",
@@ -463,11 +439,7 @@
       "next_step": "Use version-level acceptance packets, tool permission previews, human approval, and audit handoff rather than copying a connector marketplace.",
       "risk": "Connector breadth creates identity, data movement, and publication risk.",
       "baseline_content_sha256": "5ad89bf441433d4fa308125ec966310280cb6a6a1290d0c622bff954f206dc76",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/",
         "http_status": 200,
@@ -476,20 +448,15 @@
         "normalized_text_sha256": "b87898a8de29f23247fe2817126584d872f75e637b618e434758370a719af7a6",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The official root redirects to the en-us documentation page and still exposes create, evaluate, publish, monitor and governance guidance.",
-          "Current docs distinguish GitHub Copilot and standard harness paths. Review scope and preview labels before revising comparison."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "qwen_agent",
@@ -497,7 +464,11 @@
       "product_name": "Qwen-Agent",
       "source_title": "Qwen-Agent official repository",
       "source_url": "https://github.com/QwenLM/Qwen-Agent",
-      "monitor_url": "https://raw.githubusercontent.com/QwenLM/Qwen-Agent/main/README.md",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "The official repository describes an LLM application framework using instruction following, tools, planning, and memory, with browser and code-interpreter examples.",
       "core_capabilities": [
         "tool calling",
@@ -511,11 +482,7 @@
       "next_step": "Evaluate model-agnostic tool protocols while retaining sandbox, permission, and evidence gates.",
       "risk": "Example executors can be unsuitable for production without sandboxing and authorization.",
       "baseline_content_sha256": "0ead60624141403558623d9df178d48755fa101413e32cb4051771277661eab5",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://raw.githubusercontent.com/QwenLM/Qwen-Agent/main/README.md",
         "http_status": 200,
@@ -524,20 +491,14 @@
         "normalized_text_sha256": "0ead60624141403558623d9df178d48755fa101413e32cb4051771277661eab5",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The normalized README is unchanged and still describes tools, planning, memory and February 2026 Qwen3.5 examples.",
-          "The current README documents a Docker-based code interpreter while warning about production use; historical unsandboxed-example notes must not describe every current executor."
-        ]
-      }
+      "change_status": "unchanged",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "coze",
@@ -545,6 +506,11 @@
       "product_name": "Coze",
       "source_title": "Coze official product introduction",
       "source_url": "https://docs.coze.cn/what_is_coze",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Coze presents a natural-language Agent workflow that can decompose requirements, generate code, preview results, and deploy artifacts.",
       "core_capabilities": [
         "agent orchestration",
@@ -558,11 +524,7 @@
       "next_step": "Improve proposal and artifact-diff UX without introducing one-click unreviewed deployment.",
       "risk": "Automatic deployment or code execution exceeds the current authorization boundary.",
       "baseline_content_sha256": "f76454d016c2ad28bbc4c8ab71be4ab3b904974396474ef812dc8d356fba40ac",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://docs.coze.cn/what_is_coze",
         "http_status": 200,
@@ -571,20 +533,15 @@
         "normalized_text_sha256": "13f03d49e00a98c2d67e9d89b67b6b767f0c08a53c995b1dc1f6d8b7303c35ec",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The current introduction describes an AI team collaboration platform with projects, multiple agents, files/assets and persistent task context.",
-          "The old natural-language code/preview/deployment-only description is incomplete. Separate Coze collaboration from Coze Coding before changing claims or decisions."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     },
     {
       "product_key": "manus",
@@ -592,6 +549,11 @@
       "product_name": "Manus API / Agent",
       "source_title": "Manus API v2 introduction",
       "source_url": "https://open.manus.ai/docs/v2/introduction",
+      "evidence_tier": "vendor_claim",
+      "evidence_status": "stale",
+      "vendor_claim_is_not_independent_verification": true,
+      "observed_at": "2026-08-31T00:00:00Z",
+      "expires_at": "2026-09-14T00:00:00Z",
       "vendor_claim": "Manus documents multi-step agent tasks, shared projects, file attachments, webhooks, and built-in or custom skills.",
       "core_capabilities": [
         "multi-step tasks",
@@ -605,11 +567,7 @@
       "next_step": "Provide reviewable external-result return packets and skill metadata without automatically triggering external actions.",
       "risk": "File, callback, and remote-task integrations require explicit identity, permission, and replay controls.",
       "baseline_content_sha256": "e3cd225a6470155722d471c8d1a4b8e0a20b4e5f635d81a4767bca495151b207",
-      "observation_snapshot": {
-        "recorded_at": "2026-09-22T11:57:49.761Z",
-        "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e",
-        "report_file": "docs/competitive-reviews/2026-09-22-observation-report.json",
-        "method": "node_competitive_monitor",
+      "observation": {
         "fetch_status": "fetched",
         "final_url": "https://open.manus.ai/docs/v2/introduction",
         "http_status": 200,
@@ -618,22 +576,19 @@
         "normalized_text_sha256": "2fbec4a2bf5858dd4969df7ac38d1de245e84d001157d8babc528f5a7b892cdc",
         "error": null
       },
-      "observed_at": "2026-09-22T11:57:49.761Z",
-      "expires_at": "2026-10-06T11:57:49.761Z",
-      "semantic_review": {
-        "status": "pending",
-        "claim_observed_at": "2026-08-31T00:00:00Z",
-        "claim_expires_at": "2026-09-14T00:00:00Z",
-        "reviewed_by": null,
-        "reviewed_at": null,
-        "baseline_accepted": false,
-        "agent_findings": [
-          "The API v2 introduction still lists tasks, shared project instructions, files, webhooks and skills.",
-          "It now also lists custom agent management and states API v1 is deprecated. API v2 observations do not validate delivery quality or authorization."
-        ]
-      }
+      "change_status": "content_changed",
+      "review_required": true,
+      "review_reasons": [
+        "source_observation_stale",
+        "official_source_content_changed"
+      ],
+      "can_auto_update_roadmap": false,
+      "can_auto_execute": false,
+      "can_auto_approve_release": false
     }
   ],
-  "review_packet": "docs/competitive-source-review-2026-09-22.md",
-  "observation_date_semantics": "Per-source observed_at/expires_at describe a fetched source observation only. Historical claims, decisions and comparison baselines remain pending semantic review."
+  "review_required": true,
+  "release_gate_mutated": false,
+  "production_status": "not_authorized",
+  "report_digest": "e5f0e803f215ab09337c002023e31953e221a8fc51206eede71967c2691f531e"
 }

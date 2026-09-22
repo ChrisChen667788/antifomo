@@ -96,6 +96,9 @@ function sourceAnalysis(source, observation, now) {
   if (changeStatus === "unknown") reviewReasons.push("source_fetch_failed");
   if (changeStatus === "baseline_missing") reviewReasons.push("baseline_missing");
   if (changeStatus === "content_changed") reviewReasons.push("official_source_content_changed");
+  // A new availability observation must not silently accept old claims or
+  // clear an outstanding semantic review, even when its hash is unchanged.
+  if (source.semantic_review?.status === "pending") reviewReasons.push("human_semantic_review_pending");
 
   return {
     product_key: source.product_key,
@@ -103,6 +106,7 @@ function sourceAnalysis(source, observation, now) {
     product_name: source.product_name,
     source_title: source.source_title,
     source_url: source.source_url,
+    monitor_url: source.monitor_url || source.source_url,
     evidence_tier: "vendor_claim",
     evidence_status: stale ? "stale" : observation.fetch_status === "fetched" ? "vendor_claim_unverified" : "unknown",
     vendor_claim_is_not_independent_verification: true,
@@ -116,6 +120,9 @@ function sourceAnalysis(source, observation, now) {
     next_step: source.next_step,
     risk: source.risk,
     baseline_content_sha256: baseline,
+    baseline_missing: !baseline,
+    observation_snapshot: source.observation_snapshot || null,
+    semantic_review: source.semantic_review || null,
     observation,
     change_status: changeStatus,
     review_required: reviewReasons.length > 0,
@@ -131,9 +138,14 @@ export async function analyzeRegister(register, { fetchImpl = fetch, now = new D
   // per-source timeout into a 13-source serial wait. Preserve register order
   // for deterministic reports and digest stability.
   const sources = await Promise.all(register.sources.map(async (source) => {
+    const datedSource = {
+      ...source,
+      observed_at: source.observed_at ?? register.observed_at,
+      expires_at: source.expires_at ?? register.expires_at,
+    };
     let observation;
     try {
-      observation = await fetchOfficialSource({ ...source, observed_at: register.observed_at, expires_at: register.expires_at }, fetchImpl);
+      observation = await fetchOfficialSource(datedSource, fetchImpl);
     } catch (error) {
       observation = {
         fetch_status: "failed",
@@ -145,7 +157,7 @@ export async function analyzeRegister(register, { fetchImpl = fetch, now = new D
         error: error instanceof Error ? error.message : String(error),
       };
     }
-    return sourceAnalysis({ ...source, observed_at: register.observed_at, expires_at: register.expires_at }, observation, now);
+    return sourceAnalysis(datedSource, observation, now);
   }));
 
   const summary = {
@@ -154,7 +166,9 @@ export async function analyzeRegister(register, { fetchImpl = fetch, now = new D
     failed_count: sources.filter((source) => source.observation.fetch_status !== "fetched").length,
     changed_count: sources.filter((source) => source.change_status === "content_changed").length,
     baseline_missing_count: sources.filter((source) => source.change_status === "baseline_missing").length,
+    baseline_unset_count: sources.filter((source) => source.baseline_missing).length,
     stale_count: sources.filter((source) => source.evidence_status === "stale").length,
+    semantic_review_pending_count: sources.filter((source) => source.semantic_review?.status === "pending").length,
     review_required_count: sources.filter((source) => source.review_required).length,
   };
   const reportPayload = {
@@ -167,6 +181,7 @@ export async function analyzeRegister(register, { fetchImpl = fetch, now = new D
     maximum_review_interval_days: register.maximum_review_interval_days,
     methodology: register.methodology,
     governance: register.governance,
+    review_packet: register.review_packet || null,
     summary,
     sources,
     review_required: summary.review_required_count > 0,
@@ -195,8 +210,10 @@ export function renderMarkdown(report) {
     `- Fetched: ${report.summary.fetched_count}`,
     `- Failed: ${report.summary.failed_count}`,
     `- Changed: ${report.summary.changed_count}`,
-    `- Missing baseline: ${report.summary.baseline_missing_count}`,
-    `- Stale: ${report.summary.stale_count}`,
+    `- Fetched without baseline: ${report.summary.baseline_missing_count}`,
+    `- Baseline unset (including fetch failures): ${report.summary.baseline_unset_count}`,
+    `- Stale source observations: ${report.summary.stale_count}`,
+    `- Pending semantic reviews: ${report.summary.semantic_review_pending_count}`,
     `- Human review required: ${report.summary.review_required_count}`,
     "",
     "## Source review matrix",
@@ -212,6 +229,7 @@ export function renderMarkdown(report) {
     "## Governance",
     "",
     "- Human semantic review is required before changing a competitor claim or roadmap decision.",
+    "- Per-source observation dates describe source availability only; they do not renew a claim, accept a changed baseline, or identify a human reviewer.",
     "- No source fetch can authorize execution, artifact acceptance, release approval, or production promotion.",
     "- Office, visual, identity, customer, performance, shadow, drift, rollback, and independent-audit evidence remain separate gates.",
     "",

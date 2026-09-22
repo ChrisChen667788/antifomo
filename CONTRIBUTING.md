@@ -34,4 +34,4 @@ The [backlog](./docs/open-source-backlog.md) lists small entry points. The [Work
 
 Use the [current product status](./docs/current-product-status.md) to distinguish code, demos, benchmarks and external acceptance. Marketing screenshots must identify their capture version. Research contributions should include the direct source URL, observation date, exact supported claim and unresolved limitations. A new vendor page observation does not automatically renew the source register or approve a release.
 
-The active [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11) accepts review comments and suggested changes. Fork the repository and submit a focused PR for code contributions. Merge and release remain separate review decisions.
+The [PR #11 discussion](https://github.com/ChrisChen667788/antifomo/pull/11) records the evidence-control-plane and launch-kit changes. Fork the repository from `main` and submit a focused PR for new contributions; inline comments and reproducible issues are welcome. Merge and release remain separate review decisions.

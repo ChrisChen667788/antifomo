@@ -9,9 +9,9 @@ This is the canonical status page for public documentation. The repository is an
 - **Implemented development line:** `2.10.3–2.11.8-development`.
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
-- **Latest governed PR:** [#11](https://github.com/ChrisChen667788/antifomo/pull/11), draft, branch `codex/governed-evidence-control-plane`.
-- **Source-monitor snapshot:** The [2026-09-21 run](https://github.com/ChrisChen667788/antifomo/actions/runs/35575762540) still requires source review, tracked in [issue #10](https://github.com/ChrisChen667788/antifomo/issues/10). A fetched page or research refresh does not renew the governed source register automatically.
-- **Verified CI snapshot:** [Run 35355341709](https://github.com/ChrisChen667788/antifomo/actions/runs/35355341709) passed `check`, `smoke`, and `focus-e2e` for commit `51bbb71`. Consult the PR checks for later commits; this result does not approve a release.
+- **Evidence control plane and launch kit:** [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11). Its GitHub status records the merge outcome; source-code integration into `main` is separate from release or production approval.
+- **Source-monitor snapshot:** The [2026-09-22 review packet](./competitive-source-review-2026-09-22.md) records 12 successful local captures, one failed capture and the remaining source-by-source assessment in [issue #10](https://github.com/ChrisChen667788/antifomo/issues/10). Fresh source observations do not accept historical claims or changed comparison baselines.
+- **Verified CI snapshot:** [Run 35721207545](https://github.com/ChrisChen667788/antifomo/actions/runs/35721207545) passed `check`, `smoke`, and `focus-e2e` for commit `42bfd23`. Consult the PR checks for later commits; this result does not approve a release.
 
 ## Evidence legend
 

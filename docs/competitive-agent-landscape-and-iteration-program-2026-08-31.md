@@ -103,6 +103,7 @@ Anti-FOMO 的差异化仍应保持：
 - 频率：每周一 `02:23 UTC`，也支持手动运行；最坏间隔 7 天，小于要求的 14 天。
 - 输入：`config/competitive-source-register.json`，当前合并上一轮 6 项指定竞品与本轮 7 项模型/Agent 平台，共 13 个官方来源观察对象。
 - 输出：JSON + Markdown artifact，保留官方来源可用性、内容摘要、观察/失效时间、核心能力、本地对照、决策和风险。
+- 来源观察与主张复核分开记录：逐来源 `observed_at/expires_at` 只表示抓取观察时效；`semantic_review` 保留历史主张日期、未决项和人工复核状态。新抓取不替换历史对比摘要、不接受主张或决策；见 [2026-09-22 逐来源处理记录](./competitive-source-review-2026-09-22.md)。
 - 变化、过期、基线缺失或抓取失败时：创建或更新一个 `[competitive-watch]` 人工复核 Issue。
 - 禁止：自动改路线图、自动写业务代码、自动执行 Agent、自动验收 Office/视觉交付物、自动发布。
 
