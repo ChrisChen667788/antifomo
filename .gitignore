@@ -36,6 +36,7 @@ docs/development-history-reconstruction-2026-06-18-to-2026-06-28.md
 .tmp/
 .storage/
 .codex-project/
+/.hyperframes/
 .pytest_cache/
 
 # debug

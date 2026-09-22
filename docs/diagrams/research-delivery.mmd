@@ -1,13 +1,17 @@
 flowchart TD
-  I[Inbox question] --> P[Research Plan]
-  P -->|Ask / read-only| E[Evidence query]
-  P -->|Plan approved| X[Execute bounded steps]
-  E --> F{Fresh + sufficient?}
-  F -- no --> H[HOLD: show gap and recovery action]
+  I[Inbox question / audience / allowed sources] --> E[Run scoped research]
+  E --> F[Inspect source health / retrieval / citations / gaps]
+  F --> C[Compare report versions and evidence]
+  C --> B[Architecture options / dependencies / risks / validation]
+  B --> R[Recommended human review for the chosen artifact]
+  R -->|accept| O[Focus / action card / supported export]
+  R -->|return or HOLD| H[Visible gap and recovery action]
+  F -->|weak claim or failed source| H
   H --> E
-  F -- yes --> C[Compare / Claim Graph]
-  C --> B[Blueprint / ADR / risks]
-  B --> R[Human review]
-  R -->|accept| O[Focus / action / export]
-  R -->|return| C
-  O --> Z[Receipt + digest + archive]
+  O --> Z[Revision / receipt / archive]
+  LIMIT[Recommended review workflow; existing bridge actions have no universal runtime approval gate]
+  O -. actual execution boundary .-> LIMIT
+  FUT[PLANNED 2.12–2.21: Ask / Plan / Agent modes + stronger execution approval]
+  I -. future entry modes .-> FUT
+  classDef planned fill:#f1f5f2,stroke:#7d9690,stroke-dasharray:5 5;
+  class FUT planned;

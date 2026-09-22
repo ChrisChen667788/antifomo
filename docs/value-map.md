@@ -1,48 +1,97 @@
-# Anti-FOMO Value Map
+# Anti-FOMO 价值与测量地图
 
-This map converts product capability into buyer-facing outcomes without turning local evidence into a production claim. Each scenario is intentionally written as `trigger → workflow → artifact → metric → evidence tier`.
+更新时间：2026-09-22
 
-## Scenario A: AI tender and market watch
+本文把产品能力写成购买者和试点团队能复核的结果。每个场景都分开记录：**已实现、当前可观察、试点目标、仍未知**。目标不是实测值；本地 Demo 不是客户验收。
 
-- **Trigger:** A consultant needs to track official tenders, product changes and source freshness across a noisy WeChat/web stream.
-- **Workflow:** source intake → canonicalization/dedupe → source health → retrieval → official-source comparison → watchlist digest → human review.
-- **Artifact:** source matrix, change digest, stale/failed-source queue, reviewable follow-up actions.
-- **Metric:** target is to reduce duplicate manual triage steps and make every stale source visible; exact time saved must be measured on a fixed before/after cohort.
-- **Evidence tier:** current repository implementation + local monitor run + demo. Not customer ROI.
+## 证据词汇
 
-## Scenario B: Customer solution research
+- **已实现**：代码、接口、迁移或测试在当前 checkout 中存在。
+- **可观察**：本地页面、固定样本、合成基准或监测报告可以复现。
+- **试点目标**：在指定团队和任务集上要测的指标，尚未宣称达成。
+- **未知**：缺少真实样本、独立评审或客户确认，不能用推测填补。
 
-- **Trigger:** A solution architect must turn market research into a customer discussion before the next meeting.
-- **Workflow:** research brief → claim/evidence ledger → compare workspace → architecture readiness → four-layer blueprint → ADR/risk list → customer questions and validation actions.
-- **Artifact:** evidence-backed report, architecture blueprint, decision criteria, integration risks, meeting agenda and validation checklist.
-- **Metric:** target is fewer handoff gaps between research and solution design; acceptance should measure field completeness, citation coverage and reviewer time on a fixed scenario set.
-- **Evidence tier:** local implementation + generated artifacts. Customer acceptance is not present unless a named customer accepts a version.
+## 场景一：AI 招投标与市场跟踪
 
-## Scenario C: Biweekly competitor/model watch
+**触发**：顾问需要持续追踪官方公告、政策、竞品变化和微信转发，来源多且新鲜度不一。
 
-- **Trigger:** Product and strategy teams need a repeatable review of changing model/Agent claims.
-- **Workflow:** scheduled read-only source monitor → content digest → changed/stale source queue → evidence gate → issue/PR discussion → roadmap decision.
-- **Artifact:** dated monitor report, source digest, issue comment, PR or roadmap decision record.
-- **Metric:** target is predictable review cadence and zero silent source expiry; the source monitor’s success/failure counts are operational evidence, not product-market fit.
-- **Evidence tier:** official source snapshot + local run + human decision record.
+**工作流**：来源导入 → URL 归一化与去重 → 按源健康诊断 → 检索与官方源对比 → watchlist digest → 人工复核。
 
-## What a buyer can verify in a demo
+**交付物**：带日期的来源矩阵、变化摘要、过期/失败来源队列、复核 Issue 与下一步动作。
 
-| Step | Visible proof | Boundary |
+| 类别 | 指标 |
+| --- | --- |
+| 已实现/可观察 | 批次持久化、失败重试、来源状态、官方源监测、合成去重基准 |
+| 试点目标 | 固定 50 条来源中 100% 显示处理状态；人工重复 triage 次数下降；过期来源在一个监测周期内可见 |
+| 测量方法 | 记录旧流程与 Anti-FOMO 的重复步骤、首次可审阅时间、漏掉/重复条目数；保留来源许可和采集日志 |
+| 仍未知 | 真实公众号覆盖率、客户节省时间、商机转化和收入贡献 |
+
+当前合成去重 benchmark 只能证明一个小型确定性样本上的 helper 行为，不能外推到微信线上采集或生产 SLA。
+
+## 场景二：客户方案研究与架构准备
+
+**触发**：方案架构师要在下一次会议前，把行业事实和客户约束整理成可讨论的方案。
+
+**工作流**：研究 brief → Claim/Evidence 记录 → 版本对比 → 架构就绪度 → 四层蓝图 → ADR/风险 → 客户问题与验证动作。
+
+**交付物**：带引用研报、架构选项、集成依赖、NFR、决策标准、会议议程和验证清单。
+
+| 类别 | 指标 |
+| --- | --- |
+| 已实现/可观察 | 研究报告、证据诊断、compare、架构蓝图、账户上下文、Markdown/Office 候选导出 |
+| 试点目标 | 固定 10 个场景的必填字段完整度 ≥95%；未标注假设为 0；reviewer 找到关键引用的时间下降 |
+| 测量方法 | 让两位角色按同一 rubric 盲审旧流程和 Anti-FOMO 输出；记录引用支持、字段缺口、返工次数和准备时长 |
+| 仍未知 | 客户签收率、投标中标率、方案质量对收入的影响 |
+
+蓝图始终是客户讨论草稿，除非有具名 reviewer/customer acceptance 记录，否则不写成已批准架构。
+
+## 场景三：双周竞品与模型观察
+
+**触发**：产品或战略团队需要对 WorkBuddy、模型和 Agent 产品的官方变化做定期复核。
+
+**工作流**：只读官方源监测 → 内容摘要 → changed/stale/failed 队列 → 人工决策 → Issue/PR/路线卡。
+
+**交付物**：带 URL、观察日期、摘要 digest、来源状态、决策理由和未决风险的研究包。
+
+| 类别 | 指标 |
+| --- | --- |
+| 已实现/可观察 | 官方来源寄存器、每周 GitHub Action、JSON/Markdown artifact、人工复核 Issue |
+| 试点目标 | 两周内至少一次可追踪复核；0 次静默过期；每一条路线结论有来源和 reviewer |
+| 测量方法 | 每次运行记录 fetched/failed/changed/stale/review_required；人工记录从变更到决策的时间 |
+| 仍未知 | 产品市场份额、竞品真实质量、模型在客户任务上的优劣、商业 ROI |
+
+供应商官方声明只能标为 `vendor_claim`；不会自动改路线图、代码或发布状态。
+
+## Demo 中买方能核验什么
+
+| 步骤 | 可看到的证据 | 边界 |
 | --- | --- | --- |
-| Intake | A WeChat/web source becomes a recoverable queue item | Local adapter and fixture; source permissions still apply |
-| Evidence | A claim expands to source version, digest, freshness and HOLD reason | Citation coverage is not a guarantee that the claim is true |
-| Architecture | A reviewed report becomes a blueprint and validation list | The blueprint is a draft until a qualified reviewer accepts it |
-| Action | An action card records owner, next step and approval state | External writes/sends remain gated |
-| Recovery | Failed source or task can be retried/replayed with a receipt | Reproducibility is bounded by source availability and model/provider drift |
+| 采集 | 一条来源进入可恢复队列 | 本地 adapter/fixture；来源许可和可访问性仍影响结果 |
+| 证据 | 主张展开来源版本、digest、新鲜度和 HOLD 原因 | 引用存在不等于事实已被独立证明 |
+| 架构 | 研究进入蓝图、风险和验证列表 | 未经合格 reviewer/customer 接受，不是最终方案 |
+| 行动 | action card 显示 owner、下一步和状态 | 外部写入/发送遵守 WorkTask、webhook 或 CLI 的实际边界 |
+| 恢复 | 失败来源或任务可重试、回放并产生回执 | Provider、网络和外部应用变化可能影响重现 |
 
-## Buyer questions to answer before a pilot
+## 试点前必须锁定
 
-1. Which sources are allowed, and what freshness window is required?
-2. Which outputs need a human signature or customer acceptance?
-3. Which connectors are read-only, and which may write after approval?
-4. What is the maximum run time, concurrency, model spend and retry budget?
-5. What must be exported if the pilot ends?
-6. Which metric matters: triage time, citation completeness, review turnaround, artifact reuse, or meeting preparation time?
+1. 允许使用哪些公开、内部或脱敏来源？保留多久？
+2. 哪些字段要具名 reviewer 或客户签字？
+3. 哪些连接器只读，哪些允许在批准后写入？
+4. 单次任务的最长时间、并发、模型成本和重试预算是多少？
+5. 试点结束时要导出哪些来源、主张、产物和审计记录？
+6. 成功标准是 triage 时间、引用完整度、review turnaround、artifact 复用率，还是会议准备时间？
 
-See [current product status](./current-product-status.md) for evidence labels and [the WorkBuddy comparison/integration plan](./marketing-overhaul-2026-09.md) for the next ten versions.
+## 让价值进入采购讨论
+
+试点报告同时记录质量、人工投入与运行成本。让同一组评审者在相同任务、来源和验收标准下比较人工基线与辅助流程；来源不同或任务难度不同的样本分开报告。
+
+| 采购方会问 | 记录方式 | 判断方法 |
+| --- | --- | --- |
+| 是否真省了团队时间？ | 采集、核查、写作、审阅、修订、故障恢复的全部人分钟 | 比较每个验收通过任务的总人时，不能只比较生成耗时 |
+| 是否值得持续使用？ | 模型调用、连接器、运行与维护成本，加人工审阅成本 | 单位交付成本 = 约定周期全部成本 ÷ 验收通过任务数；失败任务成本保留在分子 |
+| 输出是否可以放心沿用？ | 引用支持、遗漏约束、未标注假设、关键事实错误、返工原因 | 先满足双方约定的质量底线，再讨论速度收益 |
+| 是否能支持后续项目？ | 经过复核并再次使用的来源、蓝图或模板，以及更新投入 | 用有效复用次数与维护工时衡量；复制文件次数不代表有效复用 |
+
+先让买方用一组真实但已获准的任务证明“每份合格交付更容易完成”，再讨论扩大部署范围。可采购的试点、部署配置和持续维护服务设计见[白皮书](./product-whitepaper.md#可验证的商业服务形态)。
+
+相关实现与证据边界见[当前产品状态](./current-product-status.md)、[产品白皮书](./product-whitepaper.md)和[WorkBuddy 集成方案](./workbuddy-integration-plan-2026-09-18.md)。

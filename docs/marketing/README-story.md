@@ -5,12 +5,12 @@ The README should answer three questions in order: **what pain does Anti-FOMO re
 ## Recommended order
 
 1. One-line promise and `Collect / Research / Compare / Act`.
-2. Animated signal-loop asset linked to the full demo script.
+2. A 15-second historical UI montage linked to its provenance manifest and editable source; the conceptual signal-loop animation is a separate asset.
 3. Three real surfaces: WeChat/source health, evidence/compare, architecture/action.
 4. Architecture and data-flow diagrams.
 5. Evidence legend and current-status boundary.
 6. Quick Start and contributor entry points.
-7. WorkBuddy comparison and the governed next-ten-version plan.
+7. [WorkBuddy comparison](../workbuddy-deep-dive-2026-09-18.md) and the [governed next-ten-version plan](../workbuddy-integration-plan-2026-09-18.md).
 
 ## Copy rule
 

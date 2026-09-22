@@ -23,6 +23,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "backend/.venv*/**",
+    // Vendored animation runtime; authored marketing scripts remain linted.
+    "videos/anti-fomo-promo/assets/gsap.min.js",
     "next-env.d.ts",
   ]),
 ]);

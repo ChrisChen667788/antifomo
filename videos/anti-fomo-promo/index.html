@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Anti-FOMO · from signals to a useful next step</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "AntiFOMO Display";
+        font-style: normal;
+        font-weight: 400;
+        src: url("assets/fonts/Montserrat-Regular.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "AntiFOMO Display";
+        font-style: normal;
+        font-weight: 900;
+        src: url("assets/fonts/Montserrat-Black.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "AntiFOMO Mono";
+        font-style: normal;
+        font-weight: 400;
+        src: url("assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "AntiFOMO Mono";
+        font-style: normal;
+        font-weight: 700;
+        src: url("assets/fonts/IBMPlexMono-Bold.ttf") format("truetype");
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #f1f4ef;
+        color: #142b30;
+        font-family: "AntiFOMO Display", sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      .masthead {
+        position: absolute;
+        left: 96px;
+        right: 96px;
+        top: 64px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .brand {
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: -1px;
+      }
+      .identity {
+        font-family: "AntiFOMO Mono", monospace;
+        font-size: 19px;
+        font-weight: 400;
+      }
+      .footer {
+        position: absolute;
+        left: 96px;
+        right: 96px;
+        bottom: 46px;
+        display: flex;
+        justify-content: space-between;
+        font-family: "AntiFOMO Mono", monospace;
+        font-size: 19px;
+        color: #425f62;
+      }
+      .track {
+        position: absolute;
+        left: 96px;
+        right: 96px;
+        bottom: 95px;
+        height: 3px;
+        background: #cad8cf;
+      }
+      .fill {
+        height: 100%;
+        width: 100%;
+        background: #126e65;
+        transform-origin: left center;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-0ywh" id="root" data-composition-id="anti-fomo-overview" data-width="1920" data-height="1080" data-duration="15">
+      <div data-hf-id="hf-jh5z" id="signal-host" class="clip" data-composition-id="signal" data-composition-src="compositions/signal.html" data-start="0" data-duration="3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-61mj" id="research-host" class="clip" data-composition-id="research" data-composition-src="compositions/research.html" data-start="3" data-duration="3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-ad6o" id="compare-host" class="clip" data-composition-id="compare" data-composition-src="compositions/compare.html" data-start="6" data-duration="3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-kojh" id="context-host" class="clip" data-composition-id="context" data-composition-src="compositions/context.html" data-start="9" data-duration="3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-hmvm" id="action-host" class="clip" data-composition-id="action" data-composition-src="compositions/action.html" data-start="12" data-duration="3" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-ukjd" class="masthead">
+        <div data-hf-id="hf-7jx5" class="brand">Anti-FOMO</div>
+        <div data-hf-id="hf-o56h" class="identity">RESEARCH FOR SOLUTION ARCHITECTS</div>
+      </div>
+      <div data-hf-id="hf-64lp" class="track"><div data-hf-id="hf-c10k" class="fill" id="story-progress"></div></div>
+      <div data-hf-id="hf-yh7l" class="footer">
+        <span data-hf-id="hf-e2kc">Demo UI · historical captures · v1.9.1 / 2026-07-13</span><span data-hf-id="hf-zncn">github.com/ChrisChen667788/antifomo</span>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(
+        "#story-progress",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 15, ease: "none" },
+        0,
+      );
+      window.__timelines["anti-fomo-overview"] = tl;
+    </script>
+  </body>
+</html>

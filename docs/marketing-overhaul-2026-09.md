@@ -1,6 +1,6 @@
 # Anti-FOMO 营销与产品叙事翻修方案（2026-09）
 
-> 这份文档是 Anti-FOMO 的营销、产品叙事和后续商业化迭代的单一参考入口。它把 WindComic 中“真实工作流 + 有节奏的动效 + 可复核交付”的宣传方法迁移到研究/方案架构场景，同时保留 Anti-FOMO 的证据门禁。所有“已具备”“可演示”“待建设”都要按仓库代码、测试或外部验收分别标注。
+> 这份文档负责 Anti-FOMO 的营销叙事与物料设计，把 WindComic 中“真实工作流 + 有节奏的动效 + 可复核交付”的方法迁移到研究/方案架构场景。竞品事实与 2026-09-22 重点复核记录由 [WorkBuddy 深度对标](./workbuddy-deep-dive-2026-09-18.md) 维护；后续十版工程合同由 [集成计划](./workbuddy-integration-plan-2026-09-18.md) 维护。所有“已具备”“可演示”“待建设”按仓库代码、测试或外部验收分别标注。
 
 ## 1. 新的产品叙事
 
@@ -46,7 +46,9 @@ WindComic 的可迁移方法是“让观众看到工作被推进”，而不是�
 
 这套方法不复制 WindComic 的角色、品牌、素材或文案，只借鉴其**镜头节奏、状态叙事、资产分层和“从输入到成片/交付”的连续感**。
 
-### 30 秒动图 / 短视频脚本
+### 待拍摄：30 秒连续工作流分镜（planned）
+
+下表是后续实机演示的拍摄方案，尚未作为 30 秒成片交付。当前随仓库提供的是 **15 秒无声界面蒙太奇**，使用已有历史 UI 截图，展示页面与使用场景，不证明一次真实任务按镜头顺序执行。已交付 [MP4](./assets/marketing/antifomo-overview.mp4)、[GIF](./assets/marketing/antifomo-overview.gif) 的来源与边界由 [manifest](./assets/marketing/manifest.json) 记录。
 
 | 时间 | 镜头 | 屏幕文案 | 动效与验收 |
 | --- | --- | --- | --- |
@@ -89,6 +91,8 @@ WindComic 的可迁移方法是“让观众看到工作被推进”，而不是�
 5. 任何性能数字都必须链接到可复现报告，并注明本地样本/生产 SLA/人工验收的差别。
 
 ## 4. 产品架构、数据流与工作流
+
+以下为产品概念图，帮助解释界面与证据的关系，不是逐接口调用轨迹。人工导出、acceptance receipt 和架构工作台可以分别存在；图中的连线不表示现有所有导出 API 已受统一审批控制。当前 webhook 的直接执行边界见第 5 节，统一信封与执行门禁属于 2.12.0 之后的计划。
 
 ### 4.1 产品架构图
 
@@ -175,18 +179,19 @@ flowchart TD
 
 腾讯官方产品页强调 WorkBuddy 连接腾讯生态，并覆盖日常办公、代码开发和设计创意。[腾讯云产品页](https://intl.cloud.tencent.com/zh/products/workbuddy) 企业版资料进一步列出统一身份、安全操作审计、OpenAPI、连接器、企业 Skill/专家和 Managed Agents。[WorkBuddy Enterprise](https://cloud.tencent.com/product/workbuddy-enterprise)
 
+Buddy App 已提供工作模式、场景胶囊、模型、能力市场与已有系统集成等行业定制入口，因此 WorkBuddy 能直接进入招投标、售前和行业研究。Anti-FOMO 的证据链差异需要同任务评测，不能用“通用办公”推断它没有垂直能力。[Buddy App 官方说明](https://open.workbuddy.cn/docs/buddy-app) 完整双向比较、T1/T2/T3 协议和来源有效期见 [深度对标报告](./workbuddy-deep-dive-2026-09-18.md)。
+
 | 维度 | Anti-FOMO | WorkBuddy | 判断 |
 | --- | --- | --- | --- |
 | 产品抽象 | 证据感知的研究与方案工作台 | 全场景桌面 AI Agent 工作台 | 两者在“工作台”相交，但主问题不同 |
 | 输入 | 微信优先、网页、RSS、文件、扩展、小程序 | 自然语言、授权本地文件、联网、腾讯生态和开放连接器 | Anti-FOMO 的微信采集链更垂直；WorkBuddy 的入口更泛化 |
 | 规划与执行 | 研究编排、可恢复队列、Focus 与人工确认 | Agent / Plan / Ask 模式、一句话任务、自主拆解、多任务并行、直接操作文件 | Anti-FOMO 应吸收“先计划再执行”的体验，而不是放开任意副作用 |
 | 研究质量 | 来源版本、Claim/Evidence、检索诊断、HOLD、审阅和审计交接 | 官方资料明确有深度研究与结果交付；没有在公开 Quick Start 中核验同等粒度的证据账本 | Anti-FOMO 的差异化应继续放在可追溯判断 |
-| 方案交付 | 架构就绪度、四层蓝图、ADR、集成风险、客户问题和验证动作 | 可生成文档、表格、PPT、网页等通用交付物 | Anti-FOMO 更贴近方案架构场景，WorkBuddy 更适合通用产出 |
+| 方案交付 | 架构就绪度、四层蓝图、ADR、集成风险、客户问题和验证动作 | 文档/表格/PPT/网页交付，Buddy App/Expert/Skill 可配置行业工作台 | Anti-FOMO 更聚焦方案证据；WorkBuddy 产物与行业配置面更广，质量优劣待 T2 评测 |
 | 生态连接 | 本地适配器、浏览器扩展、小程序、受控 connector 方向 | 腾讯文档/会议/企微/QQ 等原生连接器，开放平台提供 Buddy、专家、Skill、连接器和硬件生态 | 应优先兼容开放连接器协议，避免复制腾讯生态 |
 | 团队与知识 | Claim Graph、账户上下文和审阅证据正在形成 | 团队知识空间、按角色 ACL、AI 修订建议、评论线程和企业专家 | 应吸收 suggestion/diff/accept/reject，不把 AI 修改直接覆盖正文 |
 | 自动化与连续工作 | 竞品监测和 Focus 可产生运行回执，受证据门禁约束 | 定时任务、状态/停止/继续、手机端续聊和结果回传 | 先做只读监测与低风险控制，再评估外部写入 |
 | 部署与商业化 | 本地优先开源 Demo，企业能力仍按证据门禁推进 | 官方提供桌面产品、Token/套餐与企业版，含统一身份、审计和 OpenAPI | Anti-FOMO 需要补齐用量、团队治理和托管边界 |
-| 连续工作 | Focus、队列恢复、归档与行动卡 | 官方资料描述桌面与手机跨设备继续任务 | 可借鉴移动审批/暂停/继续，但保留本地数据边界 |
 | 证据强度 | 本地代码、测试和证据回执可检查；外部客户/生产验收仍未完成 | 产品能力、套餐和客户/内部使用数字属于官方主张，不能直接等同于 Anti-FOMO 的验收证据 | 两者都要把“产品宣称”和“独立验收”分开 |
 
 ### 5.2 应该吸收什么，暂时不吸收什么
@@ -211,66 +216,50 @@ flowchart TD
 
 ### 现有 WorkBuddy 适配的修正
 
-当前仓库已经存在 WorkBuddy webhook/CLI 健康探测和受控导出路径，但现有 webhook 仍可在签名通过后直接创建并执行导出任务。后续版本必须先引入 `task envelope → provenance → approval → execution receipt`，把历史“签名即执行”收敛为“签名只证明调用来源，执行仍受 scope、预算和人工批准约束”。公开文档应称其为**受控的导出/委派通道**，不能写成已完成腾讯官方托管或企业版接入。
+当前仓库存在 WorkBuddy webhook/CLI 健康探测和任务类型白名单导出。现有 webhook 配置 secret 时校验签名，未配置时返回 `signature_bypassed_no_secret` 并继续；它随后直接创建/执行导出，并可向 callback URL 发送结果，没有统一人工审批。公开文档应称其为**本地导出/CLI 兼容桥**。2.12.0 将新信封、已有 `/api/tasks` 与 webhook 一起纳入 `provenance → immutable plan/content/effects digest → approval → execution receipt`；签名只证明调用来源，不能替代 scope、预算或人工批准，也不能写成腾讯官方托管/企业版接入。
 
-## 6. 后续十个版本：可执行、可落地、可回滚
 
-版本命名沿用当前开发线，先在 `2.12.0-development` 开始，不改变 `baseline_hybrid` 和现有发布门禁。
+## 6. 后续十个版本：权威工程计划入口
 
-| 版本 | 模块 | 交付内容 | 验收门槛 |
-| --- | --- | --- | --- |
-| 2.12.0 | Task Envelope | 为 WorkBuddy/本地任务统一任务信封、provenance、能力清单、预算、超时、取消、幂等键和状态机 | 100 次重放无重复副作用；状态转移可审计；签名调用不能绕过审批 |
-| 2.13.0 | Research Plan / Ask / Execute | `Ask` 只读、`Plan` 产出不可变步骤、`Execute` 只运行已批准步骤；计划图最大 32 步/3 层 | 20 个固定任务的计划一致性 ≥ 95%；超预算/超 scope 自动 HOLD |
-| 2.14.0 | Parallel Lanes | 采集/研究/导出三类并行 lane、队列检查点、指数退避 | 4 lane 并行 24h soak；重启后无丢任务、无重复写入 |
-| 2.15.0 | Skill & Connector Registry | 签名 Skill、connector manifest、read/write capability、scope、版本、来源、权限审批、撤销和凭据引用 | 未签名/过期/超 scope 一律拒绝；审计记录 100% 可回放；凭据不落库 |
-| 2.16.0 | Evidence-aware Artifact Studio | 文档/PPT/网页交付物的引用锚点、revision digest、字段级 diff | 任一关键 claim 无证据时保持 HOLD；导出后 digest 稳定 |
-| 2.17.0 | Review Inbox | 人工任务队列、批量审阅、批注、批准/拒绝/退回 | 审阅者、时间、版本和理由不可缺失；拒绝可重放 |
-| 2.18.0 | Mobile Continuity | PWA/移动端查看、暂停、继续、补充指令和低风险审批；设备一对一绑定 | 断网重连不丢状态；移动端不暴露高风险写操作 |
-| 2.19.0 | Team Governance | 组织/项目/角色、用量账本、成本分摊、连接器审计 | 租户隔离测试通过；账本与运行回执可对账 |
-| 2.20.0 | Solution Architect Buddy | 行业模板、客户上下文、四层架构蓝图、会议/验证动作编排 | 30 个脱敏场景盲评；关键字段完整率 ≥ 95% |
-| 2.21.0 | Commercial Pilot Pack | 试点租户、报价计量、运行报告、SLA 草案和退出/导出方案 | 3 个真实试点完成人工验收；无客户数据进入公开 Demo；Pilot 与 production 分开记录 |
+完整的 `2.12.0`–`2.21.0` 版本合同已拆到独立的 [WorkBuddy integration plan](./workbuddy-integration-plan-2026-09-18.md)，本页不复制大表，避免营销叙事与工程门禁发生版本漂移。该计划是唯一权威工程入口，逐版列出目标、复用路径、API/schema/state、迁移兼容、依赖、PR 拆分、人日预算、失败处理、负载/性能验证、feature flag、数据恢复和 DoD。
 
-### 6.1 性能与稳定性预算
+路线只吸收适合 Anti-FOMO 垂直场景的能力：Ask/Plan/Agent 三态、受控 connector、Skill/模型 profiles、只读 scheduler、人工 review inbox、跨设备低风险控制、团队用量账本和 Solution Architect Buddy。任意桌面写入、外部发送、删除文件等副作用仍需 scope、dry-run、人工批准和可恢复 receipt。
 
-这些是开发验收门槛，不是当前生产 SLA：
+几个必须对外保持的工程语义：
 
-| 层 | 目标 | 保护措施 |
-| --- | --- | --- |
-| 只读 API | p95 ≤ 800ms（本地固定数据集） | 分页、缓存、索引、超时和请求追踪 |
-| 任务接收 | p95 ≤ 2s 返回 task id | 先落库再异步执行；幂等键冲突返回既有任务 |
-| 来源抓取 | 单源 15s 超时、最多 3 次退避重试 | 429/5xx 分类、熔断、来源级 health 状态 |
-| 并行执行 | 默认最多 4 个 lane、单租户可配置上限 | 信号量、队列背压、取消传播和检查点 |
-| 研究成本 | 每任务 token/连接器预算，超预算 HOLD | 预算预检、运行账本、模型路由白名单 |
-| 恢复 | 进程重启后 60s 内恢复可重试任务 | durable queue、checkpoint、死信队列、replay 命令 |
-| 交付一致性 | 同一输入/版本/策略产生稳定 digest | 固定 manifest、内容哈希、环境信息和版本锁 |
-| 定时任务 | 默认只读来源刷新，单租户并发 ≤ 2 | 时区、最大时长、heartbeat、暂停/停止、失败通知和回执恢复 |
-| 连接器 | 每次调用均可回答“谁、以什么权限、读写了什么” | capability manifest、ACL、rate limit、撤销和 append-only receipt |
+- 固定的是规范化输入、策略、模型/技能版本、环境指纹和**产物** digest；不能声称随机模型输出在同样输入下必然相同。性能和稳定性数字均为待测验收目标，30 分钟 CI smoke 不等于 24 小时 soak。
+- 外部写入不承诺 exactly-once；网络超时后的结果是 `unknown`，由幂等键和人工 reconcile 处理。
+- `2.14.0` 先使用单进程 SQLite 写队列、已有 `ResearchJob` lease/recovery 和 scheduler 限制，不称为跨实例 durable queue；跨实例方案必须另有迁移和 soak 证据。
+- `2.21.0` 的真实客户 pilot 是外部验收依赖。没有范围、版本、可归因人工/客户回执时，只能标 `evidence-gated`，不能写成 production 或商业化已完成。
 
-### 6.2 发布门禁
+## 6.1 设计参考与本地历史来源
 
-每个版本必须同时满足：
+WindComic 只作为本地设计方法参考，不是 Anti-FOMO 的能力证明；引用的是当前 checkout 中已沉淀的历史文件：
 
-- 单元、集成、前端回归、迁移和类型检查通过；
-- 关键任务有固定样本、失败注入、重启恢复和重放结果；
-- 新的 connector/Skill 有权限、撤销、超时、成本和审计用例；
-- 文档、截图、动图只展示已经存在的能力；概念方案使用 `planned`；
-- 需要人工或客户判断的事项继续保持 `HOLD`，不能由自动运行结果代签；
-- 性能数字注明环境、样本数、是否为本地样本，不能写成生产 SLA。
+- `/Users/chenhaorui/ai-comic-studio/.claude/skills/product-launch-video/SKILL.md`：brief、capture、storyboard、audio、逐帧构建、lint/check/snapshot/render 的门禁链。
+- `/Users/chenhaorui/ai-comic-studio/.claude/skills/product-launch-video/references/story-design.md`：Audience/Pain/Promise/Product role/Proof/CTA、PAS/Demo Loop/BAB、按 outcome 写 hook。
+- `/Users/chenhaorui/ai-comic-studio/.claude/skills/product-launch-video/references/visual-design.md`：按旁白推进的 time-coded scenes、统一 `Video direction`、字幕安全区、focal/roles。
+- `/Users/chenhaorui/ai-comic-studio/.claude/skills/hyperframes-animation/blueprints-index.md` 与 `/Users/chenhaorui/ai-comic-studio/.claude/skills/motion-graphics/SKILL.md`：可复用的动效形状、shot plan、reuse-first、snapshot proof。
+- `/Users/chenhaorui/ai-comic-studio/videos/wind-comic-promo/BRIEF.md`、`STORYBOARD.md`、`SCRIPT.md`、`frame.md`、`build-frames.mjs`：真实的八帧 Hook → Value → Mechanism → Scope → Proof → CTA 案例；其中本地版本的 60 秒片和 GIF 是素材参考，不应写成 Anti-FOMO 已有成片。
+- `/Users/chenhaorui/ai-comic-studio/assets/diagrams/{architecture,dataflow,sequence}.svg`：代码化架构、数据流、时序图参考；Anti-FOMO 的图必须绑定自身 API、证据和状态，不能照搬 WindComic 节点。
+
+动图验收沿用本地 skill 的确定性原则：项目内字体、单 paused timeline、无 `Math.random/Date.now`、只动 transform/opacity、渲染前 lint/check/snapshot；任何概念 UI 要标 `planned`，真实截图与概念图分开。
 
 ## 7. 营销物料清单
 
 ### 已落地或可复用
 
+- 15 秒历史 UI 蒙太奇：[MP4](./assets/marketing/antifomo-overview.mp4)、[GIF](./assets/marketing/antifomo-overview.gif)、[poster](./assets/marketing/poster.png)、[social card](./assets/marketing/social-card.png)，重建命令 `npm run marketing:overview`；这是无声宣传预览，来源见 [manifest](./assets/marketing/manifest.json)。
 - [Signal loop 动态 SVG](./assets/antifomo-signal-loop.svg)：README 首屏与社媒预览用。
 - [Control-plane architecture SVG](./assets/antifomo-control-plane.svg)：架构、数据流和治理层概览。
 - 真实界面截图：`docs/assets/screenshots/`。
 - 概念主视觉：`docs/assets/github-hero-20260910.png`，继续标注为概念图。
 - 宣发文字：更新 [open-source launch kit](./open-source-launch-kit.md) 和 [growth copy](./open-source-growth-copy.md) 后再发布。
 
-### 建议制作的短视频版本
+### 后续拍摄候选（planned，尚未交付）
 
 - `30s-signal-loop`：完整闭环，面向首次了解项目的人。
-- `15s-architect-workbench`：只展示研究 → 架构 → 客户会议动作，面向售前/架构师。
+- `15s-architect-workbench`：连续实机展示研究 → 架构 → 客户会议动作，面向售前/架构师；与已交付的历史截图 montage 区分。
 - `10s-evidence-gate`：只展示证据、HOLD、人工审阅和可回放回执，面向技术评审。
 
 三者共用同一组 UI 截图、字体、颜色和动效节奏，避免每个渠道做一套不相干的视觉。
@@ -288,6 +277,6 @@ flowchart TD
 - [腾讯云 WorkBuddy 产品页](https://intl.cloud.tencent.com/zh/products/workbuddy)：腾讯生态、桌面工作台和商业化入口。
 - [WorkBuddy Enterprise](https://cloud.tencent.com/product/workbuddy-enterprise)：统一身份、审计、OpenAPI、连接器、企业 Skill/专家和托管智能体。
 - [WorkBuddy 开放平台](https://open.workbuddy.cn/)：Buddy、专家、Skill、连接器和硬件生态入口。
-- [WorkBuddy 跨设备任务](https://www.workbuddy.ai/document/cross-device-tasks)：桌面任务在手机端查看、继续、补充指令和停止。
+- [WorkBuddy Buddy App](https://open.workbuddy.cn/docs/buddy-app)：面向行业的工作模式、场景胶囊、能力市场、模型与已有系统集成。
 
 本报告的竞品结论只覆盖公开资料能支持的范围。WorkBuddy 的内部使用、效果和商业数据若未由独立报告核验，只能作为官方主张；Anti-FOMO 的本地测试、Demo、试点和生产验收也继续分别标注。

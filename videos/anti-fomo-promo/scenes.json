@@ -1,0 +1,47 @@
+[
+  {
+    "id": "signal",
+    "label": "01 / FIND THE SIGNAL",
+    "title": "Too much saved.\nToo little decided.",
+    "body": "Bring useful leads into one place.",
+    "source": "home-signal-dashboard.png",
+    "proof": "Web · WeChat · files",
+    "step": "Collect"
+  },
+  {
+    "id": "research",
+    "label": "02 / MAKE A CASE",
+    "title": "Build a view\nyou can explain.",
+    "body": "Turn a question into research you can review.",
+    "source": "inbox-research-workspace.png",
+    "proof": "Research workspace",
+    "step": "Research"
+  },
+  {
+    "id": "compare",
+    "label": "03 / SEE WHAT CHANGED",
+    "title": "See the change.\nKeep the context.",
+    "body": "Compare versions before you carry a claim forward.",
+    "source": "research-compare-workspace.png",
+    "proof": "Version comparison",
+    "step": "Compare"
+  },
+  {
+    "id": "context",
+    "label": "04 / PREPARE THE CONVERSATION",
+    "title": "Meet the customer\nwith context.",
+    "body": "Connect account signals to the next useful question.",
+    "source": "knowledge-commercial-hub.png",
+    "proof": "Account intelligence",
+    "step": "Prepare"
+  },
+  {
+    "id": "action",
+    "label": "05 / TAKE THE NEXT STEP",
+    "title": "Make your next\nmove deliberate.",
+    "body": "Try the workflow. Bring your hardest source.",
+    "source": "focus-session-workspace.png",
+    "proof": "Quick Start → Issue → PR",
+    "step": "Act"
+  }
+]

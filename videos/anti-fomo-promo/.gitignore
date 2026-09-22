@@ -1,0 +1,8 @@
+.hyperframes/
+.media/cache/
+.media/proxies/
+node_modules/
+snapshots/
+renders/
+
+.thumbnails/

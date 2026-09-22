@@ -1,371 +1,158 @@
 # Anti-FOMO
 
-[English](./README.md) | [简体中文](./README.zh-CN.md)
+[English](./README.md) · [简体中文](./README.zh-CN.md)
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<p align="center">
+  <img src="./docs/assets/github-hero-20260910.png" alt="Anti-FOMO: scattered information becomes traceable research through an optical lens" width="1200" />
+</p>
+
+**Turn the links you saved into a decision you can explain.**
+
+Anti-FOMO is an open-source research and solution workbench for consultants, solution architects, and pre-sales teams. Bring in web pages, WeChat articles, and files; follow the evidence into a research draft, architecture discussion, and concrete next step.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![CI](https://github.com/ChrisChen667788/antifomo/actions/workflows/ci.yml/badge.svg)](https://github.com/ChrisChen667788/antifomo/actions/workflows/ci.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](./package.json)
+[![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688)](./backend/README.md)
 [![GitHub stars](https://img.shields.io/github/stars/ChrisChen667788/antifomo?style=social)](https://github.com/ChrisChen667788/antifomo/stargazers)
 
-<p align="center">
-  <img src="./docs/assets/github-hero-20260910.png" alt="Anti-FOMO — from noise to informed decisions. An optical lens turns scattered information into traceable research." width="1200" />
-</p>
+[Quick Start](#quick-start) · [Product tour](#product-tour) · [Architecture](#how-it-fits-together) · [WorkBuddy comparison](./docs/workbuddy-deep-dive-2026-09-18.md) · [Roadmap](./docs/public-roadmap.md)
 
-<p align="center">
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="#product-screenshots">Product Screenshots</a> ·
-  <a href="./docs/public-roadmap.md">Roadmap</a> ·
-  <a href="https://github.com/ChrisChen667788/antifomo/discussions">Community</a>
-</p>
+> **Current status:** a local-first development prototype. The active development line, evidence coverage, and remaining acceptance work are recorded in [Current Product Status](./docs/current-product-status.md). Public customer ROI and production service commitments are not established.
 
-<p align="center"><sub>Conceptual brand artwork. Actual product captures and evidence boundaries are documented below.</sub></p>
+## The work it helps you finish
 
-<p align="center">
-  <a href="./docs/marketing/DEMO-SCRIPT.md"><img src="./docs/assets/antifomo-signal-loop.gif" alt="Anti-FOMO animated signal-to-action loop: collect, evidence, architecture, and action" width="1200" /></a>
-</p>
+You saved an article because it might matter to a customer. Before the next meeting, you still need to answer: **what changed, what supports that conclusion, and what should we do next?**
 
-<p align="center"><sub>The animated SVG is a reproducible marketing demo, not live throughput, a production SLA, or customer acceptance evidence.</sub></p>
+Anti-FOMO keeps that work connected:
 
-Turn noisy web and WeChat signals into evidence-backed research reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
+`Collect → Check sources → Research → Compare → Prepare a decision → Follow up`
 
-Anti-FOMO is an open-source AI research workspace for solution architects, industry consultants, pre-sales teams, BD teams, strategy operators, and builders who need more than read-later apps and generic AI summaries. It closes the loop:
-
-`collect -> clean -> research -> compare -> focus -> action`
-
-Start here:
-- [Quick Start](#quick-start)
-- [Public roadmap](./docs/public-roadmap.md) and [discussion issue](https://github.com/ChrisChen667788/antifomo/issues/1)
-- [Product surface map](./docs/product-surface-map.md)
-- [2026 competitive landscape and post-2.0.6 roadmap](./docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md)
-- [Visible data-source states](./docs/product-surface-map.md#shared-state-language)
-- [WeChat collection reliability evidence](./docs/wechat-collector-reliability-benchmark.md)
-- [GitHub Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
-- [Product whitepaper](./docs/product-whitepaper.md)
-- [Current product status and evidence legend](./docs/current-product-status.md)
-- [Value map](./docs/value-map.md)
-- [Marketing overhaul, WorkBuddy comparison, and next ten-version plan](./docs/marketing-overhaul-2026-09.md)
-- [30-second demo script and render guardrails](./docs/marketing/DEMO-SCRIPT.md)
-- [Architecture/data-flow/workflow sources](./docs/diagrams/architecture.mmd)
-- [Launch kit](./docs/open-source-launch-kit.md)
-- [Growth copy kit](./docs/open-source-growth-copy.md)
-- [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
-- [Repeatable competitive evidence capture](./docs/competitive-evidence-capture.md)
-
-## Why Anti-FOMO
-
-Most information products stop at one of these layers:
-
-- save later
-- summarize
-- search
-- export notes
-
-Anti-FOMO is built for the whole operating loop:
-
-- collect high-signal inputs from URLs, text, feeds, and WeChat-heavy workflows
-- clean noisy evidence and weak source dumps before they pollute downstream output
-- generate evidence-aware research reports, compare snapshots, solution architecture readiness checks, and delivery artifacts
-- run focused execution sessions and export follow-up actions
-- turn research into action cards, feasibility studies, project proposals, and client-facing outlines
-
-## Why people star it
-
-- `WeChat-first`: not just another generic web clipper; the collection pipeline is designed around WeChat-heavy information environments, with headless source collection and per-source health diagnostics.
-- `Evidence-aware`: report quality, source mix, target-account support, and section-level evidence diagnostics are first-class.
-- `Architecture-ready`: solution packs now include architecture readiness scoring, blueprint layers, stakeholder question maps, decision criteria, ADR-style decisions, integration dependency diagnostics, non-functional requirements, and validation actions for solution architects.
-- `Execution-oriented`: focus sessions, action cards, watchlists, briefs, and export tasks are part of the same workspace.
-- `Hackable`: local-first Next.js + FastAPI stack with browser extension, miniapp, collector scripts, and a testable backend.
-
-## Major Version Highlights
-
-Each public version line below includes both an English product summary and a Chinese capability summary. The deeper release map is maintained in [Release History and Feature Map](./docs/release-history-and-feature-map.md).
-
-| Version line | English core capabilities | 中文核心功能 |
+| Your task | Bring in | Take into the next conversation |
 | --- | --- | --- |
-| `0.3.x` | Research quality baseline with compare/export, archive snapshots, offline metrics, evidence gates, section evidence packs, and methodology playbooks. | 研究质量基线：稳定对比/导出、历史快照、离线评估、证据门槛、章节证据包和行业方法论。 |
-| `0.4.x` | Retrieval substrate and delivery packs with persistent retrieval index, section routing, golden evaluation, tender/product intelligence, and formal export paths. | 检索底座与交付包：持久化检索索引、章节路由、黄金样本评估、招投标/产品情报和正式文档导出。 |
-| `0.5.x` | RAG quality engineering with corrective retrieval, grounding review, schema-v2 chunks, source cleaning, entity cleanup, and reranker controls. | RAG 质量工程：纠偏检索、生成 grounding 审查、schema-v2 切块、信源清洗、实体清理和重排控制。 |
-| `0.6.0` - `0.6.4` | Reranking, delivery quality, and diagnostics control plane with CrossEncoder support, rebuild visualization, quality scoring, self-repair, A/B controls, and export trend comparison. | 重排、交付质控与诊断控制面：CrossEncoder、重建可视化、质量评分、自修订、A/B 控制和导出趋势对比。 |
-| `0.6.5` - `0.6.10` | Persistent experiment orchestration and runtime strategy activation with frozen cohorts, locked baselines, rollout gates, manifests, active policy registry, and effective runtime config. | 实验编排与运行时策略：cohort 固化、baseline 锁定、rollout gate、manifest、生效策略注册表和实际运行配置。 |
-| `0.6.11` | Release-grade documentation and screenshot coverage across all primary product surfaces. | 发布级文档与截图覆盖：主功能界面截图、截图质量门槛、manifest 和完整能力地图。 |
-| `0.7.0` | Collector reliability release with headless-source-first Focus collection and per-source WeChat health diagnostics. | 采集可靠性版本：Focus 优先启动无头源采集，并展示按公众号源的健康诊断。 |
-| `0.8.0` | Solution architecture readiness with scoring, blueprint layers, integration risks, non-functional requirements, stakeholder questions, and validation actions. | 解决方案架构就绪：架构评分、蓝图分层、集成风险、非功能要求、干系人问题和验证动作。 |
-| `0.8.1` | WeChat Favorites import with preview, dedupe, persistent batches, queue recovery, failed-item retry, and homepage swipe triage. | 微信收藏导入：预检、去重、批次持久化、队列恢复、失败重试和首页滑动处理。 |
-| `0.9.0` | Solution architect workbench with customer scenarios, stakeholder maps, decision criteria, validation actions, next-meeting agendas, and markdown export. | 解决方案架构师工作台：客户场景、干系人地图、决策标准、验证动作、下次会议议程和 Markdown 导出。 |
-| `1.0.0` | Local-first WeChat-to-solution baseline connecting intake, triage, evidence-backed research, architecture readiness, workbench outputs, migration coverage, and validation. | 本地优先微信到方案基线：打通采集、首页处理、证据研报、架构就绪、工作台产物、迁移覆盖和验证。 |
-| `1.1.0` | Modular architecture and design-system hardening with thinner research workflows, split feature clients/controllers, decomposed report panels, and semantic day/night theme tokens. | 模块化架构与设计系统加固：研究 workflow 变薄、feature client/controller 拆分、研报面板拆组件、日夜模式语义主题 token 收敛。 |
-| `1.1.1` | Measurable workflow baseline with framework-neutral orchestration, per-run metrics, a model cost ledger, and a versioned 100-case research evaluation structure. | 可度量工作流基线：框架中立编排、单次运行指标、模型成本账本和版本化 100 条研究评测集结构。 |
-| `1.2.0` | LangChain adapter with Pydantic structured output, provider-reported token usage, configurable model pricing, and independent generation/strategy routing. | LangChain 适配层：Pydantic 结构化输出、provider 真实 token usage、可配置模型价格和生成/策略模型独立路由。 |
-| `1.2.1` | Runtime hardening with split provider owners, persisted job metrics/cost ledgers, typed observability APIs, CI secret scanning, and corrected Focus E2E port wiring. | 运行时加固：拆分模型 provider owner、持久化任务指标与成本账本、类型化观测 API、CI 密钥扫描及 Focus E2E 端口修复。 |
-| `1.3.0` | Executable 100-case research evaluation with honest unavailable metrics, cost-safe provider confirmation, JSON artifacts, and strict release-gate eligibility. | 可执行 100 条研究评测：缺失 gold 指标明确不可用、远程模型成本显式确认、JSON 产物和严格发布门禁。 |
-| `1.4.0` | LangGraph shadow orchestration behind the workflow protocol, with deterministic parity metrics, explicit engine selection, and no automatic production dual-run cost. | LangGraph 影子编排：位于工作流协议之后，复用确定性指标、显式选择引擎，且不自动增加生产双跑成本。 |
-| `1.5.0` | Hotspot decomposition and UI regression coverage with backend owner splits, frontend model owners, Vitest component/model tests, theme preference regression, and a current Next.js security patch. | 热点拆分与 UI 回归覆盖：后端 owner 拆分、前端 model owner、Vitest 组件/模型测试、主题偏好回归，以及 Next.js 当前安全补丁。 |
-| `1.6.0` | Release hardening with shared Focus runtime owners, pre-hydration preferences, deterministic dual-theme screenshots, dark-mode contrast compatibility, and dead facade-wrapper retirement. | 发布加固：共享 Focus 运行时 owner、首屏偏好引导、确定性双主题截图、深色对比度兼容和废弃 facade 包装器清理。 |
-| `1.7.0` | Production LangGraph orchestration with a locked 100-case evaluation set, a zero-cost deterministic parity gate, deterministic rollback, and a safe PostCSS transitive override while Next.js stable catches up. | LangGraph 生产编排：锁定 100 条评测集、零成本确定性等价门禁、deterministic 回滚，以及等待 Next.js 稳定版升级期间的安全 PostCSS 传递依赖覆盖。 |
-| `1.7.1` | Evaluation governance with independent-review attestations and content digests, live-run budget planning, five-case batch limits, and runtime spend stops. | 评测治理：独立复核声明与内容摘要、真实评测预算规划、每批最多五条及运行时费用停止保护。 |
-| `1.7.2` | Expert-feedback scope refinement across 78 evaluation cases, replacing national/global scopes with concrete regions and named research subjects while preserving approved behaviors, answer anchors, and source domains. | 专家意见范围修订：对 78 条评测用例补齐省级地区和明确研究主体，保持已通过的行为标签、答案锚点和来源域名不变。 |
-| `1.8.0` - `1.9.1` | Professional-report quality, release hardening, evidence governance, expert-calibration workflows, QAW/ATAM/ADR/C4, and executable acceptance evidence; real expert, blind, and customer gates remain blocked. | 专业报告质量、发布加固、证据治理、专家校准工作流、QAW/ATAM/ADR/C4 与可执行验收证据；真实专家、盲测和客户验收仍保持阻断。 |
-| `1.9.2` - `2.0.0` | Decision Studio development line with real semantic Notebooks, immutable source revisions, Chinese document contracts, Claim Graph, Knowledge Space/ACL, signed Skills, governed MCP, and evidence-bound multi-form outputs. Commercial promotion remains blocked. | Decision Studio 开发线：真实语义 Notebook、来源修订、中国正式文档合同、Claim Graph、Knowledge Space/ACL、签名 Skill、受控 MCP 和证据绑定多形态产物；商业发布未放行。 |
-| `2.0.1` - `2.0.6` | Release-program line with real-data activation, server-calculated retrieval/document/report/security/visual/performance/recovery suites, immutable evidence runs, hash-chain audit, and a six-version release console. Human and customer acceptance remain blocked. | 发布程序开发线：真实数据激活、服务端计算的检索/文档/研报/安全/视觉/性能/恢复套件、不可变证据运行、哈希链审计和六版本发布控制台；人工与客户验收仍阻断。 |
-| `2.0.7` - `2.2.0` | Decision Program engineering line: immutable RC evidence, research control, hybrid retrieval/parser benchmarks, evidence-aware editing, enterprise identity/connectors, governed agents, vertical packs, and customer Pilots. External acceptance remains blocked. | Decision Program 工程线：不可变 RC 证据、研究控制、混合检索/解析基准、证据感知编辑、企业身份/连接器、受控 Agent、行业包与客户 Pilot；外部验收仍阻断。 |
+| Prepare a customer solution workshop | Customer context, public evidence, known constraints | A research draft, architecture options, integration risks, and questions to validate |
+| Decide which tender or account to investigate | Procurement notices, policies, industry and account signals | Source-linked opportunity context, missing facts, and follow-up actions |
+| Keep a competitor brief current | Official product pages and a watchlist | Dated changes, stale-source warnings, and a reviewable product decision |
 
-## Product screenshots
+The aim is less time reconstructing context and a clearer handoff between research and delivery. Those business gains are **pilot hypotheses to measure**, not advertised results. See the [value and measurement map](./docs/value-map.md).
 
-The full release-grade screenshot coverage is maintained in [Feature Screenshot Coverage](./docs/feature-screenshot-coverage.md), with the historical release capability map in [Release History and Feature Map](./docs/release-history-and-feature-map.md).
+## Product tour
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/home-signal-dashboard.png" alt="Home signal dashboard screenshot" />
-      <p><strong>Home signal dashboard</strong><br />Triage noisy signals and move quickly into research, focus, saved knowledge, and operations.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-center-dashboard.png" alt="Research center dashboard screenshot" />
-      <p><strong>Research center</strong><br />Operate watchlists, retrieval health, archives, diagnostics, and delivery quality from one center.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/inbox-research-workspace.png" alt="Inbox research workspace screenshot" />
-      <p><strong>Inbox / research workspace</strong><br />Generate reports, refine scenario inputs, review architecture readiness, and export formal delivery documents.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research compare workspace screenshot" />
-      <p><strong>Compare workspace</strong><br />Review multi-version differences, section evidence, and account-oriented comparison signals.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-experiment-control-plane.png" alt="Research experiment control plane screenshot" />
-      <p><strong>Experiment control plane</strong><br />Freeze cohorts, lock baselines, audit rollout gates, and inspect effective retrieval and report-generation runtime config.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/research-topic-workspace.png" alt="Research topic workspace screenshot" />
-      <p><strong>Topic workspace</strong><br />Track topic versions, evidence density, and long-running research changes over time.</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="Knowledge commercial hub screenshot" />
-      <p><strong>Knowledge commercial hub</strong><br />Turn reports into account objects, opportunities, review queues, and follow-up actions.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/screenshots/collector-operations-workspace.png" alt="Collector operations workspace screenshot" />
-      <p><strong>Collector operations</strong><br />Manage local collector imports, source health diagnostics, OCR backfill, queue recovery, automation, and daily exports.</p>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="./docs/assets/marketing/antifomo-overview.mp4">
+    <img src="./docs/assets/marketing/antifomo-overview.gif" alt="Anti-FOMO overview: source intake, evidence, solution preparation, and follow-up" width="100%" />
+  </a>
+</p>
 
-Latest governed product-strategy evidence was regenerated on `2026-09-01` from the read-only local `/competitive` preview. The mobile image is a simulated CSS viewport, not a physical-device claim; browser metrics are local samples, not a production SLA.
+[Watch the 15-second silent overview](./docs/assets/marketing/antifomo-overview.mp4) · [Poster](./docs/assets/marketing/poster.png) · [Demo script and asset provenance](./docs/marketing/DEMO-SCRIPT.md)
+
+The overview is a montage of the historical v1.9.1 local demo screenshots. Its motion and captions explain the product story; they do not record a current end-to-end run or prove 2.11.8 acceptance. The opening lens artwork is a brand illustration.
+
+### 1. Give the collection backlog a next step
+
+Import WeChat Favorites from exported files or links, preview and deduplicate the batch, then save or dismiss items in the homepage queue. Failed items and collector source health remain visible so you know what needs another attempt.
+
+### 2. Keep the answer connected to its sources
+
+Scope a research question, inspect source and retrieval diagnostics, and revisit the report through topic history and comparison. Missing evidence becomes a visible gap to investigate. Architecture outputs carry assumptions, dependencies, decision criteria, and validation actions into the next discussion.
+
+### 3. Leave with something you can review
+
+Prepare research documents, solution outlines, feasibility-study or proposal drafts, action cards, and Focus summaries. Decision Studio and the product-strategy workspace add source revisions, artifact differences, and review records. File export and customer approval are separate outcomes.
 
 <table>
   <tr>
-    <td width="50%">
-      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-desktop-browser.png" alt="Governed fifteen-version iteration train in a desktop browser" />
-      <p><strong>2.10.3–2.11.8 governed train</strong><br />Sixteen HOLD-gated slices, including the ten-version follow-on control plane, current model/Agent signals, and the unchanged production boundary.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/competitive-evidence/competitive-artifact-gates-desktop-browser.png" alt="Office and visual artifact acceptance gates" />
-      <p><strong>Office / visual evidence gates</strong><br />Missing evidence stays visible as HOLD; preview initialization cannot accept an artifact or release.</p>
-    </td>
+    <td width="50%"><img src="./docs/assets/screenshots/home-signal-dashboard.png" alt="Homepage with WeChat Favorites import and a recoverable review queue" /><br /><strong>A manageable intake queue</strong><br />Preview, deduplicate, save, and return to unfinished items.</td>
+    <td width="50%"><img src="./docs/assets/screenshots/research-compare-workspace.png" alt="Research comparison workspace showing report versions and evidence context" /><br /><strong>See what changed</strong><br />Compare research versions before carrying conclusions forward.</td>
   </tr>
   <tr>
-    <td width="50%">
-      <img src="./docs/assets/competitive-evidence/competitive-iteration-program-mobile-viewport.png" alt="Governed iteration train in a simulated mobile viewport" />
-      <p><strong>Mobile CSS viewport</strong><br />A `390 × 844` browser emulation for responsive review, explicitly not physical-device evidence.</p>
-    </td>
-    <td width="50%">
-      <img src="./docs/assets/competitive-evidence/competitive-browser-performance.svg" alt="Local competitive-preview browser metric summary" />
-      <p><strong>Local browser metrics</strong><br />Three navigation samples per viewport with an environment and claim-boundary manifest.</p>
-    </td>
+    <td width="50%"><img src="./docs/assets/screenshots/knowledge-commercial-hub.png" alt="Knowledge commercial hub with account and opportunity context" /><br /><strong>Prepare account follow-up</strong><br />Bring research into opportunity context and the next conversation.</td>
+    <td width="50%"><img src="./docs/assets/screenshots/collector-operations-workspace.png" alt="Collector operations workspace with source and recovery diagnostics" /><br /><strong>Find the broken source</strong><br />Review collection health and recovery guidance by source.</td>
   </tr>
 </table>
 
-The reproducible PNG/GIF/MP4 and manifest workflow is documented in [Competitive evidence capture](./docs/competitive-evidence-capture.md).
+These are historical captures from the [v1.9.1 screenshot set](./docs/assets/screenshots/screenshot-manifest.json), not screenshots of every current feature. The [screenshot gallery](./docs/feature-screenshot-coverage.md) and [current status](./docs/current-product-status.md) retain their capture dates and limitations.
 
-## What you get today
+## How it fits together
 
-### 1. High-signal intake
+The web app uses Next.js and TypeScript; FastAPI owns collection, research, knowledge, tasks, and delivery. The local demo uses SQLite. A framework-neutral research workflow supports LangGraph orchestration and a deterministic rollback engine.
 
-- URL, text, RSS, newsletter, file, and YouTube transcript intake
-- one-click WeChat Favorites preview and import from exported HTML/TXT, `.url` / `.webloc`, multi-file drops, clipboard text, or raw / escaped / encoded `mp.weixin.qq.com` link lists, with deduplication into the homepage triage deck
-- a persisted latest WeChat Favorites review queue on the homepage with ready / processing / failed / done counts, one-click retry for failed items, and automatic recovery after reload while background parsing finishes
-- browser extension quick-send pipeline
-- WeChat URL-first collection chain, headless source collector, collector ops, source-level health diagnostics, and WeChat PC agent supplementary harvesting
-- focused cleanup rules for screenshot OCR, markdown dumps, awards/forum noise, and weak vendor push pieces
+<p align="center"><img src="./docs/assets/antifomo-control-plane.svg" alt="Anti-FOMO architecture: entry points, application services, research and evidence stores, and external adapter boundaries" width="100%" /></p>
 
-### 2. Research workspace
+[Architecture source](./docs/diagrams/architecture.mmd) · [Surface and code map](./docs/product-surface-map.md)
 
-- keyword research and structured report drafting
-- follow-up / second-pass report generation with new evidence and new requirements
-- compare workspace, archive history, diff recap, and export chain
-- watchlists, daily brief, knowledge intelligence, and commercial-hub context
-- solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
-- a solution architect workbench with customer scenarios, stakeholder concerns, capability-to-architecture mappings, ADR-style decisions, integration dependency diagnostics, validation actions, and next-meeting agendas
+<p align="center"><img src="./docs/assets/dataflow.svg" alt="Data flow from source intake through research and evidence revisions to reviewable deliverables" width="100%" /></p>
 
-### 3. Retrieval-backed quality layer
+<p align="center"><img src="./docs/assets/workflow.svg" alt="Research workflow with source checks, incomplete-evidence recovery, review, and delivery" width="100%" /></p>
 
-- local research retrieval index with persistent rebuild, resume, and search
-- retrieval-index status panel with resumable rebuild progress and parent-block routing diagnostics
-- runtime optimization panel for incremental rebuild, persisted-cache reuse, and recovery guidance
-- optional SentenceTransformers CrossEncoder reranker adapter with offline official-source recall evaluation
-- query / routing / reranker A/B control-plane views plus follow-up delta offline evaluation
-- persistent experiment orchestration for configurable strategy plans, frozen cohorts, locked baselines, gate history, active strategy registry, runtime strategy snapshots, effective retrieval/report-generation config, and auditable rollout manifests
-- section-level retrieval packs and evidence diagnostics
-- quality profile, guarded backlog routing, canonical organization linking, and low-quality rewrite/backfill flows
-- market-intelligence packs with three-year tender history, product lists, technical parameters, and advisory delivery outlines
-- China-tech delivery quality review for solution packs and proposal-grade formal materials, including automatic structural self-repair
-- offline regression metrics now track solution-delivery pass rate, project-proposal pass rate, and delivery self-review gain rate
-- delivery export diagnostics now preserve historical quality trends and adjacent-version comparisons
+The diagrams describe current code and data boundaries, with future execution controls labeled as planned. They are not live telemetry. [Data-flow source](./docs/diagrams/dataflow.mmd) · [Workflow source](./docs/diagrams/research-delivery.mmd).
 
-### 4. Execution outputs
+**A practical integration detail:** the existing WorkBuddy-compatible webhook can execute supported export tasks and send configured callbacks. Signature verification is bypassed when no webhook secret is configured. Focus delegation can invoke an installed CodeBuddy CLI. These legacy paths are not covered by a universal human-approval gate and do not establish native Tencent WorkBuddy interoperability. The [integration plan](./docs/workbuddy-integration-plan-2026-09-18.md) addresses that boundary before extending it.
 
-- focus sessions and session-summary exports with hybrid source collector startup during Focus mode
-- action cards, exec brief, sales brief, outreach draft, and watchlist digest
-- swipeable homepage cards with auto-advance after ignore/save, removing processed items from the active WeChat Favorites batch
-- watchlist run history, failed-run retry notes, notification summaries, and Markdown digest export
-- feasibility study, project proposal, client PPT outline, client brief, bidding prep memo, and execution-material export chain
-- formal document review loop with scenario, target customer, vertical-scene overrides, and delivery-quality audit notes
-- architecture blueprint export with business/role, application capability, model/data/integration, and security/deployment/operations layers
+## What makes it useful in this field
 
-## Best for
+- **Chinese business inputs:** WeChat-heavy intake, public procurement and policy signals, plus account-oriented research context.
+- **Reviewable reasoning:** source versions, evidence gaps, report comparisons, and artifact lineage help a reviewer inspect the work.
+- **Solution preparation:** architecture options, stakeholder questions, dependencies, and validation actions bridge research and consulting delivery.
+- **An inspectable implementation:** local data, replaceable model configuration, and code ownership that contributors can follow.
 
-- solution architects turning noisy market signals into client-ready architecture narratives
-- industry consultants preparing evidence-backed opportunity studies and advisory deliverables
-- BD / pre-sales / solution teams preparing opportunity research and client materials
-- founders and product leads tracking fast-moving AI markets
-- operators who live in WeChat article flows but still need traceable evidence
-- developers who want a local-first, modifiable research workspace instead of a black box SaaS
+WorkBuddy's broad office execution and Anti-FOMO's specialized evidence-to-decision workflow have different strengths. Read the [dated, source-backed comparison](./docs/workbuddy-deep-dive-2026-09-18.md) and [concrete implementation plan](./docs/workbuddy-integration-plan-2026-09-18.md) for the trade-offs and proposed additions.
 
 ## Quick Start
 
-### 1. One-time setup
+Prerequisites: **Node.js 20+** and **Python 3.11**, with `python3.11` available on your path.
 
 ```bash
 git clone https://github.com/ChrisChen667788/antifomo.git
 cd antifomo
 npm run demo:setup
-```
-
-This installs frontend dependencies, backend Python dependencies, and creates `backend/.env`.
-
-### 2. One-command start
-
-```bash
-cd antifomo
 npm run demo:start
 ```
 
-Open:
+Open the web app at **http://localhost:3010** and the backend at **http://localhost:8000**. Setup installs dependencies and creates `backend/.env` if it is missing.
 
-- web: `http://localhost:3010`
-- backend API: `http://localhost:8000`
+The example configuration uses a mock main LLM. Full research, optional embeddings, strategy models, and external services have separate configuration requirements; see [backend setup](./backend/README.md) and [the environment example](./backend/.env.example). A successful local start does not mean those services are connected.
 
-Stop all services with:
+Try a small public or synthetic example first:
 
-```bash
-npm run demo:stop
-```
-
-### 3. Validate the baseline
+1. Open `/inbox` and add a link or text you are allowed to use.
+2. Inspect the item and its source status; save useful material into the workspace.
+3. Configure research providers, then run a narrowly scoped question and inspect the gaps before exporting.
+4. Explore `/research`, `/knowledge/accounts`, `/studio`, and `/competitive` for the related review surfaces.
 
 ```bash
-cd antifomo
-npm run check
-npm run demo:smoke
+npm run demo:stop        # Stop the local services
+npm run check            # Lint, tests, monitor checks, and build
+npm run demo:smoke       # API smoke check; backend must be running
 ```
 
-If you want the focus E2E and simulation flows:
+The [browser extension](./browser-extension/README.md), [Mini Program](./miniapp/README.md), and [collector documentation](./docs/product-surface-map.md) provide additional entry points.
 
-```bash
-npm run demo:focus-e2e -- --report-file .tmp/focus-e2e-report.json --artifact-dir .tmp/focus-e2e-artifacts
-npm run demo:simulate
-```
+## Evidence you can inspect
 
-## Main surfaces
+| Evidence | What it supports | What it does not establish |
+| --- | --- | --- |
+| [CI and tests](https://github.com/ChrisChen667788/antifomo/actions/workflows/ci.yml) | Repeatable code checks on the referenced commit | Customer acceptance or production uptime |
+| [Collector benchmark](./docs/wechat-collector-reliability-benchmark.md) | Deduplication behavior on a small deterministic synthetic set | Live WeChat success rate or business time saved |
+| [Browser capture manifest](./docs/assets/competitive-evidence/competitive-evidence-manifest.json) | Dated local browser and simulated mobile-viewport observations | Physical-device coverage or a production SLA |
+| [Office evidence receipts](./docs/office-evidence-receipts-v2.10.5.md) | File, revision, and render traceability | Independent content or customer sign-off |
 
-- `http://localhost:3010/inbox`: intake, keyword research, report generation, and formal document export
-- `http://localhost:3010/research`: research center, topics, compare, archives, and retrieval-backed analysis
-- `http://localhost:3010/focus`: execution sessions and session artifacts
-- `http://localhost:3010/knowledge`: saved knowledge, accounts, and merge workflows
-- `browser-extension/chrome`: quick-send the current page into Anti-FOMO
-- `miniapp`: WeChat mini program shell for mobile-side flows
-- `scripts/`: collector, watchlist, plugin, and smoke-test operations
+For pilot design, success metrics, and the difference between a target and a measured result, read the [product whitepaper](./docs/product-whitepaper.md) and [value map](./docs/value-map.md).
 
-## Repository layout
+## Build with us
 
-```text
-.
-├── src/                    # Next.js web app
-├── backend/                # FastAPI backend, models, services, tests
-├── miniapp/                # WeChat mini program
-├── browser-extension/      # Chrome extension
-├── scripts/                # collector / automation / smoke helpers
-├── docs/                   # roadmap, launch kit, growth copy, assets
-└── public/                 # static assets and social preview resources
-```
+Useful contributions start with a real point of friction: a source that fails, an unclear citation, a difficult export, or a step that takes too much effort. Include a small reproducible example and the result you expected.
 
-## Current project status
+- [Contributing](./CONTRIBUTING.md) · [Open issues](https://github.com/ChrisChen667788/antifomo/issues) · [Discussions](https://github.com/ChrisChen667788/antifomo/discussions)
+- [Public roadmap](./docs/public-roadmap.md) · [Contributor backlog](./docs/open-source-backlog.md)
+- [Launch assets](./docs/open-source-launch-kit.md) · [Copy for sharing](./docs/open-source-growth-copy.md)
+- [Release and feature history](./docs/release-history-and-feature-map.md) · [Security reports](./SECURITY.md)
 
-Current code baseline:
+Remove private source material, tokens, local databases, and customer identifiers from public contributions. The project is [MIT licensed](./LICENSE).
 
-- active local-first product prototype
-- latest promoted release-evidence baseline remains `2.9.5+20260814`; the active `2.10.3–2.11.8` line is development-only and promotion remains blocked
-- `2.10.0-development` Competitive Capability Observatory is locally implemented; it records vendor claims, local implementation state, and proposed backlog separately, without changing release semver, the production default, or release-readiness
-- `2.10.1-development` Reviewable Decision Context Packets can initialize the four `build` / `integrate` / `defer` decisions as reviewable product-strategy context only, while keeping execution, release, and production authorization false
-- `2.10.2-development` Artifact Acceptance and Revision Diff binds those four context packets to HOLD-only delivery review drafts; missing Office, visual, and attributable human-review evidence keeps every artifact blocked and cannot change the release gate
-- `2.10.5-development` Office Evidence Receipts bind DOCX/PPTX hashes, artifact revisions, OpenXML checks, Microsoft Office or headless PDF render hashes, and page-level visual hashes; local render evidence remains HOLD and cannot substitute for named human or customer acceptance
-- current product-strategy train: `2.10.3-2.11.8-development`; the local plan/revision/API/UI control plane, ten-version follow-on evidence contracts, official Agent source register, desktop/mobile-viewport/performance capture workflow, and weekly competitor-source monitor are implemented, while feature acceptance, external execution, physical-device, customer, and production evidence remain gated
-- release promotion remains blocked until the real cross-industry clarification tasks and feedback, pending human qrels, 100+30 expert calibration, three-industry blind review, customer acceptance, production Skill governance, and final Office/visual/security evidence are complete
-- web build passes
-- frontend and backend test suites pass via `npm run check`
-- the existing screenshot baseline covers the 1.9.1 surfaces; `/studio` light/dark capture and human visual confirmation remain a 2.0.5 blocker
-- the complete 2.0.1-2.0.6 validation contract is documented in `docs/decision-studio-release-program-v2.0.1-v2.0.6.md`
-- the researched roadmap and completed engineering contracts are documented in `docs/competitive-landscape-and-post-2.0.6-roadmap-2026-07-17.md` and `docs/decision-program-v2.0.7-v2.2.0.md`; external acceptance remains blocked
-- the `2.2.1-2.9.5` evidence-recovery, progressive-disclosure, entity/source truth, account-pursuit, calibration, retrieval-assurance, and evidence-operations contract is documented in `docs/research-clarification-and-progressive-disclosure-roadmap-2026-07-26.md`
-- the post-`2.9.5` competitive research, decisions, and acceptance boundaries are documented in `docs/competitive-capability-observatory-v2.10.0.md`
-- the approved-context scope, revision/audit contract, and hard non-authorization gates are documented in `docs/reviewable-decision-context-packets-v2.10.1.md`
-- the HOLD-only delivery-artifact acceptance, field-level revision-diff, and Office/visual evidence boundary is documented in `docs/artifact-acceptance-and-revision-diff-v2.10.2.md`
-- the immutable local Office file/render receipt and its non-acceptance boundary are documented in `docs/office-evidence-receipts-v2.10.5.md`
-- the current domestic/international model and Agent comparison, product strengths/weaknesses, and governed fifteen-version train are documented in `docs/competitive-agent-landscape-and-iteration-program-2026-08-31.md`
-- major-version history and the latest full feature map are maintained in `docs/release-history-and-feature-map.md`
-- product whitepaper and launch copy are maintained in `docs/product-whitepaper.md`, `docs/open-source-launch-kit.md`, and `docs/open-source-growth-copy.md`
-- public repository sanitized for open-source release
-
-The public repo intentionally does not include:
-
-- runtime `.env` secrets
-- private user data
-- local collector logs and screenshots
-- personal databases or undeclared paid-source content
-- real WeChat mini program production credentials
-
-## Community and launch resources
-
-- product ideas and requests: open a Discussion or issue
-- bug reports: include repro steps and logs
-- code contributions: see [CONTRIBUTING.md](./CONTRIBUTING.md)
-- security reports: see [SECURITY.md](./SECURITY.md)
-
-Built-in launch assets:
-
-- [Launch kit](./docs/open-source-launch-kit.md)
-- [Growth copy kit](./docs/open-source-growth-copy.md)
-- [Product whitepaper](./docs/product-whitepaper.md)
-- [Open-source backlog](./docs/open-source-backlog.md)
-- [Public roadmap](./docs/public-roadmap.md)
-- [Product surface map](./docs/product-surface-map.md)
-- [GitHub launch polish checklist](./docs/github-launch-polish-checklist.md)
-- [GitHub hero asset](./docs/assets/github-hero-20260910.png)
-- [Hero design direction, references, and generation prompt](./docs/readme-visual-design-2026-09-10.md)
-- [GitHub social preview](./docs/assets/github-social-preview.png)
-- [Repo banner](./public/repo-banner.png)
-
-If Anti-FOMO is useful for your workflow, star the repo. That is still the simplest way to help the project reach more users, contributors, and design partners.
+If this is a problem you work on, try one small task and tell us where the handoff breaks. A reproducible issue or a focused PR is particularly useful.
 
 ## Star History
-
-Thank you for following Anti-FOMO. This chart is served by [Star History](https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&type=date) and may take up to 24 hours to refresh.
 
 <a href="https://www.star-history.com/?repos=ChrisChen667788%2Fantifomo&amp;type=date">
   <picture>
@@ -374,3 +161,5 @@ Thank you for following Anti-FOMO. This chart is served by [Star History](https:
     <img alt="Anti-FOMO GitHub Star History chart" src="https://api.star-history.com/svg?repos=ChrisChen667788/antifomo&amp;type=Date" width="800" />
   </picture>
 </a>
+
+The chart is supplied by Star History; its availability and refresh timing depend on that service.

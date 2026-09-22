@@ -1,6 +1,6 @@
 {
   "schema_version": "anti-fomo-marketing-assets/v1",
-  "updated_at": "2026-09-18",
+  "updated_at": "2026-09-22",
   "source_mode": "local_repo",
   "production_claim": false,
   "release_approval_evidence": false,
@@ -25,14 +25,64 @@
     {
       "path": "docs/assets/antifomo-control-plane.svg",
       "role": "architecture_and_governance_overview",
-      "dimensions": "1600x820",
+      "dimensions": "1600x920",
       "source": "hand-authored_svg",
       "evidence_tier": "demo"
     },
     {
       "path": "docs/marketing/DEMO-SCRIPT.md",
-      "role": "30_second_storyboard_and_render_contract",
-      "evidence_tier": "planned"
+      "role": "15_second_montage_storyboard_and_render_contract",
+      "evidence_tier": "demo"
+    },
+    {
+      "path": "docs/assets/marketing/antifomo-overview.mp4",
+      "role": "product_overview_video",
+      "evidence_tier": "demo",
+      "source_mode": "historical_demo_screenshot_montage",
+      "provenance_manifest": "docs/assets/marketing/manifest.json"
+    },
+    {
+      "path": "docs/assets/marketing/antifomo-overview.gif",
+      "role": "readme_overview_gif",
+      "evidence_tier": "demo",
+      "source_mode": "historical_demo_screenshot_montage",
+      "provenance_manifest": "docs/assets/marketing/manifest.json"
+    },
+    {
+      "path": "docs/assets/marketing/poster.png",
+      "role": "overview_poster",
+      "evidence_tier": "demo",
+      "source_mode": "historical_demo_screenshot_montage",
+      "provenance_manifest": "docs/assets/marketing/manifest.json"
+    },
+    {
+      "path": "docs/assets/marketing/social-card.png",
+      "role": "social_share_card",
+      "evidence_tier": "demo",
+      "source_mode": "historical_demo_screenshot_montage",
+      "provenance_manifest": "docs/assets/marketing/manifest.json"
+    },
+    {
+      "path": "docs/assets/marketing/contact-sheet.jpg",
+      "role": "render_review_contact_sheet",
+      "evidence_tier": "demo",
+      "source_mode": "historical_demo_screenshot_montage",
+      "provenance_manifest": "docs/assets/marketing/manifest.json"
+    },
+    {
+      "path": "docs/assets/dataflow.svg",
+      "role": "product_data_flow",
+      "dimensions": "1600x920",
+      "source": "hand-authored_svg",
+      "evidence_tier": "demo"
+    },
+    {
+      "path": "docs/assets/workflow.svg",
+      "role": "research_workflow",
+      "dimensions": "1600x920",
+      "source": "hand-authored_svg",
+      "evidence_tier": "demo"
     }
-  ]
+  ],
+  "asset_metadata_policy": "Rendered sizes, probes and hashes live only in each provenance_manifest to avoid stale duplicate metadata after a rebuild."
 }

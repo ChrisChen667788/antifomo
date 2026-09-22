@@ -1,0 +1,4 @@
+# Preserve upstream runtime/license bytes recorded in the media provenance manifest.
+# Authored scripts and documentation continue to use the normal whitespace checks.
+videos/anti-fomo-promo/assets/gsap.min.js -text -whitespace
+videos/anti-fomo-promo/assets/fonts/*-OFL.txt -text -whitespace

@@ -1,6 +1,6 @@
 # Anti-FOMO Current Product Status
 
-Updated: 2026-09-18
+Updated: 2026-09-22
 
 This is the canonical status page for public documentation. The repository is an active local-first development prototype. A working route, test result, preview, or generated artifact does not by itself establish production readiness, customer acceptance, or a signed commercial deployment.
 
@@ -10,7 +10,8 @@ This is the canonical status page for public documentation. The repository is an
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
 - **Latest governed PR:** [#11](https://github.com/ChrisChen667788/antifomo/pull/11), draft, branch `codex/governed-evidence-control-plane`.
-- **Latest source-monitor run:** GitHub Actions run [35352638150](https://github.com/ChrisChen667788/antifomo/actions/runs/35352638150), a read-only official-source monitor. It is research evidence, not release approval.
+- **Source-monitor snapshot:** The [2026-09-21 run](https://github.com/ChrisChen667788/antifomo/actions/runs/35575762540) still requires source review, tracked in [issue #10](https://github.com/ChrisChen667788/antifomo/issues/10). A fetched page or research refresh does not renew the governed source register automatically.
+- **Verified CI snapshot:** [Run 35355341709](https://github.com/ChrisChen667788/antifomo/actions/runs/35355341709) passed `check`, `smoke`, and `focus-e2e` for commit `51bbb71`. Consult the PR checks for later commits; this result does not approve a release.
 
 ## Evidence legend
 
@@ -34,8 +35,8 @@ Marketing pages must name the highest applicable label beside every metric or ou
 | Retrieval, evidence ledger, compare and report workflow | `local_implementation` + `demo` | Local tests and evidence receipts; independent retrieval/customer review remains open. |
 | Architecture readiness and solution architect workbench | `local_implementation` + `demo` | Generated blueprints and UI paths; not a customer-approved architecture. |
 | Office/visual evidence receipts | `local_implementation` | Local hashes and render receipts; they do not replace named human/customer acceptance. |
-| WorkBuddy bridge | `local_implementation` | Health detection and controlled export/CLI bridge; it is not Tencent-hosted WorkBuddy execution. |
-| Animated marketing assets | `demo` | Deterministic, source-controlled SVG/frames; not a live telemetry or production performance view. |
+| WorkBuddy bridge | `local_implementation` | Local compatibility webhook and CodeBuddy CLI bridge. Signature checking is conditional: an empty secret bypasses it. The webhook directly executes supported export task types and can send a result to a request-supplied or configured callback URL. There is no universal human-approval gate; health/CLI detection does not prove native Tencent WorkBuddy interoperability. |
+| Animated marketing assets | `demo` | Conceptual SVG plus a historical local-UI screenshot montage. Asset manifests identify source version and render provenance; neither is live telemetry or evidence of the current release's behavior. |
 
 ## Known documentation drift
 
@@ -45,4 +46,4 @@ Marketing pages must name the highest applicable label beside every metric or ou
 
 ## Next decision
 
-The next product decision is whether to implement the controlled execution lane described in [the marketing and WorkBuddy integration plan](./marketing-overhaul-2026-09.md). The default remains read-only proposal, human review, fail-closed execution, and reversible local evidence until the corresponding version gates pass.
+The next implementation sequence adds an envelope/provenance/approval layer around the existing export bridge, then builds the controlled execution lane in the [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md). The [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) records the comparison and its sources. These follow-on versions are planned, not implemented by this documentation refresh. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export route retains its conditional signature check, direct execution and callback behavior until the planned migration closes those gaps.

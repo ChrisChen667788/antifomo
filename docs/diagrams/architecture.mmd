@@ -1,14 +1,19 @@
-flowchart LR
-  U[Browser / extension / miniapp / CLI] --> N[Next.js surfaces]
-  N --> API[FastAPI routers]
-  API --> IN[Collection + source health]
-  API --> RS[Research + retrieval]
-  API --> PS[Product strategy + operations]
-  API --> WB[WorkBuddy bridge]
-  IN --> DB[(SQLite / migrations)]
-  RS --> IDX[(Retrieval index)]
-  PS --> LEDGER[(Evidence / receipt ledger)]
-  WB --> LEDGER
-  N -. read-only preview .-> PS
-  LEDGER --> G[Human review / HOLD / audit handoff]
-  G --> OUT[Reports / blueprints / action cards / Office exports]
+flowchart TD
+  UI[Next.js web surfaces / extension / miniapp] --> API[FastAPI application services]
+  API --> COL[Collection + source health]
+  API --> RS[Research + retrieval + delivery]
+  API --> DS[Decision Studio + product strategy]
+  API --> WB[Existing WorkTask / CodeBuddy CLI bridge]
+  COL --> DB[(SQLite: sources / tasks / reports / revisions)]
+  RS --> DB
+  DS --> DB
+  RS --> WF[Framework-neutral workflow / LangGraph / deterministic fallback]
+  WF --> EXT[Configured models + retrieval providers]
+  DS --> EV[Claim graph / comparison / readiness / acceptance records]
+  EV --> FILES[Artifacts / hashes / Office and visual receipts]
+  WB --> OUT[Supported exports / callbacks / CLI delegation]
+  WB -. current limitation .-> LIM[Secret unset: signature bypass; no universal approval gate]
+  FUT[PLANNED 2.12–2.21: envelopes / approval / scoped connectors / recoverable jobs / team isolation]
+  WB -. proposed extensions .-> FUT
+  classDef planned fill:#f1f5f2,stroke:#7d9690,stroke-dasharray:5 5;
+  class FUT planned;

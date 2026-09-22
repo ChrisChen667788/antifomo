@@ -1,190 +1,124 @@
-# Anti-FOMO Product Whitepaper
+# Anti-FOMO 产品白皮书
 
-Development line: `2.10.3–2.11.8-development`
+更新时间：2026-09-22
+产品状态：本地优先开发原型；当前开发线见[当前产品状态](./current-product-status.md)。
 
-Canonical status and evidence legend: [docs/current-product-status.md](./current-product-status.md). Marketing narrative and the governed WorkBuddy integration plan: [docs/marketing-overhaul-2026-09.md](./marketing-overhaul-2026-09.md).
+Anti-FOMO 面向需要把公开信息变成客户判断的解决方案架构师、行业顾问、BD 与售前团队。它把网页、微信文章、文件和竞品来源放进一条可回看工作流：
 
-Release promotion: `blocked` pending real cross-industry clarification tasks and feedback, human retrieval qrels, real 100+30 expert review/calibration, three-industry blind evaluation, customer acceptance, production Skill governance, and final Office/visual/security evidence.
+`采集 → 清理 → 研究 → 对比 → 方案准备 → 跟进`
 
-Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat-heavy information flows into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
+这不是“生成一份摘要就结束”的工具。它让使用者能够回答三个问题：信息来自哪里、结论发生了什么变化、下一步由谁核验或推进。
 
-The product is designed for solution architects, industry consultants, BD and pre-sales teams, strategy operators, and builders who need a traceable path from raw signals to practical decisions.
+## 1. 用户与问题
 
-## Executive Summary
+### 解决方案架构师
 
-Most information tools solve one step: saving links, summarizing content, searching notes, or exporting documents. Anti-FOMO is built around the whole operating loop:
+客户会议前通常需要同时整理行业事实、现有系统、集成约束、安全要求和待确认问题。资料散落在公众号、网页、群聊转发、历史报告和个人笔记中，研究结论很难完整交给下一位同事。
 
-`collect -> clean -> research -> compare -> focus -> action`
+### 行业顾问与研究人员
 
-The current 2.10.3–2.11.8 development line keeps the local-first and framework-neutral workflow contract while extending retrieval evidence operations with visual/human acceptance receipts, governed execution records and controlled candidate promotion. The product inventories, binds, ages, and hands off fixed benchmark, complete-report review, approval, shadow/drift, incident, rollback and audit records; `baseline_hybrid` remains the default until external evidence is complete. Research and formal documents still fail closed behind scope, source admission, current-revision passage citations, trusted critical sources, Claim consistency, and material-gap gates.
+需要持续观察政策、招投标、市场与竞品变化。来源失效、重复采集和过期判断如果不可见，报告就会在更新时失去可信边界。
 
-## Problem
+### BD 与售前团队
 
-High-signal work often starts in fragmented channels: WeChat official accounts, article links, web pages, newsletters, files, and internal follow-up notes. The common failure modes are:
+需要把研究快速放到账户、机会和下一次会议的上下文中，同时保留哪些是事实、哪些是假设、哪些必须向客户核实。
 
-- promising articles are collected inconsistently
-- source quality is invisible until the report is weak
-- generic summaries lose evidence lineage
-- research, comparison, execution, and delivery live in different tools
-- teams cannot tell whether a bad output came from poor collection, weak retrieval, or missing scenario context
-- solution architects still need to manually translate research into architecture boundaries, interface risks, security constraints, and implementation validation questions
+### 开发者与内部运营者
 
-Anti-FOMO treats collection reliability, evidence quality, and execution output as one product system.
+需要一套可以本地运行、检查源码、替换模型和记录失败路径的工作台，而不是只能看最终答案的黑盒服务。
 
-## Product Architecture
+## 2. 从输入到交付
 
-### 1. Collection Layer
+| 阶段 | 用户动作 | 可见结果 | 目前证据 |
+| --- | --- | --- | --- |
+| 采集 | URL、文本、文件、RSS/Newsletter、微信收藏或扩展发送 | 可恢复条目、来源状态、批次和重试记录 | 本地实现 + Demo |
+| 清理 | 归一化 URL、去重、过滤 OCR/低信号内容 | 可检索的来源记录和健康诊断 | 本地实现 + 合成基准 |
+| 研究 | 写明问题、范围和目标对象 | 报告、章节引用、证据缺口、主题版本 | 本地实现 + 测试 |
+| 对比 | 选择历史快照或官方来源 | 变化矩阵、过期/变更信号、待复核项 | 本地实现 + 本地监测运行 |
+| 方案准备 | 检查架构选项、依赖、NFR、风险和客户问题 | 方案蓝图、ADR 风格决策、验证动作、会议议程 | 本地实现 + Demo |
+| 跟进 | 进入 Focus、行动卡或导出任务 | 总结、待办、销售 brief、可编辑交付草稿 | 本地实现；外部执行边界分开记录 |
 
-- URL, text, RSS, newsletter, file, YouTube transcript, browser extension, miniapp, and WeChat-heavy intake paths.
-- One-click WeChat Favorites preview/import for exported HTML/TXT, clipboard text, shortcut files, and raw/escaped/encoded公众号 links, with persistent batches and homepage queue recovery.
-- Headless source collector for recurring公众号 source pages.
-- WeChat PC agent as supplementary URL discovery when desktop automation is available.
-- Collector daemon status with run-level coverage and per-source diagnostics.
+## 3. 产品边界
 
-### 2. Cleaning Layer
+Anti-FOMO 的核心是证据和决策上下文。它可以把一个研究结果编译为方案工作材料，也可以通过已有的 WorkBuddy-compatible webhook 或本机 CodeBuddy CLI 发送受支持的导出/委派任务。webhook 未配置 secret 时会跳过签名校验；现有桥接不代表腾讯官方托管模式，也没有被全局人工批准门统一覆盖。
 
-- Removes screenshot OCR fragments, markdown/source dumps, weak vendor promotion, forum/award noise, and low-signal placeholders.
-- Normalizes source titles and content before downstream research.
-- Protects account and entity surfaces from technical phrases that look like organization names.
+对外文档使用以下证据词汇：
 
-### 3. Research Layer
+- `local_implementation`：源码、接口、测试或迁移在当前 checkout 中存在。
+- `demo`：本地页面、fixture、截图或动图演示了一条路径。
+- `synthetic_benchmark`：固定合成数据集上的可复现结果。
+- `vendor_claim`：供应商官方页面中的能力描述，尚未独立验证。
+- `human_acceptance`：具名复核者接受了指定版本和工件。
+- `customer_acceptance`：具名客户接受了范围明确的试点或生产产物。
+- `production`：有明确运行边界和服务证据的部署系统。
 
-- Keyword research, topic workspaces, follow-up research, compare snapshots, archive viewers, and formal exports.
-- Persistent retrieval index with resumable rebuild, section routing, parent-block linking, and official-source bias.
-- Quality profiles for professional rigor, evidence strength, target-account support, citation quality, and grounding.
+## 4. 技术与数据架构
 
-### 4. Control Plane
+前端是 Next.js/TypeScript，后端是 FastAPI，开发 Demo 默认使用 SQLite。采集、研究、知识、任务、产品策略和交付拥有独立 API 路由；研究工作流通过框架中立协议接入 LangGraph，并保留 deterministic 路径作为可配置回退。
 
-- Experiment plans for query, routing, and reranker strategies.
-- Frozen cohorts, locked baselines, rollout gates, active policy registry, runtime strategy snapshots, and effective runtime config.
-- Delivery-quality regressions for solution packs and proposal-grade outputs.
+主要数据对象包括：
 
-### 5. Execution and Delivery Layer
+- **Source / Item**：来源 URL、内容快照、来源类型、状态和重试信息；
+- **Report / Topic version**：研究问题、章节、引用、证据缺口和历史版本；
+- **Claim / Decision context**：主张、依据、假设、决策、风险和责任边界；
+- **Artifact / Operation evidence**：导出文件、修订差异、Office/视觉收据、操作回执和审计交接索引；
+- **Task / Session**：Focus 会话、行动卡、导出任务和状态。
 
-- Focus sessions, session summaries, reading lists, todo drafts, exec briefs, sales briefs, outreach drafts, and watchlist digests.
-- Feasibility studies, project proposals, client PPT outlines, client briefs, bidding prep memos, and execution-material chains.
-- Solution architecture readiness with business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility scoring.
-- Architecture blueprint sections for business/role, application capability, model/data/integration, and security/deployment/operations layers.
-- Solution architect workbench output for customer scenarios, stakeholder concern maps, decision criteria, validation actions, and next-meeting agendas.
-- Commercial Hub surfaces that turn research output into account intelligence, opportunities, review queues, and next actions.
+更完整的结构见[架构图](./diagrams/architecture.mmd)、[数据流图](./assets/dataflow.svg)与[工作流图](./assets/workflow.svg)。
 
-## 1.1.0 Modular Architecture and Theme Baseline
+## 5. 商业价值与测量
 
-The 1.1.0 release hardens Anti-FOMO for the next product expansion cycle.
+产品价值不是“模型回答更长”，而是减少从信息到客户讨论之间的断裂。价值地图按三类可验证结果组织：
 
-New release capabilities:
+1. **更快找到可用材料**：测量固定来源集的重复处理数、失败来源可见率和从导入到可审阅条目的时间。
+2. **更容易复核结论**：测量引用覆盖、证据缺口关闭率、版本差异定位时间和 reviewer 返工次数。
+3. **更容易进入方案交付**：测量蓝图字段完整度、未标注假设数量、客户会议准备时间和交付物复用率。
 
-- Research generation now has a thinner service facade with workflow logic moved into dedicated research application modules.
-- Collector operations are split by route and operation domain instead of living behind one broad router/component surface.
-- Frontend feature clients, Research Center controllers, Collector Ops controllers, report cards, Knowledge Detail, and Session Summary panels are decomposed into smaller modules.
-- Major research, collector, knowledge, and session UI surfaces now use semantic surface/text/border/status tokens, giving light and dark modes a shared design-system contract.
-- README and release documentation now include bilingual major-version capability summaries for GitHub and ModelScope audiences.
+当前仓库能证明的是本地代码、测试、Demo 和合成/浏览器观察结果；真实客户 ROI、生产 SLA、行业通用节省比例仍未知。试点必须先锁定任务集、角色、来源许可、人工基线和验收人，再报告前后差异。详见[价值与验收地图](./value-map.md)。
 
-Commercial value:
+### 可验证的商业服务形态
 
-- Product changes are easier to isolate because intake, research, delivery, knowledge, and operations now have clearer ownership boundaries.
-- Dark-mode and light-mode polish can continue without editing every business component.
-- External readers can understand the historical product progression without reading internal planning documents.
+MIT 开源核心让团队能先用公开样例验证流程。后续可围绕部署、领域数据配置和持续维护提供服务；以下是待试点验证的服务设计，不表示已有客户、收入或交付承诺。
 
-## 1.0.0 Local-First Baseline
+| 服务 | 谁负责评估与购买 | 约定交付物 | 进入下一阶段的条件 |
+| --- | --- | --- | --- |
+| 场景试点 | 售前/咨询负责人，联合一位方案架构师 | 一组约定任务、人工基线、引用与字段评审表、最终验收报告 | 质量不低于基线，准备时长或返工有可解释改善 |
+| 团队私有部署与配置 | 技术负责人、信息安全/数据负责人 | 数据流与权限清单、来源连接配置、部署与恢复手册、角色培训 | 通过访问控制、备份恢复和用户验收；当前单用户原型不能直接承诺团队隔离 |
+| 持续来源维护与模板服务 | 行业研究/业务运营负责人 | 约定来源清单、更新记录、失效源处置、行业模板修订 | 每次更新可追溯，受影响判断进入复核队列，并有具名维护人 |
 
-The 1.0.0 release is the first complete local-first baseline for the WeChat-to-solution workflow.
+报价应按数据源数量、连接器范围、任务复杂度、审阅量和运行支持边界估算；在真实成本、价值和采购意愿验证前，不填入收入预测或固定节省比例。
 
-New release capabilities:
+## 6. WorkBuddy 对标与吸收方向
 
-- WeChat Favorites preview/import with URL and text-block parsing, escaped-link normalization, deduplication, persistent import batches, failed-item retry, and reload-safe homepage queues.
-- Homepage card triage that lets imported公众号 content follow the existing ignore/save flow instead of living in a separate import silo.
-- Solution architect workbench inside delivery packs, covering customer scenarios, stakeholder questions, decision criteria, validation actions, and meeting agendas.
-- Alembic and SQLite compatibility coverage for the new import-batch persistence layer.
-- Release metadata and validation aligned around `1.0.0+20260520`.
+WorkBuddy 在通用办公 Agent 的任务拆解、本地文件/应用操作、技能与连接器、结果面板、定时任务和团队协作上更广；Anti-FOMO 在微信/网页信号采集、来源新鲜度、Claim/Evidence lineage、研究质量、架构决策和 fail-closed 交付边界上更聚焦。
 
-Commercial value:
+适合吸收的是低摩擦的任务状态和结果回流，而不是无边界桌面控制：
 
-- Operators can take a personal WeChat Favorites backlog and convert it into a structured triage queue without manual URL cleanup.
-- Solution architects can move from imported public-account signals to customer-meeting preparation in the same workspace.
-- Teams get a clearer path from noisy signals to evidence-backed architecture discussion, proposal preparation, and follow-up action.
+- 研究 Plan / Ask / Execute 三种明确模式；
+- 受权限、预算、来源范围约束的 Connector/MCP 注册表；
+- 可签名 Skill/Expert 与模型 profile；
+- 任务状态、结果包、回放和失败恢复；
+- 共享 Knowledge Space 与移动端只读状态控制；
+- 以本地固定任务集做沙箱 benchmark。
 
-## 0.8.0 Solution Architecture Release
+具体版本、API 边界、回滚要求见[WorkBuddy 深度调研](./workbuddy-deep-dive-2026-09-18.md)和[WorkBuddy 集成方案](./workbuddy-integration-plan-2026-09-18.md)。
 
-The 0.8.0 release focuses on visible quality gains for solution architects and industry consultants.
+## 7. 性能与稳定性约束
 
-New release capabilities:
+后续开发默认遵守：
 
-- Architecture readiness score inside every generated solution delivery pack.
-- Five review dimensions: business alignment, architecture completeness, integration readiness, security/compliance readiness, and delivery feasibility.
-- Architecture blueprint sections with components, evidence, and open questions.
-- Non-functional requirements, integration risks, assumptions, stakeholder questions, and validation actions.
-- Research report card rendering for architecture readiness, blueprint layers, risks, and next actions.
-- Solution delivery markdown export with a dedicated architecture-readiness chapter.
+- 每个任务和工作流 stage 写入 `correlation_id`，外部任务写入 `idempotency_key`；重复请求返回既有任务而不是重复执行。
+- 采集器使用并发上限、单源超时、指数退避和 circuit breaker；失败必须进入可见队列。
+- SQLite 写入保持事务边界与迁移回滚路径；检索重建可暂停、恢复和取消。
+- 首屏只加载摘要，重型证据/图表按需加载；长任务返回 task id 并可轮询或恢复。
+- 只读 API 在固定本地数据集上以 p95 目标 ≤800ms 进行回归；任务接收以 p95 ≤2s 返回 task id 为目标，实际结果耗时单独记录。
+- 每个宣传资产附 source mode、viewport、生成时间和 SHA-256；GIF/MP4 的体积和渲染检查写入素材 manifest。
+- CI 必须保留 lint、TypeScript、前后端测试、构建、监测逻辑、secret scan 和 diff check。
 
-Commercial value:
+这些是工程目标和回归门槛，不是对客户环境的 SLA 承诺。
 
-- Helps solution architects turn noisy market and procurement signals into a structured client architecture narrative.
-- Gives industry consultants a reusable bridge from research evidence to advisory deliverables.
-- Makes pre-sales work more reviewable before client meetings, bid preparation, or project proposal export.
-- Separates evidence-backed architecture statements from assumptions that still require customer confirmation.
+## 8. 当前状态与试点入口
 
-## 0.7.0 Reliability Release
+当前状态、开发线和证据边界由[Current Product Status](./current-product-status.md)统一维护。建议从一个可脱敏的三小时任务开始：导入一组公开来源，形成一份带引用的研究草稿，编译一版架构蓝图，让方案架构师和业务 reviewer 记录每一步返工与缺口。通过后再扩大来源、角色和外部连接器范围。
 
-The 0.7.0 release addresses a practical operator problem: aggregate collector coverage is not enough. Users need to know which source failed.
-
-New release capabilities:
-
-- Focus start/resume ensures the headless source collector daemon is running.
-- WeChat PC agent remains available as a supplementary URL harvester.
-- Collector status reports handled count, coverage rate, body success rate, coverage state, and recovery guidance.
-- Collector reports persist per-source summaries for scanned, discovered, queued, collected, deduplicated, skipped, failed, and unscanned sources.
-- Backend, web Focus, Collector Ops, miniapp fallback, and release docs expose source health fields.
-- Source health states use good, watch, and poor labels, while recommendations distinguish failed discovery, stale coverage, skipped links, and unscanned source conditions.
-
-Commercial value:
-
-- Faster diagnosis when a daily source stops producing usable articles.
-- Lower dependence on fragile desktop automation.
-- Better confidence that weak reports are caused by evidence gaps rather than silent collector failures.
-- Clearer operations handoff for teams maintaining公众号 source lists.
-
-## Target Users
-
-- Solution architects preparing architecture narratives, capability maps, integration plans, and client discussion materials.
-- Industry consultants preparing evidence-backed opportunity studies, advisory deliverables, and project proposal inputs.
-- BD, pre-sales, and solution teams tracking accounts, tenders, competitors, and market movements.
-- Founders and product leads who need repeatable research workflows across fast-moving AI and technology markets.
-- Operators who live in WeChat article flows but need evidence lineage, not just saved links.
-- Developers who want a local-first, inspectable research system instead of a black box SaaS.
-
-## Deployment and Trust Model
-
-Anti-FOMO is local-first by default:
-
-- Next.js frontend and FastAPI backend run locally.
-- SQLite supports the demo and development path.
-- Runtime secrets, private user data, local databases, collector logs, and production miniapp credentials are excluded from the public repo.
-- The codebase keeps testable service boundaries for collector, retrieval, research, delivery, and frontend surfaces.
-
-The public repository is intended to be inspectable, modifiable, and practical for design partners before any hosted SaaS path.
-
-## Release-Grade Product Evidence
-
-The repository maintains commercial-standard release assets:
-
-- README and Chinese README with current product screenshots.
-- Full screenshot coverage in `docs/feature-screenshot-coverage.md`.
-- Historical capability map in `docs/release-history-and-feature-map.md`.
-- Launch kit in `docs/open-source-launch-kit.md`.
-- Growth copy kit in `docs/open-source-growth-copy.md`.
-- Changelog and package metadata aligned to the released version.
-
-## Positioning
-
-Anti-FOMO is not a read-later app, not a generic summarizer, and not only a RAG demo. It is an execution-oriented research workspace for teams that need:
-
-- reliable high-signal intake
-- evidence-aware research generation
-- measurable quality controls
-- side-by-side version comparison
-- focus sessions and action outputs
-- delivery-grade artifacts for client, opportunity, and strategy work
-- solution architecture readiness and blueprint exports for pre-sales and consulting workflows
-
-The product direction is to keep the core local-first and open-source while expanding reliability, evaluation, and commercial workflow depth.
+历史版本和详细工程记录见[版本与功能历史](./release-history-and-feature-map.md)，而不是在本白皮书重复维护。
