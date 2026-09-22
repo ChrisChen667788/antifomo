@@ -1,146 +1,60 @@
-# Anti-FOMO Open Source Launch Kit
+# Anti-FOMO 开源宣发素材包
 
-## One-line pitch
+更新时间：2026-09-22。所有产品状态与证据等级以[当前产品状态](./current-product-status.md)为准。
 
-Anti-FOMO is an open-source AI research workspace for turning noisy web and WeChat signals into evidence-backed reports, solution architecture blueprints, focus sessions, and action-ready follow-up.
+## 一句话
 
-Current development line: `2.9.5+20260814`, adding retrieval evidence operations on top of the Assurance Command Center: fixed result and package digests, artifact inventory/lineage, freshness, role separation, incident/revocation records, audit handoff, and release-readiness aggregation. Release promotion remains blocked until real cross-industry clarification tasks and feedback, human qrels, real 100+30 expert calibration, independent retrieval review, three-industry blind evaluation, three-sector customer acceptance, production Skill/connector governance, and Office/visual/security/performance/recovery evidence are complete.
+**English:** Anti-FOMO turns web and WeChat signals into reviewable research, solution architecture, and next actions.
+
+**中文：** Anti-FOMO 把网页与微信信息流，整理成可复核的研报、方案架构和下一步行动。
+
+## 15 秒产品概览
+
+- GIF：[`docs/assets/marketing/antifomo-overview.gif`](./assets/marketing/antifomo-overview.gif)
+- MP4：[`docs/assets/marketing/antifomo-overview.mp4`](./assets/marketing/antifomo-overview.mp4)
+- 海报：[`docs/assets/marketing/poster.png`](./assets/marketing/poster.png)
+- 社交卡片：[`docs/assets/marketing/social-card.png`](./assets/marketing/social-card.png)
+- 脚本与边界：[`docs/marketing/DEMO-SCRIPT.md`](./marketing/DEMO-SCRIPT.md)
+- 素材清单：[`docs/marketing/asset-manifest.json`](./marketing/asset-manifest.json)
+
+概览使用 v1.9.1 历史本地 Demo 截图剪辑，说明“采集 → 研究 → 方案 → 跟进”。它不是当前版本的端到端实录、2.11.8 验收证明或客户案例。30 秒讲解仍保留为后续现场演示脚本。
 
 ## GitHub About
 
-### Description
+> Open-source research and solution workspace for turning web + WeChat signals into evidence-backed decisions and client-ready architecture work.
 
-Open-source AI research workspace for solution architects and consultants turning noisy web + WeChat signals into evidence-backed reports, architecture blueprints, and delivery actions.
+Homepage：`https://github.com/ChrisChen667788/antifomo#quick-start`
 
-### Homepage
+建议 topics：`research-workspace`、`wechat`、`solution-architecture`、`pre-sales`、`market-intelligence`、`competitive-intelligence`、`evidence-lineage`、`rag`、`nextjs`、`fastapi`、`local-first`。
 
-`https://github.com/ChrisChen667788/antifomo#quick-start`
+## 产品叙事
 
-### Topics
+用同一条叙事介绍产品：
 
-- `research-workspace`
-- `wechat`
-- `market-intelligence`
-- `sales-intelligence`
-- `competitive-intelligence`
-- `rag`
-- `nextjs`
-- `fastapi`
-- `knowledge-management`
-- `focus`
-- `productivity`
+1. **Hook**：收藏很多，会议前仍说不清依据和下一步。
+2. **Value**：把信息、证据、架构讨论和跟进放进一条可回放工作流。
+3. **Mechanism**：Collect → Check sources → Research → Compare → Prepare a decision → Follow up。
+4. **Proof**：真实代码界面、测试、来源寄存器、修订差异、合成基准和本地演示；每项标出证据等级。
+5. **CTA**：用一组公开或合成样例跑通 `/inbox` → `/research` → `/studio`，再提交 Issue/PR。
 
-## Short launch summary
+## 中文短文案
 
-Anti-FOMO is an open-source workspace for solution architects, industry consultants, and pre-sales teams who need more than save-later and AI summaries. It combines WeChat-heavy collection, homepage triage, retrieval-backed research, architecture readiness, architect workbench outputs, focus sessions, and delivery materials into one workflow.
+> 很多工具能收藏、摘要或搜索，但客户方案还需要回答：这条结论来自哪里？哪些证据已经过期？下一步谁来核验？Anti-FOMO 把网页和微信信号收进可恢复队列，沿着来源、主张、研究版本和架构蓝图形成一条可复核工作流。它是本地优先的开源原型，欢迎用公开样例试跑并指出断点。
 
-## Release callout for the current baseline
+## English short copy
 
-Highlights:
+> Saving a link is easy. Explaining what changed, which source supports it, and what a customer should validate next is harder. Anti-FOMO is an open-source, local-first workspace for web and WeChat-heavy research: collect signals, inspect source health, compare evidence, prepare architecture decisions, and leave a reviewable follow-up. Try it with a public or synthetic example and tell us where the handoff breaks.
 
-- solution architecture readiness scoring for business alignment, capability boundaries, integration dependencies, security/compliance constraints, and delivery feasibility
-- one-click WeChat Favorites preview/import with persistent homepage review queues, failed-item retry, and swipe-based ignore/save triage
-- solution architect workbench output for customer scenarios, stakeholder questions, decision criteria, validation actions, and next-meeting agendas
-- architecture blueprint exports for business/role, application capability, model/data/integration, and security/deployment/operations layers
-- Focus mode now starts with the headless source collector, while the WeChat PC agent works as a supplementary URL harvester.
-- Collector status now reports coverage rate, body success rate, poor/watch source counts, and per-source recommendations so failed公众号 sources are visible by name.
-- research center, compare workspace, archives, watchlists, and daily brief
-- retrieval-backed report quality layer with section evidence diagnostics
-- WeChat-first collection chain, collector ops, browser extension, and miniapp shell
-- market-intelligence packs, formal document export, and client-facing delivery outlines
-- product whitepaper, release-grade screenshots, and commercial launch copy are kept in-repo for GitHub and buyer-facing updates
-- local-first demo flow with testable Next.js + FastAPI stack
+## 三个演示场景
 
-## X / Twitter post
+| 场景 | 演示路径 | 结果 |
+| --- | --- | --- |
+| AI 招投标跟踪 | Collector → Research → Competitive | 来源矩阵、变化摘要、过期队列和复核动作 |
+| 客户方案准备 | Inbox → Research → Studio/Architecture | 研报、架构选项、依赖、风险与验证问题 |
+| 双周竞品观察 | 官方 source register → monitor → Issue | 带日期的源摘要、changed/stale 信号和路线决策 |
 
-Open sourced Anti-FOMO today.
+## 发布说明
 
-It is an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into useful output:
+公开分享时同时附：commit/tag、演示素材 manifest、截图采集日期、使用的数据范围，以及仍为 `target`/`unknown` 的指标。不要把本地测试数、合成基准、供应商自述或历史截图写成客户 ROI、生产 SLA 或独立验收。
 
-- solution architecture readiness
-- one-click WeChat Favorites import
-- stakeholder question maps
-- solution architect workbench
-- client-ready architecture blueprints
-- headless-source-first WeChat collection
-- source-level公众号 health diagnostics
-- evidence-backed report drafts
-- retrieval-backed quality checks
-- focus sessions and action cards
-- formal delivery exports
-
-Repo: https://github.com/ChrisChen667788/antifomo
-Quick start: https://github.com/ChrisChen667788/antifomo#quick-start
-
-## LinkedIn post
-
-I just open sourced Anti-FOMO.
-
-The project grew out of a simple frustration: a lot of information tools stop at saving links or generating summaries, but real work needs a full loop from collection to research to execution.
-
-Anti-FOMO is my attempt to bring those pieces together for solution architects and industry consultants:
-
-- architecture readiness scoring
-- WeChat Favorites import into a triage deck
-- solution architect workbench for stakeholder questions and meeting preparation
-- integration risks and non-functional requirements
-- WeChat-first collection workflows
-- collector coverage and source-health diagnostics
-- evidence-backed report drafting
-- retrieval-backed research quality checks
-- focus sessions for execution
-- action cards and reusable delivery outputs
-- a local-first demo setup that is easy to inspect and extend
-
-Repository: https://github.com/ChrisChen667788/antifomo
-
-## Hacker News title ideas
-
-- Show HN: Anti-FOMO, an open-source WeChat-first AI research workspace
-- Show HN: Anti-FOMO, a local-first workspace for evidence-backed reports and action workflows
-- Show HN: An open-source workflow for collection, research, compare, and follow-up
-
-## Reddit title ideas
-
-- Open source: Anti-FOMO, a research workspace for noisy web + WeChat signals
-- I built an open-source workspace for collection, evidence-backed reports, and execution
-- Anti-FOMO is now open source: local-first AI research workflow with Next.js and FastAPI
-
-## Screenshot order for README and social posts
-
-1. `docs/assets/github-hero.svg`
-2. `docs/assets/screenshots/home-signal-dashboard.png`
-3. `docs/assets/screenshots/research-center-dashboard.png`
-4. `docs/assets/screenshots/inbox-research-workspace.png`
-5. `docs/assets/screenshots/research-experiment-control-plane.png`
-6. `docs/assets/screenshots/research-topic-workspace.png`
-7. `docs/assets/screenshots/research-compare-workspace.png`
-8. `docs/assets/screenshots/knowledge-commercial-hub.png`
-9. `docs/assets/screenshots/collector-operations-workspace.png`
-10. `docs/assets/github-social-preview.png`
-
-The full primary-surface screenshot checklist lives in `docs/feature-screenshot-coverage.md`.
-The commercial product narrative lives in `docs/product-whitepaper.md`.
-
-## Social assets
-
-- `docs/assets/github-hero.svg`: primary README hero
-- `docs/assets/screenshots/`: real product screenshots for README, repo posts, and release notes
-- `docs/assets/github-social-preview.png`: ready-to-upload GitHub social preview image
-- `docs/product-whitepaper.md`: commercial-grade product narrative and module map
-
-Refresh screenshots with:
-
-```bash
-npm run repo:screenshots
-```
-
-## Manual GitHub social preview suggestion
-
-Upload:
-
-- `docs/assets/github-social-preview.png`
-
-Recommended alt text:
-
-Anti-FOMO, an open-source AI research workspace for solution architects and consultants turning noisy web and WeChat signals into evidence-backed reports, architecture blueprints, and action-ready follow-up.
+相关文档：[产品白皮书](./product-whitepaper.md) · [价值地图](./value-map.md) · [WorkBuddy 深度对标](./workbuddy-deep-dive-2026-09-18.md) · [集成方案](./workbuddy-integration-plan-2026-09-18.md) · [中文贡献指南](../CONTRIBUTING.zh-CN.md)。

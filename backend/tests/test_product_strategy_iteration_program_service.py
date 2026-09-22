@@ -33,15 +33,15 @@ def _session() -> Generator[Session, None, None]:
         engine.dispose()
 
 
-def test_preview_materializes_fifteen_gated_iterations_and_fresh_agent_sources() -> None:
+def test_preview_materializes_sixteen_gated_iterations_and_fresh_agent_sources() -> None:
     preview = preview_iteration_program()
 
-    assert preview["iteration_program_version"] == "2.10.3-2.11.7"
+    assert preview["iteration_program_version"] == "2.10.3-2.11.8"
     assert preview["read_only"] is True
     assert preview["initialized"] is False
-    assert len(preview["iterations"]) == 15
-    assert [iteration["sequence"] for iteration in preview["iterations"]] == list(range(1, 16))
-    assert [iteration["version"] for iteration in preview["iterations"]][-1] == "2.11.7"
+    assert len(preview["iterations"]) == 16
+    assert [iteration["sequence"] for iteration in preview["iterations"]] == list(range(1, 17))
+    assert [iteration["version"] for iteration in preview["iterations"]][-1] == "2.11.8"
     assert len(preview["agent_sources"]) >= 7
     assert preview["governance"]["office_and_visual_acceptance_remain_gated"] is True
     assert preview["governance"]["release_gate_mutated"] is False
@@ -68,8 +68,8 @@ def test_initializer_is_idempotent_and_preserves_human_owned_iteration() -> None
         first = initialize_iteration_program(db)
         assert first["initialized"] is True
         assert first["initialization"] == {
-            "iterations": {"created": 15, "existing_seed_managed": 0, "preserved_human": 0},
-            "revisions": {"created": 15, "existing": 0, "preserved_human": 0},
+            "iterations": {"created": 16, "existing_seed_managed": 0, "preserved_human": 0},
+            "revisions": {"created": 16, "existing": 0, "preserved_human": 0},
             "initialization_audit": {"created": 1, "existing": 0},
         }
         assert first["initialization_audit"]["release_gate_mutated"] is False
@@ -98,10 +98,10 @@ def test_initializer_is_idempotent_and_preserves_human_owned_iteration() -> None
         repeat = initialize_iteration_program(db)
         assert repeat["initialization"]["iterations"] == {
             "created": 0,
-            "existing_seed_managed": 14,
+            "existing_seed_managed": 15,
             "preserved_human": 1,
         }
-        assert repeat["initialization"]["revisions"] == {"created": 0, "existing": 14, "preserved_human": 1}
+        assert repeat["initialization"]["revisions"] == {"created": 0, "existing": 15, "preserved_human": 1}
         assert repeat["initialization"]["initialization_audit"] == {"created": 0, "existing": 1}
         db.refresh(row)
         db.refresh(revision)

@@ -73,4 +73,66 @@ test("monitor distinguishes unchanged content from failed or stale observations"
   assert.equal(unavailable.summary.stale_count, 1);
   assert.equal(unavailable.sources[0].change_status, "unknown");
   assert.deepEqual(unavailable.sources[0].review_reasons, ["source_observation_stale", "source_fetch_failed"]);
+  assert.equal(unavailable.summary.baseline_unset_count, 1);
+});
+
+test("a fresh per-source observation cannot clear pending historical semantic review", async () => {
+  const normalizedDigest = createHash("sha256").update("Alpha Agent capabilities").digest("hex");
+  const register = {
+    ...baseRegister,
+    sources: [{
+      ...baseRegister.sources[0],
+      baseline_content_sha256: normalizedDigest,
+      observed_at: "2026-09-22T00:00:00Z",
+      expires_at: "2026-10-06T00:00:00Z",
+      semantic_review: {
+        status: "pending",
+        claim_observed_at: baseRegister.observed_at,
+        claim_expires_at: baseRegister.expires_at,
+        reviewed_by: null,
+        baseline_accepted: false,
+      },
+    }],
+  };
+  const before = JSON.stringify(register);
+  const report = await analyzeRegister(register, {
+    now: new Date("2026-09-22T01:00:00Z"),
+    fetchImpl: async () => new Response("<html><title>Alpha</title><p>Agent capabilities</p></html>", { status: 200 }),
+  });
+  assert.equal(report.sources[0].observed_at, "2026-09-22T00:00:00Z");
+  assert.equal(report.summary.stale_count, 0);
+  assert.equal(report.summary.semantic_review_pending_count, 1);
+  assert.equal(report.sources[0].change_status, "unchanged");
+  assert.deepEqual(report.sources[0].review_reasons, ["human_semantic_review_pending"]);
+  assert.equal(report.review_required, true);
+  assert.equal(report.sources[0].semantic_review.claim_expires_at, baseRegister.expires_at);
+  assert.equal(report.sources[0].semantic_review.reviewed_by, null);
+  assert.equal(JSON.stringify(register), before);
+});
+
+test("fresh observation preserves changed baseline and unknown fetch failure", async () => {
+  const register = {
+    ...baseRegister,
+    sources: [{
+      ...baseRegister.sources[0],
+      baseline_content_sha256: "historical-digest",
+      observed_at: "2026-09-22T00:00:00Z",
+      expires_at: "2026-10-06T00:00:00Z",
+      semantic_review: { status: "pending", reviewed_by: null },
+    }],
+  };
+  const changed = await analyzeRegister(register, {
+    now: new Date("2026-09-22T01:00:00Z"),
+    fetchImpl: async () => new Response("New capabilities", { status: 200 }),
+  });
+  assert.equal(changed.sources[0].baseline_content_sha256, "historical-digest");
+  assert.equal(changed.sources[0].change_status, "content_changed");
+  assert.deepEqual(changed.sources[0].review_reasons, ["official_source_content_changed", "human_semantic_review_pending"]);
+  const failed = await analyzeRegister(register, {
+    now: new Date("2026-09-22T01:00:00Z"),
+    fetchImpl: async () => { throw new Error("network unavailable"); },
+  });
+  assert.equal(failed.sources[0].evidence_status, "unknown");
+  assert.equal(failed.sources[0].change_status, "unknown");
+  assert.deepEqual(failed.sources[0].review_reasons, ["source_fetch_failed", "human_semantic_review_pending"]);
 });

@@ -7,11 +7,11 @@ from typing import Any
 from app.services.product_strategy.catalog import canonical_digest, effective_evidence_status, iso
 
 
-ITERATION_PROGRAM_VERSION = "2.10.3-2.11.7"
+ITERATION_PROGRAM_VERSION = "2.10.3-2.11.8"
 PROJECT_SCOPE = "anti-fomo"
 OBSERVED_AT = datetime(2026, 8, 31, tzinfo=UTC)
 EXPIRES_AT = OBSERVED_AT + timedelta(days=14)
-INITIALIZATION_EVENT_KEY = "anti-fomo:2.10.3-2.11.7:explicit-user-instruction"
+INITIALIZATION_EVENT_KEY = "anti-fomo:2.10.3-2.11.8:explicit-user-instruction"
 
 
 def instruction_evidence() -> dict[str, Any]:
@@ -19,7 +19,7 @@ def instruction_evidence() -> dict[str, Any]:
         "kind": "user_instruction",
         "actor_identity_status": "unverified",
         "scope": "product_strategy_iteration_program_only",
-        "instruction": "继续按最新版迭代方案，完成后续15个版本的开发任务，并以竞品、验收、性能和双端发布证据持续校准。",
+        "instruction": "继续按最新版迭代方案，完成后续10个版本的开发任务，并以竞品、验收、性能和双端发布证据持续校准。",
         "recorded_at": iso(OBSERVED_AT),
         "authorization_scope": "允许定义、实现和验证受治理的产品策略迭代控制平面；不构成外部执行、Office/视觉验收、生产发布或独立审计批准。",
         "does_not_approve_artifact_acceptance": True,
@@ -347,6 +347,16 @@ ITERATION_DEFINITIONS: tuple[dict[str, Any], ...] = (
         external_evidence_requirements=["独立审核人", "受控 shadow、漂移、回滚和验收材料"],
         source_basis=["2.9.5 release evidence", "2.10.0–2.11.6 受治理交付物"],
     ),
+    _iteration(
+        version="2.11.8", sequence=16, slug="evidence-expiry-revocation", title="证据续期与撤销门禁", workstream="release_assurance", decision="build",
+        purpose="以摘要锁定证据索引，记录续期、撤销和保持 HOLD 的决定，避免过期或撤销后的本地记录继续被误当作发布依据。",
+        scope_boundary="续期记录不是独立审计、客户验收或生产批准；不覆盖历史证据、不切换 baseline_hybrid、不修改 release-readiness。",
+        dependencies=["2.10.8 发布证据桥接", "2.11.7 独立审计交接包"],
+        delivery_artifacts=["证据索引摘要", "续期/撤销事件", "过期阻断摘要", "baseline_hybrid 回退声明"],
+        acceptance_criteria=["事件绑定提交时证据索引摘要", "缺失或过期证据默认阻断续期", "历史记录保持 append-only", "撤销后仍明确回退 baseline_hybrid"],
+        external_evidence_requirements=["独立审核人确认", "生产负责人确认回退路径", "真实发布门禁复核"],
+        source_basis=["2.9.5 release evidence", "2.10.8–2.11.7 证据链"],
+    ),
 )
 
 
@@ -368,7 +378,7 @@ def governance() -> dict[str, Any]:
         "can_auto_approve_release": False,
         "release_gate_mutated": False,
         "production_status": "not_authorized",
-        "note": "十五个版本的控制平面可本地实现和验证；实际 Agent 动作、Office/视觉验收、真实任务证据和生产发布仍必须走独立的人类复核与既有 release-evidence 门禁。",
+        "note": "十个后续版本的控制平面可本地实现和验证；实际 Agent 动作、Office/视觉验收、真实任务证据和生产发布仍必须走独立的人类复核与既有 release-evidence 门禁。",
     }
 
 

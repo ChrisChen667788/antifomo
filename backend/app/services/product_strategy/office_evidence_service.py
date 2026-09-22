@@ -252,7 +252,7 @@ def _run_supplied_render_evidence(pdf_base64: str, render_engine: str, receipt_d
 
 
 def _serialize(row: ProductStrategyOfficeEvidenceReceipt) -> dict[str, Any]:
-    return {
+    result = {
         "id": str(row.id),
         "receipt_key": row.receipt_key,
         "artifact_key": row.artifact_key,
@@ -283,6 +283,15 @@ def _serialize(row: ProductStrategyOfficeEvidenceReceipt) -> dict[str, Any]:
         "release_impact": "none",
         "created_at": _iso(row.created_at),
     }
+    snapshot = {key: value for key, value in result.items() if key not in {"id", "receipt_key", "receipt_digest", "created_at"}}
+    snapshot["office_evidence_version"] = OFFICE_EVIDENCE_VERSION
+    if canonical_digest(snapshot) != row.receipt_digest:
+        raise OfficeEvidenceError("office_receipt_integrity_mismatch", "Office 收据内容与摘要不一致，不能作为有效证据使用。")
+    if row.input_digest is not None:
+        inputs = result["validation"].get("request_inputs")
+        if not isinstance(inputs, dict) or canonical_digest(inputs) != row.input_digest or row.receipt_key != f"office:{row.input_digest}":
+            raise OfficeEvidenceError("office_receipt_integrity_mismatch", "Office 收据输入指纹与记录不一致。")
+    return result
 
 
 def list_office_evidence_receipts(db: Session) -> dict[str, Any]:
@@ -343,17 +352,44 @@ def create_office_evidence_receipt(
         raise OfficeEvidenceError("media_type_mismatch", "文件扩展名与 Office media type 不一致。")
     payload = _decode_payload(file_base64)
     file_sha256 = _sha256(payload)
+    required = [str(item).strip() for item in (required_texts or []) if str(item).strip()]
+    source_version_normalized = str(source_version or "").strip() or "unspecified"
+    normalized_engine = str(render_engine or "").strip() or None
+    if bool(rendered_pdf_base64) != bool(normalized_engine):
+        raise OfficeEvidenceError("incomplete_render_evidence", "伴随 PDF 与 Microsoft Office 导出引擎必须同时提供。")
+    supplied_pdf = _decode_payload(rendered_pdf_base64) if rendered_pdf_base64 else None
+    if supplied_pdf is not None:
+        if validate_pdf_bytes(supplied_pdf).get("status") != "pass":
+            raise OfficeEvidenceError("invalid_rendered_pdf", "伴随渲染文件不是可校验的 PDF。")
+        if normalized_engine not in {"microsoft_word_manual_export", "microsoft_powerpoint_manual_export"}:
+            raise OfficeEvidenceError("invalid_render_engine", "伴随 PDF 必须标明由 Microsoft Word 或 PowerPoint 实机导出。")
+    request_inputs = {
+        "artifact_key": draft.artifact_key,
+        "artifact_revision": draft.revision,
+        "artifact_revision_digest": draft.revision_digest,
+        "file_sha256": file_sha256,
+        "file_name": safe_name,
+        "media_type": expected_media_type,
+        "source_version": source_version_normalized,
+        "required_texts": required,
+        "supplied_pdf_sha256": _sha256(supplied_pdf) if supplied_pdf is not None else None,
+        "render_engine": normalized_engine or "automatic_headless",
+        "validator_version": VALIDATOR_VERSION,
+    }
+    input_digest = canonical_digest(request_inputs)
 
     existing = db.scalar(
         select(ProductStrategyOfficeEvidenceReceipt).where(
-            ProductStrategyOfficeEvidenceReceipt.artifact_key == draft.artifact_key,
-            ProductStrategyOfficeEvidenceReceipt.file_sha256 == file_sha256,
+            ProductStrategyOfficeEvidenceReceipt.input_digest == input_digest,
         )
     )
     if existing is not None:
         return {"outcome": "existing", "deduplicated": True, "receipt": _serialize(existing)}
 
-    receipt_dir = OFFICE_EVIDENCE_STORAGE_ROOT / file_sha256
+    # Rendering uses an isolated directory; another revision, artifact, PDF,
+    # or simultaneous submission must never overwrite an earlier receipt's files.
+    OFFICE_EVIDENCE_STORAGE_ROOT.mkdir(parents=True, exist_ok=True)
+    receipt_dir = Path(tempfile.mkdtemp(prefix=f"{file_sha256[:16]}-", dir=OFFICE_EVIDENCE_STORAGE_ROOT))
     receipt_dir.mkdir(parents=True, exist_ok=True)
     source_path = receipt_dir / f"source{suffix}"
     if not source_path.exists():
@@ -361,13 +397,10 @@ def create_office_evidence_receipt(
         temp_path.write_bytes(payload)
         temp_path.replace(source_path)
 
-    required = [str(item).strip() for item in (required_texts or []) if str(item).strip()]
     structure = _structural_validation(suffix, payload, required)
-    if bool(rendered_pdf_base64) != bool(render_engine):
-        raise OfficeEvidenceError("incomplete_render_evidence", "伴随 PDF 与 Microsoft Office 导出引擎必须同时提供。")
     render = (
-        _run_supplied_render_evidence(rendered_pdf_base64, render_engine, receipt_dir)
-        if rendered_pdf_base64 and render_engine
+        _run_supplied_render_evidence(rendered_pdf_base64, normalized_engine, receipt_dir)
+        if rendered_pdf_base64 and normalized_engine
         else _run_headless_roundtrip(source_path, receipt_dir)
     )
     runtime = _runtime_capability_summary()
@@ -382,14 +415,14 @@ def create_office_evidence_receipt(
         },
         "runtime": runtime,
         "required_texts": required,
+        "request_inputs": request_inputs,
         "manual_gates": [
             "microsoft_office_real_open_not_verified" if not rendered_pdf_base64 else "microsoft_office_export_recorded_not_independently_verified",
             "named_human_visual_review_missing",
             "customer_acceptance_missing",
         ],
     }
-    source_version_normalized = str(source_version or "").strip() or "unspecified"
-    storage_ref = f"office-evidence/{file_sha256}/source{suffix}"
+    storage_ref = f"office-evidence/{receipt_dir.name}/source{suffix}"
     snapshot = {
         "office_evidence_version": OFFICE_EVIDENCE_VERSION,
         "artifact_key": draft.artifact_key,
@@ -420,7 +453,8 @@ def create_office_evidence_receipt(
     }
     receipt_digest = canonical_digest(snapshot)
     row = ProductStrategyOfficeEvidenceReceipt(
-        receipt_key=f"{draft.artifact_key}:office:{file_sha256[:16]}",
+        receipt_key=f"office:{input_digest}",
+        input_digest=input_digest,
         artifact_acceptance_draft_id=draft.id,
         artifact_key=draft.artifact_key,
         artifact_revision=draft.revision,
@@ -455,8 +489,7 @@ def create_office_evidence_receipt(
         db.rollback()
         winner = db.scalar(
             select(ProductStrategyOfficeEvidenceReceipt).where(
-                ProductStrategyOfficeEvidenceReceipt.artifact_key == draft.artifact_key,
-                ProductStrategyOfficeEvidenceReceipt.file_sha256 == file_sha256,
+                ProductStrategyOfficeEvidenceReceipt.input_digest == input_digest,
             )
         )
         if winner is None:

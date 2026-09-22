@@ -1,0 +1,234 @@
+{
+  "schema_version": "anti-fomo-marketing-overview/v2",
+  "generated_at": "2026-09-22T11:13:07.443Z",
+  "renderer": {
+    "framework": "HyperFrames",
+    "version": "0.8.60",
+    "composition": "videos/anti-fomo-promo/index.html",
+    "fps": 30
+  },
+  "source_mode": "historical_demo_screenshot_montage",
+  "source_manifest": {
+    "path": "docs/assets/screenshots/screenshot-manifest.json",
+    "sha256": "2fadfce215e6ba6a0ceffb796ca9746510745be56c5065e304c1ec5fe79c7fc5",
+    "version": "1.9.1",
+    "release_tag": "v1.9.1+20260713",
+    "generated_at": "2026-07-13T12:34:05.482Z"
+  },
+  "source_screenshots": [
+    {
+      "path": "docs/assets/screenshots/home-signal-dashboard.png",
+      "sha256": "b66bd0f3b1f3cdf13681e45d3dec0f6f182e4ef651cd258f18c3d193a4d34efe"
+    },
+    {
+      "path": "docs/assets/screenshots/inbox-research-workspace.png",
+      "sha256": "cd74cde6bcf2dcc9dd607f495a5c596392d7a72c1ffab1b74e1f9488d362c764"
+    },
+    {
+      "path": "docs/assets/screenshots/research-compare-workspace.png",
+      "sha256": "c3848a496a1fd9ad1f4f2d8e207c24f45a8485d7f61b7bbb154573dc820d4162"
+    },
+    {
+      "path": "docs/assets/screenshots/knowledge-commercial-hub.png",
+      "sha256": "06da0ca35c79d52b8069ca0e5a61f5bbede3dd2d43028bd896979a167bfdc4a0"
+    },
+    {
+      "path": "docs/assets/screenshots/focus-session-workspace.png",
+      "sha256": "2c99b7d164fb94b1e39e2c237e0900ba162cd897f438089b1a738505c66174d1"
+    }
+  ],
+  "composition_sources": [
+    {
+      "path": "videos/anti-fomo-promo/index.html",
+      "sha256": "9a489fc394007d07763764d5acda070471d63541f361ed548502b31ee8a65c88"
+    },
+    {
+      "path": "videos/anti-fomo-promo/scenes.json",
+      "sha256": "308b7077032f6f90a19b9c5a1a68d506b1dbceacc4180c44fce860786d682ab9"
+    },
+    {
+      "path": "videos/anti-fomo-promo/frame.md",
+      "sha256": "37675f793507059e7dd4630d9f307a8c17ffdcdfe01944fe2341e1755132f91b"
+    },
+    {
+      "path": "videos/anti-fomo-promo/hyperframes.json",
+      "sha256": "ad5dadeef78a520800a9e5cdd27a92ff5ac37f11b6a07f611b6b52b9f8c79a17"
+    },
+    {
+      "path": "videos/anti-fomo-promo/package.json",
+      "sha256": "89e2cdf8fe699c94589af378e2b0eb00fa273edb3e76b5de072b26c55e1fbe39"
+    },
+    {
+      "path": "videos/anti-fomo-promo/BRIEF.md",
+      "sha256": "40713c56d6dad469554882971c9644f16ce29b86bbfb4d148d89805be0380b92"
+    },
+    {
+      "path": "videos/anti-fomo-promo/STORYBOARD.md",
+      "sha256": "4b8d74f6a747aafae77d053e0b6f90005acd168fd64ae8d477270e1ff32de5c1"
+    },
+    {
+      "path": "videos/anti-fomo-promo/SCRIPT.md",
+      "sha256": "217f9944261ad7201aed58dde3b2918c3bedb27c02a9f785ee2a76f72a97c43a"
+    },
+    {
+      "path": "videos/anti-fomo-promo/compositions/action.html",
+      "sha256": "575be26d60ea50e225cd389e131e31e6e8ac16356039301067d2e889ef7e94fd"
+    },
+    {
+      "path": "videos/anti-fomo-promo/compositions/compare.html",
+      "sha256": "be41b75a4a88fd8475a016c5371c811f07d31d1a810c654c867043685538f3fc"
+    },
+    {
+      "path": "videos/anti-fomo-promo/compositions/context.html",
+      "sha256": "3a89ce0263f031925483cc480ad3c1e12cad6f3b4ff519712c77bf84afa5ce94"
+    },
+    {
+      "path": "videos/anti-fomo-promo/compositions/research.html",
+      "sha256": "e345bbc15c360b3ee4b2fbfc3771c2a0efd1a36aa5ad22bf3ab3a2d6440b993e"
+    },
+    {
+      "path": "videos/anti-fomo-promo/compositions/signal.html",
+      "sha256": "eb1f1f992e3279b79b288ff916f55c969e093418bc22bf1f993a12c8eb678b76"
+    }
+  ],
+  "render_script": {
+    "path": "scripts/render_antifomo_marketing_overview.mjs",
+    "sha256": "7036caaf7c70dc55da40a1e684b32cfdebcb5aa3ac655e4ced55409f706f8cba"
+  },
+  "bundled_dependencies": [
+    {
+      "path": "videos/anti-fomo-promo/assets/gsap.min.js",
+      "sha256": "c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/IBMPlexMono-Bold.ttf",
+      "sha256": "5b2232ff598dd39860f606526399f64be06f0c286a638bad8a83e98c44c41ff6"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/IBMPlexMono-OFL.txt",
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/IBMPlexMono-Regular.ttf",
+      "sha256": "a7fdc993f9f0387caedba4e42521136fa97e4c0837ae6239bf0413ccf8af00c2"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/Montserrat-Black.ttf",
+      "sha256": "9d9bb42bdc0defdf103a4f41c4ec775c4bfc77014b0e2f4ecc69be874b10d58b"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/Montserrat-OFL.txt",
+      "sha256": "8b7141c03fa4f8d44e6345d5d4931709290f0f67875e452e95ac1fd3a027802e"
+    },
+    {
+      "path": "videos/anti-fomo-promo/assets/fonts/Montserrat-Regular.ttf",
+      "sha256": "84f3d3275dfb159dd311c61828fd754a82ec31c377120518e2cd3e7d34394e96"
+    }
+  ],
+  "audio": "deliberate_silence",
+  "live_workflow_recording": false,
+  "physical_device_capture": false,
+  "current_ui_claim": false,
+  "production_claim": false,
+  "release_approval_evidence": false,
+  "assets": [
+    {
+      "path": "docs/assets/marketing/antifomo-overview.mp4",
+      "sha256": "80c53678d03e3b8fd78cc054e940ec4edbd348823fb64cb8a1893109d9f69a96",
+      "size_bytes": 6659174,
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1920,
+            "height": 1080,
+            "avg_frame_rate": "30/1",
+            "nb_frames": "450"
+          }
+        ],
+        "format": {
+          "duration": "15.000000"
+        }
+      }
+    },
+    {
+      "path": "docs/assets/marketing/antifomo-overview.gif",
+      "sha256": "d32d3be90fab1338f37a8b640008ea8d8dfc6e798d2d5f2b8dbc345e198254a2",
+      "size_bytes": 3303320,
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "gif",
+            "width": 760,
+            "height": 428,
+            "avg_frame_rate": "25/3",
+            "nb_frames": "120"
+          }
+        ],
+        "format": {
+          "duration": "15.010000"
+        }
+      }
+    },
+    {
+      "path": "docs/assets/marketing/poster.png",
+      "sha256": "5548a6a7f11196fdf49b7f58f832373a83a393727e0d643ae02a71fe4db1ec92",
+      "size_bytes": 479145,
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "png",
+            "width": 1920,
+            "height": 1080,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {}
+      }
+    },
+    {
+      "path": "docs/assets/marketing/social-card.png",
+      "sha256": "0317793471f648010ee68168e1a94883234c72afed4acedeb5cbfc04969dda30",
+      "size_bytes": 244502,
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "png",
+            "width": 1200,
+            "height": 630,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {}
+      }
+    },
+    {
+      "path": "docs/assets/marketing/contact-sheet.jpg",
+      "sha256": "d76d91d198c1e756309f9f4e4ef7aaedf12108a646800e297df8bdba939d90bb",
+      "size_bytes": 126648,
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "mjpeg",
+            "width": 1920,
+            "height": 720,
+            "avg_frame_rate": "25/1"
+          }
+        ],
+        "format": {
+          "duration": "0.040000"
+        }
+      }
+    }
+  ]
+}

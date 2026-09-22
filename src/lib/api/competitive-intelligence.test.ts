@@ -47,7 +47,7 @@ describe("decision-context packet API client", () => {
     });
   });
 
-  it("uses the 2.10.3-2.11.7 iteration-program preview, persisted, and explicit initialize endpoints", async () => {
+  it("uses the 2.10.3-2.11.8 iteration-program preview, persisted, and explicit initialize endpoints", async () => {
     await getIterationProgramPreview();
     await getIterationProgram();
     await initializeIterationProgram();

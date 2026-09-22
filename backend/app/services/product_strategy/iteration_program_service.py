@@ -281,7 +281,7 @@ def _audit_definition() -> dict[str, Any]:
 
 
 def initialize_iteration_program(db: Session) -> dict[str, Any]:
-    """Explicitly materialize the fifteen-version plan; never authorizes execution.
+    """Explicitly materialize the sixteen-version plan; never authorizes execution.
 
     Existing human-owned rows and revisions are preserved.  The initializer has
     no network request, no Office/visual processing, no action runner and no

@@ -1,0 +1,21 @@
+flowchart TD
+  S[URL / WeChat / file / RSS] --> C[Capture + normalize URL]
+  C --> D{Duplicate?}
+  D -- yes --> R[Reuse an existing item]
+  D -- no --> N[Create source and item records]
+  R --> H[Health / freshness / recoverable batch state]
+  N --> H
+  H -->|available| T[Scoped retrieval + report generation]
+  H -->|failed| RETRY[Visible retry / replace source]
+  RETRY --> C
+  T --> V[Report citations / gaps / topic versions]
+  V --> CL[Claim / evidence relations + version comparison]
+  CL --> A[Architecture readiness + candidate deliverable]
+  A --> AR[Review records / HOLD / acceptance]
+  AR -->|return or missing evidence| B[Revise source / context / artifact]
+  B --> T
+  A --> X[Supported WorkTask export or callback]
+  X --> REC[Artifact revision / hash / receipt / audit handoff]
+  AR --> REC
+  LIMIT[Review records do not impose a universal gate on existing export or CLI paths]
+  X -. boundary .-> LIMIT

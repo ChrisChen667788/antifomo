@@ -16,7 +16,7 @@ def new_uuid() -> uuid.UUID:
 class ProductStrategyIteration(Base):
     """A versioned delivery-control record, not evidence that a feature shipped.
 
-    The 2.10.3–2.11.7 train is intentionally persisted as a reviewable program:
+    The 2.10.3–2.11.8 train is intentionally persisted as a reviewable program:
     implementation work, external evidence, acceptance, execution authority and
     release authority stay separate for every iteration.
     """
@@ -92,7 +92,7 @@ class ProductStrategyIterationRevision(Base):
 
 
 class ProductStrategyIterationInitializationAudit(Base):
-    """Explicit user-instruction trace for the fifteen-version control plane."""
+    """Explicit user-instruction trace for the sixteen-version control plane."""
 
     __tablename__ = "product_strategy_iteration_initialization_audits"
     __table_args__ = (

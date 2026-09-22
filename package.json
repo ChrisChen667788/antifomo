@@ -30,6 +30,8 @@
     "repo:screenshots": "bash scripts/capture_release_screenshots.sh",
     "repo:screenshots:capture": "node scripts/capture_repo_screenshots.mjs",
     "repo:competitive-evidence": "node scripts/capture_competitive_evidence.mjs",
+    "marketing:gif": "node scripts/render_antifomo_marketing_gif.mjs",
+    "marketing:overview": "node scripts/render_antifomo_marketing_overview.mjs",
     "wechat:reliability-benchmark": "backend/.venv311/bin/python scripts/wechat_collector_reliability_benchmark.py",
     "competitive:monitor": "node scripts/competitive_monitor.mjs",
     "competitive:monitor:test": "node --test scripts/competitive_monitor.test.mjs",

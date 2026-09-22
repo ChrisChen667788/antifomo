@@ -36,7 +36,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next-screenshots/types/**/*.ts",
-    ".next-screenshots/dev/types/**/*.ts"
+    ".next-screenshots/dev/types/**/*.ts",
+    ".next-iteration-diagnostics/types/**/*.ts",
+    ".next-iteration-diagnostics/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

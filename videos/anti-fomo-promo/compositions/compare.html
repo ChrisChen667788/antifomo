@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template><style>
+        @font-face {
+          font-family: "AntiFOMO Display";
+          font-style: normal;
+          font-weight: 400;
+          src: url("assets/fonts/Montserrat-Regular.ttf") format("truetype");
+        }
+        @font-face {
+          font-family: "AntiFOMO Display";
+          font-style: normal;
+          font-weight: 900;
+          src: url("assets/fonts/Montserrat-Black.ttf") format("truetype");
+        }
+        @font-face {
+          font-family: "AntiFOMO Mono";
+          font-style: normal;
+          font-weight: 400;
+          src: url("assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");
+        }
+        @font-face {
+          font-family: "AntiFOMO Mono";
+          font-style: normal;
+          font-weight: 700;
+          src: url("assets/fonts/IBMPlexMono-Bold.ttf") format("truetype");
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          color: #142b30;
+          font-family: "AntiFOMO Display", sans-serif;
+        }
+        .scene-layout {
+          position: absolute;
+          inset: 180px 96px 152px;
+          display: grid;
+          grid-template-columns: 680px 1fr;
+          gap: 42px;
+          align-items: center;
+        }
+        .copy {
+          align-self: center;
+        }
+        .eyebrow {
+          font-family: "AntiFOMO Mono", monospace;
+          font-size: 23px;
+          color: #126e65;
+          font-weight: 700;
+          letter-spacing: 1px;
+          margin-bottom: 32px;
+        }
+        .headline {
+          margin: 0;
+          font-size: 72px;
+          line-height: 1.08;
+          letter-spacing: -3px;
+          font-weight: 900;
+        }
+        .headline-line {
+          display: block;
+          max-width: 680px;
+          margin-bottom: 6px;
+        }
+        .body {
+          font-size: 30px;
+          line-height: 1.45;
+          font-weight: 400;
+          max-width: 610px;
+          margin: 34px 0 0;
+        }
+        .proof {
+          font-family: "AntiFOMO Mono", monospace;
+          font-size: 22px;
+          color: #126e65;
+          margin-top: 48px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .rule {
+          width: 60px;
+          height: 3px;
+          background: #126e65;
+          transform-origin: left center;
+        }
+        .visual {
+          width: 100%;
+          height: 660px;
+          border: 2px solid #cad8cf;
+          border-radius: 14px;
+          overflow: hidden;
+          background: #f7f9f4;
+          box-shadow: 0 18px 40px #142b3014;
+          display: flex;
+          flex-direction: column;
+        }
+        .window-bar {
+          height: 42px;
+          flex-shrink: 0;
+          background: #e2eae2;
+          display: flex;
+          align-items: center;
+          padding: 0 22px;
+          font-family: "AntiFOMO Mono", monospace;
+          font-size: 17px;
+          color: #425f62;
+        }
+        .viewport {
+          height: 618px;
+          width: 100%;
+          overflow: hidden;
+        }
+        .camera {
+          width: 100%;
+          height: 100%;
+          transform-origin: center center;
+        }
+        .image-inner {
+          height: 100%;
+          width: 100%;
+        }
+        .screenshot {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: left top;
+          display: block;
+        }
+        .scene-number {
+          position: absolute;
+          top: 155px;
+          right: 98px;
+          font-family: "AntiFOMO Mono", monospace;
+          font-size: 19px;
+          color: #425f62;
+        }
+      </style>
+      <div data-hf-id="hf-v421" id="root" data-composition-id="compare" data-width="1920" data-height="1080" data-duration="3">
+        <div data-hf-id="hf-b3xl" class="scene-number">03 / 05</div>
+        <div data-hf-id="hf-eahz" class="scene-layout">
+          <div data-hf-id="hf-bdx3" class="copy">
+            <div data-hf-id="hf-vbb8" class="eyebrow" id="compare-label">03 / SEE WHAT CHANGED</div>
+            <h1 data-hf-id="hf-3ubu" class="headline">
+              <span data-hf-id="hf-pewl" id="compare-line-0" class="headline-line">See the change.</span><span data-hf-id="hf-mgl1" id="compare-line-1" class="headline-line">Keep the context.</span>
+            </h1>
+            <p data-hf-id="hf-yn4a" class="body" id="compare-body">
+              Compare versions before you carry a claim forward.
+            </p>
+            <div data-hf-id="hf-0nwy" class="proof">
+              <span data-hf-id="hf-xphh" class="rule" id="compare-rule"></span><span data-hf-id="hf-4jif" id="compare-proof">Version comparison</span>
+            </div>
+          </div>
+          <div data-hf-id="hf-z298" class="visual" id="compare-visual">
+            <div data-hf-id="hf-k33r" class="window-bar">Compare / historical demo screenshot</div>
+            <div data-hf-id="hf-rhem" class="viewport">
+              <div data-hf-id="hf-u43t" class="camera" data-layout-allow-overflow="true" id="compare-camera">
+                <div data-hf-id="hf-cw8s" class="image-inner" id="compare-image-inner">
+                  <img data-hf-id="hf-ti2j" id="compare-image" class="screenshot" src="assets/research-compare-workspace.png" alt="Historical Anti-FOMO Compare screen">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+        {
+          const tl = gsap.timeline({ paused: true });
+          tl.fromTo(
+            "#compare-label",
+            { y: 22, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.25, ease: "power3.out" },
+            0,
+          );
+          tl.fromTo(
+            "#compare-line-0",
+            { y: 50 },
+            { y: 0, duration: 0.22, ease: "power4.out" },
+            0.12,
+          );
+          tl.fromTo(
+            "#compare-line-1",
+            { y: 36 },
+            { y: 0, duration: 0.18, ease: "power4.out" },
+            0.24,
+          );
+          tl.fromTo(
+            "#compare-body",
+            { y: 18, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.3, ease: "power2.out" },
+            0.32,
+          );
+          tl.fromTo(
+            "#compare-visual",
+            { x: 42, opacity: 0 },
+            { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" },
+            0.08,
+          );
+          tl.fromTo(
+            "#compare-rule",
+            { scaleX: 0 },
+            { scaleX: 1, duration: 0.3, ease: "power2.out" },
+            0.55,
+          );
+          tl.fromTo(
+            "#compare-proof",
+            { opacity: 0 },
+            { opacity: 1, duration: 0.2, ease: "none" },
+            0.55,
+          );
+          tl.fromTo(
+            "#compare-camera",
+            { scale: 1 },
+            { scale: 1.035, duration: 2.15, ease: "power1.inOut" },
+            0.55,
+          );
+          tl.fromTo(
+            "#compare-image-inner",
+            { x: 0, y: 0 },
+            { x: -4, y: -5, duration: 2.15, ease: "power1.inOut" },
+            0.55,
+          );
+          window.__timelines["compare"] = tl;
+        }
+      </script></template>
+  </body>
+</html>

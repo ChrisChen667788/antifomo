@@ -10,12 +10,12 @@ It focuses on work that is:
 
 ## Good first issue
 
-### 1. Add a Chinese contributor quickstart
+### 1. Review one diagram or demo caption for accessibility
 
-- Area: docs / onboarding
+- Area: docs / design / accessibility
 - Labels: `good first issue`
 - Why it matters:
-  - The current repository is approachable, but Chinese-speaking contributors would benefit from a faster local setup and release-check guide.
+  - Check one diagram at a narrow viewport and with a screen reader. Submit concrete text, contrast or layout fixes, keeping current and planned paths distinct.
 
 ## Medium scope roadmap items
 
@@ -27,6 +27,8 @@ It focuses on work that is:
 
 ## Implemented public work
 
+- [Chinese contributor quickstart](../CONTRIBUTING.zh-CN.md): local startup, contribution examples, relevant checks and evidence language.
+- [Marketing package](./open-source-launch-kit.md): bilingual copy, historical-UI montage, diagrams and reusable source assets.
 - [Visible data-source states](../src/lib/data-source-state.ts): Web Feed, Saved, and Item Detail share explicit live/degraded/empty/unavailable/demo language; the Mini Program mirrors it through [`miniapp/utils/data-source-state.js`](../miniapp/utils/data-source-state.js) and does not silently present local fixtures as live API data.
 - [WeChat collector reliability evidence](./wechat-collector-reliability-benchmark.md): accessibility-first navigation, localized fallback, route diagnostics, and a deterministic perceptual-dedupe before/after packet with explicit synthetic/live-device boundaries.
 - [`/competitive` evidence capture](./competitive-evidence-capture.md): repeatable desktop-browser and mobile-viewport PNG, GIF/MP4, manifest, and local browser-metric workflow.
@@ -37,6 +39,8 @@ It focuses on work that is:
 These entries describe checked-in implementation or documentation. They do not imply physical-device, customer, Office, production, or release acceptance.
 
 ## Triage notes
+
+Future WorkBuddy-related contributions should link one PR slice from the [2.12.0–2.21.0 engineering plan](./workbuddy-integration-plan-2026-09-18.md). The source-review [issue #10](https://github.com/ChrisChen667788/antifomo/issues/10) remains open while governed register observations require review; a partial WorkBuddy report does not close the other products' source gaps.
 
 When opening public issues, keep them:
 

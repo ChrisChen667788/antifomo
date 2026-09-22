@@ -59,7 +59,9 @@ jobs:
                 ["Fetched", String(report.summary.fetched_count)],
                 ["Fetch failures", String(report.summary.failed_count)],
                 ["Changed", String(report.summary.changed_count)],
-                ["Stale", String(report.summary.stale_count)],
+                ["Stale source observations", String(report.summary.stale_count)],
+                ["Baseline unset", String(report.summary.baseline_unset_count)],
+                ["Pending semantic reviews", String(report.summary.semantic_review_pending_count)],
                 ["Human review required", String(report.summary.review_required_count)],
               ])
               .write();
@@ -78,12 +80,14 @@ jobs:
               `Run: [${context.runId}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
               `Generated: \`${report.generated_at}\``,
               `Report digest: \`${report.report_digest}\``,
+              ...(report.review_packet ? [`Review packet: [source-by-source findings](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/${report.review_packet})`] : []),
               "",
               "| Product | Evidence | Change | Review reasons |",
               "| --- | --- | --- | --- |",
               reviewRows,
               "",
               "This is a review signal only. Vendor claims are not independent verification, and this workflow cannot update the roadmap, execute tools, accept artifacts, or approve a release.",
+              "Fresh source-observation dates do not renew historical claims or accept a changed baseline. Pending semantic reviews remain open even when the fetched content is unchanged.",
             ].join("\n");
 
             const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title \"${title}\"`;

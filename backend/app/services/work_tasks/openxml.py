@@ -296,6 +296,7 @@ def _docx_paragraph(
     align: str | None = None,
     color: str | None = None,
     size: int | None = None,
+    keep_next: bool = False,
 ) -> str:
     style_xml = f'<w:pStyle w:val="{style}"/>' if style else ""
     align_xml = f'<w:jc w:val="{align}"/>' if align else ""
@@ -304,7 +305,7 @@ def _docx_paragraph(
     size_xml = f'<w:sz w:val="{size}"/>' if size else ""
     return (
         "<w:p>"
-        f"<w:pPr>{style_xml}{align_xml}</w:pPr>"
+        f"<w:pPr>{style_xml}{align_xml}{'<w:keepNext/>' if keep_next else ''}</w:pPr>"
         "<w:r>"
         f"<w:rPr>{bold_xml}{color_xml}{size_xml}</w:rPr>"
         f"<w:t xml:space=\"preserve\">{_xml(text)}</w:t>"
@@ -314,15 +315,30 @@ def _docx_paragraph(
 
 
 def _docx_table(rows: list[list[str]], *, accent_first_row: bool = True) -> str:
+    # A4 printable width matches this compiler's section (11906 - 2 * 1120).
+    # Automatic sizing squeezed the two-digit index and split header labels
+    # across pages in the historical Word-export regression sample.
+    column_count = max((len(row) for row in rows), default=1)
+    numbered = bool(rows and rows[0] and rows[0][0] == "序号")
+    table_width = 9666
+    if column_count == 2:
+        widths = [960 if numbered else 2400, table_width - (960 if numbered else 2400)]
+    else:
+        widths = [table_width // column_count] * column_count
+        widths[-1] += table_width - sum(widths)
     cells: list[str] = []
     for row_index, row in enumerate(rows):
-        cells.append("<w:tr>")
-        for cell in row:
-            shading = '<w:shd w:fill="EAF3FF"/>' if accent_first_row and row_index == 0 else ""
+        is_header = accent_first_row and row_index == 0
+        cells.append(f"<w:tr><w:trPr><w:cantSplit/>{'<w:tblHeader/>' if is_header else ''}</w:trPr>")
+        for column_index in range(column_count):
+            cell = row[column_index] if column_index < len(row) else ""
+            shading = '<w:shd w:fill="EAF3FF"/>' if is_header else ""
+            is_index = numbered and column_index == 0
+            no_wrap = '<w:noWrap/>' if is_index else ''
             cells.append(
                 "<w:tc>"
-                f"<w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/>{shading}</w:tcPr>"
-                f"{_docx_paragraph(cell, bold=bool(accent_first_row and row_index == 0))}"
+                f'<w:tcPr><w:tcW w:w="{widths[column_index]}" w:type="dxa"/>{shading}{no_wrap}<w:vAlign w:val="center"/></w:tcPr>'
+                f"{_docx_paragraph(cell, bold=is_header, align='center' if is_index else None, keep_next=is_header)}"
                 "</w:tc>"
             )
         cells.append("</w:tr>")
@@ -330,7 +346,7 @@ def _docx_table(rows: list[list[str]], *, accent_first_row: bool = True) -> str:
         "<w:tbl>"
         "<w:tblPr>"
         "<w:tblStyle w:val=\"TableGrid\"/>"
-        "<w:tblW w:w=\"0\" w:type=\"auto\"/>"
+        f'<w:tblW w:w="{table_width}" w:type="dxa"/>'
         "<w:tblBorders>"
         "<w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"CBD5E1\"/>"
         "<w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"CBD5E1\"/>"
@@ -339,7 +355,11 @@ def _docx_table(rows: list[list[str]], *, accent_first_row: bool = True) -> str:
         "<w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"CBD5E1\"/>"
         "<w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"CBD5E1\"/>"
         "</w:tblBorders>"
+        '<w:tblLayout w:type="fixed"/>'
+        '<w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:left w:w="120" w:type="dxa"/>'
+        '<w:bottom w:w="100" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar>'
         "</w:tblPr>"
+        + '<w:tblGrid>' + ''.join(f'<w:gridCol w:w="{width}"/>' for width in widths) + '</w:tblGrid>'
         + "".join(cells)
         + "</w:tbl>"
     )

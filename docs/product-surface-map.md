@@ -1,34 +1,51 @@
-# Anti-FOMO Product Surface Map
+# Anti-FOMO 产品界面与工作流地图
 
-Anti-FOMO is one workflow with several entry points, not six disconnected products. This matrix helps a new user choose the correct surface and helps a contributor find the first code or documentation boundary to inspect.
+Anti-FOMO 是一条研究到行动的工作流，拥有多个入口和复核表面。每个表面都说明输入、输出和证据边界，避免把 Demo、外部桥接和客户交付混为一谈。
 
-## Comparison matrix
+## 主链路
 
-| Surface | Primary job | Entry point | Typical input -> output | State and provenance cues | First place to inspect |
+`采集 → 清理 → 研究 → 对比 → 决策上下文 → 方案交付 → 跟进行动`
+
+| 表面 | 主要工作 | 入口 | 输入 → 输出 | 复核提示 | 代码起点 |
 | --- | --- | --- | --- | --- | --- |
-| Collector | Bring web, WeChat, file, newsletter, RSS, and transcript signals into a recoverable intake path. | Web: [`/collector`](../src/app/collector/page.tsx) | URL, file, screenshot, source config -> item, source-health diagnostic, retry/export record. | Show the collection route, body/source status, retries, source health, and whether OCR or another fallback was used. | [`backend/app/api/collector_operations.py`](../backend/app/api/collector_operations.py), [`scripts/`](../scripts/) |
-| Research workspace | Turn admitted source material into an evidence-aware report, comparisons, and reviewable delivery context. | Web: [`/research`](../src/app/research/page.tsx) | Research question + scoped sources -> report, evidence diagnostics, topic version, watchlist/archive. | Report and retrieval surfaces distinguish source/evidence readiness from formal delivery approval. | [`src/components/research/`](../src/components/research/), [`backend/app/api/research.py`](../backend/app/api/research.py) |
-| Focus | Reserve a bounded working session and return its results to the same research loop. | Web: [`/focus`](../src/app/focus/page.tsx) | Goal + duration -> session state, collector handoff, summary and follow-up. | Local timer, connected collector, and recoverable session state must remain visible rather than silently implying a completed backend action. | [`src/components/focus/`](../src/components/focus/), [`src/lib/focus-runtime-model.ts`](../src/lib/focus-runtime-model.ts) |
-| Action cards and delivery outputs | Convert reviewed research into next-step material for owners and stakeholders. | Web: Research and [`/session-summary`](../src/app/session-summary/page.tsx) | Report/session -> action cards, briefs, follow-up draft, watchlist digest, formal-export candidate. | An action card is a proposal or task aid; it is not proof of task execution, customer acceptance, or release approval. | [`src/lib/research-action-cards.ts`](../src/lib/research-action-cards.ts), [`src/components/research/research-action-cards-panel.tsx`](../src/components/research/research-action-cards-panel.tsx) |
-| WeChat mini program | Provide mobile-side capture, review, focus, and knowledge access when the Mini Program environment is available. | [`miniapp/`](../miniapp/) | Mobile capture or feedback -> API request, offline queue, visible local/demo fallback, sync attempt. | The Mini Program explicitly labels local demo/mock mode and queued/offline actions; it cannot itself run a 24x7 desktop WeChat collector. | [`miniapp/README.md`](../miniapp/README.md), [`miniapp/pages/collector/`](../miniapp/pages/collector/) |
-| Browser extension | Send the currently viewed browser page into the Anti-FOMO collection path. | [`browser-extension/chrome/`](../browser-extension/chrome/) | Current browser page -> quick-send collection request. | The extension is a collection entry point, not a substitute for source validation or research acceptance. | [`browser-extension/README.md`](../browser-extension/README.md), [`browser-extension/chrome/manifest.json`](../browser-extension/chrome/manifest.json) |
+| Collector | 收集网页、微信、文件、RSS 与 transcript | `/collector`、扩展、Mini Program | URL/文件/来源配置 → 条目、批次、来源健康 | 显示来源状态、重试与 OCR fallback；不代表来源内容已核实 | `backend/app/api/collector_*.py` |
+| Inbox | 把条目变成研究问题 | `/inbox` | 条目/关键词/目标 → 报告任务和交付候选 | 先看范围、来源和缺口，再导出 | `src/components/inbox/` |
+| Research Center | 管理主题、检索、档案与日常研究 | `/research` | 研究问题 + 允许来源 → 报告、主题版本、watchlist | 报告引用和 retrieval 状态不等于正式批准 | `src/components/research/` |
+| Compare | 观察版本与官方来源变化 | `/research/compare`、`/competitive` | 快照/来源寄存器 → diff、stale/change、复核队列 | 厂商声明保持 `vendor_claim`，不会自动改路线图 | `src/components/competitive-intelligence/` |
+| Decision Studio | 把证据放入决策上下文 | `/studio` | 主张、约束、假设 → 决策、ADR、知识空间与交付草稿 | 需要审阅者确认；本地对象不是客户签字 | `backend/app/api/decision_studio.py` |
+| Product Strategy | 管理竞品、迭代卡与证据门禁 | `/competitive` | 官方观察/路线卡/操作证据 → revision、HOLD、交接索引 | `release-readiness` 与生产授权单独存在 | `backend/app/api/product_strategy*.py` |
+| Architecture workbench | 准备方案架构讨论 | Inbox / report card | 研究报告 → 架构分层、NFR、依赖、风险、问题和验证动作 | 方案是可讨论草稿，须结合客户现状复核 | `backend/app/services/delivery/solution_architecture.py` |
+| Focus | 在限定时间内处理和总结 | `/focus` | 目标 + 工作会话 → summary、reading list、follow-up | 本地计时器/采集器状态不可冒充后台任务完成 | `src/components/focus/` |
+| Knowledge / Commercial Hub | 保存知识并连接账户与机会 | `/knowledge`、`/knowledge/accounts` | 研究/条目 → 知识卡、账户、机会、review queue | 商业价值字段是研究输入，不是销售预测承诺 | `backend/app/api/knowledge.py` |
+| Tasks / WorkBuddy bridge | 导出、回调或 CLI 委派 | `/settings`、Focus、Session Summary | task payload → WorkTask、artifact、callback | webhook 可执行支持的导出任务；未配置 secret 时跳过签名校验；CodeBuddy CLI 是可选桥接 | `backend/app/api/workbuddy.py` |
+| Delivery evidence | 查看修订、Office/视觉收据和交接索引 | Product Strategy panels | artifact revision → receipt、diff、audit handoff | receipt 不是人工或客户验收 | `backend/app/services/product_strategy/` |
+| Mini Program / Extension | 移动入口和浏览器快速发送 | `miniapp/`、`browser-extension/` | 捕获/反馈 → API 请求、离线队列或本地 fallback | 明确显示 demo/offline；不能单独运行桌面采集器 | 各自 README |
 
-## Handoff chain
+## 状态语言
 
-1. Use **Collector** or the **browser extension** to create an item with a traceable intake path.
-2. Review it in the web workspace or **mini program**, where an unavailable backend or local demo path should be shown explicitly.
-3. Use **Research** to form a source-aware report and compare changes over time.
-4. Use **Focus** and **action cards** to turn an accepted next step into a bounded work session or delivery draft.
-5. Treat formal delivery, Office exports, external automation, and release promotion as separately gated outcomes.
-
-## Shared state language
-
-| User-facing state | Intended meaning |
+| 状态 | 意义 |
 | --- | --- |
-| Live/API-backed | The currently displayed record came from a reachable API response. It still may require review or evidence validation. |
-| Empty/no real data | No usable record was returned. The web feed does not silently replace this state with demo cards. |
-| Local demo/mock | A local fixture or fallback is being shown; the Mini Program presents this as a warning rather than a real sync. |
-| Degraded/recovering | A collector, source, retrieval, or session path needs retry, clarification, or operator review. |
-| Evidence-gated/HOLD | A template, local test, or preview exists, but required Office, visual, human, external, or release evidence is still absent. |
+| `live/api-backed` | 当前内容来自可访问 API，但仍可能需要证据审阅 |
+| `empty` | 没有可用记录；界面不应静默填入 Demo 卡片 |
+| `local-demo` | 使用本地 fixture 或 mock fallback，不能写成真实同步 |
+| `degraded/recovering` | 采集、检索或任务需要重试、澄清或操作员处理 |
+| `evidence-gated/HOLD` | 本地代码或预览存在，但外部、Office、视觉、人工或发布证据未齐 |
+| `executing/bridge` | 已把任务交给本地 webhook/CLI/gateway 桥接；结果与批准边界须单独查看 |
 
-This map is an orientation guide, not an assertion that every surface has production authorization. For current evidence and release boundaries, read the [public roadmap](./public-roadmap.md) and the versioned product-strategy documents linked there.
+## 典型交接
+
+1. 从 Collector、扩展或 Mini Program 进入一条来源，确认来源状态和权限。
+2. 在 Inbox 形成问题和范围，检查报告的引用与证据缺口。
+3. 在 Research/Compare/Competitive 中查看历史变化和官方来源状态。
+4. 将可用结论送入 Decision Studio 与架构工作台，补齐假设、依赖、NFR 和验证动作。
+5. 通过 Focus、行动卡或 WorkTask 准备下一步；任何外部写入、发送或发布都沿其实际桥接和审批边界记录。
+
+## 代码与图
+
+- API router 总入口：`backend/app/main.py`。
+- 前端路由：`src/app/`。
+- [架构图](./assets/antifomo-control-plane.svg) / [Mermaid 源文件](./diagrams/architecture.mmd)。
+- [数据流图](./assets/dataflow.svg) / [Mermaid 源文件](./diagrams/dataflow.mmd)。
+- [研究工作流图](./assets/workflow.svg) / [Mermaid 源文件](./diagrams/research-delivery.mmd)。
+- [发布证据门禁](./diagrams/release-gates.mmd)：独立于导出、回调和 CLI 执行路径。
+- 当前版本和证据词汇：[current-product-status.md](./current-product-status.md)。

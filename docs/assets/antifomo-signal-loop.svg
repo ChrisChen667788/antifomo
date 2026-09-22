@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 650" role="img" aria-labelledby="title desc">
+  <title id="title">Anti-FOMO signal loop</title>
+  <desc id="desc">Animated conceptual flow from web and WeChat signals through an evidence lens to reports, architecture and actions.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f5f8f6"/><stop offset="1" stop-color="#e7efec"/></linearGradient>
+    <linearGradient id="lens" x1="0" x2="1"><stop stop-color="#0b8b78" stop-opacity=".12"/><stop offset=".5" stop-color="#fff" stop-opacity=".72"/><stop offset="1" stop-color="#0b8b78" stop-opacity=".2"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#12203a" flood-opacity=".14"/></filter>
+    <path id="pathA" d="M405 272 C540 272 580 180 700 180 S870 210 1005 220"/>
+    <path id="pathB" d="M405 325 C550 325 588 325 700 325 S860 325 1005 325"/>
+    <path id="pathC" d="M405 378 C540 378 580 470 700 470 S870 440 1005 430"/>
+    <style>
+      .ink{fill:#12203a}.muted{fill:#536477}.accent{fill:#087e6d}.small{font:500 22px ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:.02em}.label{font:700 30px ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}.title{font:800 66px ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:-.04em}.mono{font:600 18px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+      .flow{fill:none;stroke:#78a69e;stroke-width:3;stroke-dasharray:10 14;opacity:.7}.dot{fill:#0b8b78;filter:url(#shadow)}
+    </style>
+  </defs>
+  <rect width="1600" height="650" rx="34" fill="url(#bg)"/>
+  <text x="80" y="112" class="title ink">From noise to informed decisions.</text>
+  <text x="82" y="156" class="small muted">让信息成为有据可循的判断 · Collect / Research / Compare / Act</text>
+  <text x="82" y="205" class="mono accent">ANTI-FOMO / EVIDENCE-AWARE RESEARCH WORKSPACE</text>
+  <g transform="translate(78 250)">
+    <rect width="300" height="188" rx="24" fill="#fff" opacity=".78" stroke="#c4d6d1"/>
+    <text x="28" y="48" class="label ink">Signals</text><text x="28" y="80" class="small muted">网页 · 微信 · 文件</text>
+    <g fill="#12203a" opacity=".75"><circle cx="48" cy="123" r="9"/><circle cx="94" cy="145" r="6"/><circle cx="150" cy="116" r="12"/><circle cx="208" cy="144" r="8"/><circle cx="252" cy="112" r="5"/></g>
+    <g stroke="#0b8b78" stroke-width="3" opacity=".6"><path d="M38 160l38-24 44 16 48-33 53 26" fill="none"/><path d="M46 101l44 23 62-14 46 25 54-24" fill="none"/></g>
+  </g>
+  <g opacity=".95"><path class="flow" d="M405 272 C540 272 580 180 700 180 S870 210 1005 220"/><path class="flow" d="M405 325 C550 325 588 325 700 325 S860 325 1005 325"/><path class="flow" d="M405 378 C540 378 580 470 700 470 S870 440 1005 430"/></g>
+  <g fill="none" stroke="#0b8b78" stroke-width="5" filter="url(#shadow)"><ellipse cx="760" cy="325" rx="142" ry="208" fill="url(#lens)" transform="rotate(-16 760 325)"/><ellipse cx="760" cy="325" rx="112" ry="176" stroke="#b9d5ce" stroke-width="2" transform="rotate(-16 760 325)"/></g>
+  <text x="679" y="320" class="label ink">Evidence</text><text x="694" y="355" class="small muted">lens</text><text x="665" y="390" class="mono accent">SOURCE · VERSION · REVIEW</text>
+  <g transform="translate(1025 170)">
+    <rect width="430" height="310" rx="28" fill="#12203a" filter="url(#shadow)"/>
+    <text x="34" y="54" class="label" fill="#f6fbf9">Deliverables</text><text x="34" y="88" class="small" fill="#a9c6bf">研报 · 架构 · 动作</text>
+    <g transform="translate(34 120)"><rect width="162" height="78" rx="12" fill="#f5f8f6"/><text x="18" y="34" class="small ink">Research</text><text x="18" y="60" class="mono accent">CITATIONS</text></g>
+    <g transform="translate(218 120)"><rect width="162" height="78" rx="12" fill="#d9eee9"/><text x="18" y="34" class="small ink">Blueprint</text><text x="18" y="60" class="mono accent">ARCHITECTURE</text></g>
+    <g transform="translate(34 216)"><rect width="346" height="58" rx="12" fill="#21475b"/><text x="18" y="37" class="small" fill="#effaf6">Focus / Action · human review required</text></g>
+  </g>
+  <g><circle class="dot" r="8"><animateMotion dur="4.4s" repeatCount="indefinite" path="M405 272 C540 272 580 180 700 180 S870 210 1005 220"/></circle><circle class="dot" r="8"><animateMotion dur="4.4s" begin="1.45s" repeatCount="indefinite" path="M405 325 C550 325 588 325 700 325 S860 325 1005 325"/></circle><circle class="dot" r="8"><animateMotion dur="4.4s" begin="2.9s" repeatCount="indefinite" path="M405 378 C540 378 580 470 700 470 S870 440 1005 430"/></circle></g>
+  <text x="82" y="585" class="small muted">概念动效：路径表示信息如何被组织，不表示线上实时吞吐或生产 SLA。</text>
+</svg>

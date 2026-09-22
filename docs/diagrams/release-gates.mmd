@@ -1,0 +1,10 @@
+flowchart LR
+  L[Local implementation] --> D[Demo / fixture]
+  D --> E[Evidence-gated]
+  E --> H[Human acceptance]
+  H --> C[Customer pilot acceptance]
+  C --> P[Production authorization]
+  E -. missing evidence .-> HOLD[HOLD / no promotion]
+  H -. failed review .-> HOLD
+  P --> R[Observe / rollback / revoke]
+  R --> HOLD
