@@ -7,7 +7,7 @@ This is the canonical status page for public documentation. The repository is an
 ## Current line
 
 - **Implemented development line:** `2.10.3–2.11.8-development`.
-- **2.12.0 status:** PR-A Task Envelope schema/state is implemented on the current development branch as `local_implementation`; it is not yet a merged or released 2.12.0 line. The execution flag defaults off, and PR-A has no executor or callback sender.
+- **2.12.0 status:** PR-A Task Envelope schema/state is tracked in [GitHub PR #12](https://github.com/ChrisChen667788/antifomo/pull/12) as `local_implementation`. Merging this code does not make it a released 2.12.0 line. The execution flag defaults off, and PR-A has no executor or callback sender.
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
 - **Evidence control plane and launch kit:** [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11). Its GitHub status records the merge outcome; source-code integration into `main` is separate from release or production approval.
