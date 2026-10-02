@@ -46,7 +46,7 @@ The aim is less time reconstructing context and a clearer handoff between resear
 
 [Watch the 15-second silent overview](./docs/assets/marketing/antifomo-overview.mp4) · [Poster](./docs/assets/marketing/poster.png) · [Demo script and asset provenance](./docs/marketing/DEMO-SCRIPT.md)
 
-The overview is a montage of the historical v1.9.1 local demo screenshots. Its motion and captions explain the product story; they do not record a current end-to-end run or prove 2.11.8 acceptance. The opening lens artwork is a brand illustration.
+The overview is a montage of historical v1.9.1 local demo screenshots. Its motion and captions explain the product story; they do not record a current end-to-end run or prove release acceptance. The opening lens artwork is a brand illustration.
 
 ### 1. Give the collection backlog a next step
 
@@ -71,7 +71,7 @@ Prepare research documents, solution outlines, feasibility-study or proposal dra
   </tr>
 </table>
 
-These are historical captures from the [v1.9.1 screenshot set](./docs/assets/screenshots/screenshot-manifest.json), not screenshots of every current feature. The [screenshot gallery](./docs/feature-screenshot-coverage.md) and [current status](./docs/current-product-status.md) retain their capture dates and limitations.
+These four images come from the current [34-image local browser capture](./docs/assets/screenshots/screenshot-manifest.json), generated from source commit `10b536c` with an isolated database copy. Automated browser diagnostics passed; attributable human visual acceptance remains pending. The [screenshot gallery](./docs/feature-screenshot-coverage.md) and [current status](./docs/current-product-status.md) retain the full capture scope and limitations.
 
 ## How it fits together
 

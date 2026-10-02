@@ -14,7 +14,7 @@ A solution architect's journey: **collect a useful signal → build a view → c
 
 ## What this asset proves
 
-The video is an editable **historical demo screenshot montage**. All five screenshots come from the repository's [v1.9.1 screenshot manifest](../assets/screenshots/screenshot-manifest.json), generated at `2026-07-13T12:34:05.482Z`. Every shot carries `Demo UI · historical captures · v1.9.1 / 2026-07-13`. The new render timestamp is recorded separately in the asset manifest.
+The video is an editable **historical demo screenshot montage**. Its five frozen source images are bound to the archived [v1.9.1 screenshot manifest](../../videos/anti-fomo-promo/assets/screenshot-manifest-v1.9.1.json), generated at `2026-07-13T12:34:05.482Z`; refreshing the current product gallery does not change this older montage. Every shot carries `Demo UI · historical captures · v1.9.1 / 2026-07-13`. The render timestamp is recorded separately in the asset manifest.
 
 It is not a live recording of one completed workflow, a claim that the UI is current, proof of production acceptance, a customer success story, or a demonstration of the planned WorkBuddy features. The screenshots retain their original product data and display states; no mouse click, customer endorsement, or ROI metric has been fabricated.
 

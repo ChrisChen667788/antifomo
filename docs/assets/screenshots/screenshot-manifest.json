@@ -1,7 +1,31 @@
 {
-  "version": "1.9.1",
-  "release_tag": "v1.9.1+20260713",
-  "generated_at": "2026-07-13T12:34:05.482Z",
+  "schema_version": "anti-fomo-product-screenshots/v2",
+  "implementation_line": "2.12.0-pr-a-local-implementation",
+  "package_version": "2.9.5",
+  "release_tag": null,
+  "release_claim": false,
+  "evidence_tier": "local_browser_capture",
+  "generated_at": "2026-10-02T05:13:00.653Z",
+  "source_commit": "10b536cb0e56f53a294305124f89cfb3998d5695",
+  "source_working_tree_dirty": false,
+  "declared_data_mode": "isolated_copy_of_local_demo_db",
+  "actual_data_origins": {
+    "frontend": "http://127.0.0.1:63640",
+    "api": "http://127.0.0.1:18080",
+    "workspace_endpoint": "/api/research/workspace",
+    "knowledge_endpoint": "/api/knowledge?limit=2"
+  },
+  "fixture_selection_digest": "0c938f13656c1d191267b0d1ca45d3c9451ac5364d14a6816089cf224528e100",
+  "fixture_counts": {
+    "tracking_topics": 1,
+    "compare_snapshots": 1,
+    "markdown_archives": 1,
+    "selected_knowledge_entries": 2
+  },
+  "browser_version": "Chrome/154.0.8037.93",
+  "browser_executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "human_visual_review_status": "pending",
+  "human_visual_review_receipt": null,
   "viewport": {
     "width": 1600,
     "height": 1100,
@@ -10,368 +34,793 @@
   "quality_gate": {
     "min_file_size_bytes": 40000,
     "runtime_overlay_check": true,
-    "expected_screenshot_count": 30,
-    "accepted_screenshot_count": 30
+    "browser_diagnostics_check": true,
+    "critical_content_check": true,
+    "expected_primary_surface_count": 17,
+    "expected_screenshot_count": 34,
+    "accepted_screenshot_count": 34
   },
   "screenshots": [
     {
       "feature": "Home signal dashboard",
       "route": "/",
       "theme": "light",
-      "file": "docs/assets/screenshots/home-signal-dashboard.png",
+      "file": "home-signal-dashboard.png",
+      "repository_file": "docs/assets/screenshots/home-signal-dashboard.png",
+      "sha256": "6f6a64446fb34d53a4228f915aa140ce67428d398920aed23e086d194ad06be5",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 552556
+        "actual_file_size_bytes": 583699,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Inbox research workspace",
       "route": "/inbox",
       "theme": "light",
-      "file": "docs/assets/screenshots/inbox-research-workspace.png",
+      "file": "inbox-research-workspace.png",
+      "repository_file": "docs/assets/screenshots/inbox-research-workspace.png",
+      "sha256": "2925b5ad9b9c580e206eb01f4161dec741d266f0e25a3050e701f0b3b87e249c",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 283475
+        "actual_file_size_bytes": 259493,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Saved read-later workspace",
       "route": "/saved",
       "theme": "light",
-      "file": "docs/assets/screenshots/saved-readlater-workspace.png",
+      "file": "saved-readlater-workspace.png",
+      "repository_file": "docs/assets/screenshots/saved-readlater-workspace.png",
+      "sha256": "0e14373a66943a8dd17e5477eb622e99a2893ac085615a4ee88a1c3102ceed1c",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Saved-item and read-later review surface with topic and scoring context.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 683256
+        "actual_file_size_bytes": 634262,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Focus session workspace",
       "route": "/focus",
       "theme": "light",
-      "file": "docs/assets/screenshots/focus-session-workspace.png",
+      "file": "focus-session-workspace.png",
+      "repository_file": "docs/assets/screenshots/focus-session-workspace.png",
+      "sha256": "3b3d1e9297520b2af613e8a83f126eac7bc1e93480a1bbeb7bc4498707041d69",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Focused execution timer with headless-source-first collector startup and WeChat PC supplementary harvesting.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 443077
+        "actual_file_size_bytes": 364112,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Session summary workspace",
       "route": "/session-summary",
       "theme": "light",
-      "file": "docs/assets/screenshots/session-summary-workspace.png",
+      "file": "session-summary-workspace.png",
+      "repository_file": "docs/assets/screenshots/session-summary-workspace.png",
+      "sha256": "7b69aaffb3fa88d6052571e1f01bb89d9676a6593b166f3018f5ecb1536c0f94",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Session metrics, markdown summary, reading list, and follow-up draft workspace.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 450049
+        "actual_file_size_bytes": 556326,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Collector operations workspace",
       "route": "/collector",
       "theme": "light",
-      "file": "docs/assets/screenshots/collector-operations-workspace.png",
+      "file": "collector-operations-workspace.png",
+      "repository_file": "docs/assets/screenshots/collector-operations-workspace.png",
+      "sha256": "55630609c0f57121ffe03050d388e03eb205ea70be44e3f5abd426779c0a9ac3",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Desktop collector, source health diagnostics, coverage rates, OCR backfill, pending queue, and daily export operations panel.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 418674
+        "actual_file_size_bytes": 373761,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Settings and tuning workspace",
       "route": "/settings",
       "theme": "light",
-      "file": "docs/assets/screenshots/settings-tuning-workspace.png",
+      "file": "settings-tuning-workspace.png",
+      "repository_file": "docs/assets/screenshots/settings-tuning-workspace.png",
+      "sha256": "b44cb1765ddf40845b7b24e949f839b95bd7d51360f0b0f248e5edd5339f4994",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Preference, WorkBuddy, collector, and recommender tuning controls.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 471847
+        "actual_file_size_bytes": 446703,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge library workspace",
       "route": "/knowledge",
       "theme": "light",
-      "file": "docs/assets/screenshots/knowledge-library-workspace.png",
+      "file": "knowledge-library-workspace.png",
+      "repository_file": "docs/assets/screenshots/knowledge-library-workspace.png",
+      "sha256": "e6525045432ab7c93e39b6d0c0c29524ab3f92c877ede778f47a458fbbc257a8",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Knowledge list, commercial dashboard, account signals, and saved intelligence cards.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 460806
+        "actual_file_size_bytes": 449628,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge commercial hub",
       "route": "/knowledge/accounts",
       "theme": "light",
-      "file": "docs/assets/screenshots/knowledge-commercial-hub.png",
+      "file": "knowledge-commercial-hub.png",
+      "repository_file": "docs/assets/screenshots/knowledge-commercial-hub.png",
+      "sha256": "432be3e88a74bdd630ec6f740d14e5363c2884452ee1e95d65842bb377d97965",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Account intelligence, opportunity context, review queues, and commercial follow-up actions.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 449103
+        "actual_file_size_bytes": 419424,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge merge workflow",
-      "route": "/knowledge/merge?ids=bc3375d5-1cac-4f63-b1dd-63a368542723,8c98db3b-a0e2-4452-83c5-59b63a28dccf&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
+      "route": "/knowledge/merge?ids=9d0dc26a-d0d5-4cfc-a061-1309bc96ba8b,4b4f0f7c-e7c0-4288-936a-5362512bfcef&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
       "theme": "light",
-      "file": "docs/assets/screenshots/knowledge-merge-workflow.png",
+      "file": "knowledge-merge-workflow.png",
+      "repository_file": "docs/assets/screenshots/knowledge-merge-workflow.png",
+      "sha256": "4565e4c0010dd40fd6fd28b33e1e3481145cc0730252461bca908fffe325bfc1",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Knowledge-card merge preview, inherited state checks, and target-title workflow.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 432129
+        "actual_file_size_bytes": 482138,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research center dashboard",
       "route": "/research",
       "theme": "light",
-      "file": "docs/assets/screenshots/research-center-dashboard.png",
+      "file": "research-center-dashboard.png",
+      "repository_file": "docs/assets/screenshots/research-center-dashboard.png",
+      "sha256": "46d6df44c3c70d967b71f9d5c32302339124ed7b0d1804158b42257ba8599ee4",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 496998
+        "actual_file_size_bytes": 416253,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
+      }
+    },
+    {
+      "feature": "Competitive evidence ledger",
+      "route": "/competitive",
+      "theme": "light",
+      "file": "competitive-evidence-ledger.png",
+      "repository_file": "docs/assets/screenshots/competitive-evidence-ledger.png",
+      "sha256": "f1c496ac9891b64ea519c6e697d67f7960ca40427cc5b061f3ec1a59843aca0d",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
+      "description": "Competitive evidence ledger separating vendor claims, local implementation, acceptance gates, and release status.",
+      "quality_gate": {
+        "automated_status": "passed",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 385591,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
+      }
+    },
+    {
+      "feature": "Decision Studio workspace",
+      "route": "/studio",
+      "theme": "light",
+      "file": "decision-studio-workspace.png",
+      "repository_file": "docs/assets/screenshots/decision-studio-workspace.png",
+      "sha256": "13d5752eb9f0ebde7edeb5efa3a1989fc5ffaa8fa98a665d455f9ba05566d70b",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
+      "description": "Evidence-bound notebook, claim graph, document governance, and decision-program workspace.",
+      "quality_gate": {
+        "automated_status": "passed",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 344345,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research topic workspace",
       "route": "/research/topics/f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
       "theme": "light",
-      "file": "docs/assets/screenshots/research-topic-workspace.png",
+      "file": "research-topic-workspace.png",
+      "repository_file": "docs/assets/screenshots/research-topic-workspace.png",
+      "sha256": "4106b8f8b33839d66a80e635972d050ca85e6c2cf2ea7d5227154d1f75dfca22",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Topic-version workspace for evidence density, follow-up impact, and long-running changes.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 431131
+        "actual_file_size_bytes": 436896,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "dom_stable_with_background_network"
       }
     },
     {
       "feature": "Research compare workspace",
       "route": "/research/compare?snapshot=2888d87f-4dd2-4363-b978-4d22d9951111&topicId=f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
       "theme": "light",
-      "file": "docs/assets/screenshots/research-compare-workspace.png",
+      "file": "research-compare-workspace.png",
+      "repository_file": "docs/assets/screenshots/research-compare-workspace.png",
+      "sha256": "0a4c95ed323a79bbbf67d5b7e40550bb4902063b4a48393e1681c72f0e1a3f33",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Multi-version comparison matrix for account, competitor, evidence, and delivery deltas.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 499977
+        "actual_file_size_bytes": 463207,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "dom_stable_with_background_network"
       }
     },
     {
       "feature": "Research experiment orchestration",
       "route": "/research",
       "theme": "light",
-      "file": "docs/assets/screenshots/research-experiment-control-plane.png",
+      "file": "research-experiment-control-plane.png",
+      "repository_file": "docs/assets/screenshots/research-experiment-control-plane.png",
+      "sha256": "75cf215ee6f0421d5331a7e23be08f501f97be1903a956081252083e02349cc0",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 304104
+        "actual_file_size_bytes": 299311,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research archive viewer",
       "route": "/research/archives/07d25909-3590-4ff4-ab2b-2a8b7e674306",
       "theme": "light",
-      "file": "docs/assets/screenshots/research-archive-viewer.png",
+      "file": "research-archive-viewer.png",
+      "repository_file": "docs/assets/screenshots/research-archive-viewer.png",
+      "sha256": "021d9b9b08e7270897a7bb6ba82239d4607e2df1486134fca99f99a39b6312af",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Historical Markdown archive viewer with delivery digest, section links, and version context.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 450048
+        "actual_file_size_bytes": 493979,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Home signal dashboard",
       "route": "/",
       "theme": "dark",
-      "file": "docs/assets/screenshots/home-signal-dashboard-dark.png",
+      "file": "home-signal-dashboard-dark.png",
+      "repository_file": "docs/assets/screenshots/home-signal-dashboard-dark.png",
+      "sha256": "354c92c0fb4cc329c54fdc6b2e6e916ec19922868a7ef49854dae250743ee3d3",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Feed triage homepage with WeChat Favorites import, latest-batch review, and quick route switching. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 544065
+        "actual_file_size_bytes": 593653,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Inbox research workspace",
       "route": "/inbox",
       "theme": "dark",
-      "file": "docs/assets/screenshots/inbox-research-workspace-dark.png",
+      "file": "inbox-research-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/inbox-research-workspace-dark.png",
+      "sha256": "b7f10f435e89f6398043d75b819035feb7d219a6da77f79267edd7ee1d07a928",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Intake, keyword research, report generation, architecture readiness, architect workbench review, and formal delivery export workspace. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 293487
+        "actual_file_size_bytes": 320603,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Saved read-later workspace",
       "route": "/saved",
       "theme": "dark",
-      "file": "docs/assets/screenshots/saved-readlater-workspace-dark.png",
+      "file": "saved-readlater-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/saved-readlater-workspace-dark.png",
+      "sha256": "8cfd3edf7604b1ff00132de58cfa7ea2c771bd741ab64bc2e984a4a5c023d708",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Saved-item and read-later review surface with topic and scoring context. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 646544
+        "actual_file_size_bytes": 667222,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Focus session workspace",
       "route": "/focus",
       "theme": "dark",
-      "file": "docs/assets/screenshots/focus-session-workspace-dark.png",
+      "file": "focus-session-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/focus-session-workspace-dark.png",
+      "sha256": "0327c3da72f834fda35be47f9b61b9c567ee50abe5d8a41a9ab30aabbf8055fb",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Focused execution timer with headless-source-first collector startup and WeChat PC supplementary harvesting. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 465440
+        "actual_file_size_bytes": 451500,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Session summary workspace",
       "route": "/session-summary",
       "theme": "dark",
-      "file": "docs/assets/screenshots/session-summary-workspace-dark.png",
+      "file": "session-summary-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/session-summary-workspace-dark.png",
+      "sha256": "db6638b320875104b081d76f8c9ec0134d789e50a02dfd8f70ddf619675d8a06",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Session metrics, markdown summary, reading list, and follow-up draft workspace. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 467254
+        "actual_file_size_bytes": 609239,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Collector operations workspace",
       "route": "/collector",
       "theme": "dark",
-      "file": "docs/assets/screenshots/collector-operations-workspace-dark.png",
+      "file": "collector-operations-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/collector-operations-workspace-dark.png",
+      "sha256": "8b6d381ed5bdcd0bd22dea627ed2e6b8f0d1bb6a2a37942366e0c7c1f8c2892b",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Desktop collector, source health diagnostics, coverage rates, OCR backfill, pending queue, and daily export operations panel. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 426017
+        "actual_file_size_bytes": 418583,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Settings and tuning workspace",
       "route": "/settings",
       "theme": "dark",
-      "file": "docs/assets/screenshots/settings-tuning-workspace-dark.png",
+      "file": "settings-tuning-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/settings-tuning-workspace-dark.png",
+      "sha256": "f14c886d5a6fc08663d3ea9d3b8342bfc4327a346e7ae8e8254f8f21d0dbd2d7",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Preference, WorkBuddy, collector, and recommender tuning controls. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 469911
+        "actual_file_size_bytes": 571528,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge library workspace",
       "route": "/knowledge",
       "theme": "dark",
-      "file": "docs/assets/screenshots/knowledge-library-workspace-dark.png",
+      "file": "knowledge-library-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/knowledge-library-workspace-dark.png",
+      "sha256": "69b0d0ebf3179eb9a89f8a6352ec62f8cefa024007cd06977e72db7724a94757",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Knowledge list, commercial dashboard, account signals, and saved intelligence cards. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 591751
+        "actual_file_size_bytes": 608647,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge commercial hub",
       "route": "/knowledge/accounts",
       "theme": "dark",
-      "file": "docs/assets/screenshots/knowledge-commercial-hub-dark.png",
+      "file": "knowledge-commercial-hub-dark.png",
+      "repository_file": "docs/assets/screenshots/knowledge-commercial-hub-dark.png",
+      "sha256": "5af89e9d3d6861266d870b7cc5216ca733da2edc154fe0a164efc89308a7674e",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Account intelligence, opportunity context, review queues, and commercial follow-up actions. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 512127
+        "actual_file_size_bytes": 528563,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Knowledge merge workflow",
-      "route": "/knowledge/merge?ids=bc3375d5-1cac-4f63-b1dd-63a368542723,8c98db3b-a0e2-4452-83c5-59b63a28dccf&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
+      "route": "/knowledge/merge?ids=9d0dc26a-d0d5-4cfc-a061-1309bc96ba8b,4b4f0f7c-e7c0-4288-936a-5362512bfcef&title=%E6%94%BF%E5%8A%A1%E4%BA%91%E6%8A%95%E6%A0%87%E6%8E%A8%E8%BF%9B%E6%9D%90%E6%96%99%E5%90%88%E5%B9%B6",
       "theme": "dark",
-      "file": "docs/assets/screenshots/knowledge-merge-workflow-dark.png",
+      "file": "knowledge-merge-workflow-dark.png",
+      "repository_file": "docs/assets/screenshots/knowledge-merge-workflow-dark.png",
+      "sha256": "74a4f52fbdb7e5f9d3c27df532b5b33511240c6c9f630bf75ab418bc624f887b",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Knowledge-card merge preview, inherited state checks, and target-title workflow. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 426654
+        "actual_file_size_bytes": 528590,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research center dashboard",
       "route": "/research",
       "theme": "dark",
-      "file": "docs/assets/screenshots/research-center-dashboard-dark.png",
+      "file": "research-center-dashboard-dark.png",
+      "repository_file": "docs/assets/screenshots/research-center-dashboard-dark.png",
+      "sha256": "528a1bb474ad25f9031931aec9ca8fb0152232cb925ddb2c340b86764cb5f5f0",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Research center overview for watchlists, archives, retrieval health, architecture readiness, and delivery diagnostics. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 483523
+        "actual_file_size_bytes": 452142,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
+      }
+    },
+    {
+      "feature": "Competitive evidence ledger",
+      "route": "/competitive",
+      "theme": "dark",
+      "file": "competitive-evidence-ledger-dark.png",
+      "repository_file": "docs/assets/screenshots/competitive-evidence-ledger-dark.png",
+      "sha256": "de13cc0238a04bdb26c4b74c6fd01f6892981ddb1e97caebbe28f9d47dec6803",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
+      "description": "Competitive evidence ledger separating vendor claims, local implementation, acceptance gates, and release status. Dark-theme regression baseline.",
+      "quality_gate": {
+        "automated_status": "passed",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 378070,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
+      }
+    },
+    {
+      "feature": "Decision Studio workspace",
+      "route": "/studio",
+      "theme": "dark",
+      "file": "decision-studio-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/decision-studio-workspace-dark.png",
+      "sha256": "5d5d6ce8234ad2a0aa7ae6340c5b1ca512eb4f1123da9f1e619d137b946ba276",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
+      "description": "Evidence-bound notebook, claim graph, document governance, and decision-program workspace. Dark-theme regression baseline.",
+      "quality_gate": {
+        "automated_status": "passed",
+        "min_file_size_bytes": 40000,
+        "actual_file_size_bytes": 374362,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research topic workspace",
       "route": "/research/topics/f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
       "theme": "dark",
-      "file": "docs/assets/screenshots/research-topic-workspace-dark.png",
+      "file": "research-topic-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/research-topic-workspace-dark.png",
+      "sha256": "33fde92b8cec8c60f1451d11202d63e32fcd8b0fc94db3df9c3f1e6b0a84240b",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Topic-version workspace for evidence density, follow-up impact, and long-running changes. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 222758
+        "actual_file_size_bytes": 467033,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "dom_stable_with_background_network"
       }
     },
     {
       "feature": "Research compare workspace",
       "route": "/research/compare?snapshot=2888d87f-4dd2-4363-b978-4d22d9951111&topicId=f9e3114e-8ce6-4bd6-9aed-9543e97734ba",
       "theme": "dark",
-      "file": "docs/assets/screenshots/research-compare-workspace-dark.png",
+      "file": "research-compare-workspace-dark.png",
+      "repository_file": "docs/assets/screenshots/research-compare-workspace-dark.png",
+      "sha256": "0cd6cd7161468fc13425f0ecb84bbd042124f9a175ca932f8f9a400c84b1dd45",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Multi-version comparison matrix for account, competitor, evidence, and delivery deltas. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 441193
+        "actual_file_size_bytes": 516812,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "dom_stable_with_background_network"
       }
     },
     {
       "feature": "Research experiment orchestration",
       "route": "/research",
       "theme": "dark",
-      "file": "docs/assets/screenshots/research-experiment-control-plane-dark.png",
+      "file": "research-experiment-control-plane-dark.png",
+      "repository_file": "docs/assets/screenshots/research-experiment-control-plane-dark.png",
+      "sha256": "81e82536784d05050cf8c5f5ca40a4e280a089564e697503ff371532db69730f",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Configurable strategy plans, frozen cohorts, locked baselines, rollout gates, and runtime policy diagnostics. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 356912
+        "actual_file_size_bytes": 360637,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     },
     {
       "feature": "Research archive viewer",
       "route": "/research/archives/07d25909-3590-4ff4-ab2b-2a8b7e674306",
       "theme": "dark",
-      "file": "docs/assets/screenshots/research-archive-viewer-dark.png",
+      "file": "research-archive-viewer-dark.png",
+      "repository_file": "docs/assets/screenshots/research-archive-viewer-dark.png",
+      "sha256": "8f32428a14e47c236adb8994a34c096b2a14fdf9b93528c9888af49845cd9818",
+      "pixel_dimensions": {
+        "width": 1920,
+        "height": 1320
+      },
       "description": "Historical Markdown archive viewer with delivery digest, section links, and version context. Dark-theme regression baseline.",
       "quality_gate": {
-        "status": "accepted",
+        "automated_status": "passed",
         "min_file_size_bytes": 40000,
-        "actual_file_size_bytes": 486426
+        "actual_file_size_bytes": 528524,
+        "console_error_count": 0,
+        "request_failure_count": 0,
+        "http_error_count": 0,
+        "page_error_count": 0,
+        "readiness_mode": "network_idle"
       }
     }
   ]

@@ -40,9 +40,9 @@ Marketing pages must name the highest applicable label beside every metric or ou
 | WorkBuddy bridge | `local_implementation` | Local compatibility webhook and CodeBuddy CLI bridge. Signature checking is conditional: an empty secret bypasses it. The webhook directly executes supported export task types and can send a result to a request-supplied or configured callback URL. There is no universal human-approval gate; health/CLI detection does not prove native Tencent WorkBuddy interoperability. |
 | Animated marketing assets | `demo` | Conceptual SVG plus a historical local-UI screenshot montage. Asset manifests identify source version and render provenance; neither is live telemetry or evidence of the current release's behavior. |
 
-## Known documentation drift
+## Visual evidence status
 
-- `docs/assets/screenshots/screenshot-manifest.json` remains a historical `v1.9.1` screenshot baseline; it must not be used as evidence for the current version.
+- `docs/assets/screenshots/screenshot-manifest.json` now records 34 light/dark local browser captures for 17 surfaces from source commit `10b536c`. PNG hashes, dimensions, required content, theme state, and browser diagnostics passed against an isolated database copy. `human_visual_review_status` remains `pending`, so this does not clear the visual release gate.
 - `docs/assets/competitive-evidence/competitive-evidence-manifest.json` was captured before the `2.11.8` extension and still reports a 15-slice preview. A fresh capture must update the manifest before marketing claims the 16-slice visual evidence is current.
 - `docs/product-whitepaper.md`, README files, launch copy, and roadmap should link this page rather than inventing separate “current version” sentences.
 

@@ -1,6 +1,6 @@
 # Third-party assets
 
-The repository screenshots are copied without alteration from `docs/assets/screenshots/`; their version and source hashes are recorded in the output manifest.
+The historical repository screenshots are frozen in this directory; their original version metadata is retained in `screenshot-manifest-v1.9.1.json`, and their source hashes are recorded in `scenes.json` and the output manifest.
 
 | Asset | Version / source | License |
 | --- | --- | --- |

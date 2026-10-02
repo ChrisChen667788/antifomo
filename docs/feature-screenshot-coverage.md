@@ -1,16 +1,14 @@
 # Feature Screenshot Coverage
 
-Version: `1.9.1+20260713`
+Capture line: `2.12.0-pr-a-local-implementation`
+
+Captured: 2026-10-02 from source commit `10b536cb0e56f53a294305124f89cfb3998d5695`
 
 This gallery is the release checklist for GitHub-facing product screenshots. Each primary product surface must have at least one current, content-bearing screenshot before a release is pushed.
 
-The checked-in gallery is a historical `1.9.1` baseline. It is intentionally not accepted as `2.9.5` release evidence: the Research Assurance, Retrieval Assurance, and Evidence Operations panels, including their blocked-state controls, require a fresh capture and human visual confirmation before the visual release gate can pass.
+The checked-in gallery contains 34 local browser captures: 17 primary surfaces in light mode and the same 17 surfaces in dark mode. It was generated from an isolated copy of the local demo database through a production Next.js build. The matrix now includes `/competitive` and `/studio` as well as the collection, Focus, knowledge, research, archive, comparison, and settings surfaces.
 
-The current baseline contains 30 screenshots: 15 primary surfaces in light
-mode and the same 15 surfaces in dark mode. It was regenerated on
-`2026-07-13` after the 1.9.1 architecture-decision, executable-validation, and release-readiness update, so nested progress,
-knowledge, collector, settings, Focus, research, and Inbox delivery surfaces are
-covered instead of only the original four dark-mode routes.
+The automated gate verified the exact source commit, PNG structure and dimensions, file hashes, theme selection, required content, stable rendered state, and zero monitored console, page, request, or HTTP errors. The manifest keeps `human_visual_review_status=pending`; these captures are local demo evidence and do not approve a release, a physical device, production behavior, or customer acceptance.
 
 With the backend running on port `8000`, refresh and validate the full set through an isolated production frontend:
 
@@ -20,7 +18,7 @@ npm run repo:screenshots
 
 The release harness builds the application, allocates a free localhost port, starts `next start`, captures the matrix, and stops only that isolated frontend process. `npm run repo:screenshots:capture` remains available when a compatible frontend is already running.
 
-The capture script also writes `docs/assets/screenshots/screenshot-manifest.json` and rejects screenshots that are too small, captured with a runtime error overlay, rendered with a theme different from the declared manifest entry, or missing a configured required capture anchor. All 15 primary release surfaces have both light and dark baselines.
+The capture script also writes `docs/assets/screenshots/screenshot-manifest.json`, refuses a dirty checkout by default, captures through a staging directory, and replaces the published directory only after every entry passes. All 17 primary surfaces have both light and dark captures.
 
 ## Coverage Matrix
 
@@ -37,6 +35,8 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 | Knowledge commercial hub | `docs/assets/screenshots/knowledge-commercial-hub.png` | Account intelligence, opportunities, review queue, and follow-up actions. |
 | Knowledge merge workflow | `docs/assets/screenshots/knowledge-merge-workflow.png` | Merge preview, inherited state checks, and target-title workflow. |
 | Research center dashboard | `docs/assets/screenshots/research-center-dashboard.png` | Watchlists, archive entry points, retrieval health, solution architecture readiness, and delivery diagnostics. |
+| Competitive evidence ledger | `docs/assets/screenshots/competitive-evidence-ledger.png` | Vendor claims, local implementation, acceptance evidence, and release boundaries shown separately. |
+| Decision Studio workspace | `docs/assets/screenshots/decision-studio-workspace.png` | Notebook, source revision, claim, artifact, and governed validation workspace. |
 | Research topic workspace | `docs/assets/screenshots/research-topic-workspace.png` | Topic versions, evidence density, follow-up impact, and change tracking. |
 | Research compare workspace | `docs/assets/screenshots/research-compare-workspace.png` | Version comparison, account signals, competitor deltas, and export context. |
 | Research experiment orchestration | `docs/assets/screenshots/research-experiment-control-plane.png` | Cohorts, baselines, rollout gates, manifests, and runtime policy diagnostics. |
@@ -51,6 +51,8 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
 | Knowledge commercial hub, dark | `docs/assets/screenshots/knowledge-commercial-hub-dark.png` | Explicit dark-theme commercial intelligence regression baseline. |
 | Knowledge merge workflow, dark | `docs/assets/screenshots/knowledge-merge-workflow-dark.png` | Explicit dark-theme merge workflow regression baseline. |
 | Research center dashboard, dark | `docs/assets/screenshots/research-center-dashboard-dark.png` | Explicit dark-theme research operations regression baseline. |
+| Competitive evidence ledger, dark | `docs/assets/screenshots/competitive-evidence-ledger-dark.png` | Explicit dark-theme competitive evidence regression baseline. |
+| Decision Studio workspace, dark | `docs/assets/screenshots/decision-studio-workspace-dark.png` | Explicit dark-theme Decision Studio regression baseline. |
 | Research topic workspace, dark | `docs/assets/screenshots/research-topic-workspace-dark.png` | Explicit dark-theme topic workspace regression baseline. |
 | Research compare workspace, dark | `docs/assets/screenshots/research-compare-workspace-dark.png` | Explicit dark-theme comparison regression baseline. |
 | Research experiment orchestration, dark | `docs/assets/screenshots/research-experiment-control-plane-dark.png` | Explicit dark-theme experiment-control regression baseline. |
@@ -114,6 +116,16 @@ The capture script also writes `docs/assets/screenshots/screenshot-manifest.json
     <td width="50%">
       <img src="./assets/screenshots/research-center-dashboard.png" alt="Research center dashboard screenshot" />
       <p><strong>Research center dashboard</strong></p>
+    </td>
+    <td width="50%">
+      <img src="./assets/screenshots/competitive-evidence-ledger.png" alt="Competitive evidence ledger screenshot" />
+      <p><strong>Competitive evidence ledger</strong></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./assets/screenshots/decision-studio-workspace.png" alt="Decision Studio workspace screenshot" />
+      <p><strong>Decision Studio workspace</strong></p>
     </td>
     <td width="50%">
       <img src="./assets/screenshots/research-topic-workspace.png" alt="Research topic workspace screenshot" />

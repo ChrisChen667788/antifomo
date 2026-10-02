@@ -5,6 +5,7 @@
     "title": "Too much saved.\nToo little decided.",
     "body": "Bring useful leads into one place.",
     "source": "home-signal-dashboard.png",
+    "source_sha256": "b66bd0f3b1f3cdf13681e45d3dec0f6f182e4ef651cd258f18c3d193a4d34efe",
     "proof": "Web · WeChat · files",
     "step": "Collect"
   },
@@ -14,6 +15,7 @@
     "title": "Build a view\nyou can explain.",
     "body": "Turn a question into research you can review.",
     "source": "inbox-research-workspace.png",
+    "source_sha256": "cd74cde6bcf2dcc9dd607f495a5c596392d7a72c1ffab1b74e1f9488d362c764",
     "proof": "Research workspace",
     "step": "Research"
   },
@@ -23,6 +25,7 @@
     "title": "See the change.\nKeep the context.",
     "body": "Compare versions before you carry a claim forward.",
     "source": "research-compare-workspace.png",
+    "source_sha256": "c3848a496a1fd9ad1f4f2d8e207c24f45a8485d7f61b7bbb154573dc820d4162",
     "proof": "Version comparison",
     "step": "Compare"
   },
@@ -32,6 +35,7 @@
     "title": "Meet the customer\nwith context.",
     "body": "Connect account signals to the next useful question.",
     "source": "knowledge-commercial-hub.png",
+    "source_sha256": "06da0ca35c79d52b8069ca0e5a61f5bbede3dd2d43028bd896979a167bfdc4a0",
     "proof": "Account intelligence",
     "step": "Prepare"
   },
@@ -41,6 +45,7 @@
     "title": "Make your next\nmove deliberate.",
     "body": "Try the workflow. Bring your hardest source.",
     "source": "focus-session-workspace.png",
+    "source_sha256": "2c99b7d164fb94b1e39e2c237e0900ba162cd897f438089b1a738505c66174d1",
     "proof": "Quick Start → Issue → PR",
     "step": "Act"
   }

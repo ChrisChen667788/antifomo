@@ -1,6 +1,6 @@
 {
   "schema_version": "anti-fomo-marketing-overview/v2",
-  "generated_at": "2026-09-22T11:13:07.443Z",
+  "generated_at": "2026-10-02T05:17:41.708Z",
   "renderer": {
     "framework": "HyperFrames",
     "version": "0.8.60",
@@ -9,7 +9,7 @@
   },
   "source_mode": "historical_demo_screenshot_montage",
   "source_manifest": {
-    "path": "docs/assets/screenshots/screenshot-manifest.json",
+    "path": "videos/anti-fomo-promo/assets/screenshot-manifest-v1.9.1.json",
     "sha256": "2fadfce215e6ba6a0ceffb796ca9746510745be56c5065e304c1ec5fe79c7fc5",
     "version": "1.9.1",
     "release_tag": "v1.9.1+20260713",
@@ -17,23 +17,23 @@
   },
   "source_screenshots": [
     {
-      "path": "docs/assets/screenshots/home-signal-dashboard.png",
+      "path": "videos/anti-fomo-promo/assets/home-signal-dashboard.png",
       "sha256": "b66bd0f3b1f3cdf13681e45d3dec0f6f182e4ef651cd258f18c3d193a4d34efe"
     },
     {
-      "path": "docs/assets/screenshots/inbox-research-workspace.png",
+      "path": "videos/anti-fomo-promo/assets/inbox-research-workspace.png",
       "sha256": "cd74cde6bcf2dcc9dd607f495a5c596392d7a72c1ffab1b74e1f9488d362c764"
     },
     {
-      "path": "docs/assets/screenshots/research-compare-workspace.png",
+      "path": "videos/anti-fomo-promo/assets/research-compare-workspace.png",
       "sha256": "c3848a496a1fd9ad1f4f2d8e207c24f45a8485d7f61b7bbb154573dc820d4162"
     },
     {
-      "path": "docs/assets/screenshots/knowledge-commercial-hub.png",
+      "path": "videos/anti-fomo-promo/assets/knowledge-commercial-hub.png",
       "sha256": "06da0ca35c79d52b8069ca0e5a61f5bbede3dd2d43028bd896979a167bfdc4a0"
     },
     {
-      "path": "docs/assets/screenshots/focus-session-workspace.png",
+      "path": "videos/anti-fomo-promo/assets/focus-session-workspace.png",
       "sha256": "2c99b7d164fb94b1e39e2c237e0900ba162cd897f438089b1a738505c66174d1"
     }
   ],
@@ -44,7 +44,7 @@
     },
     {
       "path": "videos/anti-fomo-promo/scenes.json",
-      "sha256": "308b7077032f6f90a19b9c5a1a68d506b1dbceacc4180c44fce860786d682ab9"
+      "sha256": "030819852e73aebd19cd7aaeb7c24ef839f228346bfd9fe389555957dba30268"
     },
     {
       "path": "videos/anti-fomo-promo/frame.md",
@@ -60,7 +60,7 @@
     },
     {
       "path": "videos/anti-fomo-promo/BRIEF.md",
-      "sha256": "40713c56d6dad469554882971c9644f16ce29b86bbfb4d148d89805be0380b92"
+      "sha256": "3cb26e49c7eed7b44ce4955446e748e6778e771af409333e42167d7caf512315"
     },
     {
       "path": "videos/anti-fomo-promo/STORYBOARD.md",
@@ -93,7 +93,7 @@
   ],
   "render_script": {
     "path": "scripts/render_antifomo_marketing_overview.mjs",
-    "sha256": "7036caaf7c70dc55da40a1e684b32cfdebcb5aa3ac655e4ced55409f706f8cba"
+    "sha256": "55dc73002f1d4164246fb7fb84bfeba0cd811abc28a05f2aa0b9976d90e9e7d5"
   },
   "bundled_dependencies": [
     {
@@ -134,8 +134,8 @@
   "assets": [
     {
       "path": "docs/assets/marketing/antifomo-overview.mp4",
-      "sha256": "80c53678d03e3b8fd78cc054e940ec4edbd348823fb64cb8a1893109d9f69a96",
-      "size_bytes": 6659174,
+      "sha256": "68f5c833a0956c14ac0bae9781fc1709c31b41a6283ef6e5338f985349a03743",
+      "size_bytes": 6661939,
       "probe": {
         "programs": [],
         "stream_groups": [],
@@ -155,8 +155,8 @@
     },
     {
       "path": "docs/assets/marketing/antifomo-overview.gif",
-      "sha256": "d32d3be90fab1338f37a8b640008ea8d8dfc6e798d2d5f2b8dbc345e198254a2",
-      "size_bytes": 3303320,
+      "sha256": "45aec9d483b08d306fc058a5b9c4bae348df31288e8e2a63d48d85c37530498a",
+      "size_bytes": 3305688,
       "probe": {
         "programs": [],
         "stream_groups": [],
@@ -176,8 +176,8 @@
     },
     {
       "path": "docs/assets/marketing/poster.png",
-      "sha256": "5548a6a7f11196fdf49b7f58f832373a83a393727e0d643ae02a71fe4db1ec92",
-      "size_bytes": 479145,
+      "sha256": "a73d742d423d6bc9a3a1f114dc2d0b474a57cf9774e07528acddfeed0763703f",
+      "size_bytes": 479104,
       "probe": {
         "programs": [],
         "stream_groups": [],
@@ -194,8 +194,8 @@
     },
     {
       "path": "docs/assets/marketing/social-card.png",
-      "sha256": "0317793471f648010ee68168e1a94883234c72afed4acedeb5cbfc04969dda30",
-      "size_bytes": 244502,
+      "sha256": "9b42c255824bcf25ecb13bc9ec6c54d26e884bd30c05fc039f6f60347c553932",
+      "size_bytes": 244054,
       "probe": {
         "programs": [],
         "stream_groups": [],
@@ -212,8 +212,8 @@
     },
     {
       "path": "docs/assets/marketing/contact-sheet.jpg",
-      "sha256": "d76d91d198c1e756309f9f4e4ef7aaedf12108a646800e297df8bdba939d90bb",
-      "size_bytes": 126648,
+      "sha256": "0a0ae6c72ecbed159187d36ec6b36c7ab2f43c5a35030a99de1c6953a6f70aea",
+      "size_bytes": 126731,
       "probe": {
         "programs": [],
         "stream_groups": [],
