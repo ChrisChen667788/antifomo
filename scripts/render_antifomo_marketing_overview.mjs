@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,7 +22,8 @@ const tempDir = mkdtempSync(join(tmpdir(), "anti-fomo-overview-"));
 const ffmpeg = process.env.FFMPEG_PATH || "ffmpeg";
 const ffprobe = process.env.FFPROBE_PATH || "ffprobe";
 const hyperframesVersion = "0.8.60";
-const sourceManifestPath = "docs/assets/screenshots/screenshot-manifest.json";
+const sourceManifestPath =
+  "videos/anti-fomo-promo/assets/screenshot-manifest-v1.9.1.json";
 const sourceManifest = JSON.parse(
   readFileSync(join(root, sourceManifestPath), "utf8"),
 );
@@ -49,12 +50,20 @@ const inspect = (path) =>
   );
 
 try {
+  const archivedScreenshots = new Map(
+    sourceManifest.screenshots.map((entry) => [basename(entry.file), entry]),
+  );
   for (const scene of scenes) {
-    const source = join(root, "docs/assets/screenshots", scene.source);
     const adopted = join(project, "assets", scene.source);
-    if (!existsSync(adopted) || digest(source) !== digest(adopted)) {
+    const archived = archivedScreenshots.get(scene.source);
+    if (
+      !existsSync(adopted) ||
+      !archived ||
+      digest(adopted) !== scene.source_sha256 ||
+      statSync(adopted).size !== archived.quality_gate.actual_file_size_bytes
+    ) {
       throw new Error(
-        `Adopted screenshot differs from repository source: ${scene.source}`,
+        `Bundled historical screenshot differs from its v1.9.1 archive: ${scene.source}`,
       );
     }
   }
@@ -181,7 +190,7 @@ try {
       generated_at: sourceManifest.generated_at,
     },
     source_screenshots: scenes.map((scene) => ({
-      path: `docs/assets/screenshots/${scene.source}`,
+      path: `videos/anti-fomo-promo/assets/${scene.source}`,
       sha256: digest(join(project, "assets", scene.source)),
     })),
     composition_sources: sourceFiles.map((path) => ({

@@ -1,10 +1,10 @@
 # Anti-FOMO × WorkBuddy：受控执行集成计划（2026-09-18）
 
-> 这是 `2.12.0`–`2.21.0` 的权威工程计划。它把 WorkBuddy 公开资料中适合借鉴的交互和治理能力，收敛为 Anti-FOMO 的证据感知、人工审批、可回滚执行边界。版本号沿用当前开发线；实现分支仍是 `2.10.3–2.11.8-development`，不得把本计划写成已交付能力。
+> 这是 `2.12.0`–`2.21.0` 的权威工程计划。它把 WorkBuddy 公开资料中适合借鉴的交互和治理能力，收敛为 Anti-FOMO 的证据感知、人工审批、可回滚执行边界。版本号沿用当前开发线；仅 PR-A schema/state subset 已达到 `local_implementation`，后续计划不得写成已交付能力。
 >
 > 证据层级：`local_implementation`（本 checkout 可复现）→ `demo`（本地展示）→ `synthetic_benchmark`（固定样本）→ `human_acceptance` → `customer_acceptance` → `production`。WorkBuddy 官方文档是 `vendor_claim`，不是 Anti-FOMO 的验收证据。真实 pilot 是外部验收依赖，不能由本地测试或自动任务代签。
 
-2026-09-22 已复核代码入口、验证脚本和六项官方来源。竞品事实与复核范围见 [深度对标报告](./workbuddy-deep-dive-2026-09-18.md)。本文所有新增 API、表、feature flag 和 harness 均为 **planned**；“预算”“门槛”“DoD”是待测目标，不是已经达到的性能、稳定性或生产承诺。
+2026-09-22 已复核代码入口、验证脚本和六项官方来源。竞品事实与复核范围见 [深度对标报告](./workbuddy-deep-dive-2026-09-18.md)。截至 2026-10-02，PR-A 的 schema/state、独立控制 API、Alembic `0040` 与本地 synthetic harness 是 `local_implementation`；legacy adapter、可信 identity/permission policy、callback intent、Web UI、故障注入和 executor 仍为 **planned**。“预算”“门槛”“DoD”是目标，不是已经达到的性能、稳定性或生产承诺。
 
 ## 1. 设计不变量
 
@@ -21,7 +21,7 @@
 | 能力 | 当前可复用路径 | 当前证据/限制 |
 | --- | --- | --- |
 | WorkBuddy webhook、官方 CLI/gateway 探针 | `backend/app/api/workbuddy.py`、`backend/app/schemas/workbuddy.py`、`backend/app/services/workbuddy_adapter.py`、`scripts/workbuddy_official_doctor.sh` | `local_implementation`；仅在配置 secret 时强制签名，缺 secret 返回 `signature_bypassed_no_secret`；随后直接执行白名单导出，并可发 callback；2.12 必须统一收敛 |
-| 任务执行和导出 | `backend/app/api/tasks.py`、`backend/app/services/task_runtime.py`、`backend/app/services/work_task_service.py`、`backend/app/services/work_tasks/*` | 已有 `POST /api/tasks` / `GET /api/tasks/{task_id}` 和文件导出；导出有本地写入，不应称只读；callback 外写与旧 API 一起纳入 policy/receipt |
+| 任务执行和导出 | `backend/app/api/tasks.py`、`backend/app/services/focus_assistant.py`、`backend/app/services/task_runtime.py`、`backend/app/services/work_task_service.py`、`backend/app/services/work_tasks/*` | 已有 `POST /api/tasks` / `GET /api/tasks/{task_id}`、Focus Assistant 动作和文件导出；这些路径仍可直调 `create_and_execute_task`，导出有本地写入，不应称只读；callback 外写与旧 API 一起纳入 policy/receipt |
 | 研究任务持久化、幂等、租约和恢复 | `backend/app/models/research_entities.py:ResearchJob`、`backend/app/services/research_job_store.py`、`backend/tests/test_research_job_durable_queue.py` | SQLite 单进程恢复；存在 `worker_id`、`lease_expires_at`、`idempotency_key`，不等于分布式队列 |
 | append-only 操作证据 | `backend/app/models/product_strategy_operation_entities.py`、`backend/app/services/product_strategy/operation_evidence_service.py`、`backend/app/api/product_strategy_operations.py` | 已有 capability/skill/proposal/dry-run/rollback/performance/feedback/gate/audit API |
 | 固定性能与稳定性测量 | `backend/app/schemas/product_strategy_operations.py:PerformanceEvidence`、`scripts/stability_concurrency_smoke.py`、`scripts/run_industry_knowledge_retrieval_ranking_benchmark.py` | 可记录本地/合成测量；不是生产 SLA |
@@ -49,7 +49,7 @@
 
 ## 4. 版本执行合同（2.12.0–2.21.0）
 
-每版都必须先开一个小 PR，功能、迁移、测试、文档和回滚说明分开可评审；默认 feature flag 关闭。工作量是估算的人日（1 人日=可提交、可复核的 8 小时），角色为后端 `BE`、前端 `FE`、平台/性能 `PE`、安全/合规 `SEC`、产品/架构 `SA`、QA。除非明确写出 `customer_acceptance`，DoD 只到本地或合成证据。
+每版都必须先开一个小 PR，功能、迁移、测试、文档和回滚说明分开可评审；新增执行能力的 feature flag 默认关闭，证据控制 API 可以继续记录 proposal 和 receipt。工作量是估算的人日（1 人日=可提交、可复核的 8 小时），角色为后端 `BE`、前端 `FE`、平台/性能 `PE`、安全/合规 `SEC`、产品/架构 `SA`、QA。除非明确写出 `customer_acceptance`，DoD 只到本地或合成证据。
 
 依赖顺序为 `2.12 → 2.13 → 2.14 → 2.15 → 2.16 → 2.17 → 2.18 → 2.19 → 2.20 → 2.21`；同版 PR 可以在 schema 冻结后并行，后一版不能绕过前一版的授权/恢复门禁。现有 `scripts/stability_concurrency_smoke.py` 只对固定 GET 端点做并发冒烟，不能证明新任务 POST、租户隔离、状态机或重启恢复；新增验收 harness 必须随对应版本交付。所有命令先在隔离 fixture 数据库运行，使用当前仓库配置的 Python 环境。
 
@@ -57,18 +57,20 @@
 
 逐版估算为 `10 + 11 + 11 + 11 + 11 + 9.5 + 12 + 14 + 18 + 14 = 121.5 人日`，包含上述开发、测试和文档工作量，不是 121.5 个日历日的交付保证；人员熟悉度、返工、平台审核、来源变化和外部客户等待需在排期时单列。每个版本结束按实测吞吐重估剩余工作。
 
-- **第一条 PR：2.12.0 / PR-A**。新增 envelope/approval/receipt schema、非破坏式 Alembic 迁移和状态机负例；保持执行 flag 关闭。验收应能显示一个 proposal，证明同 key 并发不生成第二个任务，且未经批准、缺 secret、digest 改变或批准撤销时没有执行和 callback。
+- **第一条 PR：2.12.0 / PR-A**。原验收合同仍要求：一个 proposal、同 key 并发不产生第二个任务，并且未经批准、缺 secret、digest 改变或批准撤销时均无执行和 callback。`2026-10-02 local_implementation` 只完成 envelope/approval/receipt/model-profile schema、Alembic `0040`、独立控制 API 与状态机负例；100 次同 key 测试只验证该独立 API 不生成 `WorkTask`。WorkBuddy webhook、`/api/tasks`、Focus Assistant、callback policy 与前端兼容尚未迁移，缺 secret 的旧 webhook 仍可直接执行，因此 PR-A 整体和 2.12.0 DoD 均未完成。
 - **关键依赖**：2.12 的 identity/policy/receipt 是全部执行能力的前置；2.13 冻结 plan 合同，2.14 才接入多 lane；2.15 的 scope/撤销供后续产物、移动和团队执行复用；2.16 revision 合同供 2.17 审阅使用；2.19 隔离与账本是 2.21 真试点前置。
 - **可并行准备**：后端合同冻结后，前端先接 fixture；registry 清单、T1/T2/T3 数据集、Office 样本、视觉素材和威胁负例可与主线并行整理。预研或 fixture 完成不代表依赖版本已通过。
 - **外部里程碑**：2.21 的本地计量、暂停/退出和验收包可独立完成；客户接受与生产运行仍需要外部范围、版本、签字/可归因回执，等待时间不计入本地开发已完成的结论。
 
 ### 2.12.0 — Task Envelope、权限边界与模型 profiles
 
+以下条目是完整 2.12.0 的目标态。当前 PR-A schema/state subset 不满足 webhook 只创建 `proposed`、旧任务入口统一 policy、缺权限进入 HOLD、callback 先登记后批准发送、flag 关闭时仍禁止旧 POST 绕过，以及故障注入与完整 DoD。
+
 - **目标 / WB 映射**：落地 WB-1、WB-2、WB-6、WB-9。把当前 webhook 和旧任务 API 的直接执行收敛到 `Ask|Plan|Agent` 信封；新入口在缺 secret、scope 或 approval 时 fail-closed。
 - **复用与证据路径**：复用 `workbuddy.py`、`workbuddy_adapter.py`、`task_runtime.py`、`ResearchJob.idempotency_key/request_payload`、操作 evidence API；验证命令 `npm run workbuddy:doctor`、`backend/.venv311/bin/pytest -q backend/tests/test_workbuddy_adapter.py backend/tests/test_work_task_owner_boundaries.py`。
 - **API/schema/state**：新增 `TaskEnvelope`（`task_id/request_id/user_id/mode/capability_key/context_digest/model_profile/budget/deadline/idempotency_key/approval_ref/rollback_ref/legacy_work_task_id`）；`Approval`（`plan_digest/content_digest/effects_digest/scope/budget/approver/expires_at/revocation_epoch`）；`TaskState = proposed|planned|approved|running|succeeded|failed|unknown|hold|cancelled|reconcile_required`；新增独立命名空间 `POST /api/task-envelopes`、`GET /api/task-envelopes/{id}`、`POST /api/task-envelopes/{id}/approve|cancel|reconcile`。一个 envelope 最多绑定一个执行用 `WorkTask`；`WorkTask` 的 `done/failed` 是旧运行结果，必须由 receipt adapter 映射，不与审批状态混用。不覆盖既有 `/api/tasks` 路由；webhook 只创建 `proposed`。
 - **模型 profiles/budget/routing**：新增版本化 `ModelProfile`（provider/model/revision/temperature/max_tokens/timeout/cost ceiling/fallback order）；默认只读任务走固定 profile，超过 budget 或 profile 过期即 HOLD。随机模型不写“可复现输出”。
-- **迁移/兼容**：新增 Alembic `task_envelopes/task_receipts/model_profiles`；旧 WorkBuddy payload 适配为 `proposed`，提供明确的兼容响应和迁移说明；已有 `/api/tasks` 保留读取/下载，创建接口须调用同一 policy，缺授权返回结构化错误。callback 先登记目标 host、scope 和 payload digest，批准后才能发送；不能直接重放历史任务。
+- **迁移/兼容**：新增 Alembic `task_envelopes/task_approvals/task_receipts/model_profiles`；approval 独立保存不可变的 digest、scope、budget、expiry 与 revocation epoch，receipt 保存状态转换链。旧 WorkBuddy payload 适配为 `proposed`，提供明确的兼容响应和迁移说明；已有 `/api/tasks` 保留读取/下载，创建接口须调用同一 policy，缺授权返回结构化错误。callback 先登记目标 host、scope 和 payload digest，批准后才能发送；不能直接重放历史任务。
 - **依赖 / PR / 预算**：仅现有 SQLAlchemy/Pydantic；PR-A schema/state+migration（BE 2, SA 0.5）；PR-B webhook adapter（BE 2, SEC 1）；PR-C UI status/approval（FE 2）；PR-D tests/docs（QA 2, PE 0.5）；总计 BE4/FE2/QA2/SEC1/SA0.5/PE0.5=10 人日。
 - **失败处理**：重复 idempotency 返回原 task；预算/权限/过期 profile → `hold`；执行超时 → `unknown`，禁止盲重试；外写只允许带 idempotency key。
 - **性能/稳定性预算与验证**：本地 SQLite 固定 1k 信封，接收 p95 ≤2s；固定非法 schema 全部拒绝；同 key 不新增任务/执行回执，可保留单独的请求审计记录。新增 `scripts/task_envelope_benchmark.py --requests 1000 --concurrency 20 --max-p95-ms 2000` 和 webhook/旧 API/callback 故障注入；现有 GET 并发脚本仅作为旧读路径回归（结果标 `synthetic_benchmark`）。

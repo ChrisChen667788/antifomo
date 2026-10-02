@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, startTransition, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, startTransition, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import { getMessage } from "@/lib/i18n";
 import {
   APP_PREFERENCES_KEY,
@@ -19,27 +19,53 @@ interface AppPreferencesContextValue {
 }
 
 const AppPreferencesContext = createContext<AppPreferencesContextValue | null>(null);
+const PREFERENCES_CHANGE_EVENT = "anti-fomo:preferences-change";
+let cachedPreferencesRaw: string | null | undefined;
+let cachedPreferences = DEFAULT_PREFERENCES;
 
-function readInitialPreferences(): AppPreferences {
-  if (typeof window === "undefined") {
-    return DEFAULT_PREFERENCES;
-  }
+function readBrowserPreferences(): AppPreferences {
   const raw = window.localStorage.getItem(APP_PREFERENCES_KEY);
-  if (!raw) {
-    return DEFAULT_PREFERENCES;
-  }
+  if (raw === cachedPreferencesRaw) return cachedPreferences;
+  cachedPreferencesRaw = raw;
+  if (!raw) return (cachedPreferences = DEFAULT_PREFERENCES);
   try {
-    return normalizePreferences(JSON.parse(raw) as Partial<AppPreferences>);
+    return (cachedPreferences = normalizePreferences(JSON.parse(raw) as Partial<AppPreferences>));
   } catch {
-    return DEFAULT_PREFERENCES;
+    return (cachedPreferences = DEFAULT_PREFERENCES);
   }
 }
 
-function readInitialSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") {
-    return "light";
-  }
+function subscribePreferences(onStoreChange: () => void) {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key && event.key !== APP_PREFERENCES_KEY) return;
+    cachedPreferencesRaw = undefined;
+    onStoreChange();
+  };
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(PREFERENCES_CHANGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(PREFERENCES_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+function persistPreferences(preferences: AppPreferences) {
+  const normalized = normalizePreferences(preferences);
+  const raw = JSON.stringify(normalized);
+  window.localStorage.setItem(APP_PREFERENCES_KEY, raw);
+  cachedPreferencesRaw = raw;
+  cachedPreferences = normalized;
+  window.dispatchEvent(new Event(PREFERENCES_CHANGE_EVENT));
+}
+
+function readSystemTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function subscribeSystemTheme(onStoreChange: () => void) {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
 }
 
 function applyPreferencesToDom(preferences: AppPreferences, resolvedTheme: "light" | "dark") {
@@ -54,34 +80,32 @@ function applyPreferencesToDom(preferences: AppPreferences, resolvedTheme: "ligh
 export function AppPreferencesProvider({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [preferences, setPreferences] = useState<AppPreferences>(readInitialPreferences);
-  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(readInitialSystemTheme);
+  const preferences = useSyncExternalStore(
+    subscribePreferences,
+    readBrowserPreferences,
+    () => DEFAULT_PREFERENCES,
+  );
+  const systemTheme = useSyncExternalStore(
+    subscribeSystemTheme,
+    readSystemTheme,
+    () => "light" as const,
+  );
   const resolvedTheme =
     preferences.themeMode === "system" ? systemTheme : preferences.themeMode;
 
   useEffect(() => {
-    window.localStorage.setItem(APP_PREFERENCES_KEY, JSON.stringify(preferences));
     applyPreferencesToDom(preferences, resolvedTheme);
   }, [preferences, resolvedTheme]);
 
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (event: MediaQueryListEvent) => {
-      setSystemTheme(event.matches ? "dark" : "light");
-    };
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, []);
-
   const updatePreferences = (patch: Partial<AppPreferences>) => {
     startTransition(() => {
-      setPreferences((prev) => normalizePreferences({ ...prev, ...patch }));
+      persistPreferences(normalizePreferences({ ...readBrowserPreferences(), ...patch }));
     });
   };
 
   const resetPreferences = () => {
     startTransition(() => {
-      setPreferences(DEFAULT_PREFERENCES);
+      persistPreferences(DEFAULT_PREFERENCES);
     });
   };
 

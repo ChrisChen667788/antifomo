@@ -19,7 +19,7 @@ The user authorized a full documentation and marketing-material renovation and r
 
 ## Inputs and provenance
 
-- Existing repository screenshots from `docs/assets/screenshots/screenshot-manifest.json`.
+- Frozen v1.9.1 repository screenshots and `assets/screenshot-manifest-v1.9.1.json`.
 - Source manifest: v1.9.1, tag `v1.9.1+20260713`, generated at `2026-07-13T12:34:05.482Z`.
 - These are historical demo screenshots. The montage is not latest-UI evidence, a live workflow recording, production acceptance, or a demonstration of the planned WorkBuddy integration.
 - No new screenshot capture, synthetic customer, ROI metric, or fake mouse interaction.

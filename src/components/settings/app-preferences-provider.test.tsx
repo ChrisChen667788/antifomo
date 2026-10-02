@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppPreferencesProvider, useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { APP_PREFERENCES_KEY } from "@/lib/preferences";
@@ -68,5 +69,22 @@ describe("AppPreferencesProvider", () => {
     await waitFor(() => expect(screen.getByRole("button")).toHaveTextContent("light:light:en"));
     expect(document.documentElement.dataset.afTheme).toBe("light");
     expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("uses the shared defaults for server rendering before restoring browser preferences", () => {
+    window.localStorage.setItem(
+      APP_PREFERENCES_KEY,
+      JSON.stringify({ themeMode: "dark", fontFamily: "serif", textSize: "lg", language: "en" }),
+    );
+
+    const markup = renderToString(
+      <AppPreferencesProvider>
+        <PreferenceProbe />
+      </AppPreferencesProvider>,
+    );
+    const text = markup.replace(/<[^>]*>/g, "");
+
+    expect(text).toContain("system:light:zh-CN");
+    expect(text).not.toContain("dark:dark:en");
   });
 });

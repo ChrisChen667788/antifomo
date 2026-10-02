@@ -13,7 +13,7 @@ Validated on 2026-09-22. The exact rendering timestamp and content hashes are in
 
 ## Evidence limitation
 
-This is a historical demo screenshot montage using v1.9.1 captures from the 2026-07-13 screenshot manifest. It does not demonstrate a live task, latest UI, external-service integration, customer outcome, performance SLA or production acceptance. The date this video was rendered does not update the screenshot capture date.
+This is a historical demo screenshot montage using five frozen v1.9.1 captures bound to `videos/anti-fomo-promo/assets/screenshot-manifest-v1.9.1.json`. It does not demonstrate a live task, latest UI, external-service integration, customer outcome, performance SLA or production acceptance. Refreshing the current product gallery or rendering this video does not update the historical screenshot capture date.
 
 ## Rebuild
 

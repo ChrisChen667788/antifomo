@@ -106,6 +106,7 @@ function parseArgs(argv) {
     headless: true,
     mode: "preview",
     generateMotion: true,
+    allowDirty: false,
   };
 
   for (let index = 2; index < argv.length; index += 1) {
@@ -133,6 +134,8 @@ function parseArgs(argv) {
       index += 1;
     } else if (token === "--no-motion") {
       args.generateMotion = false;
+    } else if (token === "--allow-dirty") {
+      args.allowDirty = true;
     } else if (token === "--help" || token === "-h") {
       printUsage();
       process.exit(0);
@@ -164,6 +167,7 @@ Options:
   --samples <1-10>      Browser-navigation samples per viewport (default: 3)
   --headful             Show the browser for a visual operator check
   --no-motion           Skip GIF/MP4 generation; still captures PNGs and metrics
+  --allow-dirty         Allow disposable preflight capture from a dirty checkout
   --mode preview        Required read-only preview mode (default)
 `);
 }
@@ -195,6 +199,13 @@ function normalizeUrl(value) {
     throw new Error(`Only http(s) endpoints are supported: ${value}`);
   }
   return parsed.toString().replace(/\/+$/, "");
+}
+
+function assertLoopbackUrl(value, label) {
+  const parsed = new URL(value);
+  if (!["127.0.0.1", "localhost", "::1"].includes(parsed.hostname)) {
+    throw new Error(`${label} must use a loopback host for local browser evidence: ${value}`);
+  }
 }
 
 async function fetchJson(url, label) {
@@ -235,10 +246,10 @@ async function verifyLocalPreview({ frontendUrl, apiBase }) {
   if (
     !iterationProgramPreview?.read_only
     || iterationProgramPreview.iteration_program_version !== "2.10.3-2.11.8"
-    || iterationProgramPreview.iterations?.length !== 15
+    || iterationProgramPreview.iterations?.length !== 16
     || iterationProgramPreview.agent_sources?.length !== 7
   ) {
-    throw new Error("Read-only iteration-program preview did not expose the expected 15-version / 7-source contract.");
+    throw new Error("Read-only iteration-program preview did not expose the expected 16-version / 7-source contract.");
   }
   const response = await fetch(`${frontendUrl}/competitive`, { redirect: "error" });
   if (!response.ok) {
@@ -267,6 +278,15 @@ async function verifyLocalPreview({ frontendUrl, apiBase }) {
 
 function sha256File(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function readGitMetadata() {
+  const commit = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" });
+  const status = spawnSync("git", ["status", "--porcelain"], { encoding: "utf8" });
+  return {
+    commit: commit.status === 0 ? commit.stdout.trim() : "unknown",
+    working_tree_dirty: status.status !== 0 || Boolean(status.stdout.trim()),
+  };
 }
 
 function median(values) {
@@ -354,7 +374,7 @@ async function waitForCompetitivePreview(page) {
       return text.includes("竞品能力证据台账")
         && text.includes("官方能力观察")
         && text.includes("拟议后续版本")
-        && text.includes("15 版本受治理迭代与 Agent 能力观察");
+        && text.includes("16 版本受治理迭代与 Agent 能力观察");
     },
     { timeout: 30000 },
   );
@@ -438,19 +458,52 @@ async function readBrowserMetrics(page, navigationElapsedMs) {
   }, navigationElapsedMs);
 }
 
+function assertBrowserDiagnostics(diagnostics, label) {
+  if (
+    diagnostics.console_messages.length ||
+    diagnostics.request_failures.length ||
+    diagnostics.response_errors.length ||
+    diagnostics.page_errors.length
+  ) {
+    throw new Error(`${label} browser diagnostics failed: ${JSON.stringify(diagnostics)}`);
+  }
+}
+
 async function openPreviewPage(browser, args, viewport, diagnostics) {
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
+    diagnostics.console_messages.length = 0;
+    diagnostics.request_failures.length = 0;
+    diagnostics.response_errors.length = 0;
+    diagnostics.page_errors.length = 0;
     const context = await browser.createBrowserContext();
     const page = await context.newPage();
-    const consoleMessages = [];
-    const requestFailures = [];
-    const pageErrors = [];
+    const monitoredOrigins = new Set([new URL(args.frontendUrl).origin, new URL(args.apiBase).origin]);
+    const isMonitored = (value) => {
+      try {
+        return monitoredOrigins.has(new URL(value).origin);
+      } catch {
+        return false;
+      }
+    };
     page.on("console", (message) => {
-      if (message.type() === "error") consoleMessages.push(message.text());
+      if (message.type() === "error") diagnostics.console_messages.push(message.text());
     });
-    page.on("requestfailed", (request) => requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText || "unknown"}`));
-    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("requestfailed", (request) => {
+      const failure = request.failure()?.errorText || "unknown";
+      if (!isMonitored(request.url()) || failure.includes("ERR_ABORTED")) return;
+      diagnostics.request_failures.push(`${request.method()} ${request.url()} :: ${failure}`);
+    });
+    page.on("response", (response) => {
+      if (response.status() < 400 || !isMonitored(response.url())) return;
+      try {
+        if (new URL(response.url()).pathname === "/favicon.ico") return;
+      } catch {
+        // Keep the response if an already-monitored URL unexpectedly stops parsing.
+      }
+      diagnostics.response_errors.push(`${response.status()} ${response.url()}`);
+    });
+    page.on("pageerror", (error) => diagnostics.page_errors.push(error.message));
     try {
       await preparePage(page, { apiBase: args.apiBase, previewPayloads: args.previewPayloads, viewport });
       const start = performance.now();
@@ -459,10 +512,8 @@ async function openPreviewPage(browser, args, viewport, diagnostics) {
       await assertNoRuntimeOverlay(page, "Competitive preview");
       await page.waitForNetworkIdle({ idleTime: 200, timeout: 5000 }).catch(() => undefined);
       await delay(300);
+      assertBrowserDiagnostics(diagnostics, "Competitive preview");
       const metrics = await readBrowserMetrics(page, performance.now() - start);
-      diagnostics.console_messages.push(...consoleMessages);
-      diagnostics.request_failures.push(...requestFailures);
-      diagnostics.page_errors.push(...pageErrors);
       return { context, page, metrics };
     } catch (error) {
       lastError = error;
@@ -477,7 +528,7 @@ async function captureFrames(browser, args, tempDir) {
   const entries = [];
   const motionFrames = [];
   for (const capture of CAPTURES) {
-    const diagnostics = { console_messages: [], request_failures: [], page_errors: [] };
+    const diagnostics = { console_messages: [], request_failures: [], response_errors: [], page_errors: [] };
     const { context, page, metrics } = await openPreviewPage(browser, args, capture.viewport, diagnostics);
     try {
       await scrollToSelector(page, capture.scrollSelector);
@@ -485,6 +536,8 @@ async function captureFrames(browser, args, tempDir) {
       await assertNoRuntimeOverlay(page, capture.key);
       const filePath = path.join(tempDir, capture.filename);
       await page.screenshot({ path: filePath, type: "png", fullPage: false });
+      await delay(200);
+      assertBrowserDiagnostics(diagnostics, capture.key);
       const size = fs.statSync(filePath).size;
       if (size < MIN_CAPTURE_BYTES) {
         throw new Error(`${capture.filename} is only ${size} bytes; refusing to publish a likely blank capture.`);
@@ -516,7 +569,7 @@ async function sampleBrowserMetrics(browser, args) {
   for (const [profile, viewport] of Object.entries(profiles)) {
     const samples = [];
     for (let index = 0; index < args.samples; index += 1) {
-      const diagnostics = { console_messages: [], request_failures: [], page_errors: [] };
+      const diagnostics = { console_messages: [], request_failures: [], response_errors: [], page_errors: [] };
       const { context, metrics } = await openPreviewPage(browser, args, viewport, diagnostics);
       try {
         samples.push({ sample: index + 1, ...metrics, diagnostics });
@@ -596,20 +649,62 @@ function generateMotion(ffmpegPath, motionFrames, tempDir) {
   return ["competitive-preview-demo.mp4", "competitive-preview-demo.gif"];
 }
 
-function copyCuratedArtifacts(tempDir, outputDir, names) {
-  fs.mkdirSync(outputDir, { recursive: true });
-  for (const name of names) {
-    fs.copyFileSync(path.join(tempDir, name), path.join(outputDir, name));
+function repositoryArtifactPath(outputDir, name) {
+  const relative = path.relative(process.cwd(), path.join(outputDir, name));
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return null;
+  }
+  return relative.split(path.sep).join("/");
+}
+
+function publishCuratedArtifacts(tempDir, outputDir, names) {
+  const parentDir = path.dirname(outputDir);
+  const baseName = path.basename(outputDir);
+  const nonce = `${process.pid}-${Date.now()}`;
+  const stagingDir = path.join(parentDir, `.${baseName}.staging-${nonce}`);
+  const backupDir = path.join(parentDir, `.${baseName}.backup-${nonce}`);
+  let movedExistingOutput = false;
+  let committed = false;
+
+  fs.mkdirSync(parentDir, { recursive: true });
+  fs.mkdirSync(stagingDir);
+  try {
+    for (const name of names) {
+      fs.copyFileSync(path.join(tempDir, name), path.join(stagingDir, name));
+    }
+    if (fs.existsSync(outputDir)) {
+      fs.renameSync(outputDir, backupDir);
+      movedExistingOutput = true;
+    }
+    fs.renameSync(stagingDir, outputDir);
+    committed = true;
+  } catch (error) {
+    if (!committed && movedExistingOutput && !fs.existsSync(outputDir) && fs.existsSync(backupDir)) {
+      fs.renameSync(backupDir, outputDir);
+      movedExistingOutput = false;
+    }
+    throw error;
+  } finally {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+    if (committed && movedExistingOutput) {
+      fs.rmSync(backupDir, { recursive: true, force: true });
+    }
   }
 }
 
 async function main() {
+  const git = readGitMetadata();
   const rawArgs = parseArgs(process.argv);
   const args = {
     ...rawArgs,
     frontendUrl: normalizeUrl(rawArgs.frontendUrl),
     apiBase: normalizeUrl(rawArgs.apiBase),
   };
+  assertLoopbackUrl(args.frontendUrl, "Frontend URL");
+  assertLoopbackUrl(args.apiBase, "API base URL");
+  if (git.working_tree_dirty && !args.allowDirty) {
+    throw new Error("Refusing to publish competitive evidence from a dirty checkout. Commit the source first or use --allow-dirty for disposable preflight output.");
+  }
   const previewVerification = await verifyLocalPreview(args);
   const preview = previewVerification.summary;
   args.previewPayloads = previewVerification.previewPayloads;
@@ -627,6 +722,11 @@ async function main() {
     args: ["--no-first-run", "--no-default-browser-check"],
   });
   try {
+    const browserEnvironment = {
+      version: await browser.version(),
+      user_agent: await browser.userAgent(),
+      executable: chromePath,
+    };
     const captured = await captureFrames(browser, args, tempDir);
     const browserMetrics = await sampleBrowserMetrics(browser, args);
     const performanceFilename = "competitive-browser-performance.json";
@@ -635,6 +735,11 @@ async function main() {
       schema_version: "anti-fomo-competitive-browser-metrics/v1",
       generated_at: new Date().toISOString(),
       source_mode: "read_only_preview",
+      source_commit: git.commit,
+      source_working_tree_dirty: git.working_tree_dirty,
+      browser: browserEnvironment,
+      human_visual_review_status: "pending",
+      review_receipt: null,
       startup_behavior: "does_not_start_or_stop_services",
       claim_boundary: {
         local_browser_measurement_only: true,
@@ -661,6 +766,11 @@ async function main() {
       schema_version: "anti-fomo-competitive-evidence/v1",
       generated_at: new Date().toISOString(),
       source_mode: "read_only_preview",
+      source_commit: git.commit,
+      source_working_tree_dirty: git.working_tree_dirty,
+      browser: browserEnvironment,
+      human_visual_review_status: "pending",
+      review_receipt: null,
       startup_behavior: "does_not_start_or_stop_services",
       physical_device_capture: false,
       production_claim: false,
@@ -669,13 +779,14 @@ async function main() {
       preview,
       capture_entries: captured.entries,
       artifacts: artifactNames.map((name) => ({
-        file: `docs/assets/competitive-evidence/${name}`,
+        file: repositoryArtifactPath(outputDir, name),
+        output_file: name,
         file_size_bytes: fs.statSync(path.join(tempDir, name)).size,
         sha256: sha256File(path.join(tempDir, name)),
       })),
     };
     fs.writeFileSync(path.join(tempDir, manifestFilename), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-    copyCuratedArtifacts(tempDir, outputDir, [...artifactNames, manifestFilename]);
+    publishCuratedArtifacts(tempDir, outputDir, [...artifactNames, manifestFilename]);
     console.log(
       JSON.stringify(
         {

@@ -5,11 +5,13 @@
 ## 证据边界
 
 - 采集器不会启动、停止、初始化或改写任何服务；开始前必须由操作者单独启动本地前端和后端。
+- 前后端 URL 必须使用 loopback host。正式发布默认拒绝脏工作区；`--allow-dirty` 只用于写到临时目录的预检，不能作为正式证据。
 - 默认且唯一支持的是 `preview` 模式。它检查四条只读 preview API（包含 `2.10.3-2.11.8` 迭代台账），并在浏览器中以对应 preview payload 替换持久化台账 GET 响应，所以即使本地开发数据库已初始化，页面也稳定呈现确定性的只读预览。
 - 采集器拦截一切非 GET/OPTIONS 的产品策略请求；它不点击“初始化”或任何会写入的控件。
 - `mobile_viewport` 是 `390 × 844` 的模拟移动 CSS 视口（`deviceScaleFactor=3`），不是物理手机、平板或云真机截图。
 - 桌面采集统一为 `1600 × 1100` CSS 像素；演示 GIF/MP4 由 4 个桌面关键状态按每秒 1 帧组成，目标时长约 4 秒，便于 README 与 release 页面重复生成和快速预览。
 - `competitive-browser-performance.json` 记录本地浏览器 Performance API 导航采样；它不是生产压测、服务端 SLA、网络基准或发布放行证据。
+- manifest 记录 source commit、工作区状态、浏览器版本、可执行文件、逐项 SHA-256 和浏览器诊断。`human_visual_review_status=pending` 与空 review receipt 会一直保留，直到另有可归属的人工复核证据。
 - Office、视觉人工验收、真实设备验证、独立竞品验证和 release-readiness 继续各自保持既有门禁，不能由这些素材替代。
 
 ## 前置条件
@@ -32,7 +34,7 @@ curl -fsS http://127.0.0.1:8000/healthz
 npm run repo:competitive-evidence
 ```
 
-该命令生成并覆盖经人工挑选后可发布的目录 `docs/assets/competitive-evidence/` 中的以下文件：
+该命令先在临时目录完成全部采集与校验，再以 staging/backup 方式替换 `docs/assets/competitive-evidence/`，避免失败时留下半套证据。它生成以下文件：
 
 - `competitive-preview-desktop-browser.png`
 - `competitive-source-matrix-desktop-browser.png`
@@ -65,6 +67,6 @@ npm run repo:competitive-evidence -- \
 ## 发布前人工检查
 
 1. 打开 PNG 与 GIF，确认没有运行时错误、空白关键区域、私有数据或错误的产品声明。
-2. 检查 manifest 的 `source_mode=read_only_preview`、`physical_device_capture=false` 和 SHA-256 是否与当前文件一致。
+2. 检查 manifest 的 `source_mode=read_only_preview`、`source_working_tree_dirty=false`、`physical_device_capture=false`、`human_visual_review_status` 和 SHA-256 是否与当前文件一致。
 3. 把真实设备截图、Office roundtrip、视觉评审和独立竞品核查分别放入各自的可复核证据链；不要把本工作流标为“真机”或“生产性能”。
 4. 仅在人工确认素材可公开后，将 `docs/assets/competitive-evidence/` 提交到 GitHub 和 ModelScope。

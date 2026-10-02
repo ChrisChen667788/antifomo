@@ -30,6 +30,7 @@ import {
   buildArchiveDeliveryDigest,
 } from "@/lib/research-archive-metadata";
 import { buildSimplePdfFromText, triggerFileDownload } from "@/lib/research-delivery-export";
+import { formatProductDate, formatProductDateTime } from "@/lib/date-time";
 import {
   archiveKindLabel,
   archiveKindTone,
@@ -154,7 +155,7 @@ function ArchiveMetaChips({ archive }: { archive: ApiResearchMarkdownArchive }) 
         大小 · {Math.max(1, Math.round(archive.content_length / 1024))} KB
       </span>
       <span className="rounded-full af-chip px-2.5 py-1 ">
-        更新 · {new Date(archive.updated_at).toLocaleString()}
+        更新 · {formatProductDateTime(archive.updated_at)}
       </span>
       {archive.query ? (
         <span className="rounded-full af-chip px-2.5 py-1 ">
@@ -314,7 +315,7 @@ function ArchiveCandidateCard({
       </p>
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--af-text-tertiary)]">
         <span className="rounded-full bg-[var(--af-surface-muted)] px-2 py-1">
-          {new Date(archive.updated_at).toLocaleDateString()}
+          {formatProductDate(archive.updated_at)}
         </span>
         {archive.report_version_title ? (
           <span className="rounded-full af-chip af-chip-warning px-2 py-1 ">

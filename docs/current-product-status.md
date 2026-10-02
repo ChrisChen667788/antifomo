@@ -1,12 +1,13 @@
 # Anti-FOMO Current Product Status
 
-Updated: 2026-09-22
+Updated: 2026-10-02
 
 This is the canonical status page for public documentation. The repository is an active local-first development prototype. A working route, test result, preview, or generated artifact does not by itself establish production readiness, customer acceptance, or a signed commercial deployment.
 
 ## Current line
 
-- **Implemented development line:** `2.10.3–2.11.8-development`.
+- **Implemented development scope:** `2.10.3–2.11.8-development`, plus the `2.12.0` PR-A schema/state subset.
+- **2.12.0 status:** The Task Envelope PR-A schema/state subset is implemented as `local_implementation` in [GitHub PR #12](https://github.com/ChrisChen667788/antifomo/pull/12). The GitHub PR state records its merge outcome; source integration does not make 2.12.0 complete or released. The execution flag defaults off, and PR-A has no executor or callback sender.
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
 - **Evidence control plane and launch kit:** [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11). Its GitHub status records the merge outcome; source-code integration into `main` is separate from release or production approval.
@@ -35,15 +36,16 @@ Marketing pages must name the highest applicable label beside every metric or ou
 | Retrieval, evidence ledger, compare and report workflow | `local_implementation` + `demo` | Local tests and evidence receipts; independent retrieval/customer review remains open. |
 | Architecture readiness and solution architect workbench | `local_implementation` + `demo` | Generated blueprints and UI paths; not a customer-approved architecture. |
 | Office/visual evidence receipts | `local_implementation` | Local hashes and render receipts; they do not replace named human/customer acceptance. |
+| Task Envelope PR-A schema/state subset | `local_implementation` | Proposal, frozen digest, budget/scope digest binding, append-only approval/receipt, revocation and model-profile contracts exist in the local API. PR-A has no executor; the reserved execution flag defaults off but does not gate proposal/control calls. Approver, actor and scope values are caller-supplied strings without a trusted identity or permission policy, so an `approved` record is not proof of human authorization. |
 | WorkBuddy bridge | `local_implementation` | Local compatibility webhook and CodeBuddy CLI bridge. Signature checking is conditional: an empty secret bypasses it. The webhook directly executes supported export task types and can send a result to a request-supplied or configured callback URL. There is no universal human-approval gate; health/CLI detection does not prove native Tencent WorkBuddy interoperability. |
 | Animated marketing assets | `demo` | Conceptual SVG plus a historical local-UI screenshot montage. Asset manifests identify source version and render provenance; neither is live telemetry or evidence of the current release's behavior. |
 
-## Known documentation drift
+## Visual evidence status
 
-- `docs/assets/screenshots/screenshot-manifest.json` remains a historical `v1.9.1` screenshot baseline; it must not be used as evidence for the current version.
-- `docs/assets/competitive-evidence/competitive-evidence-manifest.json` was captured before the `2.11.8` extension and still reports a 15-slice preview. A fresh capture must update the manifest before marketing claims the 16-slice visual evidence is current.
+- `docs/assets/screenshots/screenshot-manifest.json` now records 34 light/dark local browser captures for 17 surfaces from source commit `10b536c`. PNG hashes, dimensions, required content, theme state, and browser diagnostics passed against an isolated database copy. `human_visual_review_status` remains `pending`, so this does not clear the visual release gate.
+- `docs/assets/competitive-evidence/competitive-evidence-manifest.json` now records the 16-version / 7-source read-only preview from source commit `ccbf836`, with seven PNG captures, three browser-navigation samples per viewport, and a four-second GIF/MP4. File hashes and monitored browser diagnostics passed; simulated mobile CSS viewports are not physical-device evidence, performance samples are local rather than production, and `human_visual_review_status` remains `pending`.
 - `docs/product-whitepaper.md`, README files, launch copy, and roadmap should link this page rather than inventing separate “current version” sentences.
 
 ## Next decision
 
-The next implementation sequence adds an envelope/provenance/approval layer around the existing export bridge, then builds the controlled execution lane in the [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md). The [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) records the comparison and its sources. These follow-on versions are planned, not implemented by this documentation refresh. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export route retains its conditional signature check, direct execution and callback behavior until the planned migration closes those gaps.
+The next implementation step is PR-B: adapt the WorkBuddy webhook, `POST /api/tasks`, and Focus Assistant action path to create proposals, register callback intent without secrets, and fail closed until a current approval passes an authenticated permission policy. PR-C then updates the Web surfaces for proposal/review/receipt states. The [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md) and [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) remain the governing scope. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export paths still retain direct execution, and WorkBuddy retains its conditional signature check and callback behavior, so PR-A and 2.12.0 as a whole are not complete.
