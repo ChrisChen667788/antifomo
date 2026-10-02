@@ -1,7 +1,16 @@
 {
   "schema_version": "anti-fomo-competitive-browser-metrics/v1",
-  "generated_at": "2026-09-01T02:41:31.086Z",
+  "generated_at": "2026-10-02T05:19:26.118Z",
   "source_mode": "read_only_preview",
+  "source_commit": "ccbf836886c8e395a0ca3092d7bc3bf922d65c84",
+  "source_working_tree_dirty": false,
+  "browser": {
+    "version": "Chrome/154.0.8037.93",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  },
+  "human_visual_review_status": "pending",
+  "review_receipt": null,
   "startup_behavior": "does_not_start_or_stop_services",
   "claim_boundary": {
     "local_browser_measurement_only": true,
@@ -9,16 +18,16 @@
     "production_performance_benchmark": false,
     "release_approval_evidence": false
   },
-  "frontend_url": "http://127.0.0.1:3010",
-  "api_base": "http://127.0.0.1:8000",
+  "frontend_url": "http://127.0.0.1:3012",
+  "api_base": "http://127.0.0.1:18080",
   "preview": {
     "health_status": "ok",
     "catalog_version": "2.10.0",
     "catalog_digest": "647ce039e4182bdac4dbb80d87163b39c42dfc51b93676fe1321582b367f0432",
     "products": 6,
     "roadmap_cards": 6,
-    "iteration_program_version": "2.10.3-2.11.7",
-    "iteration_count": 15,
+    "iteration_program_version": "2.10.3-2.11.8",
+    "iteration_count": 16,
     "agent_source_count": 7,
     "preview_read_only": true
   },
@@ -33,83 +42,86 @@
       "samples": [
         {
           "sample": 1,
-          "capture_ready_ms": 736.62,
+          "capture_ready_ms": 735,
           "navigation": {
-            "response_end_ms": 4.2,
-            "dom_content_loaded_ms": 19,
-            "load_event_end_ms": 71.3,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 3.5,
+            "dom_content_loaded_ms": 55.3,
+            "load_event_end_ms": 81.6,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 68,
-            "first_contentful_paint_ms": 68
+            "first_paint_ms": 80,
+            "first_contentful_paint_ms": 80
           },
           "resources": {
-            "count": 70,
-            "transfer_size_bytes": 466457
+            "count": 79,
+            "transfer_size_bytes": 677160
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         },
         {
           "sample": 2,
-          "capture_ready_ms": 744.38,
+          "capture_ready_ms": 750.3,
           "navigation": {
-            "response_end_ms": 3.6,
-            "dom_content_loaded_ms": 42.8,
-            "load_event_end_ms": 69.4,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 5.5,
+            "dom_content_loaded_ms": 58.4,
+            "load_event_end_ms": 85.7,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 68,
-            "first_contentful_paint_ms": 68
+            "first_paint_ms": 80,
+            "first_contentful_paint_ms": 80
           },
           "resources": {
-            "count": 70,
-            "transfer_size_bytes": 466457
+            "count": 79,
+            "transfer_size_bytes": 677160
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         },
         {
           "sample": 3,
-          "capture_ready_ms": 731.46,
+          "capture_ready_ms": 747.28,
           "navigation": {
-            "response_end_ms": 6.9,
-            "dom_content_loaded_ms": 47,
-            "load_event_end_ms": 73.4,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 4.4,
+            "dom_content_loaded_ms": 60.4,
+            "load_event_end_ms": 87.5,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 72,
-            "first_contentful_paint_ms": 72
+            "first_paint_ms": 84,
+            "first_contentful_paint_ms": 84
           },
           "resources": {
-            "count": 70,
-            "transfer_size_bytes": 466457
+            "count": 79,
+            "transfer_size_bytes": 677160
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         }
       ],
       "median": {
-        "capture_ready_ms": 736.62,
-        "response_end_ms": 4.2,
-        "dom_content_loaded_ms": 42.8,
-        "load_event_end_ms": 71.3,
-        "first_paint_ms": 68,
-        "first_contentful_paint_ms": 68,
-        "resource_count": 70,
-        "resource_transfer_size_bytes": 466457
+        "capture_ready_ms": 747.28,
+        "response_end_ms": 4.4,
+        "dom_content_loaded_ms": 58.4,
+        "load_event_end_ms": 85.7,
+        "first_paint_ms": 80,
+        "first_contentful_paint_ms": 80,
+        "resource_count": 79,
+        "resource_transfer_size_bytes": 677160
       }
     },
     "mobile_viewport": {
@@ -124,83 +136,86 @@
       "samples": [
         {
           "sample": 1,
-          "capture_ready_ms": 691.26,
+          "capture_ready_ms": 758.76,
           "navigation": {
-            "response_end_ms": 7.8,
-            "dom_content_loaded_ms": 48.8,
-            "load_event_end_ms": 75.4,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 4.9,
+            "dom_content_loaded_ms": 58.8,
+            "load_event_end_ms": 86.6,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 68,
-            "first_contentful_paint_ms": 68
+            "first_paint_ms": 80,
+            "first_contentful_paint_ms": 80
           },
           "resources": {
-            "count": 36,
-            "transfer_size_bytes": 305534
+            "count": 45,
+            "transfer_size_bytes": 318348
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         },
         {
           "sample": 2,
-          "capture_ready_ms": 704.89,
+          "capture_ready_ms": 706.87,
           "navigation": {
-            "response_end_ms": 3.1,
-            "dom_content_loaded_ms": 16.4,
-            "load_event_end_ms": 73.1,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 4.2,
+            "dom_content_loaded_ms": 57.5,
+            "load_event_end_ms": 85,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 72,
-            "first_contentful_paint_ms": 72
+            "first_paint_ms": 80,
+            "first_contentful_paint_ms": 80
           },
           "resources": {
-            "count": 36,
-            "transfer_size_bytes": 305534
+            "count": 47,
+            "transfer_size_bytes": 319344
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         },
         {
           "sample": 3,
-          "capture_ready_ms": 697.16,
+          "capture_ready_ms": 709.81,
           "navigation": {
-            "response_end_ms": 8.3,
-            "dom_content_loaded_ms": 48.1,
-            "load_event_end_ms": 74.1,
-            "transfer_size_bytes": 6028
+            "response_end_ms": 5.9,
+            "dom_content_loaded_ms": 60.6,
+            "load_event_end_ms": 87.3,
+            "transfer_size_bytes": 9954
           },
           "paint": {
-            "first_paint_ms": 68,
-            "first_contentful_paint_ms": 68
+            "first_paint_ms": 80,
+            "first_contentful_paint_ms": 80
           },
           "resources": {
-            "count": 36,
-            "transfer_size_bytes": 305534
+            "count": 45,
+            "transfer_size_bytes": 318348
           },
           "diagnostics": {
             "console_messages": [],
             "request_failures": [],
+            "response_errors": [],
             "page_errors": []
           }
         }
       ],
       "median": {
-        "capture_ready_ms": 697.16,
-        "response_end_ms": 7.8,
-        "dom_content_loaded_ms": 48.1,
-        "load_event_end_ms": 74.1,
-        "first_paint_ms": 68,
-        "first_contentful_paint_ms": 68,
-        "resource_count": 36,
-        "resource_transfer_size_bytes": 305534
+        "capture_ready_ms": 709.81,
+        "response_end_ms": 4.9,
+        "dom_content_loaded_ms": 58.8,
+        "load_event_end_ms": 86.6,
+        "first_paint_ms": 80,
+        "first_contentful_paint_ms": 80,
+        "resource_count": 45,
+        "resource_transfer_size_bytes": 318348
       }
     }
   }

@@ -43,7 +43,7 @@ Marketing pages must name the highest applicable label beside every metric or ou
 ## Visual evidence status
 
 - `docs/assets/screenshots/screenshot-manifest.json` now records 34 light/dark local browser captures for 17 surfaces from source commit `10b536c`. PNG hashes, dimensions, required content, theme state, and browser diagnostics passed against an isolated database copy. `human_visual_review_status` remains `pending`, so this does not clear the visual release gate.
-- `docs/assets/competitive-evidence/competitive-evidence-manifest.json` was captured before the `2.11.8` extension and still reports a 15-slice preview. A fresh capture must update the manifest before marketing claims the 16-slice visual evidence is current.
+- `docs/assets/competitive-evidence/competitive-evidence-manifest.json` now records the 16-version / 7-source read-only preview from source commit `ccbf836`, with seven PNG captures, three browser-navigation samples per viewport, and a four-second GIF/MP4. File hashes and monitored browser diagnostics passed; simulated mobile CSS viewports are not physical-device evidence, performance samples are local rather than production, and `human_visual_review_status` remains `pending`.
 - `docs/product-whitepaper.md`, README files, launch copy, and roadmap should link this page rather than inventing separate “current version” sentences.
 
 ## Next decision
