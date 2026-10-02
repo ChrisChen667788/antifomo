@@ -42,7 +42,7 @@ Anti-FOMO 的 `backend/app/services/workbuddy_adapter.py` 会探测本机 `codeb
 
 ### 2.2 Anti-FOMO 的现状证据
 
-当前公开状态页将 `2.10.3–2.11.8-development` 标记为本地实现，release promotion 仍 `blocked`。可核验的本地能力包括：
+当前公开状态页将 `2.10.3–2.11.8-development` 与 `2.12.0` PR-A schema/state subset 标记为本地实现，release promotion 仍 `blocked`。可核验的本地能力包括：
 
 * 来源采集、微信/网页入口、来源新鲜度和竞品监测：`scripts/competitive_monitor.mjs`、`scripts/capture_competitive_evidence.mjs`、采集器和相关 backend service。
 * 研究运行和状态转换：`backend/app/services/decision_program/control_room.py`、`backend/app/services/research/*`。

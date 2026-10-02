@@ -1,6 +1,6 @@
 # Anti-FOMO × WorkBuddy：受控执行集成计划（2026-09-18）
 
-> 这是 `2.12.0`–`2.21.0` 的权威工程计划。它把 WorkBuddy 公开资料中适合借鉴的交互和治理能力，收敛为 Anti-FOMO 的证据感知、人工审批、可回滚执行边界。版本号沿用当前开发线；实现分支仍是 `2.10.3–2.11.8-development`，不得把本计划写成已交付能力。
+> 这是 `2.12.0`–`2.21.0` 的权威工程计划。它把 WorkBuddy 公开资料中适合借鉴的交互和治理能力，收敛为 Anti-FOMO 的证据感知、人工审批、可回滚执行边界。版本号沿用当前开发线；仅 PR-A schema/state subset 已达到 `local_implementation`，后续计划不得写成已交付能力。
 >
 > 证据层级：`local_implementation`（本 checkout 可复现）→ `demo`（本地展示）→ `synthetic_benchmark`（固定样本）→ `human_acceptance` → `customer_acceptance` → `production`。WorkBuddy 官方文档是 `vendor_claim`，不是 Anti-FOMO 的验收证据。真实 pilot 是外部验收依赖，不能由本地测试或自动任务代签。
 
