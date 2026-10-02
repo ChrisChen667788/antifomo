@@ -23,6 +23,7 @@ from app.api.product_strategy_human_acceptance import router as product_strategy
 from app.api.sessions import router as sessions_router
 from app.api.research import router as research_router
 from app.api.system import router as system_router
+from app.api.task_envelopes import router as task_envelopes_router
 from app.api.tasks import router as tasks_router
 from app.api.workbuddy import router as workbuddy_router
 from app.core.config import get_settings
@@ -95,6 +96,7 @@ app.include_router(feedback_router)
 app.include_router(sessions_router)
 app.include_router(focus_assistant_router)
 app.include_router(tasks_router)
+app.include_router(task_envelopes_router)
 app.include_router(workbuddy_router)
 app.include_router(mobile_router)
 app.include_router(system_router)

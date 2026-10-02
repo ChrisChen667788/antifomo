@@ -72,6 +72,7 @@ from app.models.product_strategy_office_evidence_entities import ProductStrategy
 from app.models.product_strategy_visual_evidence_entities import ProductStrategyVisualEvidenceRevision
 from app.models.product_strategy_operation_entities import ProductStrategyOperationEvidence
 from app.models.product_strategy_human_acceptance_entities import ProductStrategyHumanAcceptanceEvent
+from app.models.task_envelope_entities import ModelProfile, TaskApproval, TaskEnvelope, TaskReceipt
 from app.models.research_entities import (
     ResearchCompareSnapshot,
     ResearchCanonicalEntity,
@@ -150,6 +151,7 @@ __all__ = [
     "ProductStrategyOfficeEvidenceReceipt",
     "ProductStrategyVisualEvidenceRevision",
     "ProductStrategySource",
+    "ModelProfile",
     "ResearchCompareSnapshot",
     "ResearchCanonicalEntity",
     "ResearchConversation",
@@ -172,6 +174,9 @@ __all__ = [
     "SessionExportItem",
     "SessionItem",
     "SourcePreference",
+    "TaskApproval",
+    "TaskEnvelope",
+    "TaskReceipt",
     "TopicPreference",
     "UploadedDocument",
     "User",

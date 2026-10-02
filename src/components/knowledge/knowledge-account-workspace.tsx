@@ -5,6 +5,7 @@ import type { ApiKnowledgeAccountDetail } from "@/lib/api/types";
 import { sanitizeExternalDisplayList, sanitizeExternalDisplayText } from "@/lib/commercial-risk-copy";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { ExternalLinkActions, normalizeExternalUrl } from "@/components/ui/external-link-actions";
+import { formatProductDate, formatProductDateTime } from "@/lib/date-time";
 
 function maturityLabel(value: string) {
   if (value === "scaling") return "规模化";
@@ -338,7 +339,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                 >
                   <p className="text-sm font-semibold text-slate-900">{entry.title}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {entry.collection_name || entry.source_domain || "知识卡片"} · {new Date(entry.created_at).toLocaleDateString()}
+                    {entry.collection_name || entry.source_domain || "知识卡片"} · {formatProductDate(entry.created_at)}
                   </p>
                 </Link>
               ))}
@@ -477,8 +478,8 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                     ) : null}
                     {item.tags.length ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {item.tags.map((tag) => (
-                          <span key={`${item.id}-${tag}`} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                        {item.tags.map((tag, tagIndex) => (
+                          <span key={`${item.id}-${tag}-${tagIndex}`} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
                             {tag}
                           </span>
                         ))}
@@ -486,7 +487,7 @@ export function KnowledgeAccountWorkspace({ account }: { account: ApiKnowledgeAc
                     ) : null}
                   </div>
                   <div className="flex flex-col items-end gap-2 text-xs text-slate-500">
-                    <span>{new Date(item.created_at).toLocaleString()}</span>
+                    <span>{formatProductDateTime(item.created_at)}</span>
                     {item.related_entry_id ? (
                       <Link href={`/knowledge/${item.related_entry_id}`} className="font-medium text-sky-700">
                         查看卡片

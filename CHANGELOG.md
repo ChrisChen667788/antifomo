@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 2.12.0 PR-A Task Envelope schema/state subset
+
+- Added an expand-only Task Envelope schema with append-only approval records, digest-chained receipts, versioned model profiles, explicit budget/scope digest binding, global idempotency protection, revocation epochs, and guarded state transitions.
+- Added `POST /api/task-envelopes`, configured single-user-owner reads, approval, cancellation, and reconciliation endpoints. PR-A records proposals and caller-supplied approval assertions but has no identity/permission policy, exposes no execution endpoint, creates no legacy `WorkTask`, and sends no callback.
+- Added Alembic revision `20261001_0040`; its no-op downgrade retains envelope, approval, receipt, and model-profile evidence. The reserved execution flag defaults off but does not gate the current proposal/control API.
+- Added replay, cross-user, digest-change, expiry, scope, budget, revocation, append-only, API, and stamp/schema-drift migration tests, including 100 concurrent submissions of one idempotency key.
+- Kept `ANTI_FOMO_TASK_ENVELOPE=0` by default. The existing WorkBuddy webhook, `/api/tasks` write path, and Focus Assistant action path remain legacy direct-execution callers until PR-B/PR-C compatibility work is complete; this subset is local implementation evidence, not a completed 2.12.0 release, trusted human authorization, or production authorization.
+
 ### 2.10.5 Office evidence receipts
 
 - Added immutable receipts binding a 2.10.2 artifact revision to DOCX/PPTX SHA-256, OpenXML validation, Office-exported PDF SHA-256, and page-level render hashes.

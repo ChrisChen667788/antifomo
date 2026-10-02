@@ -141,6 +141,7 @@ class Settings(BaseSettings):
     workbuddy_official_gateway_bearer_token: str | None = None
     workbuddy_official_probe_timeout_seconds: int = 6
     workbuddy_official_cli_timeout_seconds: int = 90
+    anti_fomo_task_envelope: bool = False
 
     @field_validator("database_url", mode="before")
     @classmethod

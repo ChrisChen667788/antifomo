@@ -491,9 +491,9 @@ export function KnowledgeCommercialHub({
                   <span className="rounded-full bg-white/84 px-2.5 py-1 text-xs text-slate-600">{filteredReviewQueue.length} 条</span>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {filteredReviewQueue.slice(0, expanded ? 8 : 4).map((item) => (
+                  {filteredReviewQueue.slice(0, expanded ? 8 : 4).map((item, itemIndex) => (
                     <Link
-                      key={item.id}
+                      key={`${item.id}-${item.account_slug || "unassigned"}-${itemIndex}`}
                       href={item.related_entry_id ? `/knowledge/${item.related_entry_id}` : item.account_slug ? `/knowledge/accounts/${item.account_slug}` : "/knowledge"}
                       className="block rounded-[20px] border border-white/90 bg-white/88 p-4 transition hover:bg-white"
                     >

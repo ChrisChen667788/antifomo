@@ -7,6 +7,7 @@ import { updateKnowledgeEntry } from "@/lib/api";
 import { KnowledgeRuleCard } from "@/components/knowledge/knowledge-rule-card";
 import { useAppPreferences } from "@/components/settings/app-preferences-provider";
 import { AppIcon } from "@/components/ui/app-icon";
+import { formatProductDateTime } from "@/lib/date-time";
 
 function getKnowledgeEntryType(entry: ApiKnowledgeEntry): "report" | "action" | "focus" | "note" {
   if (entry.source_domain === "research.report") return "report";
@@ -509,7 +510,7 @@ export function KnowledgeList({ items }: { items: ApiKnowledgeEntry[] }) {
                     {t("knowledge.source", "来源")}：{item.source_domain || t("common.unknownSource", "未知来源")}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
-                    {t("knowledge.createdAt", "创建时间")}：{new Date(item.created_at).toLocaleString()}
+                    {t("knowledge.createdAt", "创建时间")}：{formatProductDateTime(item.created_at)}
                   </p>
                 </div>
                 <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">

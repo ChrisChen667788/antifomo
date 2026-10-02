@@ -1,12 +1,13 @@
 # Anti-FOMO Current Product Status
 
-Updated: 2026-09-22
+Updated: 2026-10-02
 
 This is the canonical status page for public documentation. The repository is an active local-first development prototype. A working route, test result, preview, or generated artifact does not by itself establish production readiness, customer acceptance, or a signed commercial deployment.
 
 ## Current line
 
 - **Implemented development line:** `2.10.3–2.11.8-development`.
+- **2.12.0 status:** PR-A Task Envelope schema/state is implemented on the current development branch as `local_implementation`; it is not yet a merged or released 2.12.0 line. The execution flag defaults off, and PR-A has no executor or callback sender.
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
 - **Evidence control plane and launch kit:** [PR #11](https://github.com/ChrisChen667788/antifomo/pull/11). Its GitHub status records the merge outcome; source-code integration into `main` is separate from release or production approval.
@@ -35,6 +36,7 @@ Marketing pages must name the highest applicable label beside every metric or ou
 | Retrieval, evidence ledger, compare and report workflow | `local_implementation` + `demo` | Local tests and evidence receipts; independent retrieval/customer review remains open. |
 | Architecture readiness and solution architect workbench | `local_implementation` + `demo` | Generated blueprints and UI paths; not a customer-approved architecture. |
 | Office/visual evidence receipts | `local_implementation` | Local hashes and render receipts; they do not replace named human/customer acceptance. |
+| Task Envelope PR-A schema/state subset | `local_implementation` | Proposal, frozen digest, budget/scope digest binding, append-only approval/receipt, revocation and model-profile contracts exist in the local API. PR-A has no executor; the reserved execution flag defaults off but does not gate proposal/control calls. Approver, actor and scope values are caller-supplied strings without a trusted identity or permission policy, so an `approved` record is not proof of human authorization. |
 | WorkBuddy bridge | `local_implementation` | Local compatibility webhook and CodeBuddy CLI bridge. Signature checking is conditional: an empty secret bypasses it. The webhook directly executes supported export task types and can send a result to a request-supplied or configured callback URL. There is no universal human-approval gate; health/CLI detection does not prove native Tencent WorkBuddy interoperability. |
 | Animated marketing assets | `demo` | Conceptual SVG plus a historical local-UI screenshot montage. Asset manifests identify source version and render provenance; neither is live telemetry or evidence of the current release's behavior. |
 
@@ -46,4 +48,4 @@ Marketing pages must name the highest applicable label beside every metric or ou
 
 ## Next decision
 
-The next implementation sequence adds an envelope/provenance/approval layer around the existing export bridge, then builds the controlled execution lane in the [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md). The [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) records the comparison and its sources. These follow-on versions are planned, not implemented by this documentation refresh. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export route retains its conditional signature check, direct execution and callback behavior until the planned migration closes those gaps.
+The next implementation step is PR-B: adapt the WorkBuddy webhook, `POST /api/tasks`, and Focus Assistant action path to create proposals, register callback intent without secrets, and fail closed until a current approval passes an authenticated permission policy. PR-C then updates the Web surfaces for proposal/review/receipt states. The [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md) and [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) remain the governing scope. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export paths still retain direct execution, and WorkBuddy retains its conditional signature check and callback behavior, so PR-A and 2.12.0 as a whole are not complete.
