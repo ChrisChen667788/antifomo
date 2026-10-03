@@ -35,8 +35,10 @@ from app.services.collector_diagnostics import (
     infer_item_acquisition,
     update_item_ingest_state,
 )
+from app.services.collector_evidence_service import connector_for_item, record_source_capture
 from app.services.item_processing_runtime import process_item_by_id, process_item_in_session
 from app.services.language import normalize_output_language
+from app.services.source_url_privacy import normalize_fetch_url, redact_sensitive_urls
 from app.services.user_context import ensure_demo_user
 
 
@@ -46,7 +48,7 @@ settings = get_settings()
 EnsureDemoUserFn = Callable[[Session], Any]
 MarkSourceCollectedFn = Callable[[Session, str | None, str | None], None]
 ProcessItemInSessionFn = Callable[..., Item]
-ProcessItemTaskFn = Callable[[UUID, str | None], None]
+ProcessItemTaskFn = Callable[..., None]
 ExtractFromBrowserFn = Callable[[str], Any]
 
 
@@ -85,12 +87,67 @@ def _mark_source_collected(db: Session, source_url: str | None, error: str | Non
     if not source:
         return
     source.last_collected_at = datetime.now(timezone.utc)
-    source.last_error = _clean_text(error) or None
+    source.last_error = _clean_text(redact_sensitive_urls(error)) or None
     db.add(source)
 
 
-def _process_item_task(item_id: UUID, output_language: str | None = None) -> None:
-    result = process_item_by_id(item_id, output_language=output_language, auto_archive=True)
+def _record_api_source_capture(
+    db: Session,
+    *,
+    item: Item,
+    raw_content: str,
+    clean_content: str,
+    resolver: str,
+    body_source: str,
+):
+    return record_source_capture(
+        db,
+        item=item,
+        connector=connector_for_item(item),
+        raw_content=raw_content,
+        clean_content=clean_content,
+        canonical_url=item.source_url,
+        mime_type="text/html" if "<html" in raw_content[:500].lower() else "text/plain",
+        parser_fingerprint="item-processor-v2",
+        parse_status="captured",
+        metadata_payload={"resolver": resolver, "body_source": body_source},
+    )
+
+
+def _record_processed_source_capture(
+    db: Session,
+    *,
+    item: Item,
+    resolver: str,
+    body_source: str,
+) -> None:
+    raw_content = str(getattr(item, "_collector_raw_evidence", "") or "")
+    clean_content = _clean_text(item.clean_content or item.raw_content)
+    if not raw_content:
+        return
+    _record_api_source_capture(
+        db,
+        item=item,
+        raw_content=raw_content,
+        clean_content=clean_content,
+        resolver=resolver,
+        body_source=body_source,
+    )
+
+
+def _process_item_task(
+    item_id: UUID,
+    output_language: str | None = None,
+    raw_evidence: str | None = None,
+    fetch_url: str | None = None,
+) -> None:
+    result = process_item_by_id(
+        item_id,
+        output_language=output_language,
+        auto_archive=True,
+        raw_evidence=raw_evidence,
+        fetch_url=fetch_url,
+    )
     if result is None:
         return
     db = SessionLocal()
@@ -117,14 +174,92 @@ def ingest_plugin_item_impl(
 ) -> CollectorPluginIngestResponse:
     ensure_demo_user_fn(db)
     resolved_language = normalize_output_language(payload.output_language)
-    source_url = payload.source_url.strip()
+    source_url = _normalize_source_url(payload.source_url)
 
-    if not _is_valid_http_url(source_url):
+    if not source_url or not _is_valid_http_url(source_url):
         raise HTTPException(status_code=400, detail="source_url must start with http:// or https://")
 
+    raw_evidence = payload.raw_content
+    clean_projection = _clean_text(raw_evidence)
     if payload.deduplicate:
         existing = _load_existing_item_by_url(db, source_url)
         if existing:
+            capture = _record_api_source_capture(
+                db,
+                item=existing,
+                raw_content=raw_evidence,
+                clean_content=clean_projection,
+                resolver="browser_plugin",
+                body_source="plugin_body",
+            )
+            if capture.revision_created:
+                existing.title = _clean_text(payload.title) or existing.title
+                existing.raw_content = clean_projection
+                existing.clean_content = clean_projection
+                existing.output_language = resolved_language
+                existing.content_acquisition_status = "body_acquired"
+                existing.content_acquisition_note = "浏览器插件已提交正文修订"
+                existing.resolved_from_url = source_url
+                existing.fallback_used = False
+                existing.status = "pending"
+                existing.processing_error = None
+                existing._collector_raw_evidence = raw_evidence
+
+                if payload.process_immediately:
+                    process_item_in_session_fn(
+                        db,
+                        existing,
+                        output_language=resolved_language,
+                        auto_archive=True,
+                    )
+                update_item_ingest_state(
+                    existing,
+                    ingest_route=existing.ingest_route or "plugin",
+                    resolved_from_url=source_url,
+                    fallback_used=bool(existing.fallback_used),
+                )
+                attempt = create_ingest_attempt(
+                    db,
+                    item=existing,
+                    source_url=source_url,
+                    route_type=existing.ingest_route or "plugin",
+                    resolver="existing_item_revision",
+                    attempt_status=(
+                        "ready"
+                        if payload.process_immediately and existing.status == "ready"
+                        else "failed"
+                        if payload.process_immediately
+                        else "queued"
+                    ),
+                    body_source="plugin_body",
+                    error_detail=existing.processing_error,
+                )
+                mark_source_collected_fn(db, source_url, existing.processing_error)
+                db.add(existing)
+                db.commit()
+                if not payload.process_immediately:
+                    background_tasks.add_task(
+                        process_item_task_fn,
+                        existing.id,
+                        resolved_language,
+                        raw_evidence,
+                        None,
+                    )
+                hydrated_existing = _load_item_with_tags(db, existing.id)
+                if hydrated_existing is None:
+                    raise HTTPException(status_code=500, detail="failed to load item after processing")
+                return CollectorPluginIngestResponse(
+                    item=ItemOut.model_validate(hydrated_existing),
+                    deduplicated=True,
+                    processing_deferred=not payload.process_immediately,
+                    attempt_id=attempt.id,
+                    ingest_route=hydrated_existing.ingest_route or "plugin",
+                    content_acquisition_status=hydrated_existing.content_acquisition_status,
+                    resolver="existing_item_revision",
+                    body_source="plugin_body",
+                    fallback_used=hydrated_existing.fallback_used,
+                )
+
             update_item_ingest_state(existing, ingest_route=existing.ingest_route or "plugin", resolved_from_url=source_url)
             attempt = create_ingest_attempt(
                 db,
@@ -155,7 +290,8 @@ def ingest_plugin_item_impl(
         source_url=source_url,
         source_domain=extract_domain(source_url),
         title=_clean_text(payload.title) or None,
-        raw_content=_clean_text(payload.raw_content),
+        raw_content=clean_projection,
+        clean_content=clean_projection,
         output_language=resolved_language,
         ingest_route="plugin",
         content_acquisition_status="body_acquired",
@@ -164,11 +300,25 @@ def ingest_plugin_item_impl(
         fallback_used=False,
         status="pending",
     )
+    _persist_new_item(db, item)
+    _record_api_source_capture(
+        db,
+        item=item,
+        raw_content=raw_evidence,
+        clean_content=clean_projection,
+        resolver="browser_plugin",
+        body_source="plugin_body",
+    )
+    item._collector_raw_evidence = raw_evidence
     attempt_status = "queued"
     if payload.process_immediately:
-        _persist_new_item(db, item)
         process_item_in_session_fn(db, item, output_language=resolved_language, auto_archive=True)
-        update_item_ingest_state(item, ingest_route="plugin", resolved_from_url=source_url, fallback_used=False)
+        update_item_ingest_state(
+            item,
+            ingest_route="plugin",
+            resolved_from_url=source_url,
+            fallback_used=bool(item.fallback_used),
+        )
         attempt_status = "ready" if item.status == "ready" else "failed"
         attempt = create_ingest_attempt(
             db,
@@ -183,7 +333,6 @@ def ingest_plugin_item_impl(
         mark_source_collected_fn(db, source_url, item.processing_error)
         db.commit()
     else:
-        _persist_new_item(db, item)
         attempt = create_ingest_attempt(
             db,
             item=item,
@@ -195,7 +344,7 @@ def ingest_plugin_item_impl(
         )
         mark_source_collected_fn(db, source_url, None)
         db.commit()
-        background_tasks.add_task(process_item_task_fn, item.id, resolved_language)
+        background_tasks.add_task(process_item_task_fn, item.id, resolved_language, raw_evidence, None)
 
     hydrated_item = _load_item_with_tags(db, item.id)
     if not hydrated_item:
@@ -226,13 +375,88 @@ def ingest_url_item_impl(
 ) -> CollectorURLIngestResponse:
     ensure_demo_user_fn(db)
     resolved_language = normalize_output_language(payload.output_language)
+    fetch_url = normalize_fetch_url(payload.source_url)
     source_url = _normalize_source_url(payload.source_url)
-    if not source_url or not _is_valid_http_url(source_url):
+    if not fetch_url or not source_url or not _is_valid_http_url(source_url):
         raise HTTPException(status_code=400, detail="source_url must start with http:// or https://")
 
-    if payload.deduplicate:
+    if payload.deduplicate or payload.refresh:
         existing = _load_existing_item_by_url(db, source_url)
         if existing:
+            if payload.refresh:
+                existing.title = _clean_text(payload.title) or existing.title
+                existing.output_language = resolved_language
+                existing.status = "pending"
+                existing.processing_error = None
+                existing.content_acquisition_status = "pending_processing"
+                existing.content_acquisition_note = "显式刷新：待重新抓取正文"
+                existing.fallback_used = False
+                existing._collector_fetch_url = fetch_url
+                existing._collector_force_fetch = True
+                body_source = "pending"
+                if payload.process_immediately:
+                    process_item_in_session_fn(
+                        db,
+                        existing,
+                        output_language=resolved_language,
+                        auto_archive=True,
+                    )
+                    _, _, body_source = infer_item_acquisition(existing)
+                    _record_processed_source_capture(
+                        db,
+                        item=existing,
+                        resolver="page_refresh",
+                        body_source=body_source,
+                    )
+                update_item_ingest_state(
+                    existing,
+                    ingest_route=existing.ingest_route or "direct_url",
+                    resolved_from_url=source_url,
+                    fallback_used=bool(existing.fallback_used),
+                )
+                attempt = create_ingest_attempt(
+                    db,
+                    item=existing,
+                    source_url=source_url,
+                    route_type=existing.ingest_route or "direct_url",
+                    resolver="page_refresh",
+                    attempt_status=(
+                        "ready"
+                        if payload.process_immediately and existing.status == "ready"
+                        else "failed"
+                        if payload.process_immediately
+                        else "queued"
+                    ),
+                    body_source=body_source,
+                    error_detail=existing.processing_error,
+                )
+                mark_source_collected_fn(db, source_url, existing.processing_error)
+                db.add(existing)
+                db.commit()
+                if not payload.process_immediately:
+                    background_tasks.add_task(
+                        process_item_task_fn,
+                        existing.id,
+                        resolved_language,
+                        None,
+                        fetch_url,
+                    )
+                hydrated_existing = _load_item_with_tags(db, existing.id)
+                if hydrated_existing is None:
+                    raise HTTPException(status_code=500, detail="failed to load item after processing")
+                return CollectorURLIngestResponse(
+                    item=ItemOut.model_validate(hydrated_existing),
+                    deduplicated=True,
+                    ingest_mode="url",
+                    processing_deferred=not payload.process_immediately,
+                    attempt_id=attempt.id,
+                    ingest_route=hydrated_existing.ingest_route or "direct_url",
+                    content_acquisition_status=hydrated_existing.content_acquisition_status,
+                    resolver="page_refresh",
+                    body_source=body_source,
+                    fallback_used=hydrated_existing.fallback_used,
+                )
+
             update_item_ingest_state(existing, ingest_route=existing.ingest_route or "direct_url", resolved_from_url=source_url)
             attempt = create_ingest_attempt(
                 db,
@@ -273,13 +497,26 @@ def ingest_url_item_impl(
         fallback_used=False,
         status="pending",
     )
+    item._collector_fetch_url = fetch_url
+    item._collector_force_fetch = True
+    _persist_new_item(db, item)
     attempt_status = "queued"
     body_source = "pending"
     if payload.process_immediately:
-        _persist_new_item(db, item)
         process_item_in_session_fn(db, item, output_language=resolved_language, auto_archive=True)
-        update_item_ingest_state(item, ingest_route="direct_url", resolved_from_url=source_url, fallback_used=False)
+        update_item_ingest_state(
+            item,
+            ingest_route="direct_url",
+            resolved_from_url=source_url,
+            fallback_used=bool(item.fallback_used),
+        )
         _, _, body_source = infer_item_acquisition(item)
+        _record_processed_source_capture(
+            db,
+            item=item,
+            resolver="page_fetch",
+            body_source=body_source,
+        )
         attempt_status = "ready" if item.status == "ready" else "failed"
         attempt = create_ingest_attempt(
             db,
@@ -294,7 +531,6 @@ def ingest_url_item_impl(
         mark_source_collected_fn(db, source_url, item.processing_error)
         db.commit()
     else:
-        _persist_new_item(db, item)
         attempt = create_ingest_attempt(
             db,
             item=item,
@@ -306,7 +542,7 @@ def ingest_url_item_impl(
         )
         mark_source_collected_fn(db, source_url, None)
         db.commit()
-        background_tasks.add_task(process_item_task_fn, item.id, resolved_language)
+        background_tasks.add_task(process_item_task_fn, item.id, resolved_language, None, fetch_url)
 
     hydrated_item = _load_item_with_tags(db, item.id)
     if not hydrated_item:
@@ -338,15 +574,16 @@ def ingest_browser_item_impl(
     extract_from_browser_fn: ExtractFromBrowserFn = extract_from_browser,
 ) -> CollectorExternalIngestResponse:
     ensure_demo_user_fn(db)
+    fetch_url = normalize_fetch_url(payload.source_url)
     source_url = _normalize_source_url(payload.source_url)
-    if not source_url or not _is_valid_http_url(source_url):
+    if not fetch_url or not source_url or not _is_valid_http_url(source_url):
         raise HTTPException(status_code=400, detail="source_url must start with http:// or https://")
 
     browser_error: str | None = None
     try:
-        extracted = extract_from_browser_fn(source_url)
+        extracted = extract_from_browser_fn(fetch_url)
     except ContentExtractionError as exc:
-        browser_error = _clean_text(str(exc)) or "browser extraction failed"
+        browser_error = _clean_text(redact_sensitive_urls(exc)) or "browser extraction failed"
     else:
         plugin_response = ingest_plugin_item_impl(
             CollectorPluginIngestRequest(
@@ -378,7 +615,7 @@ def ingest_browser_item_impl(
                 "browser_extract": {
                     "status": "success",
                     "input_url": source_url,
-                    "final_url": extracted.source_url,
+                    "final_url": plugin_response.item.source_url,
                     "body_length": len(extracted.clean_content or extracted.raw_content or ""),
                 }
             },
@@ -386,10 +623,11 @@ def ingest_browser_item_impl(
 
     url_response = ingest_url_item_impl(
         CollectorURLIngestRequest(
-            source_url=source_url,
+            source_url=fetch_url,
             title=payload.title,
             output_language=payload.output_language,
             deduplicate=payload.deduplicate,
+            refresh=payload.refresh,
             process_immediately=payload.process_immediately,
         ),
         background_tasks,
@@ -432,27 +670,29 @@ def ingest_browser_items_batch_impl(
 ) -> CollectorBrowserBatchIngestResponse:
     ensure_demo_user_fn(db)
 
-    normalized_urls: list[str] = []
+    normalized_urls: list[tuple[str, str]] = []
     seen: set[str] = set()
     for raw_url in payload.source_urls:
-        normalized = _normalize_source_url(raw_url)
-        if not normalized or normalized in seen:
+        fetch_url = normalize_fetch_url(raw_url)
+        persisted_url = _normalize_source_url(raw_url)
+        if not fetch_url or not persisted_url or persisted_url in seen:
             continue
-        seen.add(normalized)
-        normalized_urls.append(normalized)
+        seen.add(persisted_url)
+        normalized_urls.append((fetch_url, persisted_url))
 
     created = 0
     deduplicated = 0
     failed = 0
     results: list[CollectorBrowserBatchIngestItemResponse] = []
 
-    for source_url in normalized_urls:
+    for fetch_url, source_url in normalized_urls:
         try:
             response = ingest_browser_item_impl(
                 CollectorURLIngestRequest(
-                    source_url=source_url,
+                    source_url=fetch_url,
                     output_language=payload.output_language,
                     deduplicate=payload.deduplicate,
+                    refresh=payload.refresh,
                     process_immediately=payload.process_immediately,
                 ),
                 background_tasks,
@@ -495,7 +735,7 @@ def ingest_browser_items_batch_impl(
                 CollectorBrowserBatchIngestItemResponse(
                     source_url=source_url,
                     status="failed",
-                    error=_clean_text(str(exc)) or "browser batch ingest failed",
+                    error=_clean_text(redact_sensitive_urls(exc)) or "browser batch ingest failed",
                 )
             )
 

@@ -13,6 +13,7 @@ from PIL import Image
 from app.core.config import get_settings
 from app.services.language import localized_text, normalize_output_language
 from app.services.llm_service import extract_openai_message_content
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ class VisionOCRService:
         output_language: str,
     ) -> OCRExtractResult:
         resolved_language = normalize_output_language(output_language)
+        source_url = canonicalize_persisted_url(source_url)
         image_bytes = decode_image_base64(image_base64)
         if not self._is_supported_image_payload(image_bytes):
             logger.warning("ocr image payload is not a supported image, fallback to mock")
@@ -80,7 +82,10 @@ class VisionOCRService:
                     output_language=resolved_language,
                 )
             except Exception as exc:  # pragma: no cover
-                logger.warning("local ocr failed, fallback to next provider: %s", exc)
+                logger.warning(
+                    "local ocr failed, fallback to next provider: %s",
+                    redact_sensitive_urls(exc),
+                )
                 if provider == "local":
                     return self._extract_with_mock(
                         source_url=source_url,
@@ -102,7 +107,10 @@ class VisionOCRService:
                     output_language=resolved_language,
                 )
             except Exception as exc:  # pragma: no cover
-                logger.warning("openai vision ocr failed, fallback to mock: %s", exc)
+                logger.warning(
+                    "openai vision ocr failed, fallback to mock: %s",
+                    redact_sensitive_urls(exc),
+                )
                 if provider == "openai":
                     return self._extract_with_mock(
                         source_url=source_url,

@@ -7,7 +7,6 @@ from html.parser import HTMLParser
 import json
 import logging
 import re
-import ssl
 from urllib import parse, request
 from xml.etree import ElementTree
 
@@ -460,14 +459,7 @@ def _unwrap_yahoo_link(url: str) -> str:
 
 
 def _safe_urlopen(req: request.Request, *, timeout_seconds: int):
-    try:
-        return request.urlopen(req, timeout=timeout_seconds)
-    except Exception as exc:
-        message = str(exc).lower()
-        if "certificate verify failed" not in message:
-            raise
-        insecure_context = ssl._create_unverified_context()
-        return request.urlopen(req, timeout=timeout_seconds, context=insecure_context)
+    return request.urlopen(req, timeout=timeout_seconds)
 
 
 def _search_duckduckgo(query: str, *, timeout_seconds: int, limit: int) -> list[SearchHit]:

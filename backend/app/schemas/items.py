@@ -83,8 +83,14 @@ class ItemOut(BaseModel):
     clean_content: str | None = None
     short_summary: str | None = None
     long_summary: str | None = None
+    key_points: list[str] = Field(default_factory=list)
     score_value: float | None = None
     action_suggestion: str | None = None
+    content_score_reasons: list[str] = Field(default_factory=list)
+    content_density: str | None = None
+    novelty_level: str | None = None
+    llm_receipts: list[dict] = Field(default_factory=list)
+    processing_degraded: bool = False
     output_language: OutputLanguage = "zh-CN"
     ingest_route: str | None = None
     content_acquisition_status: str = "pending"
@@ -106,8 +112,22 @@ class ItemOut(BaseModel):
     why_recommended: list[str] = Field(default_factory=list)
 
 
+class ItemListOut(ItemOut):
+    # Raw payloads and detailed model receipts are available from the detail
+    # endpoint. Feed/list responses preserve the legacy response keys but
+    # replace their values to avoid exposing hidden page markup or receipts.
+    raw_content: str | None = None
+    llm_receipts: list[dict] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def redact_large_evidence(self) -> "ItemListOut":
+        self.raw_content = None
+        self.llm_receipts = []
+        return self
+
+
 class ItemListResponse(BaseModel):
-    items: list[ItemOut]
+    items: list[ItemListOut]
 
 
 class ItemInterpretRequest(BaseModel):

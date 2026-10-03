@@ -5,6 +5,19 @@ import process from "node:process";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import puppeteer from "puppeteer-core";
+import {
+  createPinnedBrowserNetworkPolicy,
+  installPuppeteerPublicNetworkGuard,
+} from "./public_url_guard.mjs";
+import {
+  canonicalizePersistedUrl,
+  normalizeFetchUrl,
+  redactSensitiveUrls,
+  sanitizeCollectorState,
+  selectFavoriteLinksForRefresh,
+  sourceToken,
+  wasSeenRecently,
+} from "./wechat_collector_state.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -27,6 +40,7 @@ const DEFAULTS = {
   runPostCycle: true,
   submitMode: "browser-batch",
   batchSubmitSize: 10,
+  refreshSeenHours: 24,
   wechatFavoritesAutoImport: true,
   wechatCliPath: process.env.WECHAT_CLI_BIN || "wechat-cli",
   wechatClipboardAutoImport: true,
@@ -127,6 +141,14 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (token === "--refresh-seen-hours" && next) {
+      const refreshHours = Number(next);
+      args.refreshSeenHours = Number.isFinite(refreshHours) && refreshHours >= 0
+        ? refreshHours
+        : args.refreshSeenHours;
+      i += 1;
+      continue;
+    }
     if (token === "--no-post-cycle") {
       args.runPostCycle = false;
       continue;
@@ -188,8 +210,11 @@ function applyRuntimeConfig(args) {
     if (typeof config.wechat_export_directory_path === "string" && config.wechat_export_directory_path.trim()) {
       nextArgs.wechatExportDirectoryPath = config.wechat_export_directory_path.trim();
     }
+    if (Number.isFinite(Number(config.refresh_seen_hours)) && Number(config.refresh_seen_hours) >= 0) {
+      nextArgs.refreshSeenHours = Number(config.refresh_seen_hours);
+    }
   } catch (error) {
-    console.warn(`[collector] runtime config ignored: ${error?.message || error}`);
+    console.warn(`[collector] runtime config ignored: ${redactSensitiveUrls(error?.message || error)}`);
   }
   return nextArgs;
 }
@@ -231,14 +256,14 @@ async function loadSourceUrlsFromApi(apiBase, sourceApiPath) {
   return Array.from(
     new Set(
       items
-        .map((item) => sanitizeUrl(item?.source_url))
+        .map((item) => normalizeFetchUrl(item?.source_url))
         .filter(Boolean),
     ),
   );
 }
 
 async function resolveSourceUrls(args) {
-  const fileUrls = loadSourceUrls(args.sourceFile).map((url) => sanitizeUrl(url)).filter(Boolean);
+  const fileUrls = loadSourceUrls(args.sourceFile).map((url) => normalizeFetchUrl(url)).filter(Boolean);
   try {
     const apiUrls = await loadSourceUrlsFromApi(args.apiBase, args.sourceApiPath);
     if (apiUrls.length > 0) {
@@ -249,7 +274,7 @@ async function resolveSourceUrls(args) {
       };
     }
   } catch (error) {
-    console.warn(`[collector] source api unavailable: ${error?.message || error}`);
+    console.warn(`[collector] source api unavailable: ${redactSensitiveUrls(error?.message || error)}`);
   }
 
   return { urls: fileUrls, sourceMode: "file" };
@@ -262,7 +287,7 @@ function loadState(stateFilePath) {
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(abs, "utf-8"));
-    if (parsed && typeof parsed === "object") return parsed;
+    if (parsed && typeof parsed === "object") return sanitizeCollectorState(parsed);
   } catch {
     // ignore
   }
@@ -272,7 +297,7 @@ function loadState(stateFilePath) {
 function saveState(stateFilePath, state) {
   const abs = path.resolve(stateFilePath);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
-  fs.writeFileSync(abs, JSON.stringify(state, null, 2), "utf-8");
+  fs.writeFileSync(abs, JSON.stringify(sanitizeCollectorState(state), null, 2), "utf-8");
 }
 
 async function apiCall(apiBase, route, { method = "GET", payload } = {}) {
@@ -293,36 +318,13 @@ function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
-function sanitizeUrl(url) {
-  const text = String(url || "").trim();
-  if (!text) return "";
-  if (!/^https?:\/\//i.test(text)) return "";
-  try {
-    const parsed = new URL(text);
-    parsed.hash = "";
-    return parsed.toString();
-  } catch {
-    return "";
-  }
-}
-
 function isDirectArticleUrl(url) {
   return /mp\.weixin\.qq\.com\/s(\/|\?)/i.test(url) || /mp\.weixin\.qq\.com\/mp\/appmsg/i.test(url);
 }
 
-function sourceToken(url) {
-  try {
-    const parsed = new URL(url);
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    return parts[parts.length - 1] || parsed.hostname || url;
-  } catch {
-    return String(url || "").split("/").pop() || String(url || "-");
-  }
-}
-
 function createSourceStats(sourceUrl) {
   return {
-    source_url: sourceUrl,
+    source_url: canonicalizePersistedUrl(sourceUrl),
     source_token: sourceToken(sourceUrl),
     scanned: false,
     discovered_count: 0,
@@ -434,11 +436,16 @@ async function discoverArticleLinks(page, sourceUrl, maxDiscover) {
     return output;
   });
 
-  const normalized = links
-    .map((url) => sanitizeUrl(url))
-    .filter(Boolean)
-    .slice(0, maxDiscover);
-  return Array.from(new Set(normalized));
+  const byPersistedIdentity = new Map();
+  for (const url of links) {
+    const fetchUrl = normalizeFetchUrl(url);
+    const persistedUrl = canonicalizePersistedUrl(fetchUrl);
+    if (fetchUrl && persistedUrl && !byPersistedIdentity.has(persistedUrl)) {
+      byPersistedIdentity.set(persistedUrl, fetchUrl);
+    }
+    if (byPersistedIdentity.size >= maxDiscover) break;
+  }
+  return Array.from(byPersistedIdentity.values());
 }
 
 async function extractFromArticle(page, articleUrl) {
@@ -533,19 +540,25 @@ async function extractFromArticle(page, articleUrl) {
     contentCandidates.sort((a, b) => b.length - a.length);
     const body = (contentCandidates[0] || "").slice(0, 18000);
     const accessCheck = `${title} ${description} ${body}`.toLowerCase();
-    const blockedMarkers = [
-      "参数错误",
-      "parameter error",
-      "环境异常",
+    const hasReadableWechatArticle = jsContent.length >= 120;
+    const strongBlockedShell = [
       "完成验证后即可继续访问",
-      "访问受限",
       "链接已失效",
       "requiring captcha",
-    ];
+    ].some((marker) => accessCheck.includes(marker));
+    const shortBlockedShell =
+      accessCheck.length <= 700 &&
+      ((accessCheck.includes("环境异常") && accessCheck.includes("验证")) ||
+        (accessCheck.includes("访问受限") &&
+          ["登录", "验证", "授权"].some((marker) => accessCheck.includes(marker))) ||
+        (accessCheck.includes("parameter error") &&
+          ["expired", "invalid link"].some((marker) => accessCheck.includes(marker))));
     const accessLimited =
-      blockedMarkers.some((marker) => accessCheck.includes(marker)) ||
-      (!document.querySelector("#js_content") &&
-        (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform")));
+      !hasReadableWechatArticle &&
+      (strongBlockedShell ||
+        shortBlockedShell ||
+        (!document.querySelector("#js_content") &&
+          (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform"))));
 
     const lines = [];
     if (title) lines.push(`标题：${title}`);
@@ -627,7 +640,7 @@ function collectWechatArticleUrls(value, output = new Set()) {
   if (typeof value === "string") {
     const matches = value.match(/https?:\/\/[^\s<>"']+/gi) || [];
     for (const match of matches) {
-      const normalized = sanitizeUrl(match.replace(/[),.;，。；）】》]+$/g, ""));
+      const normalized = normalizeFetchUrl(match.replace(/[),.;，。；）】》]+$/g, ""));
       if (normalized && /mp\.weixin\.qq\.com\/s(?:\/|\?)/i.test(normalized)) {
         output.add(normalized);
       }
@@ -804,7 +817,7 @@ async function importWechatExportFiles(args, state, files) {
       result.messages.push(`${file.name}: created=${response?.created || 0} deduplicated=${response?.deduplicated || 0}`);
     } catch (error) {
       result.failed += 1;
-      result.messages.push(`${file.name}: ${error?.message || error}`);
+      result.messages.push(`${file.name}: ${redactSensitiveUrls(error?.message || error)}`);
     }
   }
   return result;
@@ -869,7 +882,7 @@ async function runWechatFavoritesAutoImport(args) {
     cliMessage =
       code === "ENOENT"
         ? "wechat-cli not installed; automatic Favorites import is waiting for local read-only adapter setup"
-        : `wechat-cli favorites failed: ${error?.message || error}`;
+        : `wechat-cli favorites failed: ${redactSensitiveUrls(error?.message || error)}`;
     console.warn(`[collector] ${cliMessage}`);
   }
   record.adapters.wechat_cli = {
@@ -886,9 +899,20 @@ async function runWechatFavoritesAutoImport(args) {
   };
 
   record.available = exportDirectory.available || cliAvailable || clipboard.available;
-  const discovered = Array.from(new Set([...cliUrls, ...clipboard.urls]));
-  const freshUrls = discovered.filter((url) => !state.seen_favorite_links[url]);
-  record.discovered_count += discovered.length;
+  const discoveredEntries = selectFavoriteLinksForRefresh(
+    [...cliUrls, ...clipboard.urls],
+    {},
+    0,
+  );
+  const freshEntries = discoveredEntries.filter(
+    ({ persistedUrl }) =>
+      !wasSeenRecently(
+        state.seen_favorite_links[persistedUrl],
+        args.refreshSeenHours,
+      ),
+  );
+  const freshUrls = freshEntries.map(({ fetchUrl }) => fetchUrl);
+  record.discovered_count += discoveredEntries.length;
   if (!record.available) {
     record.status = "unavailable";
     record.message = [exportDirectory.message, cliMessage, clipboard.message].filter(Boolean).join("；");
@@ -899,7 +923,7 @@ async function runWechatFavoritesAutoImport(args) {
   }
   if (!freshUrls.length) {
     record.status = exportImport.processed > 0 ? "imported" : "idle";
-    if (discovered.length) {
+    if (discoveredEntries.length) {
       record.message = "WeChat links checked; no new article links";
     } else {
       record.message =
@@ -935,13 +959,14 @@ async function runWechatFavoritesAutoImport(args) {
     record.message =
       `WeChat Favorites imported created=${record.imported_count} ` +
       `deduplicated=${record.deduplicated_count}`;
-    for (const url of freshUrls.slice(0, 200)) {
-      state.seen_favorite_links[url] = { seen_at: record.ts };
+    for (const { persistedUrl } of freshEntries.slice(0, 200)) {
+      state.seen_favorite_links[persistedUrl] = { seen_at: record.ts };
     }
     console.log(`[collector] ${record.message}`);
   } catch (error) {
     record.status = "error";
-    record.message = `WeChat Favorites import API failed: ${error?.message || error}`;
+    record.message =
+      `WeChat Favorites import API failed: ${redactSensitiveUrls(error?.message || error)}`;
     console.error(`[collector] ${record.message}`);
   }
   state.last_favorites_auto = record;
@@ -1020,14 +1045,21 @@ async function runSingleCycle(args) {
 
   await apiCall(args.apiBase, "/healthz");
 
+  const browserNetworkPolicy = await createPinnedBrowserNetworkPolicy([
+    ...sources,
+    "https://mp.weixin.qq.com/",
+  ]);
+
   const browser = await puppeteer.launch({
     executablePath: args.chromePath,
     headless: args.headless,
+    ignoreDefaultArgs: ["--disable-popup-blocking"],
     defaultViewport: { width: 1440, height: 920 },
     args: [
       "--no-first-run",
       "--disable-blink-features=AutomationControlled",
       "--disable-dev-shm-usage",
+      ...browserNetworkPolicy.launchArgs,
     ],
   });
 
@@ -1050,13 +1082,14 @@ async function runSingleCycle(args) {
         break;
       }
       const sourcePage = await browser.newPage();
+      await installPuppeteerPublicNetworkGuard(sourcePage, browserNetworkPolicy);
       let articleLinks = [];
       const stats = getSourceStats(sourceStats, sourceUrl);
       stats.scanned = true;
       try {
         articleLinks = await discoverArticleLinks(sourcePage, sourceUrl, args.maxDiscoverPerSource);
       } catch (error) {
-        const note = `discover failed: ${error?.message || error}`;
+        const note = `discover failed: ${redactSensitiveUrls(error?.message || error)}`;
         stats.failed_count += 1;
         stats.discover_failed_count += 1;
         stats.last_error = String(note).slice(0, 220);
@@ -1082,27 +1115,35 @@ async function runSingleCycle(args) {
         ) {
           break;
         }
-        if (state.seen_links[articleUrl]) {
+        const persistedArticleUrl = canonicalizePersistedUrl(articleUrl);
+        if (!persistedArticleUrl) {
+          failedCount += 1;
+          stats.failed_count += 1;
+          continue;
+        }
+        if (wasSeenRecently(state.seen_links[persistedArticleUrl], args.refreshSeenHours)) {
           skippedSeenCount += 1;
           stats.skipped_seen_count += 1;
           continue;
         }
 
-        const sourceToken = stats.source_token;
-        const articleToken = articleUrl.split("/").pop() || articleUrl;
+        const sourceTokenValue = stats.source_token;
+        const articleToken = sourceToken(articleUrl);
 
         if (args.submitMode === "browser-batch") {
           stats.queued_count += 1;
           pendingArticles.push({
             sourceUrl,
             articleUrl,
-            sourceToken,
+            persistedArticleUrl,
+            sourceToken: sourceTokenValue,
             articleToken,
           });
           continue;
         }
 
         const articlePage = await browser.newPage();
+        await installPuppeteerPublicNetworkGuard(articlePage, browserNetworkPolicy);
         try {
           const extracted = await extractFromArticle(articlePage, articleUrl);
 
@@ -1113,9 +1154,9 @@ async function runSingleCycle(args) {
 
           if (extracted.has_body) {
             const payload = {
-              source_url: articleUrl,
+              source_url: persistedArticleUrl,
               title: normalizeText(extracted.title) || null,
-              raw_content: normalizeText(extracted.raw_content) || null,
+              raw_content: String(extracted.raw_content || "") || null,
               output_language: args.outputLanguage,
               deduplicate: true,
               process_immediately: false,
@@ -1136,6 +1177,7 @@ async function runSingleCycle(args) {
               title: normalizeText(extracted.title) || null,
               output_language: args.outputLanguage,
               deduplicate: true,
+              refresh: true,
               process_immediately: false,
             };
             const result = await apiCall(args.apiBase, "/api/collector/url/ingest", {
@@ -1152,29 +1194,29 @@ async function runSingleCycle(args) {
             stats.deduplicated_count += 1;
           }
 
-          state.seen_links[articleUrl] = {
+          state.seen_links[persistedArticleUrl] = {
             seen_at: new Date().toISOString(),
             item_id: itemId,
             mode,
             status,
           };
-          rows.push({ sourceToken, articleToken, mode, itemId, status, note });
+          rows.push({ sourceToken: sourceTokenValue, articleToken, mode, itemId, status, note });
           collectedCount += 1;
           stats.collected_count += 1;
           console.log(
-            `[collector] ${mode} ${articleUrl} -> ${itemId || "no-item"} (${status})`,
+            `[collector] ${mode} ${persistedArticleUrl} -> ${itemId || "no-item"} (${status})`,
           );
         } catch (error) {
           failedCount += 1;
           stats.failed_count += 1;
-          stats.last_error = String(error?.message || error).slice(0, 220);
+          stats.last_error = redactSensitiveUrls(error?.message || error).slice(0, 220);
           rows.push({
             sourceToken: stats.source_token,
-            articleToken: articleUrl.split("/").pop() || articleUrl,
+            articleToken,
             mode: "collect",
             itemId: "",
             status: "failed",
-            note: String(error?.message || error).slice(0, 180),
+            note: redactSensitiveUrls(error?.message || error).slice(0, 180),
           });
         } finally {
           await articlePage.close();
@@ -1183,7 +1225,9 @@ async function runSingleCycle(args) {
     }
 
     if (args.submitMode === "browser-batch" && pendingArticles.length > 0) {
-      const pendingMap = new Map(pendingArticles.map((entry) => [entry.articleUrl, entry]));
+      const pendingMap = new Map(
+        pendingArticles.map((entry) => [entry.persistedArticleUrl, entry]),
+      );
       const articleChunks = chunkItems(pendingArticles.map((entry) => entry.articleUrl), args.batchSubmitSize);
 
       for (const sourceUrls of articleChunks) {
@@ -1194,12 +1238,13 @@ async function runSingleCycle(args) {
               source_urls: sourceUrls,
               output_language: args.outputLanguage,
               deduplicate: true,
+              refresh: true,
               process_immediately: false,
             },
           });
           const results = Array.isArray(batchResult?.results) ? batchResult.results : [];
           for (const result of results) {
-            const articleUrl = sanitizeUrl(result?.source_url);
+            const articleUrl = canonicalizePersistedUrl(result?.source_url);
             const entry = pendingMap.get(articleUrl);
             if (!entry) continue;
 
@@ -1217,7 +1262,7 @@ async function runSingleCycle(args) {
               sourceStatsEntry.last_error = note.slice(0, 220);
             } else {
               const sourceStatsEntry = getSourceStats(sourceStats, entry.sourceUrl);
-              state.seen_links[articleUrl] = {
+              state.seen_links[entry.persistedArticleUrl] = {
                 seen_at: new Date().toISOString(),
                 item_id: itemId,
                 mode: ingestRoute || mode,
@@ -1250,27 +1295,28 @@ async function runSingleCycle(args) {
               note,
             });
             console.log(
-              `[collector] ${mode} ${articleUrl} -> ${itemId || "no-item"} (${status})`,
+              `[collector] ${mode} ${entry.persistedArticleUrl} -> ${itemId || "no-item"} (${status})`,
             );
             pendingMap.delete(articleUrl);
           }
         } catch (error) {
           for (const articleUrl of sourceUrls) {
-            const entry = pendingMap.get(articleUrl);
+            const persistedArticleUrl = canonicalizePersistedUrl(articleUrl);
+            const entry = pendingMap.get(persistedArticleUrl);
             if (!entry) continue;
             failedCount += 1;
             const sourceStatsEntry = getSourceStats(sourceStats, entry.sourceUrl);
             sourceStatsEntry.failed_count += 1;
-            sourceStatsEntry.last_error = String(error?.message || error).slice(0, 220);
+            sourceStatsEntry.last_error = redactSensitiveUrls(error?.message || error).slice(0, 220);
             rows.push({
               sourceToken: entry.sourceToken,
               articleToken: entry.articleToken,
               mode: "browser-batch",
               itemId: "",
               status: "failed",
-              note: String(error?.message || error).slice(0, 180),
+              note: redactSensitiveUrls(error?.message || error).slice(0, 180),
             });
-            pendingMap.delete(articleUrl);
+            pendingMap.delete(persistedArticleUrl);
           }
         }
       }
@@ -1359,7 +1405,7 @@ async function main() {
           `plugin=${summary.pluginCount} url=${summary.urlCount} ocr=${summary.ocrCount} failed=${summary.failedCount}`,
       );
     } catch (error) {
-      console.error(`[collector] cycle failed: ${error?.message || error}`);
+      console.error(`[collector] cycle failed: ${redactSensitiveUrls(error?.message || error)}`);
     }
     const elapsedMs = Date.now() - startedAt;
     const sleepMs = Math.max(10_000, args.intervalSec * 1000 - elapsedMs);
@@ -1368,6 +1414,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`[collector] fatal: ${error?.message || error}`);
+  console.error(`[collector] fatal: ${redactSensitiveUrls(error?.message || error)}`);
   process.exit(1);
 });

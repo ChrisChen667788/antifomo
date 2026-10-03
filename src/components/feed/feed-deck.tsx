@@ -225,6 +225,11 @@ export function FeedDeck({ items, onItemTriaged }: FeedDeckProps) {
             <span className="af-chip px-2.5 py-1">
               {t("feed.deck.ingestedAt", "入库")}：{createdAtLabel}
             </span>
+            {current.processingDegraded ? (
+              <span className="af-chip af-chip-warning px-2.5 py-1">
+                {t("feed.deck.processingDegraded", "模型结果已降级标记")}
+              </span>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span

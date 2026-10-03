@@ -25,6 +25,8 @@ export interface FeedItem {
   ingestRoute?: string | null;
   /** True when the collector explicitly used an available-content fallback. */
   fallbackUsed?: boolean;
+  /** True when a mock or fallback model produced the current projection. */
+  processingDegraded?: boolean;
 }
 
 export interface SessionMetrics {

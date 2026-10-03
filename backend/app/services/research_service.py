@@ -976,6 +976,7 @@ def _source_extraction_dependencies() -> SourceExtractionDependencies:
         extract_from_browser=extract_from_browser,
         extract_from_url=extract_from_url,
         extract_from_reader_proxy=extract_from_reader_proxy,
+        reader_proxy_enabled=bool(settings.reader_proxy_enabled),
     )
 
 

@@ -13,6 +13,11 @@ from app.models.entities import Item
 from app.models.research_entities import ResearchWatchlist, ResearchWatchlistChangeEvent
 from app.models.workflow_entities import DailyBriefSnapshot
 from app.services.content_extractor import normalize_text
+from app.services.source_url_privacy import (
+    canonicalize_persisted_url,
+    redact_sensitive_url_values,
+    redact_sensitive_urls,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -40,15 +45,16 @@ def _top_items(db: Session, *, user_id: UUID, limit: int = 5) -> list[dict[str, 
     )
     rows: list[dict[str, Any]] = []
     for item in items:
+        source_url = canonicalize_persisted_url(item.source_url)
         rows.append(
             {
                 "id": str(item.id),
                 "title": normalize_text(item.title or "") or "未命名内容",
                 "source_domain": item.source_domain or "unknown",
-                "summary": normalize_text(item.short_summary or item.long_summary or item.source_url or ""),
+                "summary": normalize_text(item.short_summary or item.long_summary or source_url or ""),
                 "action_suggestion": item.action_suggestion or "later",
                 "score_value": float(item.score_value) if item.score_value is not None else None,
-                "source_url": item.source_url,
+                "source_url": source_url,
             }
         )
     return rows
@@ -165,7 +171,7 @@ def build_daily_brief_snapshot(db: Session, *, user_id: UUID, force_refresh: boo
 
 
 def serialize_daily_brief(snapshot: DailyBriefSnapshot) -> dict[str, Any]:
-    payload = snapshot.items_payload or {}
+    payload = redact_sensitive_url_values(snapshot.items_payload or {})
     return {
         "snapshot_id": str(snapshot.id),
         "brief_date": snapshot.brief_date,
@@ -176,5 +182,9 @@ def serialize_daily_brief(snapshot: DailyBriefSnapshot) -> dict[str, Any]:
         "generated_at": payload.get("generated_at") or snapshot.created_at,
         "audio_status": snapshot.audio_status,
         "audio_url": snapshot.audio_url,
-        "audio_script": snapshot.audio_script,
+        "audio_script": (
+            redact_sensitive_urls(snapshot.audio_script)
+            if snapshot.audio_script is not None
+            else None
+        ),
     }

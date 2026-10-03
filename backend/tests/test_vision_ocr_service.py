@@ -6,7 +6,7 @@ import io
 import pytest
 from PIL import Image
 
-from app.services.vision_ocr_service import VisionOCRService, decode_image_base64
+from app.services.vision_ocr_service import OCRExtractResult, VisionOCRService, decode_image_base64
 
 
 def test_decode_image_base64_rejects_invalid_input() -> None:
@@ -61,3 +61,40 @@ def test_vision_ocr_service_uses_dedicated_openai_timeout() -> None:
     service.settings.ocr_openai_timeout_seconds = 6
 
     assert service._resolve_openai_timeout_seconds() == 6
+
+
+def test_vision_ocr_service_canonicalizes_url_at_provider_boundary(monkeypatch) -> None:
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), color="white").save(buffer, format="PNG")
+    tiny_png_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    service = VisionOCRService()
+    service.settings.ocr_provider = "openai"
+    service.settings.llm_provider = "openai"
+    service.settings.openai_api_key = "demo-key"
+    captured: dict[str, object] = {}
+
+    def fake_openai(**kwargs) -> OCRExtractResult:
+        captured.update(kwargs)
+        return OCRExtractResult(
+            provider="openai_vision",
+            confidence=0.9,
+            title="OCR",
+            body_text="有效正文" * 20,
+            keywords=[],
+        )
+
+    monkeypatch.setattr(service, "_extract_with_openai", fake_openai)
+    service.extract(
+        image_base64=tiny_png_base64,
+        mime_type="image/png",
+        source_url=(
+            "https://reader:password@mp.weixin.qq.com/s?pass_ticket=secret&idx=1"
+            "&mid=22&__biz=MzDemo&sn=abc&scene=21#wechat_redirect"
+        ),
+        title_hint="OCR",
+        output_language="zh-CN",
+    )
+
+    assert captured["source_url"] == (
+        "https://mp.weixin.qq.com/s?__biz=MzDemo&mid=22&idx=1&sn=abc"
+    )

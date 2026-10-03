@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.models.entities import Item
 from app.models.workflow_entities import CollectorIngestAttempt
 from app.services.content_extractor import normalize_text
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 
 
 settings = get_settings()
@@ -68,10 +69,13 @@ def update_item_ingest_state(
     content_acquisition_status: str | None = None,
     content_acquisition_note: str | None = None,
 ) -> Item:
+    item.source_url = canonicalize_persisted_url(item.source_url)
     if ingest_route is not None:
         item.ingest_route = ingest_route
     if resolved_from_url is not None:
-        item.resolved_from_url = resolved_from_url
+        item.resolved_from_url = canonicalize_persisted_url(resolved_from_url)
+    elif item.resolved_from_url is not None:
+        item.resolved_from_url = canonicalize_persisted_url(item.resolved_from_url)
     if fallback_used is not None:
         item.fallback_used = bool(fallback_used)
     if content_acquisition_status is None:
@@ -96,16 +100,18 @@ def create_ingest_attempt(
     error_detail: str | None = None,
     confidence: float | None = None,
 ) -> CollectorIngestAttempt:
+    item.source_url = canonicalize_persisted_url(item.source_url)
+    item.resolved_from_url = canonicalize_persisted_url(item.resolved_from_url)
     attempt = CollectorIngestAttempt(
         user_id=item.user_id,
         item_id=item.id,
-        source_url=source_url,
+        source_url=canonicalize_persisted_url(source_url),
         source_type=item.source_type,
         route_type=route_type,
         resolver=resolver,
         attempt_status=attempt_status,
         error_code=error_code,
-        error_detail=error_detail,
+        error_detail=redact_sensitive_urls(error_detail) if error_detail is not None else None,
         body_source=body_source,
         body_length=len(_normalized_text(item.clean_content or item.raw_content)) or None,
         confidence=confidence,
@@ -129,13 +135,17 @@ def serialize_ingest_attempt(attempt: CollectorIngestAttempt) -> dict[str, Any]:
     return {
         "id": str(attempt.id),
         "item_id": str(attempt.item_id),
-        "source_url": attempt.source_url,
+        "source_url": canonicalize_persisted_url(attempt.source_url),
         "source_type": attempt.source_type,
         "route_type": attempt.route_type,
         "resolver": attempt.resolver,
         "attempt_status": attempt.attempt_status,
         "error_code": attempt.error_code,
-        "error_detail": attempt.error_detail,
+        "error_detail": (
+            redact_sensitive_urls(attempt.error_detail)
+            if attempt.error_detail is not None
+            else None
+        ),
         "body_source": attempt.body_source,
         "body_length": attempt.body_length,
         "confidence": attempt.confidence,
@@ -149,15 +159,21 @@ def serialize_item_diagnostics(item: Item, attempts: list[CollectorIngestAttempt
     return {
         "item_id": str(item.id),
         "source_type": item.source_type,
-        "source_url": item.source_url,
+        "source_url": canonicalize_persisted_url(item.source_url),
         "ingest_route": item.ingest_route or "unknown",
-        "resolved_from_url": item.resolved_from_url,
+        "resolved_from_url": canonicalize_persisted_url(item.resolved_from_url),
         "content_acquisition_status": item.content_acquisition_status or acquisition_status,
-        "content_acquisition_note": item.content_acquisition_note or acquisition_note,
+        "content_acquisition_note": redact_sensitive_urls(
+            item.content_acquisition_note or acquisition_note
+        ),
         "fallback_used": bool(item.fallback_used),
         "body_source": latest_attempt.body_source if latest_attempt and latest_attempt.body_source else body_source,
         "processing_status": item.status,
-        "processing_error": item.processing_error,
+        "processing_error": (
+            redact_sensitive_urls(item.processing_error)
+            if item.processing_error is not None
+            else None
+        ),
         "latest_attempt": serialize_ingest_attempt(latest_attempt) if latest_attempt else None,
         "attempt_count": len(attempts or []),
     }

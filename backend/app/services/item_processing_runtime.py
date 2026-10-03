@@ -16,6 +16,7 @@ from app.services.item_processor import process_item
 from app.services.knowledge_service import maybe_auto_archive_item
 from app.services.language import normalize_output_language
 from app.services.session_service import sync_running_sessions_for_item
+from app.services.source_url_privacy import redact_sensitive_urls
 
 
 settings = get_settings()
@@ -88,6 +89,8 @@ def process_item_by_id(
     *,
     output_language: str | None = None,
     auto_archive: bool = True,
+    raw_evidence: str | None = None,
+    fetch_url: str | None = None,
 ) -> ProcessRuntimeResult | None:
     if not _claim_item(item_id):
         return None
@@ -96,6 +99,8 @@ def process_item_by_id(
             item_id,
             output_language=output_language,
             auto_archive=auto_archive,
+            raw_evidence=raw_evidence,
+            fetch_url=fetch_url,
         )
     finally:
         _release_item(item_id)
@@ -106,12 +111,19 @@ def _process_item_by_id_claimed(
     *,
     output_language: str | None = None,
     auto_archive: bool = True,
+    raw_evidence: str | None = None,
+    fetch_url: str | None = None,
 ) -> ProcessRuntimeResult | None:
     db = SessionLocal()
     try:
         item = db.scalar(select(Item).where(Item.id == item_id).options(selectinload(Item.tags)))
         if not item:
             return None
+        if raw_evidence is not None:
+            item._collector_raw_evidence = raw_evidence
+        if fetch_url:
+            item._collector_fetch_url = fetch_url
+            item._collector_force_fetch = True
         resolved_language = normalize_output_language(output_language or item.output_language)
         process_item_in_session(
             db,
@@ -134,7 +146,7 @@ def _process_item_by_id_claimed(
         fallback_item = db.get(Item, item_id)
         if fallback_item:
             fallback_item.status = "failed"
-            fallback_item.processing_error = str(exc)
+            fallback_item.processing_error = redact_sensitive_urls(exc)
             fallback_item.processed_at = datetime.now(timezone.utc)
             db.add(fallback_item)
             db.commit()

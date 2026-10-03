@@ -24,6 +24,7 @@ from app.schemas.collector import (
 from app.services.collector_imports.wechat_favorites import parse_wechat_favorites_export
 from app.services.collector_multiformat_service import import_wechat_favorites as import_wechat_favorites_payload
 from app.services.language import normalize_output_language
+from app.services.source_url_privacy import redact_sensitive_url_values
 from app.services.user_context import ensure_demo_user
 
 
@@ -76,8 +77,8 @@ def to_wechat_favorite_batch_response(
 ) -> CollectorWechatFavoriteImportBatchResponse:
     item_ids = _uuid_list(batch.item_ids)
     created_item_ids = _uuid_list(batch.created_item_ids)
-    results = _json_list(batch.result_payload)[:100]
-    source_summary = _json_dict(batch.source_payload)
+    results = redact_sensitive_url_values(_json_list(batch.result_payload)[:100])
+    source_summary = redact_sensitive_url_values(_json_dict(batch.source_payload))
     items_by_id = {
         item.id: item
         for item in db.scalars(
@@ -104,8 +105,14 @@ def to_wechat_favorite_batch_response(
     failed_item_ids = [
         item_id
         for item_id in review_item_ids
-        if items_by_id.get(item_id) is not None and items_by_id[item_id].status == "failed"
+        if items_by_id.get(item_id) is not None
+        and items_by_id[item_id].status in {"failed", "needs_body", "degraded"}
     ]
+    needs_body_count = sum(
+        1
+        for item_id in review_item_ids
+        if items_by_id.get(item_id) is not None and items_by_id[item_id].status == "needs_body"
+    )
     processing_count = sum(
         1
         for item_id in review_item_ids
@@ -117,6 +124,8 @@ def to_wechat_favorite_batch_response(
         status_label = "reviewed"
     elif processing_count:
         status_label = "processing"
+    elif needs_body_count and needs_body_count == len(review_item_ids):
+        status_label = "needs_body"
     elif failed_item_ids and len(failed_item_ids) == len(review_item_ids):
         status_label = "failed"
     else:
@@ -251,8 +260,14 @@ def import_wechat_favorite_items_impl(
     if result.get("batch") is not None:
         db.refresh(result["batch"])
     if not payload.process_immediately:
-        for item_id in result["created_item_ids"]:
-            background_tasks.add_task(process_item_task_fn, UUID(str(item_id)), payload.output_language)
+        for job in result["processing_jobs"]:
+            background_tasks.add_task(
+                process_item_task_fn,
+                UUID(str(job["item_id"])),
+                payload.output_language,
+                None,
+                job["fetch_url"],
+            )
     batch_response = (
         to_wechat_favorite_batch_response(db, result["batch"])
         if result.get("batch") is not None

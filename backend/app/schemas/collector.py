@@ -55,6 +55,7 @@ class CollectorURLIngestRequest(BaseModel):
     title: str | None = None
     output_language: OutputLanguage = "zh-CN"
     deduplicate: bool = True
+    refresh: bool = False
     process_immediately: bool = True
 
 
@@ -132,6 +133,8 @@ class CollectorStatusResponse(BaseModel):
     last_24h_ready: int
     last_24h_processing: int
     last_24h_failed: int
+    last_24h_needs_body: int = 0
+    last_24h_degraded: int = 0
     last_24h_ocr_items: int
     latest_item_at: datetime | None = None
 
@@ -187,6 +190,8 @@ class CollectorDailySummaryResponse(BaseModel):
     ready_count: int
     processing_count: int
     failed_count: int
+    needs_body_count: int = 0
+    degraded_count: int = 0
     deep_read_count: int
     later_count: int
     skip_count: int
@@ -473,6 +478,7 @@ class CollectorBrowserBatchIngestRequest(BaseModel):
     source_urls: list[str] = Field(min_length=1, max_length=200)
     output_language: OutputLanguage = "zh-CN"
     deduplicate: bool = True
+    refresh: bool = False
     process_immediately: bool = False
 
 

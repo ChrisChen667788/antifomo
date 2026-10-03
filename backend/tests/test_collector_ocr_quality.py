@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import pytest
+from fastapi import HTTPException
+
 from app.api import collector_ocr_routes as collector_ocr_api
-from app.schemas.collector import CollectorOCRPreviewResponse
+from app.schemas.collector import CollectorOCRPreviewRequest, CollectorOCRPreviewResponse
 
 
 def test_evaluate_ocr_quality_rejects_wechat_history_feed_preview() -> None:
@@ -117,3 +120,66 @@ def test_run_ocr_preview_with_variants_retries_right_focus(monkeypatch) -> None:
 
     assert preview.quality_ok is True
     assert calls == ["base-image", "base-image:article_right_focus"]
+
+
+def test_preview_canonicalizes_wechat_url_before_ocr_provider() -> None:
+    captured: dict[str, object] = {}
+
+    def fake_preview(**kwargs) -> CollectorOCRPreviewResponse:
+        captured.update(kwargs)
+        return CollectorOCRPreviewResponse(
+            provider="mock_ocr",
+            confidence=0.8,
+            text_length=80,
+            title="隐私测试",
+            body_preview="正文",
+            body_text="正文内容" * 20,
+            keywords=[],
+            quality_ok=True,
+        )
+
+    collector_ocr_api.preview_ocr_image_impl(
+        CollectorOCRPreviewRequest(
+            image_base64="ZmFrZV9pbWFnZV9kYXRh" * 8,
+            mime_type="image/png",
+            source_url=(
+                "https://reader:password@mp.weixin.qq.com/s?pass_ticket=secret&idx=1"
+                "&mid=22&__biz=MzDemo&sn=abc&scene=21#wechat_redirect"
+            ),
+        ),
+        run_ocr_preview_with_variants_fn=fake_preview,
+    )
+
+    assert captured["source_url"] == (
+        "https://mp.weixin.qq.com/s?__biz=MzDemo&mid=22&idx=1&sn=abc"
+    )
+
+
+def test_preview_redacts_sensitive_url_from_ocr_provider_error() -> None:
+    private_url = (
+        "https://reader:password@mp.weixin.qq.com/s?pass_ticket=secret&idx=1"
+        "&mid=22&__biz=MzDemo&sn=abc&scene=21"
+    )
+
+    class FailingOCR:
+        def extract(self, **_kwargs):
+            raise RuntimeError(f"provider failed for {private_url}")
+
+    with pytest.raises(HTTPException) as raised:
+        collector_ocr_api._ocr_run_ocr_preview(
+            image_base64="ZmFrZV9pbWFnZV9kYXRh" * 8,
+            mime_type="image/png",
+            source_url=private_url,
+            title_hint=None,
+            output_language="zh-CN",
+            vision_ocr=FailingOCR(),
+            clean_text=lambda value: str(value or ""),
+            truncate_text=lambda value, _limit: str(value or ""),
+            evaluate_quality=lambda _body, _confidence: (True, None),
+        )
+
+    detail = str(raised.value.detail)
+    assert "https://mp.weixin.qq.com/s?__biz=MzDemo&mid=22&idx=1&sn=abc" in detail
+    assert "pass_ticket" not in detail
+    assert "secret" not in detail
+    assert "reader:password" not in detail

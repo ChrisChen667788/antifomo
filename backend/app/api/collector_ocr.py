@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.schemas.collector import CollectorOCRPreviewResponse
+from app.services.source_url_privacy import redact_sensitive_urls
 
 
 OCR_PREVIEW_VARIANT_PROFILES: dict[str, dict[str, float]] = {
@@ -165,9 +166,12 @@ def run_ocr_preview(
             output_language=output_language,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=redact_sensitive_urls(exc)) from exc
     except Exception as exc:  # pragma: no cover - provider/runtime path
-        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR extraction failed: {redact_sensitive_urls(exc)}",
+        ) from exc
 
     body_text = clean_text(ocr_result.body_text)
     quality_ok, quality_reason = evaluate_quality(body_text, ocr_result.confidence)

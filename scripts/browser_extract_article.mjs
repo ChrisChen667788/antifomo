@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import process from "node:process";
 import puppeteer from "puppeteer-core";
+import {
+  createPinnedBrowserNetworkPolicy,
+  installPuppeteerPublicNetworkGuard,
+} from "./public_url_guard.mjs";
 
 const DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -172,21 +176,27 @@ async function extractFromPage(page, url, timeoutSec) {
     candidates.sort((a, b) => b.length - a.length);
     const body = (candidates[0] || "").slice(0, 18000);
     const accessCheck = `${title} ${description} ${body}`.toLowerCase();
-    const blockedMarkers = [
-      "参数错误",
-      "parameter error",
-      "环境异常",
+    const hasWechatArticleNode = Boolean(document.querySelector("#js_content"));
+    const hasReadableWechatArticle = hasWechatArticleNode && body.length >= 120;
+    const strongBlockedShell = [
       "完成验证后即可继续访问",
-      "访问受限",
       "链接已失效",
       "requiring captcha",
-    ];
-    const hasWechatArticleNode = Boolean(document.querySelector("#js_content"));
+    ].some((marker) => accessCheck.includes(marker));
+    const shortBlockedShell =
+      accessCheck.length <= 700 &&
+      ((accessCheck.includes("环境异常") && accessCheck.includes("验证")) ||
+        (accessCheck.includes("访问受限") &&
+          ["登录", "验证", "授权"].some((marker) => accessCheck.includes(marker))) ||
+        (accessCheck.includes("parameter error") &&
+          ["expired", "invalid link"].some((marker) => accessCheck.includes(marker))));
     const accessLimited =
-      blockedMarkers.some((marker) => accessCheck.includes(marker)) ||
-      (isWeChat &&
+      !hasReadableWechatArticle &&
+      (strongBlockedShell ||
+        shortBlockedShell ||
+        (isWeChat &&
         !hasWechatArticleNode &&
-        (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform")));
+        (title === "微信公众平台" || title.toLowerCase().includes("weixin official accounts platform"))));
 
     const lines = [];
     if (title) lines.push(`标题：${title}`);
@@ -215,15 +225,18 @@ async function main() {
   if (!args.url) {
     throw new Error("--url is required");
   }
+  const browserNetworkPolicy = await createPinnedBrowserNetworkPolicy([args.url]);
 
   const launchOptions = {
     executablePath: args.chromePath,
     headless: args.headless,
+    ignoreDefaultArgs: ["--disable-popup-blocking"],
     defaultViewport: { width: 1440, height: 920 },
     args: [
       "--no-first-run",
       "--disable-blink-features=AutomationControlled",
       "--disable-dev-shm-usage",
+      ...browserNetworkPolicy.launchArgs,
     ],
   };
 
@@ -237,6 +250,7 @@ async function main() {
   const browser = await puppeteer.launch(launchOptions);
   try {
     const page = await browser.newPage();
+    await installPuppeteerPublicNetworkGuard(page, browserNetworkPolicy);
     const extracted = await extractFromPage(page, args.url, args.timeoutSec);
     process.stdout.write(`${JSON.stringify({
       ...extracted,

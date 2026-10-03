@@ -9,6 +9,7 @@ from typing import Any
 from app.models.entities import FocusSession, Item, KnowledgeEntry, WorkTask
 from app.models.research_entities import ResearchWatchlistChangeEvent
 from app.services.language import localized_text, normalize_output_language
+from app.services.source_url_privacy import canonicalize_persisted_url
 from app.schemas.research import ResearchReportDocument
 from app.services.research.report_markdown import build_research_report_markdown
 from app.services.session_service import SessionMetrics
@@ -289,7 +290,7 @@ def build_artifact_item_snapshots(items: list[Item], *, included_reason: str) ->
             "item_id": str(item.id),
             "included_reason": included_reason,
             "title_snapshot": item.title or "未命名内容",
-            "source_url_snapshot": item.source_url,
+            "source_url_snapshot": canonicalize_persisted_url(item.source_url),
         }
         for item in items
     ]
@@ -340,8 +341,9 @@ def build_markdown_summary(
                 {'zh-CN': '未命名内容', 'zh-TW': '未命名內容', 'en': 'Untitled item', 'ja': '無題コンテンツ', 'ko': '제목 없음'},
                 '未命名内容',
             )
-            if item.source_url:
-                lines.append(f"{idx}. [{title}]({item.source_url})")
+            source_url = canonicalize_persisted_url(item.source_url)
+            if source_url:
+                lines.append(f"{idx}. [{title}]({source_url})")
             else:
                 lines.append(f"{idx}. {title}")
     else:
@@ -397,8 +399,9 @@ def build_reading_list(
             {'zh-CN': '未命名内容', 'zh-TW': '未命名內容', 'en': 'Untitled item', 'ja': '無題コンテンツ', 'ko': '제목 없음'},
             '未命名内容',
         )
-        if item.source_url:
-            lines.append(f"{idx}. [{action}] [{title}]({item.source_url})")
+        source_url = canonicalize_persisted_url(item.source_url)
+        if source_url:
+            lines.append(f"{idx}. [{action}] [{title}]({source_url})")
         else:
             lines.append(f"{idx}. [{action}] {title}")
     _append_assistant_section(lines, output_language=resolved_language, assistant_context=assistant_context)
@@ -431,7 +434,8 @@ def build_todo_draft(
         return "\n".join(lines)
 
     for item in deep_items:
-        source_suffix = f"（{item.source_url.strip()}）" if item.source_url and item.source_url.strip() else ""
+        source_url = canonicalize_persisted_url(item.source_url)
+        source_suffix = f"（{source_url}）" if source_url else ""
         lines.append(
             f"- [ ] {localized_text(resolved_language, {'zh-CN': '阅读', 'zh-TW': '閱讀', 'en': 'Read', 'ja': '読む', 'ko': '읽기'}, '阅读')} "
             f"《{item.title or localized_text(resolved_language, {'zh-CN': '未命名内容', 'zh-TW': '未命名內容', 'en': 'Untitled item', 'ja': '無題コンテンツ', 'ko': '제목 없음'}, '未命名内容')}》"

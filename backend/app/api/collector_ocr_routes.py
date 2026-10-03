@@ -43,6 +43,7 @@ from app.services.collector_diagnostics import (
 from app.services.content_extractor import extract_domain
 from app.services.item_processing_runtime import process_item_in_session
 from app.services.language import normalize_output_language
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 from app.services.user_context import ensure_demo_user
 from app.services.vision_ocr_service import VisionOCRService
 
@@ -136,10 +137,11 @@ def ingest_ocr_image_impl(
 ) -> CollectorOCRIngestResponse:
     ensure_demo_user_fn(db)
     resolved_language = normalize_output_language(payload.output_language)
-    source_url = payload.source_url.strip() if payload.source_url else None
+    source_url_input = payload.source_url.strip() if payload.source_url else None
 
-    if source_url and not _is_valid_http_url(source_url):
+    if source_url_input and not _is_valid_http_url(source_url_input):
         raise HTTPException(status_code=400, detail="source_url must start with http:// or https://")
+    source_url = canonicalize_persisted_url(source_url_input)
 
     if payload.deduplicate and source_url:
         existing = _load_existing_item_by_url(db, source_url)
@@ -180,9 +182,12 @@ def ingest_ocr_image_impl(
             output_language=resolved_language,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=redact_sensitive_urls(exc)) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR extraction failed: {redact_sensitive_urls(exc)}",
+        ) from exc
 
     lines: list[str] = []
     if ocr_result.title:
@@ -269,9 +274,10 @@ def preview_ocr_image_impl(
     run_ocr_preview_with_variants_fn: RunOcrPreviewWithVariantsFn,
 ) -> CollectorOCRPreviewResponse:
     resolved_language = normalize_output_language(payload.output_language)
-    source_url = payload.source_url.strip() if payload.source_url else None
-    if source_url and not _is_valid_http_url(source_url):
+    source_url_input = payload.source_url.strip() if payload.source_url else None
+    if source_url_input and not _is_valid_http_url(source_url_input):
         raise HTTPException(status_code=400, detail="source_url must start with http:// or https://")
+    source_url = canonicalize_persisted_url(source_url_input)
 
     return run_ocr_preview_with_variants_fn(
         image_base64=payload.image_base64,

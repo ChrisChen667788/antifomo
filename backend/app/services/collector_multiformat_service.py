@@ -24,7 +24,15 @@ from app.models.collector_entities import (
 )
 from app.models.entities import Item
 from app.services.collector_diagnostics import create_ingest_attempt, update_item_ingest_state
+from app.services.collector_evidence_service import connector_for_item, record_source_capture
 from app.services.content_extractor import extract_domain, normalize_text
+from app.services.public_url_guard import open_public_url
+from app.services.source_url_privacy import (
+    canonicalize_persisted_url,
+    normalize_fetch_url,
+    redact_sensitive_url_values,
+    redact_sensitive_urls,
+)
 from app.services.collector_imports.wechat_favorites import (
     WechatFavoriteCandidate,
     import_wechat_favorites as _import_wechat_favorites,
@@ -53,22 +61,7 @@ def _utc_now() -> datetime:
 
 
 def _normalize_url(value: str | None) -> str | None:
-    text = normalize_text(value or "")
-    if not text:
-        return None
-    parsed = urllib_parse.urlparse(text)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return None
-    path = parsed.path or "/"
-    if path != "/" and path.endswith("/"):
-        path = path.rstrip("/")
-    normalized = parsed._replace(
-        scheme=parsed.scheme.lower(),
-        netloc=parsed.netloc.lower(),
-        path=path,
-        fragment="",
-    )
-    return urllib_parse.urlunparse(normalized)
+    return canonicalize_persisted_url(value)
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
@@ -114,14 +107,17 @@ def _strip_html(value: str | None) -> str:
 
 
 def _fetch_url_bytes(url: str, *, timeout_seconds: int = 12) -> bytes:
+    fetch_url = normalize_fetch_url(url)
+    if not fetch_url:
+        raise ValueError("invalid fetch url")
     req = urllib_request.Request(
-        url,
+        fetch_url,
         headers={
             "User-Agent": "anti-fomo-demo/1.0",
             "Accept": "application/rss+xml, application/atom+xml, text/xml, application/xml, text/html;q=0.8, */*;q=0.5",
         },
     )
-    with urllib_request.urlopen(req, timeout=timeout_seconds) as response:
+    with open_public_url(req, timeout_seconds=timeout_seconds) as response:
         return response.read()
 
 
@@ -319,13 +315,17 @@ def serialize_feed_source(feed: CollectorFeedSource) -> dict[str, Any]:
     return {
         "id": str(feed.id),
         "feed_type": feed.feed_type,
-        "source_url": feed.source_url,
+        "source_url": canonicalize_persisted_url(feed.source_url) or "",
         "title": feed.title,
         "note": feed.note,
         "enabled": feed.enabled,
         "status": feed.status,
         "last_synced_at": feed.last_synced_at,
-        "last_error": feed.last_error,
+        "last_error": (
+            redact_sensitive_urls(feed.last_error)
+            if feed.last_error is not None
+            else None
+        ),
         "created_at": feed.created_at,
         "updated_at": feed.updated_at,
     }
@@ -396,11 +396,52 @@ def _persist_item(
     resolver: str,
     body_source: str,
     process_immediately: bool = True,
+    fetch_url: str | None = None,
 ) -> dict[str, Any]:
     normalized_url = _normalize_url(source_url)
+    raw_evidence = str(raw_content or "")
+    normalized_raw = normalize_text(raw_evidence)
     if normalized_url:
         existing = _load_existing_item_by_url(db, user_id=user_id, source_url=normalized_url)
         if existing is not None:
+            capture = record_source_capture(
+                db,
+                item=existing,
+                connector=connector_for_item(existing),
+                raw_content=raw_evidence,
+                clean_content=normalized_raw,
+                canonical_url=normalized_url,
+                mime_type="text/plain",
+                parser_fingerprint="collector-import-v1",
+                parse_status="captured",
+                metadata_payload={"resolver": resolver, "body_source": body_source},
+            )
+            # Re-importing an authenticated WeChat URL is an explicit refresh
+            # request even when its canonical identity and preliminary title
+            # have not changed.  The transient URL is needed to observe a body
+            # update that the canonical metadata cannot reveal.
+            processing_requested = capture.revision_created or bool(fetch_url)
+            if capture.revision_created:
+                existing.raw_content = normalized_raw
+                existing.clean_content = None
+                existing.title = normalize_text(title or "") or existing.title
+            if processing_requested:
+                existing.content_acquisition_status = "pending_processing" if fetch_url else "body_acquired"
+                existing.content_acquisition_note = "待抓取正文" if fetch_url else content_note
+                existing.status = "pending"
+                existing.processing_error = None
+                if capture.revision_created:
+                    existing._collector_raw_evidence = raw_evidence
+                if fetch_url:
+                    existing._collector_fetch_url = fetch_url
+                    existing._collector_force_fetch = True
+            if processing_requested and process_immediately:
+                process_item_in_session(
+                    db,
+                    existing,
+                    output_language=normalize_output_language(output_language),
+                    auto_archive=True,
+                )
             update_item_ingest_state(
                 existing,
                 ingest_route=existing.ingest_route or ingest_route,
@@ -412,39 +453,77 @@ def _persist_item(
                 item=existing,
                 source_url=normalized_url,
                 route_type=existing.ingest_route or ingest_route,
-                resolver="existing_item",
-                attempt_status="deduplicated",
+                resolver=(
+                    "existing_item_revision"
+                    if capture.revision_created
+                    else "existing_item_refresh"
+                    if processing_requested
+                    else "existing_item"
+                ),
+                attempt_status=(
+                    "ready"
+                    if processing_requested and existing.status == "ready"
+                    else "failed"
+                    if processing_requested and process_immediately
+                    else "queued"
+                    if processing_requested
+                    else "deduplicated"
+                ),
                 body_source=body_source,
+                error_detail=existing.processing_error,
             )
             db.add(existing)
             db.commit()
             db.refresh(existing)
-            return {"item": existing, "attempt": attempt, "deduplicated": True}
+            return {
+                "item": existing,
+                "attempt": attempt,
+                "deduplicated": True,
+                "revision_created": capture.revision_created,
+                "processing_requested": processing_requested,
+            }
 
+    waiting_for_url_body = source_type == "url" and bool(fetch_url)
     item = Item(
         user_id=user_id,
         source_type=source_type,
         source_url=normalized_url,
         source_domain=extract_domain(normalized_url) or extract_domain(source_url),
         title=normalize_text(title or "") or None,
-        raw_content=normalize_text(raw_content),
+        raw_content=normalized_raw,
         output_language=normalize_output_language(output_language),
         ingest_route=ingest_route,
-        content_acquisition_status="body_acquired",
-        content_acquisition_note=content_note,
+        content_acquisition_status="pending_processing" if waiting_for_url_body else "body_acquired",
+        content_acquisition_note="待抓取正文" if waiting_for_url_body else content_note,
         resolved_from_url=normalized_url,
         fallback_used=False,
         status="pending",
     )
     db.add(item)
     db.flush()
+    record_source_capture(
+        db,
+        item=item,
+        connector=connector_for_item(item),
+        raw_content=raw_evidence,
+        clean_content=normalized_raw,
+        canonical_url=normalized_url,
+        mime_type="text/plain",
+        parser_fingerprint="collector-import-v1",
+        parse_status="captured",
+        metadata_payload={"resolver": resolver, "body_source": body_source},
+    )
+    item._collector_raw_evidence = raw_evidence
+    if fetch_url:
+        item._collector_fetch_url = fetch_url
+        item._collector_force_fetch = True
     if process_immediately:
         process_item_in_session(db, item, output_language=item.output_language, auto_archive=True)
     update_item_ingest_state(
         item,
         ingest_route=ingest_route,
         resolved_from_url=normalized_url,
-        fallback_used=False,
+        fallback_used=bool(item.fallback_used),
     )
     attempt = create_ingest_attempt(
         db,
@@ -506,10 +585,11 @@ def sync_rss_feeds(
     results: list[dict[str, Any]] = []
 
     for feed in feeds:
+        persisted_feed_url = canonicalize_persisted_url(feed.source_url) or ""
         result = {
             "feed_id": str(feed.id),
-            "source_url": feed.source_url,
-            "feed_title": feed.title or feed.source_url,
+            "source_url": persisted_feed_url,
+            "feed_title": feed.title or persisted_feed_url,
             "new_items": 0,
             "deduplicated_items": 0,
             "skipped_items": 0,
@@ -525,7 +605,8 @@ def sync_rss_feeds(
             if parsed_title and not feed.title:
                 feed.title = parsed_title
             for entry in entries:
-                dedup_key = _feed_entry_key(feed.id, entry.source_url, entry.title)
+                entry_url = canonicalize_persisted_url(entry.source_url)
+                dedup_key = _feed_entry_key(feed.id, entry_url, entry.title)
                 existing_entry = db.scalar(
                     select(CollectorFeedEntry)
                     .where(CollectorFeedEntry.feed_id == feed.id)
@@ -539,23 +620,23 @@ def sync_rss_feeds(
                 db.add(
                     CollectorFeedEntry(
                         feed_id=feed.id,
-                        source_url=entry.source_url,
+                        source_url=entry_url,
                         title=entry.title,
                         published_at=entry.published_at,
                         dedup_key=dedup_key,
-                        raw_payload=entry.raw_payload,
+                        raw_payload=redact_sensitive_url_values(entry.raw_payload),
                     )
                 )
                 raw_parts = [f"标题：{entry.title}"]
                 if entry.summary:
                     raw_parts.append(f"正文：{entry.summary}")
-                elif entry.source_url:
-                    raw_parts.append(f"链接：{entry.source_url}")
+                elif entry_url:
+                    raw_parts.append(f"链接：{entry_url}")
                 ingest = _persist_item(
                     db,
                     user_id=user_id,
-                    source_type="plugin" if entry.source_url else "text",
-                    source_url=entry.source_url,
+                    source_type="plugin" if entry_url else "text",
+                    source_url=entry_url,
                     title=entry.title,
                     raw_content="\n".join(raw_parts),
                     output_language=output_language,
@@ -573,13 +654,13 @@ def sync_rss_feeds(
             feed.status = "ready"
             feed.last_error = None
             feed.last_synced_at = _utc_now()
-            result["feed_title"] = feed.title or parsed_title or feed.source_url
+            result["feed_title"] = feed.title or parsed_title or persisted_feed_url
             result["synced_at"] = feed.last_synced_at
         except Exception as exc:
             feed.status = "failed"
-            feed.last_error = str(exc)
+            feed.last_error = redact_sensitive_urls(exc)
             result["status"] = "failed"
-            result["error"] = str(exc)
+            result["error"] = redact_sensitive_urls(exc)
         db.add(feed)
         db.commit()
         results.append(result)

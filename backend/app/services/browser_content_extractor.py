@@ -11,6 +11,8 @@ from app.services.content_extractor import (
     extract_domain,
     normalize_text,
 )
+from app.services.public_url_guard import validate_public_http_url
+from app.services.source_url_privacy import redact_sensitive_urls
 
 
 PROJECT_ROOT = BACKEND_DIR.parent
@@ -48,6 +50,10 @@ def extract_from_browser(
         raise ContentExtractionError("Browser extractor is disabled")
     if not BROWSER_EXTRACT_SCRIPT.exists():
         raise ContentExtractionError(f"Browser extractor script not found: {BROWSER_EXTRACT_SCRIPT}")
+    try:
+        validate_public_http_url(url)
+    except ValueError as exc:
+        raise ContentExtractionError(f"Browser extractor target rejected: {exc}") from exc
 
     resolved_timeout = max(8, int(timeout_seconds or settings.browser_extractor_timeout_seconds))
     command = _build_browser_extract_command(url, timeout_seconds=resolved_timeout)
@@ -64,12 +70,14 @@ def extract_from_browser(
     except subprocess.TimeoutExpired as exc:
         raise ContentExtractionError(f"Browser extraction timed out after {resolved_timeout}s") from exc
     except Exception as exc:  # pragma: no cover - defensive shell failure path
-        raise ContentExtractionError(f"Browser extraction failed to start: {exc}") from exc
+        raise ContentExtractionError(
+            f"Browser extraction failed to start: {redact_sensitive_urls(exc)}"
+        ) from exc
 
     stdout = (completed.stdout or "").strip()
     stderr = normalize_text(completed.stderr or "")
     if completed.returncode != 0:
-        detail = stderr or normalize_text(stdout)
+        detail = redact_sensitive_urls(stderr or normalize_text(stdout))
         raise ContentExtractionError(f"Browser extraction failed: {detail or completed.returncode}")
 
     last_line = stdout.splitlines()[-1] if stdout else ""
@@ -82,6 +90,10 @@ def extract_from_browser(
     raw_content = normalize_text(str(payload.get("raw_content", "") or body_text))
     title = normalize_text(str(payload.get("title", "") or "")) or None
     final_url = normalize_text(str(payload.get("page_url", "") or "")) or url
+    try:
+        validate_public_http_url(final_url)
+    except ValueError as exc:
+        raise ContentExtractionError(f"Browser extractor redirect target rejected: {exc}") from exc
     source_domain = normalize_text(str(payload.get("source_domain", "") or "")) or extract_domain(final_url)
 
     if bool(payload.get("access_limited")):

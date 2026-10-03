@@ -9,9 +9,15 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.entities import Item, ItemTag
 from app.services.browser_content_extractor import extract_from_browser
+from app.services.collector_evidence_service import (
+    connector_for_item,
+    record_source_capture,
+    record_transform_receipts,
+)
 from app.services.language import localized_text, normalize_output_language
 from app.services.content_extractor import (
     ContentExtractionError,
+    _contains_access_block,
     extract_domain,
     extract_from_reader_proxy,
     extract_from_url,
@@ -19,6 +25,7 @@ from app.services.content_extractor import (
     normalize_text,
 )
 from app.services.scorer import Scorer
+from app.services.source_url_privacy import redact_sensitive_urls
 from app.services.summarizer import Summarizer
 from app.services.tagger import Tagger
 from app.services.llm_service import MockLLMService, get_strategy_llm_service
@@ -56,6 +63,31 @@ _WECHAT_FOLLOW_PROMPT_RE = re.compile(
 )
 _BAD_TITLE_MARKERS = ("本文字数", "阅读时长", "字数：", "字数:", "分钟作者", "微信公众平台")
 _BROWSER_NAV_NOISE_TOKENS = ("个人收藏", "京东", "天猫", "淘宝", "苏宁易购", "维基百科", "iCloud", "百度", "新浪微博")
+
+
+class ContentAcquisitionPending(RuntimeError):
+    def __init__(self, reason: str, detail: str) -> None:
+        super().__init__(f"{reason}: {detail}")
+        self.reason = reason
+        self.detail = detail
+
+
+def _looks_like_unavailable_body(value: str) -> bool:
+    normalized = normalize_text(value)
+    if not normalized:
+        return True
+    if _contains_access_block(normalized):
+        return True
+    return any(
+        marker in normalized
+        for marker in (
+            "正文会优先通过公众号文章链接解析",
+            "暂未获取正文",
+            "暂未获取到正文",
+            "text is not available",
+            "access is restricted",
+        )
+    )
 
 
 def _looks_like_browser_nav_noise(value: str) -> bool:
@@ -301,12 +333,21 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
     resolved_language = normalize_output_language(output_language)
     source_domain = extract_domain(item.source_url) or item.source_domain or ""
     title = item.title or ""
+    # Keep the exact submitted/fetched payload off the Item UI projection. The
+    # evidence writer consumes this transient value before the request ends.
+    item._collector_raw_evidence = str(
+        getattr(item, "_collector_raw_evidence", "") or item.raw_content or ""
+    )
+    fetch_url = str(getattr(item, "_collector_fetch_url", "") or item.source_url or "")
+    force_fetch = bool(getattr(item, "_collector_force_fetch", False))
     raw_content = normalize_text(item.raw_content or "")
+    extraction_errors: list[str] = []
+    attempted_direct_fetch = False
     if _looks_like_bad_article_title(title, source_domain=source_domain):
         title = ""
 
     # Prefer plugin-provided page content when available.
-    if item.source_type == "plugin" and len(raw_content) >= 120:
+    if item.source_type == "plugin" and len(raw_content) >= 120 and not force_fetch:
         parsed_title, parsed_keywords, parsed_body = _extract_plugin_structured_content(
             raw_content,
             source_domain=source_domain,
@@ -332,85 +373,109 @@ def _prepare_item_content(item: Item, output_language: str = "zh-CN") -> tuple[s
         # distinguish a readable public article from an expired/verification page in seconds;
         # the slower logged-in browser path remains available through browser ingest/extension.
         if source_domain.endswith("mp.weixin.qq.com") and item.ingest_route == "wechat_favorites":
+            attempted_direct_fetch = True
             try:
                 extracted = extract_from_url(
-                    item.source_url,
+                    fetch_url,
                     timeout_seconds=max(3, min(settings.url_fetch_timeout_seconds, 8)),
                 )
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
+                item._collector_raw_evidence = extracted.raw_content
                 clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                item.raw_content = clean_content or normalize_text(raw_content)
                 if _looks_like_bad_article_title(title, source_domain=source_domain):
                     title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
-            except ContentExtractionError:
-                pass
+            except ContentExtractionError as exc:
+                extraction_errors.append(redact_sensitive_urls(exc))
 
         # WeChat official account pages are frequently gated; prefer a logged-in browser extraction chain.
         if source_domain.endswith("mp.weixin.qq.com"):
             try:
                 extracted = extract_from_browser(
-                    item.source_url,
+                    fetch_url,
                     timeout_seconds=settings.browser_extractor_timeout_seconds,
                 )
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
+                item._collector_raw_evidence = extracted.raw_content
                 clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                item.raw_content = clean_content or normalize_text(raw_content)
                 if _looks_like_bad_article_title(title, source_domain=source_domain):
                     title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
-            except ContentExtractionError:
-                pass
-            try:
-                extracted = extract_from_reader_proxy(
-                    item.source_url,
-                    timeout_seconds=max(settings.url_fetch_timeout_seconds, 10),
-                )
-                source_domain = extracted.source_domain or source_domain
-                title = title or (extracted.title or "")
-                raw_content = extracted.raw_content
-                clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
-                if _looks_like_bad_article_title(title, source_domain=source_domain):
-                    title = _derive_topic_title_from_text(clean_content)
-                return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
-            except ContentExtractionError:
-                pass
+            except ContentExtractionError as exc:
+                extraction_errors.append(redact_sensitive_urls(exc))
+            if settings.reader_proxy_enabled:
+                try:
+                    extracted = extract_from_reader_proxy(
+                        fetch_url,
+                        timeout_seconds=max(settings.url_fetch_timeout_seconds, 10),
+                    )
+                    source_domain = extracted.source_domain or source_domain
+                    title = title or (extracted.title or "")
+                    raw_content = extracted.raw_content
+                    item._collector_raw_evidence = extracted.raw_content
+                    item.fallback_used = True
+                    clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                    item.raw_content = clean_content or normalize_text(raw_content)
+                    if _looks_like_bad_article_title(title, source_domain=source_domain):
+                        title = _derive_topic_title_from_text(clean_content)
+                    return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
+                except ContentExtractionError as exc:
+                    extraction_errors.append(redact_sensitive_urls(exc))
 
-        try:
-            extracted = extract_from_url(
-                item.source_url,
-                timeout_seconds=settings.url_fetch_timeout_seconds,
-            )
-            source_domain = extracted.source_domain or source_domain
-            title = title or (extracted.title or "")
-            raw_content = extracted.raw_content
-            clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
-            if _looks_like_bad_article_title(title, source_domain=source_domain):
-                title = _derive_topic_title_from_text(clean_content)
-            return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
-        except ContentExtractionError:
-            # Fallback to a reader proxy before giving up.
+        if not attempted_direct_fetch:
             try:
-                extracted = extract_from_reader_proxy(
-                    item.source_url,
-                    timeout_seconds=max(settings.url_fetch_timeout_seconds, 8),
+                extracted = extract_from_url(
+                    fetch_url,
+                    timeout_seconds=settings.url_fetch_timeout_seconds,
                 )
                 source_domain = extracted.source_domain or source_domain
                 title = title or (extracted.title or "")
                 raw_content = extracted.raw_content
+                item._collector_raw_evidence = extracted.raw_content
                 clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                item.raw_content = clean_content or normalize_text(raw_content)
                 if _looks_like_bad_article_title(title, source_domain=source_domain):
                     title = _derive_topic_title_from_text(clean_content)
                 return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
-            except ContentExtractionError:
-                # Fallback to existing raw_content if all extraction attempts fail.
-                pass
+            except ContentExtractionError as exc:
+                extraction_errors.append(redact_sensitive_urls(exc))
+                if settings.reader_proxy_enabled:
+                    try:
+                        extracted = extract_from_reader_proxy(
+                            fetch_url,
+                            timeout_seconds=max(settings.url_fetch_timeout_seconds, 8),
+                        )
+                        source_domain = extracted.source_domain or source_domain
+                        title = title or (extracted.title or "")
+                        raw_content = extracted.raw_content
+                        item._collector_raw_evidence = extracted.raw_content
+                        item.fallback_used = True
+                        clean_content = _strip_article_boilerplate(extracted.clean_content, source_domain=source_domain)
+                        item.raw_content = clean_content or normalize_text(raw_content)
+                        if _looks_like_bad_article_title(title, source_domain=source_domain):
+                            title = _derive_topic_title_from_text(clean_content)
+                        return source_domain, title, clean_content if clean_content else normalize_text(raw_content)
+                    except ContentExtractionError as proxy_exc:
+                        extraction_errors.append(redact_sensitive_urls(proxy_exc))
 
     if raw_content and raw_content.startswith("来自 ") and " 的链接：" in raw_content:
         # Historical placeholder content from early demo versions.
         raw_content = ""
+    if item.source_url and _looks_like_unavailable_body(raw_content):
+        reason = (
+            "access_limited"
+            if any("access_limited" in error for error in extraction_errors)
+            or _contains_access_block(raw_content)
+            else "needs_body"
+        )
+        detail = extraction_errors[-1] if extraction_errors else "No article body was acquired"
+        raise ContentAcquisitionPending(reason, detail)
     if not raw_content and item.source_url:
         raw_content = _missing_content_hint(source_domain, resolved_language)
     if not title:
@@ -465,6 +530,9 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
     item.output_language = resolved_language
     item.status = "processing"
     item.processing_error = None
+    capture = None
+    clean_content = ""
+    receipts: list[dict] = []
 
     try:
         source_domain, title, clean_content = _prepare_item_content(item, resolved_language)
@@ -488,6 +556,33 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
         source_domain = source_domain or "unknown"
 
         source_title = title
+        item.source_domain = source_domain
+        item.title = source_title
+        item.clean_content = clean_content
+        if item.source_type in {"url", "plugin"}:
+            item.raw_content = clean_content
+        else:
+            item.raw_content = item.raw_content or clean_content
+        item.content_acquisition_status = "body_acquired"
+        item.content_acquisition_note = "Article body acquired and parsed"
+        db.add(item)
+        db.flush()
+        raw_value = str(getattr(item, "_collector_raw_evidence", "") or clean_content)
+        capture = record_source_capture(
+            db,
+            item=item,
+            connector=connector_for_item(item),
+            raw_content=raw_value,
+            clean_content=clean_content,
+            canonical_url=item.source_url,
+            mime_type="text/html" if "<html" in raw_value[:500].lower() else "text/plain",
+            parser_fingerprint="item-processor-v2",
+            parse_status="body_acquired",
+            metadata_payload={
+                "fallback_used": bool(item.fallback_used),
+                "content_acquisition_status": item.content_acquisition_status,
+            },
+        )
         resolved_summarizer, resolved_tagger, resolved_scorer, llm_timeout_seconds = _resolve_item_processing_stack(item)
 
         summarize_result = resolved_summarizer.summarize(
@@ -497,6 +592,16 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
             output_language=resolved_language,
             timeout_seconds=llm_timeout_seconds,
         )
+        summarize_receipt = getattr(summarize_result, "_runtime_receipt", {})
+        if summarize_receipt:
+            receipts.append(summarize_receipt)
+            record_transform_receipts(
+                db,
+                item=item,
+                revision=capture.revision,
+                input_text=clean_content,
+                receipts=[summarize_receipt],
+            )
 
         display_title = _resolve_display_title(
             source_title=source_title,
@@ -514,6 +619,16 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
             output_language=resolved_language,
             timeout_seconds=llm_timeout_seconds,
         )
+        tags_receipt = getattr(tags_result, "_runtime_receipt", {})
+        if tags_receipt:
+            receipts.append(tags_receipt)
+            record_transform_receipts(
+                db,
+                item=item,
+                revision=capture.revision,
+                input_text=clean_content,
+                receipts=[tags_receipt],
+            )
 
         score_result = resolved_scorer.score(
             title=display_title,
@@ -523,6 +638,16 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
             output_language=resolved_language,
             timeout_seconds=llm_timeout_seconds,
         )
+        score_receipt = getattr(score_result, "_runtime_receipt", {})
+        if score_receipt:
+            receipts.append(score_receipt)
+            record_transform_receipts(
+                db,
+                item=item,
+                revision=capture.revision,
+                input_text=clean_content,
+                receipts=[score_receipt],
+            )
 
         item.source_domain = source_domain
         item.title = display_title
@@ -531,12 +656,37 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
             item.raw_content = clean_content
         else:
             item.raw_content = item.raw_content or clean_content
+        item.content_acquisition_status = "body_acquired"
+        item.content_acquisition_note = "Article body acquired and parsed"
         item.short_summary = summarize_result.short_summary
         item.long_summary = summarize_result.long_summary
+        item.key_points = list(summarize_result.key_points)
         item.score_value = Decimal(str(score_result.score_value))
         item.action_suggestion = score_result.action_suggestion
+        item.content_score_reasons = list(score_result.recommendation_reason)
+        item.content_density = score_result.content_density
+        item.novelty_level = score_result.novelty_level
+        item.llm_receipts = list(receipts)
+        parse_degraded = any(
+            bool(getattr(result, "_parse_degraded", False))
+            for result in (summarize_result, tags_result, score_result)
+        )
+        runtime_statuses = {
+            str(receipt.get("status") or "")
+            for receipt in receipts
+        }
+        runtime_degraded = bool(runtime_statuses & {"fallback", "mock", "failed"})
+        runtime_failed_over = bool(runtime_statuses & {"fallback", "failed"})
+        item.processing_degraded = parse_degraded or runtime_degraded
         item.processed_at = datetime.now(timezone.utc)
-        item.status = "ready"
+        item.status = "degraded" if parse_degraded or runtime_failed_over else "ready"
+        if parse_degraded:
+            item.processing_error = "llm_schema_fallback: one or more model outputs failed validation"
+        elif runtime_failed_over:
+            item.processing_error = (
+                "llm_runtime_degraded: "
+                + ",".join(sorted(runtime_statuses & {"fallback", "failed"}))
+            )
 
         item.tags.clear()
         for tag in tags_result.tags[:5]:
@@ -544,9 +694,54 @@ def process_item(db: Session, item: Item, *, output_language: str | None = None)
                 continue
             item.tags.append(ItemTag(tag_name=tag))
 
+        db.add(item)
+        db.flush()
+        record_transform_receipts(
+            db,
+            item=item,
+            revision=capture.revision,
+            input_text=clean_content,
+            receipts=receipts,
+        )
+
+    except ContentAcquisitionPending as exc:
+        item.status = "needs_body"
+        item.content_acquisition_status = exc.reason
+        item.content_acquisition_note = redact_sensitive_urls(exc.detail)
+        item.processing_error = redact_sensitive_urls(exc)
+        item.processed_at = datetime.now(timezone.utc)
+        db.add(item)
+        db.flush()
+        record_source_capture(
+            db,
+            item=item,
+            connector=connector_for_item(item),
+            raw_content=str(getattr(item, "_collector_raw_evidence", "") or item.raw_content or ""),
+            clean_content="",
+            canonical_url=item.source_url,
+            mime_type="text/plain",
+            parser_fingerprint="item-processor-v2",
+            parse_status=exc.reason,
+            metadata_payload={
+                "content_acquisition_status": exc.reason,
+                "content_acquisition_error": exc.detail,
+            },
+        )
     except Exception as exc:  # pragma: no cover - defensive branch
+        failure_receipt = getattr(exc, "_runtime_receipt", None)
+        if failure_receipt and capture is not None and clean_content:
+            receipts.append(failure_receipt)
+            item.llm_receipts = list(receipts)
+            item.processing_degraded = True
+            record_transform_receipts(
+                db,
+                item=item,
+                revision=capture.revision,
+                input_text=clean_content,
+                receipts=[failure_receipt],
+            )
         item.status = "failed"
-        item.processing_error = str(exc)
+        item.processing_error = redact_sensitive_urls(exc)
         item.processed_at = datetime.now(timezone.utc)
 
     db.add(item)

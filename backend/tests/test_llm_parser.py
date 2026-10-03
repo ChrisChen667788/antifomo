@@ -3,6 +3,7 @@ from app.services.llm_parser import (
     parse_insight_response,
     parse_research_report_response,
     parse_score_response,
+    parse_score_response_with_status,
     parse_session_summary_response,
     parse_summarize_response,
     parse_tags_response,
@@ -24,6 +25,18 @@ def test_parse_invalid_json_fallback() -> None:
     assert result.score_value == 2.5
     assert result.action_suggestion == "later"
     assert result.recommendation_reason
+
+
+def test_parse_score_rejects_semantically_invalid_values() -> None:
+    result, degraded = parse_score_response_with_status(
+        '{"score_value":999,"action_suggestion":"delete",'
+        '"recommendation_reason":["invalid"],"content_density":"extreme",'
+        '"novelty_level":"unknown"}'
+    )
+
+    assert degraded is True
+    assert result.score_value == 2.5
+    assert result.action_suggestion == "later"
 
 
 def test_parse_session_summary_fallback() -> None:
