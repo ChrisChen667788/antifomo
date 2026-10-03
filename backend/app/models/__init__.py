@@ -4,6 +4,13 @@ from app.models.collector_entities import (
     CollectorImportBatch,
     UploadedDocument,
 )
+from app.models.collector_evidence_entities import (
+    CollectorDocumentRevision,
+    CollectorRawAsset,
+    CollectorSourceItem,
+    CollectorSourceSpan,
+    CollectorTransformReceipt,
+)
 from app.models.entities import (
     CollectorSource,
     Feedback,
@@ -105,6 +112,11 @@ __all__ = [
     "CollectorFeedEntry",
     "CollectorFeedSource",
     "CollectorImportBatch",
+    "CollectorDocumentRevision",
+    "CollectorRawAsset",
+    "CollectorSourceItem",
+    "CollectorSourceSpan",
+    "CollectorTransformReceipt",
     "DecisionArtifact",
     "DecisionAgentApproval",
     "DecisionAgentRun",

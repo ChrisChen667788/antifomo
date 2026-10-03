@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from html import unescape
 from html.parser import HTMLParser
 import re
-import ssl
 from urllib import parse, request
 
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.entities import Item
 from app.services.browser_content_extractor import extract_from_browser
@@ -23,6 +23,7 @@ from app.services.content_extractor import (
 
 DDG_HTML_URL = "https://html.duckduckgo.com/html/?q="
 WECHAT_ALLOWED_DOMAINS = ("mp.weixin.qq.com", "weixin.qq.com")
+settings = get_settings()
 GENERIC_RESOLVE_TOKENS = {
     "阅读",
     "分享",
@@ -258,13 +259,8 @@ def _search_duckduckgo(query: str, *, timeout_seconds: int, limit: int) -> list[
             )
         },
     )
-    try:
-        with request.urlopen(req, timeout=timeout_seconds) as resp:
-            html = resp.read().decode("utf-8", errors="ignore")
-    except ssl.SSLCertVerificationError:
-        insecure_context = ssl._create_unverified_context()
-        with request.urlopen(req, timeout=timeout_seconds, context=insecure_context) as resp:
-            html = resp.read().decode("utf-8", errors="ignore")
+    with request.urlopen(req, timeout=timeout_seconds) as resp:
+        html = resp.read().decode("utf-8", errors="ignore")
     parser = _DuckDuckGoWechatParser()
     parser.begin_query(query)
     parser.feed(html)
@@ -467,7 +463,7 @@ def resolve_wechat_article_url(
         )
 
     history_candidates = _search_existing_items(title, body, limit=search_limit)
-    queries = _build_queries(title, body, limit=10)
+    queries = _build_queries(title, "", limit=10) if settings.wechat_url_search_enabled and title else []
     all_hits: list[_SearchHit] = []
     seen_urls: set[str] = set()
     for query in queries:
@@ -485,7 +481,10 @@ def resolve_wechat_article_url(
     for hit in all_hits[: max(verify_limit * 2, search_limit)]:
         extracted_title = ""
         extracted_body = ""
-        for extractor in (extract_from_browser, extract_from_url, extract_from_reader_proxy):
+        extractors = [extract_from_browser, extract_from_url]
+        if settings.reader_proxy_enabled:
+            extractors.append(extract_from_reader_proxy)
+        for extractor in extractors:
             try:
                 extracted = extractor(hit.url, timeout_seconds=min(timeout_seconds, 10))
             except (ContentExtractionError, Exception):
@@ -516,7 +515,6 @@ def resolve_wechat_article_url(
             )
         )
 
-    ranked.sort(key=lambda item: item.score, reverse=True)
     ranked.sort(key=lambda item: item.score, reverse=True)
     candidates = ranked[:search_limit]
     best = candidates[0] if candidates else None

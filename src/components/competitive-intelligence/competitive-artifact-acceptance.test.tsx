@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompetitiveArtifactAcceptance } from "@/components/competitive-intelligence/competitive-artifact-acceptance";
 import type {
@@ -228,7 +228,9 @@ describe("CompetitiveArtifactAcceptance", () => {
     vi.stubGlobal("confirm", vi.fn(() => false));
 
     render(<CompetitiveArtifactAcceptance />);
-    fireEvent.click(await screen.findByRole("button", { name: "显式确认并初始化" }));
+    const initializeButton = await screen.findByRole("button", { name: "显式确认并初始化" });
+    await waitFor(() => expect(initializeButton).toBeEnabled());
+    fireEvent.click(initializeButton);
 
     expect(apiMock.initializeArtifactAcceptance).not.toHaveBeenCalled();
   });
@@ -265,9 +267,11 @@ describe("CompetitiveArtifactAcceptance", () => {
     });
 
     render(<CompetitiveArtifactAcceptance />);
-    fireEvent.click(await screen.findByRole("button", { name: "显式确认并初始化" }));
+    const initializeButton = await screen.findByRole("button", { name: "显式确认并初始化" });
+    await waitFor(() => expect(initializeButton).toBeEnabled());
+    fireEvent.click(initializeButton);
 
-    expect(apiMock.initializeArtifactAcceptance).toHaveBeenCalledOnce();
+    await waitFor(() => expect(apiMock.initializeArtifactAcceptance).toHaveBeenCalledOnce());
     expect(await screen.findByText("已初始化审查台账")).toBeInTheDocument();
     expect(screen.getByText("初始化记录：新建 1 个工件台账，已存在 seed 管理项 0 个，保留人工项 0 个；新增 revision 1 条，初始化审计新增 1 条。")).toBeInTheDocument();
     expect(screen.getAllByText(/HOLD/)).not.toHaveLength(0);

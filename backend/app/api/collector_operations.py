@@ -43,6 +43,7 @@ from app.services.collector_daemon import (
 from app.services.collector_diagnostics import list_item_attempts, serialize_ingest_attempt
 from app.services.item_processing_runtime import process_item_by_id, recover_stale_items
 from app.services.language import normalize_output_language
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 from app.services.user_context import ensure_demo_user
 
 
@@ -51,16 +52,21 @@ settings = get_settings()
 
 ProcessItemByIdFn = Callable[..., Any]
 RecoverStaleItemsFn = Callable[..., dict[str, Any]]
+REVIEW_REQUIRED_STATUSES = ("failed", "needs_body", "degraded")
 
 
 def _to_failed_item_out(item: Item) -> CollectorFailedItemOut:
     return CollectorFailedItemOut(
         id=item.id,
         title=item.title,
-        source_url=item.source_url,
+        source_url=canonicalize_persisted_url(item.source_url),
         source_domain=item.source_domain,
         status=item.status,
-        processing_error=item.processing_error,
+        processing_error=(
+            redact_sensitive_urls(item.processing_error)
+            if item.processing_error is not None
+            else None
+        ),
         created_at=item.created_at,
         processed_at=item.processed_at,
     )
@@ -70,7 +76,7 @@ def _to_summary_item_out(item: Item) -> CollectorSummaryItemOut:
     return CollectorSummaryItemOut(
         id=item.id,
         title=item.title,
-        source_url=item.source_url,
+        source_url=canonicalize_persisted_url(item.source_url),
         source_domain=item.source_domain,
         score_value=float(item.score_value) if item.score_value is not None else None,
         action_suggestion=item.action_suggestion,
@@ -95,6 +101,8 @@ def _build_daily_markdown(
     ready_count: int,
     processing_count: int,
     failed_count: int,
+    needs_body_count: int,
+    degraded_count: int,
     deep_read_count: int,
     later_count: int,
     skip_count: int,
@@ -110,6 +118,8 @@ def _build_daily_markdown(
         f"- ready: {ready_count}",
         f"- processing: {processing_count}",
         f"- failed: {failed_count}",
+        f"- needs_body: {needs_body_count}",
+        f"- degraded: {degraded_count}",
         f"- deep_read: {deep_read_count}",
         f"- later: {later_count}",
         f"- skip: {skip_count}",
@@ -197,7 +207,7 @@ def list_failed_items_impl(
     total_failed = db.scalar(
         select(func.count(Item.id)).where(
             Item.user_id == settings.single_user_id,
-            Item.status == "failed",
+            Item.status.in_(REVIEW_REQUIRED_STATUSES),
         )
     ) or 0
 
@@ -205,7 +215,7 @@ def list_failed_items_impl(
         db.scalars(
             select(Item)
             .where(Item.user_id == settings.single_user_id)
-            .where(Item.status == "failed")
+            .where(Item.status.in_(REVIEW_REQUIRED_STATUSES))
             .order_by(desc(Item.created_at))
             .limit(safe_limit)
         )
@@ -233,7 +243,7 @@ def retry_failed_items_impl(
         db.scalars(
             select(Item.id)
             .where(Item.user_id == settings.single_user_id)
-            .where(Item.status == "failed")
+            .where(Item.status.in_(REVIEW_REQUIRED_STATUSES))
             .order_by(desc(Item.created_at))
             .limit(safe_limit)
         )
@@ -279,6 +289,8 @@ def get_daily_summary_impl(
     ready_count = int(db.scalar(base_query.where(Item.status == "ready")) or 0)
     processing_count = int(db.scalar(base_query.where(Item.status.in_(["pending", "processing"]))) or 0)
     failed_count = int(db.scalar(base_query.where(Item.status == "failed")) or 0)
+    needs_body_count = int(db.scalar(base_query.where(Item.status == "needs_body")) or 0)
+    degraded_count = int(db.scalar(base_query.where(Item.status == "degraded")) or 0)
 
     ready_period_query = base_query.where(Item.status == "ready")
     deep_read_count = int(db.scalar(ready_period_query.where(Item.action_suggestion == "deep_read")) or 0)
@@ -315,7 +327,7 @@ def get_daily_summary_impl(
             select(Item)
             .where(Item.user_id == settings.single_user_id)
             .where(Item.created_at >= since)
-            .where(Item.status == "failed")
+            .where(Item.status.in_(REVIEW_REQUIRED_STATUSES))
             .order_by(desc(Item.created_at))
             .limit(min(safe_limit, 20))
         )
@@ -330,6 +342,8 @@ def get_daily_summary_impl(
         ready_count=ready_count,
         processing_count=processing_count,
         failed_count=failed_count,
+        needs_body_count=needs_body_count,
+        degraded_count=degraded_count,
         deep_read_count=deep_read_count,
         later_count=later_count,
         skip_count=skip_count,
@@ -344,6 +358,8 @@ def get_daily_summary_impl(
         ready_count=ready_count,
         processing_count=processing_count,
         failed_count=failed_count,
+        needs_body_count=needs_body_count,
+        degraded_count=degraded_count,
         deep_read_count=deep_read_count,
         later_count=later_count,
         skip_count=skip_count,
@@ -384,6 +400,8 @@ def get_collector_status_impl(
     ready = db.scalar(base_query.where(Item.status == "ready")) or 0
     processing = db.scalar(base_query.where(Item.status.in_(["pending", "processing"]))) or 0
     failed = db.scalar(base_query.where(Item.status == "failed")) or 0
+    needs_body = db.scalar(base_query.where(Item.status == "needs_body")) or 0
+    degraded = db.scalar(base_query.where(Item.status == "degraded")) or 0
     ocr_items = db.scalar(
         base_query.where(
             Item.raw_content.is_not(None),
@@ -405,6 +423,8 @@ def get_collector_status_impl(
         last_24h_ready=int(ready),
         last_24h_processing=int(processing),
         last_24h_failed=int(failed),
+        last_24h_needs_body=int(needs_body),
+        last_24h_degraded=int(degraded),
         last_24h_ocr_items=int(ocr_items),
         latest_item_at=latest_item_at,
     )

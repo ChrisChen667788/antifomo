@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DDL, DateTime, JSON, String, Uuid, event, func
+from sqlalchemy import DDL, DateTime, JSON, String, event, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.db.types import CompatibleUuid as Uuid
 from app.db.base import Base
 
 

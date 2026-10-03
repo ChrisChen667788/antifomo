@@ -18,8 +18,14 @@ export interface ApiItem {
   clean_content: string | null;
   short_summary: string | null;
   long_summary: string | null;
+  key_points?: string[];
   score_value: number | null;
   action_suggestion: string | null;
+  content_score_reasons?: string[];
+  content_density?: string | null;
+  novelty_level?: string | null;
+  llm_receipts?: Array<Record<string, unknown>>;
+  processing_degraded?: boolean;
   output_language?: AppLanguage;
   ingest_route?: string | null;
   content_acquisition_status?: string | null;

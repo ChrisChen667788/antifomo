@@ -110,6 +110,66 @@ def test_process_immediate_ingest_routes_flush_item_before_attempt() -> None:
         db.close()
 
 
+def test_ocr_ingest_uses_only_canonical_wechat_url_for_provider_and_storage() -> None:
+    db = _new_session()
+    settings = get_settings()
+    captured: dict[str, object] = {}
+    private_url = (
+        "https://reader:password@mp.weixin.qq.com/s?pass_ticket=secret&idx=1"
+        "&mid=22&__biz=MzDemo&sn=abc&scene=21#wechat_redirect"
+    )
+    canonical_url = "https://mp.weixin.qq.com/s?__biz=MzDemo&mid=22&idx=1&sn=abc"
+
+    def extract(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            title="OCR 隐私测试",
+            body_text=f"provider source {kwargs['source_url']}。" * 8,
+            keywords=["OCR"],
+            provider="mock",
+            confidence=0.88,
+        )
+
+    try:
+        db.add(User(id=settings.single_user_id, name="demo"))
+        db.commit()
+        response = collector_ocr_api.ingest_ocr_image_impl(
+            CollectorOCRIngestRequest(
+                image_base64="ZmFrZV9pbWFnZV9kYXRh" * 8,
+                mime_type="image/png",
+                source_url=private_url,
+                title_hint="OCR 入口",
+                deduplicate=False,
+                process_immediately=True,
+            ),
+            BackgroundTasks(),
+            db,
+            ensure_demo_user_fn=lambda _db: None,
+            mark_source_collected_fn=lambda *_args, **_kwargs: None,
+            process_item_in_session_fn=_mark_ready,
+            vision_ocr_service=SimpleNamespace(extract=extract),
+        )
+
+        item = db.scalar(select(Item).where(Item.id == response.item.id))
+        attempt = db.scalar(
+            select(CollectorIngestAttempt)
+            .where(CollectorIngestAttempt.item_id == response.item.id)
+            .limit(1)
+        )
+        assert captured["source_url"] == canonical_url
+        assert item is not None
+        assert item.source_url == canonical_url
+        assert item.resolved_from_url == canonical_url
+        assert attempt is not None
+        assert attempt.source_url == canonical_url
+        serialized = f"{item.raw_content}\n{item.source_url}\n{item.resolved_from_url}\n{attempt.source_url}"
+        assert "pass_ticket" not in serialized
+        assert "secret" not in serialized
+        assert "reader:password" not in serialized
+    finally:
+        db.close()
+
+
 def test_browser_ingest_prefers_plugin_route_when_browser_extract_succeeds() -> None:
     db = _new_session()
     settings = get_settings()

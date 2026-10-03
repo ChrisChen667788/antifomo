@@ -2,14 +2,23 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import get_settings
 from app.db.base import Base
 from app.models.entities import Item, User
+from app.models.collector_evidence_entities import (
+    CollectorDocumentRevision,
+    CollectorSourceItem,
+    CollectorTransformReceipt,
+)
 from app.services import item_processor
 from app.services.llm_parser import ScoreResult, SummarizeResult, TagsResult
+from app.services.mock_llm_provider import MockLLMService
+from app.services.scorer import Scorer
+from app.services.summarizer import Summarizer
+from app.services.tagger import Tagger
 
 
 def _new_session():
@@ -64,6 +73,123 @@ def test_process_item_uses_refined_display_title(monkeypatch) -> None:
     assert processed.title == "更直接的主题标题"
     assert processed.short_summary == "短摘要"
     assert processed.status == "ready"
+
+
+def test_process_item_persists_structured_fields_raw_evidence_and_llm_receipts(monkeypatch) -> None:
+    db = _new_session()
+    user = User(id=uuid.uuid4(), name="receipt-demo")
+    db.add(user)
+    db.flush()
+    monkeypatch.setattr(
+        item_processor,
+        "_resolve_item_processing_stack",
+        lambda _item: (
+            item_processor.mock_summarizer,
+            item_processor.mock_tagger,
+            item_processor.mock_scorer,
+            None,
+        ),
+    )
+    raw_content = "原始正文第一段。\n原始正文第二段，包含足够多的内容用于生成摘要和证据回执。" * 8
+    item = Item(
+        user_id=user.id,
+        source_type="text",
+        title="可审计处理测试",
+        raw_content=raw_content,
+        ingest_route="manual_text",
+        status="pending",
+    )
+
+    processed = item_processor.process_item(db, item, output_language="zh-CN")
+    db.flush()
+
+    assert processed.status == "ready"
+    assert processed.raw_content == raw_content
+    assert processed.key_points
+    assert processed.content_score_reasons
+    assert processed.content_density in {"low", "medium", "high"}
+    assert processed.novelty_level in {"low", "medium", "high"}
+    assert len(processed.llm_receipts) == 3
+    assert processed.processing_degraded is True  # deterministic mock is explicit evidence
+    assert db.scalar(select(func.count()).select_from(CollectorSourceItem)) == 1
+    assert db.scalar(select(func.count()).select_from(CollectorDocumentRevision)) == 1
+    assert db.scalar(select(func.count()).select_from(CollectorTransformReceipt)) == 3
+
+
+def test_invalid_llm_json_is_degraded_instead_of_ready(monkeypatch) -> None:
+    class _InvalidJSONService:
+        provider = "fixture"
+        model = "invalid-json"
+
+        def run_prompt(self, _prompt_name: str, _variables: dict[str, str]) -> str:
+            return "not-json"
+
+    db = _new_session()
+    user = User(id=uuid.uuid4(), name="degraded-demo")
+    db.add(user)
+    db.flush()
+    service = _InvalidJSONService()
+    monkeypatch.setattr(item_processor, "summarizer", Summarizer(llm_service=service))
+    monkeypatch.setattr(item_processor, "tagger", Tagger(llm_service=service))
+    monkeypatch.setattr(item_processor, "scorer", Scorer(llm_service=service))
+
+    item = Item(
+        user_id=user.id,
+        source_type="text",
+        title="无效结构化输出测试",
+        raw_content="这是一段有效正文，但模型返回了无效 JSON。" * 20,
+        status="pending",
+    )
+    processed = item_processor.process_item(db, item)
+    db.flush()
+
+    assert processed.status == "degraded"
+    assert processed.processing_degraded is True
+    assert "llm_schema_fallback" in (processed.processing_error or "")
+    assert all(receipt["parse_status"] == "fallback" for receipt in processed.llm_receipts)
+    assert db.scalar(select(func.count()).select_from(CollectorTransformReceipt)) == 3
+
+
+def test_partial_llm_success_and_failed_stage_both_persist_receipts(monkeypatch) -> None:
+    class _FailOnTagsService(MockLLMService):
+        provider = "fixture"
+        model = "partial-stage-failure"
+
+        def run_prompt_result(self, prompt_name: str, variables: dict[str, str]):
+            if prompt_name == "tags.txt":
+                raise RuntimeError("fixture tag stage failed")
+            return super().run_prompt_result(prompt_name, variables)
+
+    db = _new_session()
+    user = User(id=uuid.uuid4(), name="partial-receipt-demo")
+    db.add(user)
+    db.flush()
+    service = _FailOnTagsService()
+    monkeypatch.setattr(item_processor, "summarizer", Summarizer(llm_service=service))
+    monkeypatch.setattr(item_processor, "tagger", Tagger(llm_service=service))
+    monkeypatch.setattr(item_processor, "scorer", Scorer(llm_service=service))
+
+    item = Item(
+        user_id=user.id,
+        source_type="text",
+        title="阶段回执测试",
+        raw_content="摘要阶段成功，但标签阶段失败时也必须保留两个阶段的审计证据。" * 12,
+        status="pending",
+    )
+    processed = item_processor.process_item(db, item)
+    db.flush()
+
+    stored_receipts = list(
+        db.scalars(
+            select(CollectorTransformReceipt).order_by(CollectorTransformReceipt.created_at)
+        )
+    )
+    assert processed.status == "failed"
+    assert processed.processing_degraded is True
+    assert len(processed.llm_receipts) == 2
+    assert {receipt["status"] for receipt in processed.llm_receipts} == {"mock", "failed"}
+    assert [receipt.stage for receipt in stored_receipts] == ["summarize", "tags"]
+    assert [receipt.status for receipt in stored_receipts] == ["mock", "failed"]
 
 
 def test_process_item_uses_shorter_timeout_for_ocr_items(monkeypatch) -> None:

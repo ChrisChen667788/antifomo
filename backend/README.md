@@ -152,11 +152,13 @@ OCR provider order (default `OCR_PROVIDER=auto`):
 - 输入：`source_url`、`title`（可选）、`raw_content`、`output_language`
 - 输出：已处理完成的 `item`（含摘要、标签、评分）
 - 可选：`process_immediately=false`，先快速入库为 `pending`，再由后台任务继续处理
+- 同一来源再次提交时会比较精确原始 payload：内容未变则幂等复用，内容变化则创建新 revision
 
 `POST /api/collector/url/ingest` 用于 URL 直连入库（非 OCR 主链路）：
 - 输入：`source_url`、`title`（可选）、`output_language`
 - 输出：已处理完成的 `item`（服务端自动抓取正文并生成摘要/标签/评分）
 - 可选：`process_immediately=false`，适合微信/桌面自动化采集，避免同步等待大模型处理
+- 可选：`refresh=true` 强制重新抓取已有来源；正文变化时复用现有 Item 并创建新 revision
 
 `POST /api/collector/process-pending` 用于补偿处理积压状态：
 - 输入：`limit`（query，默认 20）
@@ -186,6 +188,7 @@ OCR provider order (default `OCR_PROVIDER=auto`):
 ## Content Pipeline
 
 - `content_extractor.py`: URL fetch + extraction + cleaning
+- `collector_evidence_service.py`: stable source identity + immutable raw/revision/span/transform receipts
 - `llm_service.py`: abstract LLM provider (default `mock`)
 - `summarizer.py`: short/long summary generation
 - `tagger.py`: topic tags extraction
@@ -193,6 +196,24 @@ OCR provider order (default `OCR_PROVIDER=auto`):
 - `item_processor.py`: end-to-end item processing orchestration
 - `workbuddy_adapter.py`: webhook signature verify + callback dispatch
 - `task_runtime.py`: shared WorkTask execution runtime for API/webhook
+
+### Collector evidence and degraded states
+
+The `20261003_0041` migration adds the collector source-evidence foundation. `Item` remains the mutable API/UI projection, while `collector_source_items`, `collector_raw_assets`, `collector_document_revisions`, `collector_source_spans`, and `collector_transform_receipts` retain source identity and processing lineage. Replaying the same connector-native identity and revision is idempotent; changed raw content or parser fingerprint creates a new revision. The retained evidence rows reject in-place updates, while parent deletion remains available for governed erasure.
+
+URL fetches no longer weaken TLS verification after certificate errors. Access/verification shells are not treated as article bodies: when all body-acquisition paths fail, the item stays `needs_body` and LLM processing does not run. Invalid model JSON produces `degraded` instead of `ready`. Submitted/fetched body text is retained in `CollectorRawAsset.raw_text`; transient fetch URLs stay outside the raw asset, and connector-generated link text uses the canonical URL. URL/plugin `Item.raw_content` and `Item.clean_content` remain cleaned compatibility projections. List responses preserve the existing `raw_content` and `llm_receipts` keys but return `null` and `[]`; detail responses retain the controlled projection and receipts.
+
+Public URL fetches disable environment proxies and validate the connected socket peer before sending HTTP or TLS data. Browser extraction pins the initially approved hosts with Chromium host-resolver rules, rejects every other DNS name, aborts non-HTTP network schemes, and disables target-page JavaScript while freezing WebRTC and popup entry points before document scripts. This application boundary is intentionally conservative: cross-host redirects and dynamically rendered assets can be blocked, and production deployments still require an outbound network policy.
+
+Fetch URLs are transient. Durable WeChat URLs keep only `__biz`, `mid`, `idx`, `sn`, and `chksm`; URL credentials, fragments, and session-style query parameters are removed from Item, attempt, evidence, desktop state, report, and log representations. The desktop collector refreshes a seen URL after 24 hours by default (`--refresh-seen-hours`; `0` checks every cycle).
+
+External reader fallback is opt-in because it sends the target URL to a third party:
+
+```env
+READER_PROXY_ENABLED=false
+```
+
+This schema/service foundation does not provide an official personal WeChat Favorites API, an enterprise WeChat Customer Service connector, a durable stage-job queue, or strict claim-to-span Card Factory v2. See [the WX-0–WX-E plan](../docs/wechat-incremental-ingestion-and-card-evidence-plan-2026-10-03.md) for status, migration and acceptance boundaries.
 
 ## Tests
 

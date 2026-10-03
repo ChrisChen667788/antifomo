@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.base import Base
 from app.models.entities import Item, ItemTag, User
 from app.services.feedback_service import apply_feedback
+from app.services.collector_evidence_service import record_source_capture
 from app.services.knowledge_cleaning_service import clean_knowledge_content, is_low_signal_knowledge_payload
 from app.services.knowledge_service import create_or_get_standalone_knowledge_entry, ensure_knowledge_rule, maybe_auto_archive_item
 
@@ -124,12 +125,77 @@ def test_auto_archive_reuses_existing_entry_for_same_item() -> None:
         apply_feedback(db, user_id=user.id, item=item, feedback_type="save")
         db.flush()
         first = maybe_auto_archive_item(db, item=item, trigger_feedback_type="save")
+        original_content = first.entry.content if first.entry is not None else ""
+        item.short_summary = "重新处理后的摘要。"
+        item.long_summary = "重新处理后生成了新的扩展内容，旧卡片必须同步更新。"
+        item.key_points = ["新的关键点"]
+        db.add(item)
+        db.flush()
         second = maybe_auto_archive_item(db, item=item, trigger_feedback_type="save")
 
         assert first.status == "created"
         assert second.status == "existing"
         assert first.entry is not None and second.entry is not None
         assert first.entry.id == second.entry.id
+        assert second.entry.content != original_content
+        assert "重新处理后" in second.entry.content
+        assert second.entry.metadata_payload["schema_version"] == "card-v2-compat-1"
+        assert second.entry.metadata_payload["revision_number"] == 2
+        assert second.entry.metadata_payload["key_points"] == ["新的关键点"]
+    finally:
+        db.close()
+
+
+def test_auto_archive_refreshes_evidence_when_card_text_is_unchanged() -> None:
+    db = _new_session()
+    try:
+        user = User(id=uuid.uuid4(), name="demo")
+        db.add(user)
+        db.flush()
+        item = Item(
+            user_id=user.id,
+            source_type="url",
+            source_url="https://mp.weixin.qq.com/s/card-revision",
+            source_domain="mp.weixin.qq.com",
+            title="证据修订",
+            raw_content="raw-v1",
+            short_summary="卡片正文保持不变。",
+            long_summary="同一张卡片需要跟随来源修订更新证据指针。",
+            score_value=Decimal("4.60"),
+            action_suggestion="deep_read",
+            status="ready",
+        )
+        db.add(item)
+        db.flush()
+        first_capture = record_source_capture(
+            db,
+            item=item,
+            connector="wechat_favorites_history",
+            raw_content="raw-v1",
+            clean_content="相同正文",
+            parser_fingerprint="parser-v1",
+        )
+        apply_feedback(db, user_id=user.id, item=item, feedback_type="save")
+        first = maybe_auto_archive_item(db, item=item, trigger_feedback_type="save")
+        original_content = first.entry.content
+        first_revision_id = first.entry.metadata_payload["source_revision_id"]
+
+        second_capture = record_source_capture(
+            db,
+            item=item,
+            connector="wechat_favorites_history",
+            raw_content="raw-v2",
+            clean_content="相同正文",
+            parser_fingerprint="parser-v1",
+        )
+        second = maybe_auto_archive_item(db, item=item, trigger_feedback_type="save")
+
+        assert second.entry.id == first.entry.id
+        assert second.entry.content == original_content
+        assert second_capture.revision.id != first_capture.revision.id
+        assert second.entry.metadata_payload["source_revision_id"] != first_revision_id
+        assert second.entry.metadata_payload["source_revision_id"] == str(second_capture.revision.id)
+        assert second.entry.metadata_payload["revision_number"] == 2
     finally:
         db.close()
 

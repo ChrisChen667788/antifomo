@@ -1,34 +1,27 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse, urlunparse
-
 from app.services.content_extractor import normalize_text
+from app.services.source_url_privacy import (
+    canonicalize_persisted_url,
+    normalize_fetch_url,
+)
 
 
 def is_valid_http_url(url: str | None) -> bool:
-    if not url:
-        return False
-    parsed = urlparse(url.strip())
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    return normalize_fetch_url(url) is not None
 
 
 def clean_text(value: str | None) -> str:
     return normalize_text(value or "")
 
 
-def normalize_source_url(url: str | None) -> str | None:
-    if not url:
-        return None
-    text = str(url).strip()
-    if not text:
-        return None
-    parsed = urlparse(text)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return None
-    scheme = parsed.scheme.lower()
-    netloc = parsed.netloc.lower()
-    path = parsed.path or "/"
-    if path != "/" and path.endswith("/"):
-        path = path.rstrip("/")
-    normalized = parsed._replace(scheme=scheme, netloc=netloc, path=path, fragment="")
-    return urlunparse(normalized)
+normalize_source_url = canonicalize_persisted_url
+
+
+__all__ = [
+    "canonicalize_persisted_url",
+    "clean_text",
+    "is_valid_http_url",
+    "normalize_fetch_url",
+    "normalize_source_url",
+]

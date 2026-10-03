@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -61,6 +60,11 @@ from app.services.recommender import (
     map_topic_preference_score,
     score_bucket,
 )
+from app.services.source_url_privacy import (
+    canonicalize_persisted_url,
+    normalize_fetch_url,
+    redact_sensitive_urls,
+)
 from app.services.user_context import ensure_demo_user
 
 
@@ -81,13 +85,17 @@ def _get_item_or_404(db: Session, item_id: UUID) -> Item:
     return item
 
 
-def _is_valid_http_url(url: str) -> bool:
-    parsed = urlparse(url.strip())
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-
-
-def _process_item_task(item_id: UUID, output_language: str | None = None) -> None:
-    process_item_by_id(item_id, output_language=output_language, auto_archive=True)
+def _process_item_task(
+    item_id: UUID,
+    output_language: str | None = None,
+    fetch_url: str | None = None,
+) -> None:
+    process_item_by_id(
+        item_id,
+        output_language=output_language,
+        auto_archive=True,
+        fetch_url=fetch_url,
+    )
 
 
 def _compute_recommendation(
@@ -343,6 +351,28 @@ def _to_item_out(
     return ItemOut.model_validate(item).model_copy(
         update={
             "title": resolved_title,
+            "source_url": canonicalize_persisted_url(item.source_url),
+            "resolved_from_url": canonicalize_persisted_url(item.resolved_from_url),
+            "raw_content": (
+                redact_sensitive_urls(item.raw_content)
+                if item.raw_content is not None
+                else None
+            ),
+            "clean_content": (
+                redact_sensitive_urls(item.clean_content)
+                if item.clean_content is not None
+                else None
+            ),
+            "content_acquisition_note": (
+                redact_sensitive_urls(item.content_acquisition_note)
+                if item.content_acquisition_note is not None
+                else None
+            ),
+            "processing_error": (
+                redact_sensitive_urls(item.processing_error)
+                if item.processing_error is not None
+                else None
+            ),
             "recommendation_score": round(score, 2),
             "recommendation_bucket": bucket,
             "recommendation_reason": reasons,
@@ -452,21 +482,30 @@ def create_item(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> ItemOut:
+    fetch_url = normalize_fetch_url(payload.source_url)
+    source_url = canonicalize_persisted_url(payload.source_url)
+    if payload.source_url is not None and (fetch_url is None or source_url is None):
+        raise HTTPException(status_code=400, detail="source_url must be a valid http:// or https:// URL")
+    if payload.source_type == "url" and (fetch_url is None or source_url is None):
+        raise HTTPException(status_code=400, detail="source_url must be a valid http:// or https:// URL")
+
     ensure_demo_user(db)
 
-    source_domain = extract_domain(payload.source_url)
+    source_domain = extract_domain(source_url)
     raw_content = payload.raw_content
 
     item = Item(
         user_id=settings.single_user_id,
         source_type=payload.source_type,
-        source_url=payload.source_url,
+        source_url=source_url,
         source_domain=source_domain,
         title=payload.title,
         raw_content=raw_content,
         output_language=payload.output_language,
         status="pending",
     )
+    if fetch_url is not None:
+        item._collector_fetch_url = fetch_url
     db.add(item)
     db.flush()
 
@@ -480,7 +519,7 @@ def create_item(
     else:
         db.commit()
         db.refresh(item)
-        background_tasks.add_task(_process_item_task, item.id, payload.output_language)
+        background_tasks.add_task(_process_item_task, item.id, payload.output_language, fetch_url)
     return _to_item_out(db, item)
 
 
@@ -492,31 +531,37 @@ def create_items_batch(
 ) -> ItemBatchCreateResponse:
     ensure_demo_user(db)
 
-    normalized_urls = [url.strip() for url in payload.urls if url.strip()]
+    resolved_urls = [
+        (
+            normalize_fetch_url(raw_url),
+            canonicalize_persisted_url(raw_url),
+        )
+        for raw_url in payload.urls
+    ]
     existing_urls: set[str] = set()
-    if payload.deduplicate and normalized_urls:
+    if payload.deduplicate:
         existing_urls = {
-            value
+            canonical
             for value in db.scalars(
                 select(Item.source_url).where(
                     Item.user_id == settings.single_user_id,
-                    Item.source_url.in_(normalized_urls),
+                    Item.source_url.is_not(None),
                 )
             )
-            if value
+            if (canonical := canonicalize_persisted_url(value)) is not None
         }
 
     results: list[ItemBatchCreateResult] = []
-    created_item_ids: list[UUID] = []
+    created_items: list[tuple[UUID, str]] = []
     created_urls_in_batch: set[str] = set()
 
-    for source_url in normalized_urls:
-        if not _is_valid_http_url(source_url):
+    for fetch_url, source_url in resolved_urls:
+        if fetch_url is None or source_url is None:
             results.append(
                 ItemBatchCreateResult(
-                    source_url=source_url,
+                    source_url="",
                     status="invalid",
-                    detail="URL must start with http:// or https://",
+                    detail="URL must be a valid http:// or https:// URL",
                 )
             )
             continue
@@ -545,7 +590,7 @@ def create_items_batch(
         db.flush()
 
         created_urls_in_batch.add(source_url)
-        created_item_ids.append(item.id)
+        created_items.append((item.id, fetch_url))
         results.append(
             ItemBatchCreateResult(
                 source_url=source_url,
@@ -556,8 +601,8 @@ def create_items_batch(
 
     db.commit()
 
-    for item_id in created_item_ids:
-        background_tasks.add_task(_process_item_task, item_id, payload.output_language)
+    for item_id, fetch_url in created_items:
+        background_tasks.add_task(_process_item_task, item_id, payload.output_language, fetch_url)
 
     created_count = sum(1 for row in results if row.status == "created")
     skipped_count = sum(1 for row in results if row.status == "skipped")
@@ -630,7 +675,7 @@ def reprocess_items_batch(
                 )
             )
             continue
-        if payload.failed_only and item.status != "failed":
+        if payload.failed_only and item.status not in {"failed", "needs_body", "degraded"}:
             results.append(
                 ItemBatchReprocessResult(
                     item_id=item_id,

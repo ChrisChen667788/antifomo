@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Item, WorkTask
 from app.models.workflow_entities import SessionExportArtifact, SessionExportItem
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 
 
 def persist_session_artifact(
@@ -22,7 +23,7 @@ def persist_session_artifact(
         work_task_id=task.id,
         session_id=task.session_id,
         artifact_type=artifact_type,
-        markdown=markdown,
+        markdown=redact_sensitive_urls(markdown),
     )
     db.add(artifact)
     db.flush()
@@ -39,7 +40,9 @@ def persist_session_artifact(
                 position=index,
                 included_reason=str(item.get("included_reason") or "") or None,
                 title_snapshot=str(item.get("title_snapshot") or "未命名内容"),
-                source_url_snapshot=str(item.get("source_url_snapshot") or "") or None,
+                source_url_snapshot=canonicalize_persisted_url(
+                    str(item.get("source_url_snapshot") or "") or None
+                ),
             )
         )
     return artifact
@@ -54,7 +57,7 @@ def serialize_session_artifact(
         "work_task_id": str(artifact.work_task_id),
         "session_id": str(artifact.session_id) if artifact.session_id else None,
         "artifact_type": artifact.artifact_type,
-        "markdown": artifact.markdown,
+        "markdown": redact_sensitive_urls(artifact.markdown),
         "created_at": artifact.created_at,
         "items": [
             {
@@ -63,7 +66,9 @@ def serialize_session_artifact(
                 "position": item.position,
                 "included_reason": item.included_reason,
                 "title_snapshot": item.title_snapshot,
-                "source_url_snapshot": item.source_url_snapshot,
+                "source_url_snapshot": canonicalize_persisted_url(
+                    item.source_url_snapshot
+                ),
                 "created_at": item.created_at,
             }
             for item in artifact_items

@@ -15,13 +15,13 @@ from sqlalchemy import (
     Numeric,
     String,
     UniqueConstraint,
-    Uuid,
     event,
     func,
     inspect as sa_inspect,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.db.types import CompatibleUuid as Uuid
 from app.db.base import Base
 
 

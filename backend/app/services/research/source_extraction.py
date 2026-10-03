@@ -18,6 +18,7 @@ class SourceExtractionDependencies:
     extract_from_browser: Callable[..., object]
     extract_from_url: Callable[..., object]
     extract_from_reader_proxy: Callable[..., object]
+    reader_proxy_enabled: bool = False
 
 
 def extract_source_document(
@@ -71,18 +72,24 @@ def extract_source_document(
                 )
                 content_status = "extracted"
             except ContentExtractionError:
-                try:
-                    extracted = deps.extract_from_reader_proxy(hit.url, timeout_seconds=max(timeout_seconds + 2, 10))
-                    extracted_title = normalize_text(getattr(extracted, "title", "") or title) or title
-                    excerpt = deps.truncate_text(
-                        deps.clean_source_text_for_analysis(
-                            getattr(extracted, "clean_content", "") or getattr(extracted, "raw_content", "") or snippet
-                        ),
-                        excerpt_chars,
-                    )
-                    content_status = "reader_proxy"
-                except ContentExtractionError:
-                    pass
+                if deps.reader_proxy_enabled:
+                    try:
+                        extracted = deps.extract_from_reader_proxy(
+                            hit.url,
+                            timeout_seconds=max(timeout_seconds + 2, 10),
+                        )
+                        extracted_title = normalize_text(getattr(extracted, "title", "") or title) or title
+                        excerpt = deps.truncate_text(
+                            deps.clean_source_text_for_analysis(
+                                getattr(extracted, "clean_content", "")
+                                or getattr(extracted, "raw_content", "")
+                                or snippet
+                            ),
+                            excerpt_chars,
+                        )
+                        content_status = "reader_proxy"
+                    except ContentExtractionError:
+                        pass
 
     return SourceDocument(
         title=extracted_title,

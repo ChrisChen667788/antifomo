@@ -4,7 +4,7 @@
 >
 > 证据层级：`local_implementation`（本 checkout 可复现）→ `demo`（本地展示）→ `synthetic_benchmark`（固定样本）→ `human_acceptance` → `customer_acceptance` → `production`。WorkBuddy 官方文档是 `vendor_claim`，不是 Anti-FOMO 的验收证据。真实 pilot 是外部验收依赖，不能由本地测试或自动任务代签。
 
-2026-09-22 已复核代码入口、验证脚本和六项官方来源。竞品事实与复核范围见 [深度对标报告](./workbuddy-deep-dive-2026-09-18.md)。截至 2026-10-02，PR-A 的 schema/state、独立控制 API、Alembic `0040` 与本地 synthetic harness 是 `local_implementation`；legacy adapter、可信 identity/permission policy、callback intent、Web UI、故障注入和 executor 仍为 **planned**。“预算”“门槛”“DoD”是目标，不是已经达到的性能、稳定性或生产承诺。
+2026-09-22 已复核代码入口、验证脚本和六项官方来源。竞品事实与复核范围见 [深度对标报告](./workbuddy-deep-dive-2026-09-18.md)。截至 2026-10-03，PR-A 的 schema/state、独立控制 API、Alembic `0040` 与本地 synthetic harness 是 `local_implementation`；legacy adapter、可信 identity/permission policy、callback intent、Web UI、故障注入和 executor 仍为 **planned**。并行微信分支的 WX-0/WX-A 基础不完成这些缺口，也不改变 2.12 的状态。“预算”“门槛”“DoD”是目标，不是已经达到的性能、稳定性或生产承诺。
 
 ## 1. 设计不变量
 
@@ -46,6 +46,19 @@
 | WB-11 | 团队知识、ACL、评论和 AI 修订建议 | 2.17/2.19 | AI 只生成 diff/suggestion，逐条接受后才写正文 |
 | WB-12 | 企业统一身份、审计、OpenAPI、Managed Agent | 2.19/2.21 仅做兼容边界 | 不是腾讯企业版接入；需企业方外部验收后才可称 pilot/production |
 | WB-13 | WorkBuddy Bench 与公开任务 harness | 2.20 固定 benchmark 参考 | benchmark 结果只证明样本表现，不证明 WorkBuddy 生产 SLA |
+
+### 3.1 微信增量入库工作包映射
+
+[`WX-0`–`WX-E` 微信增量入库与卡片证据计划](./wechat-incremental-ingestion-and-card-evidence-plan-2026-10-03.md) 是本计划的并行工作包分解，不建立第二套版本线，也不能绕过主版本依赖。当前只有开发分支上的 WX-0/WX-A 基础达到 `local_implementation`；WX-B–WX-E 仍为 `planned`。
+
+| 微信工作包 | 挂靠版本/门禁 | 关系 |
+| --- | --- | --- |
+| WX-0 采集安全与真实降级 | 与 2.12 并行 | 修复 collector 的 TLS、外部 proxy 和假成功状态；不替代 identity/policy/approval、legacy adapter 和 callback 收敛 |
+| WX-A Source Envelope | 2.13 | 为来源、raw、revision、span 和 transform receipt 建账；不代表 Ask/Plan/Agent 或模型路由 DoD 完成 |
+| WX-B stage jobs | 2.14 | 复用单进程 lease/recovery 边界，补选择性重算和失效传播；不宣称分布式队列 |
+| WX-C 官方/授权 connector | 2.15 | 使用 connector scope、撤销和 secret 边界；企业微信微信客服仍需真实 PoC，且不是个人收藏 API |
+| WX-D Card Factory v2 | 2.16 | card/claim/evidence revision 接入 artifact revision；当前 `card-v2-compat-1` 只是前置元数据 |
+| WX-E review/tenant/benchmark | 2.17、2.19、2.20 | 复用 Review Inbox、租户 ACL/账本和固定 benchmark；不自动产生 human/customer acceptance |
 
 ## 4. 版本执行合同（2.12.0–2.21.0）
 

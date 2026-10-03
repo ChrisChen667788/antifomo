@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     openai_verify_ssl: bool = True
     openai_ca_bundle: str | None = None
     url_fetch_timeout_seconds: int = 20
+    reader_proxy_enabled: bool = False
+    wechat_url_search_enabled: bool = False
     browser_extractor_enabled: bool = True
     browser_extractor_timeout_seconds: int = 28
     browser_extractor_chrome_path: str = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

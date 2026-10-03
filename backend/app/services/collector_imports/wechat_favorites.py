@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 from html import unescape
 from html.parser import HTMLParser
@@ -15,26 +15,15 @@ from sqlalchemy.orm import Session
 from app.models.collector_entities import CollectorImportBatch
 from app.services.content_extractor import normalize_text
 from app.services.language import normalize_output_language
+from app.services.source_url_privacy import (
+    WECHAT_CANONICAL_QUERY_KEYS,
+    canonicalize_persisted_url,
+    normalize_fetch_url,
+    redact_sensitive_urls,
+)
 
 
-WECHAT_ARTICLE_QUERY_KEYS = {"__biz", "mid", "idx", "sn", "chksm"}
-WECHAT_ARTICLE_TRACKING_KEYS = {
-    "ascene",
-    "clicktime",
-    "devicetype",
-    "enterid",
-    "exportkey",
-    "fontgear",
-    "from",
-    "key",
-    "lang",
-    "pass_ticket",
-    "scene",
-    "sessionid",
-    "subscene",
-    "uin",
-    "version",
-}
+WECHAT_ARTICLE_QUERY_KEYS = WECHAT_CANONICAL_QUERY_KEYS
 WECHAT_ARTICLE_BAD_PATH_PREFIXES = (
     "/cgi-bin/",
     "/mp/profile_",
@@ -49,6 +38,7 @@ URL_RE = re.compile(r"https?://[^\s<>'\"\u3000]+", flags=re.IGNORECASE)
 class WechatFavoriteCandidate:
     title: str | None
     source_url: str | None
+    fetch_url: str | None = field(repr=False, compare=False)
     raw_content: str
     dedup_key: str
     extraction_mode: str
@@ -143,42 +133,41 @@ def _iter_urls_in_text(value: str):
             yield variant, match
 
 
-def _normalize_wechat_article_url(value: str | None) -> str | None:
+def _normalize_wechat_article_urls(value: str | None) -> tuple[str, str] | None:
     text = _trim_url_candidate(value or "")
     if not text:
         return None
     parsed = urllib_parse.urlparse(text)
-    netloc = parsed.netloc.lower()
+    netloc = (parsed.hostname or "").lower()
     path = parsed.path or "/"
-    if not netloc.endswith("mp.weixin.qq.com"):
+    if netloc != "mp.weixin.qq.com":
         return None
     if any(path.startswith(prefix) for prefix in WECHAT_ARTICLE_BAD_PATH_PREFIXES):
         return None
     if not (path == "/s" or path.startswith("/s/")):
         return None
 
-    query_pairs = urllib_parse.parse_qsl(parsed.query, keep_blank_values=True)
-    stable_pairs: list[tuple[str, str]] = []
-    article_key_seen = False
-    for key, raw_value in query_pairs:
-        if key in WECHAT_ARTICLE_QUERY_KEYS:
-            article_key_seen = True
-            stable_pairs.append((key, raw_value))
-        elif key not in WECHAT_ARTICLE_TRACKING_KEYS:
-            stable_pairs.append((key, raw_value))
-
+    parsed_query = urllib_parse.parse_qs(parsed.query, keep_blank_values=True)
+    article_key_seen = any(parsed_query.get(key) for key in WECHAT_ARTICLE_QUERY_KEYS)
     if path == "/s" and not article_key_seen:
         return None
 
-    stable_query = urllib_parse.urlencode(stable_pairs, doseq=True)
-    normalized = parsed._replace(
+    normalized = urllib_parse.urlunparse(parsed._replace(
         scheme="https",
         netloc=netloc,
         path=path.rstrip("/") if path != "/" and path.endswith("/") else path,
-        query=stable_query,
         fragment="",
-    )
-    return urllib_parse.urlunparse(normalized)
+    ))
+    fetch_url = normalize_fetch_url(normalized)
+    source_url = canonicalize_persisted_url(normalized)
+    if not fetch_url or not source_url:
+        return None
+    return source_url, fetch_url
+
+
+def _normalize_wechat_article_url(value: str | None) -> str | None:
+    normalized = _normalize_wechat_article_urls(value)
+    return normalized[0] if normalized else None
 
 
 def _wechat_favorite_key(source_url: str | None, content: str) -> str:
@@ -251,36 +240,42 @@ def _line_title_hints(export_text: str) -> dict[str, str]:
     return hints
 
 
-def _extract_wechat_urls(export_text: str, urls: list[str] | None = None) -> list[tuple[str, str | None]]:
-    discovered: list[tuple[str, str | None]] = []
+def _extract_wechat_urls(
+    export_text: str,
+    urls: list[str] | None = None,
+) -> list[tuple[str, str, str | None]]:
+    discovered: list[tuple[str, str, str | None]] = []
     for raw in urls or []:
         for _variant, match in _iter_urls_in_text(raw):
-            url = _normalize_wechat_article_url(match.group(0))
-            if url:
-                discovered.append((url, None))
+            normalized = _normalize_wechat_article_urls(match.group(0))
+            if normalized:
+                source_url, fetch_url = normalized
+                discovered.append((source_url, fetch_url, None))
 
     for href, anchor_title in _html_anchor_candidates(export_text):
         for _variant, match in _iter_urls_in_text(href):
-            url = _normalize_wechat_article_url(match.group(0))
-            if url:
-                discovered.append((url, _candidate_title(anchor_title)))
+            normalized = _normalize_wechat_article_urls(match.group(0))
+            if normalized:
+                source_url, fetch_url = normalized
+                discovered.append((source_url, fetch_url, _candidate_title(anchor_title)))
 
     line_hints = _line_title_hints(export_text)
     for _variant, match in _iter_urls_in_text(export_text):
-        url = _normalize_wechat_article_url(match.group(0))
-        if url:
-            discovered.append((url, line_hints.get(url)))
+        normalized = _normalize_wechat_article_urls(match.group(0))
+        if normalized:
+            source_url, fetch_url = normalized
+            discovered.append((source_url, fetch_url, line_hints.get(source_url)))
 
-    deduped: list[tuple[str, str | None]] = []
+    deduped: list[tuple[str, str, str | None]] = []
     seen: set[str] = set()
     titles: dict[str, str] = {}
-    for url, title in discovered:
-        if title and url not in titles:
-            titles[url] = title
-        if url in seen:
+    for source_url, fetch_url, title in discovered:
+        if title and source_url not in titles:
+            titles[source_url] = title
+        if source_url in seen:
             continue
-        seen.add(url)
-        deduped.append((url, titles.get(url) or title))
+        seen.add(source_url)
+        deduped.append((source_url, fetch_url, titles.get(source_url) or title))
     return deduped
 
 
@@ -360,6 +355,7 @@ def _extract_wechat_text_blocks(
             WechatFavoriteCandidate(
                 title=title,
                 source_url=source_url,
+                fetch_url=None,
                 raw_content=raw_content,
                 dedup_key=dedup_key,
                 extraction_mode="wechat_favorites_text",
@@ -383,7 +379,7 @@ def parse_wechat_favorites_export(
     seen_keys: set[str] = set()
 
     url_titles: set[str] = set()
-    for source_url, title in _extract_wechat_urls(text, urls):
+    for source_url, fetch_url, title in _extract_wechat_urls(text, urls):
         dedup_key = _wechat_favorite_key(source_url, "")
         if dedup_key in seen_keys:
             continue
@@ -394,6 +390,7 @@ def parse_wechat_favorites_export(
             WechatFavoriteCandidate(
                 title=title,
                 source_url=source_url,
+                fetch_url=fetch_url,
                 raw_content=_build_wechat_url_raw_content(source_url, title),
                 dedup_key=dedup_key,
                 extraction_mode="wechat_favorites_url",
@@ -439,6 +436,7 @@ def import_wechat_favorites(
     )
     results: list[dict[str, Any]] = []
     created_item_ids: list[str] = []
+    processing_jobs: list[dict[str, str | None]] = []
     created = 0
     deduplicated = 0
     invalid = 0
@@ -461,6 +459,7 @@ def import_wechat_favorites(
                 resolver="wechat_favorites_import",
                 body_source=candidate.extraction_mode,
                 process_immediately=process_immediately,
+                fetch_url=candidate.fetch_url,
             )
             item = result["item"]
             status = "deduplicated" if result.get("deduplicated") else "created"
@@ -469,6 +468,13 @@ def import_wechat_favorites(
                 created_item_ids.append(str(item.id))
             else:
                 deduplicated += 1
+            if not process_immediately and (status == "created" or result.get("processing_requested")):
+                processing_jobs.append(
+                    {
+                        "item_id": str(item.id),
+                        "fetch_url": candidate.fetch_url,
+                    }
+                )
             item_ids.append(str(item.id))
             results.append(
                 {
@@ -488,7 +494,7 @@ def import_wechat_favorites(
                     "title": candidate.title,
                     "item_id": None,
                     "status": "invalid",
-                    "detail": str(exc),
+                    "detail": redact_sensitive_urls(exc),
                     "body_source": candidate.extraction_mode,
                 }
             )
@@ -497,7 +503,7 @@ def import_wechat_favorites(
         user_id=user_id,
         import_type="wechat_favorites",
         source_label="微信收藏",
-        status="queued" if created and not process_immediately else "imported",
+        status="queued" if processing_jobs else "imported",
         output_language=normalize_output_language(output_language),
         processing_deferred=not process_immediately,
         total_candidates=len(candidates),
@@ -527,5 +533,6 @@ def import_wechat_favorites(
         "invalid": invalid,
         "skipped": 0,
         "created_item_ids": created_item_ids,
+        "processing_jobs": processing_jobs,
         "results": results,
     }

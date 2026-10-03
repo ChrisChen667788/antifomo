@@ -2,30 +2,45 @@ from __future__ import annotations
 
 import json
 import re
-from typing import TypeVar
+from typing import Annotated, Literal, TypeVar
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 
 from app.services.language import localized_text
 
 
 class SummarizeResult(BaseModel):
-    display_title: str = ""
-    short_summary: str = "暂无摘要。"
-    long_summary: str = "暂无长摘要。"
-    key_points: list[str] = Field(default_factory=list)
+    display_title: str = Field(default="", max_length=200)
+    short_summary: str = Field(default="暂无摘要。", max_length=1200)
+    long_summary: str = Field(default="暂无长摘要。", max_length=12000)
+    key_points: list[Annotated[str, Field(min_length=1, max_length=500)]] = Field(
+        default_factory=list,
+        max_length=12,
+    )
+    _runtime_receipt: dict[str, object] = PrivateAttr(default_factory=dict)
+    _parse_degraded: bool = PrivateAttr(default=False)
 
 
 class TagsResult(BaseModel):
-    tags: list[str] = Field(default_factory=lambda: ["待分类"])
+    tags: list[Annotated[str, Field(min_length=1, max_length=80)]] = Field(
+        default_factory=lambda: ["待分类"],
+        max_length=20,
+    )
+    _runtime_receipt: dict[str, object] = PrivateAttr(default_factory=dict)
+    _parse_degraded: bool = PrivateAttr(default=False)
 
 
 class ScoreResult(BaseModel):
-    score_value: float = 2.5
-    action_suggestion: str = "later"
-    recommendation_reason: list[str] = Field(default_factory=lambda: ["解析失败，使用默认推荐。"])
-    content_density: str = "medium"
-    novelty_level: str = "medium"
+    score_value: float = Field(default=2.5, ge=1.0, le=5.0)
+    action_suggestion: Literal["skip", "later", "deep_read"] = "later"
+    recommendation_reason: list[Annotated[str, Field(min_length=1, max_length=500)]] = Field(
+        default_factory=lambda: ["解析失败，使用默认推荐。"],
+        max_length=8,
+    )
+    content_density: Literal["low", "medium", "high"] = "medium"
+    novelty_level: Literal["low", "medium", "high"] = "medium"
+    _runtime_receipt: dict[str, object] = PrivateAttr(default_factory=dict)
+    _parse_degraded: bool = PrivateAttr(default=False)
 
 
 class SessionSummaryResult(BaseModel):
@@ -147,7 +162,11 @@ def _extract_json_candidates(raw_text: str) -> list[str]:
     return deduped
 
 
-def safe_parse_json(raw_text: str, schema: type[SchemaT], fallback: SchemaT) -> SchemaT:
+def safe_parse_json_with_status(
+    raw_text: str,
+    schema: type[SchemaT],
+    fallback: SchemaT,
+) -> tuple[SchemaT, bool]:
     payload: object
 
     raw_candidate = raw_text.strip()
@@ -162,15 +181,19 @@ def safe_parse_json(raw_text: str, schema: type[SchemaT], fallback: SchemaT) -> 
             except json.JSONDecodeError:
                 continue
         if payload is None:
-            return fallback
+            return fallback, True
 
     if not isinstance(payload, dict):
-        return fallback
+        return fallback, True
 
     try:
-        return schema.model_validate(payload)
+        return schema.model_validate(payload), False
     except ValidationError:
-        return fallback
+        return fallback, True
+
+
+def safe_parse_json(raw_text: str, schema: type[SchemaT], fallback: SchemaT) -> SchemaT:
+    return safe_parse_json_with_status(raw_text, schema, fallback)[0]
 
 
 def _fallback_summarize(output_language: str) -> SummarizeResult:
@@ -401,12 +424,30 @@ def parse_summarize_response(raw_text: str, *, output_language: str = "zh-CN") -
     return safe_parse_json(raw_text, SummarizeResult, _fallback_summarize(output_language))
 
 
+def parse_summarize_response_with_status(
+    raw_text: str, *, output_language: str = "zh-CN"
+) -> tuple[SummarizeResult, bool]:
+    return safe_parse_json_with_status(raw_text, SummarizeResult, _fallback_summarize(output_language))
+
+
 def parse_tags_response(raw_text: str, *, output_language: str = "zh-CN") -> TagsResult:
     return safe_parse_json(raw_text, TagsResult, _fallback_tags(output_language))
 
 
+def parse_tags_response_with_status(
+    raw_text: str, *, output_language: str = "zh-CN"
+) -> tuple[TagsResult, bool]:
+    return safe_parse_json_with_status(raw_text, TagsResult, _fallback_tags(output_language))
+
+
 def parse_score_response(raw_text: str, *, output_language: str = "zh-CN") -> ScoreResult:
     return safe_parse_json(raw_text, ScoreResult, _fallback_score(output_language))
+
+
+def parse_score_response_with_status(
+    raw_text: str, *, output_language: str = "zh-CN"
+) -> tuple[ScoreResult, bool]:
+    return safe_parse_json_with_status(raw_text, ScoreResult, _fallback_score(output_language))
 
 
 def parse_session_summary_response(

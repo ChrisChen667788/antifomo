@@ -1,12 +1,12 @@
 # Anti-FOMO Current Product Status
 
-Updated: 2026-10-02
+Updated: 2026-10-03
 
 This is the canonical status page for public documentation. The repository is an active local-first development prototype. A working route, test result, preview, or generated artifact does not by itself establish production readiness, customer acceptance, or a signed commercial deployment.
 
 ## Current line
 
-- **Implemented development scope:** `2.10.3–2.11.8-development`, plus the `2.12.0` PR-A schema/state subset.
+- **Implemented development scope:** `2.10.3–2.11.8-development`, the `2.12.0` PR-A schema/state subset, and the `codex/wechat-evidence-pipeline-v2` branch's `WX-0`/`WX-A` foundation. The WX work-package IDs are not release versions; that branch is not a release or evidence that `2.12.0` is complete.
 - **2.12.0 status:** The Task Envelope PR-A schema/state subset is implemented as `local_implementation` in [GitHub PR #12](https://github.com/ChrisChen667788/antifomo/pull/12). The GitHub PR state records its merge outcome; source integration does not make 2.12.0 complete or released. The execution flag defaults off, and PR-A has no executor or callback sender.
 - **Release baseline:** `baseline_hybrid`.
 - **Release promotion:** `blocked` until independent retrieval review, human review/qrels, expert calibration, blind evaluation, customer acceptance, production Skill/connector governance, and final Office/visual/security/performance/recovery evidence are complete.
@@ -33,6 +33,7 @@ Marketing pages must name the highest applicable label beside every metric or ou
 | Surface | Status | Evidence boundary |
 | --- | --- | --- |
 | WeChat/web/file intake and source diagnostics | `local_implementation` + `demo` | Collector fixtures, tests, and local screenshots; third-party source availability varies. |
+| WeChat incremental source/evidence foundation (`WX-0`/`WX-A`) | `local_implementation` on development branch | The branch makes access-limited/needs-body and model-degraded states explicit; defaults external reader proxy off; separates exact raw assets from cleaned Item projections; canonicalizes persisted WeChat URLs; adds refreshable desktop checkpoints; and records source identity, retained-immutable raw/revision/span/transform receipts. Parent deletion remains available for governed erasure. It has no official personal-Favorites API, enterprise WeChat connector PoC, stage-job queue, strict claim-to-span Card Factory v2, merge/release, or external acceptance. |
 | Retrieval, evidence ledger, compare and report workflow | `local_implementation` + `demo` | Local tests and evidence receipts; independent retrieval/customer review remains open. |
 | Architecture readiness and solution architect workbench | `local_implementation` + `demo` | Generated blueprints and UI paths; not a customer-approved architecture. |
 | Office/visual evidence receipts | `local_implementation` | Local hashes and render receipts; they do not replace named human/customer acceptance. |
@@ -48,4 +49,4 @@ Marketing pages must name the highest applicable label beside every metric or ou
 
 ## Next decision
 
-The next implementation step is PR-B: adapt the WorkBuddy webhook, `POST /api/tasks`, and Focus Assistant action path to create proposals, register callback intent without secrets, and fail closed until a current approval passes an authenticated permission policy. PR-C then updates the Web surfaces for proposal/review/receipt states. The [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md) and [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) remain the governing scope. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export paths still retain direct execution, and WorkBuddy retains its conditional signature check and callback behavior, so PR-A and 2.12.0 as a whole are not complete.
+The next mainline implementation step remains PR-B: adapt the WorkBuddy webhook, `POST /api/tasks`, and Focus Assistant action path to create proposals, register callback intent without secrets, and fail closed until a current approval passes an authenticated permission policy. PR-C then updates the Web surfaces for proposal/review/receipt states. In parallel, the [`WX-0`–`WX-E` WeChat ingestion and card-evidence plan](./wechat-incremental-ingestion-and-card-evidence-plan-2026-10-03.md) maps collector work onto the same version train; only its WX-0/WX-A foundation exists on the development branch, while WX-B–WX-E remain planned. The [ten-version engineering plan](./workbuddy-integration-plan-2026-09-18.md) and [WorkBuddy research report](./workbuddy-deep-dive-2026-09-18.md) remain the governing scope. New planner, connector, scheduler and desktop-action paths must remain read-only proposal or fail-closed until their version gates pass. The legacy export paths still retain direct execution, and WorkBuddy retains its conditional signature check and callback behavior, so PR-A and 2.12.0 as a whole are not complete.

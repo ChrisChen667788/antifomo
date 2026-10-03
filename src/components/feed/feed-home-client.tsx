@@ -120,6 +120,7 @@ function mapApiItemsToFeed(
       status: item.status,
       ingestRoute: item.ingest_route,
       fallbackUsed: item.fallback_used,
+      processingDegraded: item.processing_degraded,
     };
   });
 }

@@ -38,6 +38,7 @@ from app.services.collector_multiformat_service import (
     sync_rss_feeds,
 )
 from app.services.content_extractor import extract_domain
+from app.services.source_url_privacy import canonicalize_persisted_url, redact_sensitive_urls
 from app.services.user_context import ensure_demo_user
 
 
@@ -48,12 +49,16 @@ settings = get_settings()
 def _to_source_out(source: CollectorSource) -> CollectorSourceOut:
     return CollectorSourceOut(
         id=source.id,
-        source_url=source.source_url,
+        source_url=canonicalize_persisted_url(source.source_url) or "",
         source_domain=source.source_domain,
         note=source.note,
         enabled=source.enabled,
         last_collected_at=source.last_collected_at,
-        last_error=source.last_error,
+        last_error=(
+            redact_sensitive_urls(source.last_error)
+            if source.last_error is not None
+            else None
+        ),
         created_at=source.created_at,
         updated_at=source.updated_at,
     )

@@ -7,7 +7,9 @@ from uuid import UUID
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.models.collector_evidence_entities import CollectorSourceSpan
 from app.models.entities import Feedback, Item, KnowledgeEntry, KnowledgeRule
+from app.services.collector_evidence_service import latest_revision_for_item
 from app.services.content_extractor import normalize_text
 from app.services.knowledge_cleaning_service import clean_knowledge_content, clean_knowledge_title
 from app.services.language import localized_text, normalize_output_language
@@ -19,6 +21,44 @@ class KnowledgeAutoArchiveResult:
     entry: KnowledgeEntry | None = None
     reason: str | None = None
     threshold: float | None = None
+
+
+def _evidence_card_metadata(
+    db: Session,
+    *,
+    item: Item,
+    previous: dict | None = None,
+    force_revision: bool = False,
+) -> dict:
+    revision = latest_revision_for_item(db, item_id=item.id)
+    span_ids: list[str] = []
+    if revision is not None:
+        span_ids = [
+            str(span_id)
+            for span_id in db.scalars(
+                select(CollectorSourceSpan.id)
+                .where(CollectorSourceSpan.revision_id == revision.id)
+                .order_by(CollectorSourceSpan.created_at)
+                .limit(20)
+            )
+        ]
+    prior = dict(previous or {})
+    evidence_payload = {
+        "kind": "evidence_card",
+        "schema_version": "card-v2-compat-1",
+        "source_revision_id": str(revision.id) if revision is not None else None,
+        "evidence_span_ids": span_ids,
+        "key_points": list(item.key_points or []),
+        "content_score_reasons": list(item.content_score_reasons or []),
+        "content_density": item.content_density,
+        "novelty_level": item.novelty_level,
+        "generation_receipts": list(item.llm_receipts or []),
+        "claim_evidence_status": "unverified_document_scope",
+    }
+    evidence_changed = any(prior.get(key) != value for key, value in evidence_payload.items())
+    prior_revision = max(0, int(prior.get("revision_number") or 0))
+    revision_number = prior_revision + 1 if force_revision or evidence_changed or not prior else prior_revision
+    return {**prior, **evidence_payload, "revision_number": revision_number}
 
 
 def ensure_knowledge_rule(db: Session, user_id: UUID) -> KnowledgeRule:
@@ -109,6 +149,24 @@ def create_or_get_knowledge_entry(
             .limit(1)
         )
         if existing_by_item:
+            card_changed = (
+                existing_by_item.title != normalized_title
+                or existing_by_item.content != normalized_content
+                or existing_by_item.source_domain != item.source_domain
+            )
+            refreshed_metadata = _evidence_card_metadata(
+                db,
+                item=item,
+                previous=existing_by_item.metadata_payload,
+                force_revision=card_changed,
+            )
+            if card_changed:
+                existing_by_item.title = normalized_title
+                existing_by_item.content = normalized_content
+                existing_by_item.source_domain = item.source_domain
+            if existing_by_item.metadata_payload != refreshed_metadata:
+                existing_by_item.metadata_payload = refreshed_metadata
+            db.add(existing_by_item)
             return existing_by_item, False
 
     existing_exact = db.scalar(
@@ -120,6 +178,14 @@ def create_or_get_knowledge_entry(
         .limit(1)
     )
     if existing_exact:
+        refreshed_metadata = _evidence_card_metadata(
+            db,
+            item=item,
+            previous=existing_exact.metadata_payload,
+        )
+        if existing_exact.metadata_payload != refreshed_metadata:
+            existing_exact.metadata_payload = refreshed_metadata
+            db.add(existing_exact)
         return existing_exact, False
 
     entry = KnowledgeEntry(
@@ -128,6 +194,7 @@ def create_or_get_knowledge_entry(
         title=normalized_title,
         content=normalized_content,
         source_domain=item.source_domain,
+        metadata_payload=_evidence_card_metadata(db, item=item),
     )
     db.add(entry)
     db.flush()

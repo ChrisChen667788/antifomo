@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import re
-import ssl
 from dataclasses import dataclass
 from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request
+
+from app.services.public_url_guard import open_public_url, validate_public_http_url
+from app.services.source_url_privacy import redact_sensitive_urls
 
 
 class ContentExtractionError(Exception):
@@ -106,14 +108,10 @@ def _decode_bytes(raw_bytes: bytes, declared_charset: str | None) -> str:
     return raw_bytes.decode("utf-8", errors="ignore")
 
 
-def _urlopen_with_ssl_fallback(request: Request, *, timeout_seconds: int):
-    try:
-        return urlopen(request, timeout=timeout_seconds)
-    except Exception as exc:
-        if "certificate verify failed" not in str(exc).lower():
-            raise
-    insecure_context = ssl._create_unverified_context()
-    return urlopen(request, timeout=timeout_seconds, context=insecure_context)
+def _urlopen_verified(request: Request, *, timeout_seconds: int):
+    """Open a URL without silently weakening TLS verification."""
+
+    return open_public_url(request, timeout_seconds=timeout_seconds)
 
 
 def _extract_from_html(html_text: str) -> tuple[str | None, str, dict[str, str]]:
@@ -135,19 +133,22 @@ def _meta_first(meta_values: dict[str, str], keys: tuple[str, ...]) -> str | Non
 
 
 def _contains_access_block(text: str) -> bool:
-    lowered = text.lower()
-    hints = (
+    lowered = normalize_text(text).lower()
+    strong_hints = (
         "requiring captcha",
         "warning: this page maybe requiring captcha",
-        "环境异常",
-        "去验证",
-        "访问受限",
         "完成验证后即可继续访问",
-        "参数错误",
-        "parameter error",
-        "链接已失效",
     )
-    return any(hint in lowered for hint in hints)
+    if any(hint in lowered for hint in strong_hints):
+        return True
+    if len(lowered) > 700:
+        return False
+    return (
+        ("环境异常" in lowered and ("验证" in lowered or "去验证" in lowered))
+        or ("访问受限" in lowered and any(token in lowered for token in ("登录", "验证", "授权")))
+        or any(token in lowered for token in ("链接已失效", "链接已经失效"))
+        or ("parameter error" in lowered and any(token in lowered for token in ("expired", "invalid link")))
+    )
 
 
 def _build_access_limited_content(source_domain: str | None, source_url: str) -> tuple[str, str]:
@@ -178,12 +179,15 @@ def extract_from_url(
     )
 
     try:
-        with _urlopen_with_ssl_fallback(request, timeout_seconds=timeout_seconds) as response:
+        with _urlopen_verified(request, timeout_seconds=timeout_seconds) as response:
             content_type = (response.headers.get("Content-Type") or "").lower()
             declared_charset = response.headers.get_content_charset()
-            raw_bytes = response.read(max_bytes)
+            raw_bytes = response.read(max_bytes + 1)
     except Exception as exc:
-        raise ContentExtractionError(f"Failed to fetch URL: {exc}") from exc
+        raise ContentExtractionError(f"Failed to fetch URL: {redact_sensitive_urls(exc)}") from exc
+
+    if len(raw_bytes) > max_bytes:
+        raise ContentExtractionError(f"content_too_large: response exceeded {max_bytes} bytes")
 
     text = _decode_bytes(raw_bytes, declared_charset)
     if not text:
@@ -204,7 +208,7 @@ def extract_from_url(
                 body = merged
 
         if _contains_access_block(f"{title or ''} {body}"):
-            title, body = _build_access_limited_content(extract_domain(url), url)
+            raise ContentExtractionError("access_limited: verification or authorization is required")
     else:
         title, body = None, normalize_text(text)
 
@@ -215,7 +219,7 @@ def extract_from_url(
         source_url=url,
         source_domain=extract_domain(url),
         title=title,
-        raw_content=body,
+        raw_content=text,
         clean_content=body,
     )
 
@@ -226,6 +230,10 @@ def extract_from_reader_proxy(
     timeout_seconds: int = 20,
     max_bytes: int = 2_000_000,
 ) -> ExtractedContent:
+    try:
+        validate_public_http_url(url)
+    except ValueError as exc:
+        raise ContentExtractionError(f"Reader proxy target rejected: {exc}") from exc
     target = url.strip()
     if target.startswith("https://"):
         target = "http://" + target[len("https://") :]
@@ -243,10 +251,15 @@ def extract_from_reader_proxy(
         },
     )
     try:
-        with _urlopen_with_ssl_fallback(request, timeout_seconds=timeout_seconds) as response:
-            raw_bytes = response.read(max_bytes)
+        with _urlopen_verified(request, timeout_seconds=timeout_seconds) as response:
+            raw_bytes = response.read(max_bytes + 1)
     except Exception as exc:
-        raise ContentExtractionError(f"Reader proxy fetch failed: {exc}") from exc
+        raise ContentExtractionError(
+            f"Reader proxy fetch failed: {redact_sensitive_urls(exc)}"
+        ) from exc
+
+    if len(raw_bytes) > max_bytes:
+        raise ContentExtractionError(f"content_too_large: reader response exceeded {max_bytes} bytes")
 
     text = raw_bytes.decode("utf-8", errors="ignore")
     if not text:
@@ -260,7 +273,7 @@ def extract_from_reader_proxy(
 
     source_domain = extract_domain(url)
     if _contains_access_block(f"{title or ''} {body}"):
-        title, body = _build_access_limited_content(source_domain, url)
+        raise ContentExtractionError("access_limited: reader proxy could not obtain article body")
 
     if len(body) < 20:
         raise ContentExtractionError("Reader proxy extracted text is too short")
@@ -269,6 +282,6 @@ def extract_from_reader_proxy(
         source_url=url,
         source_domain=source_domain,
         title=title,
-        raw_content=body,
+        raw_content=text,
         clean_content=body,
     )

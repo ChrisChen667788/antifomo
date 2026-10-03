@@ -16,12 +16,13 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    Uuid,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from app.db.types import CompatibleUuid as Uuid
 from app.db.base import Base
+from app.services.source_url_privacy import canonicalize_persisted_url
 
 
 def new_uuid() -> uuid.UUID:
@@ -85,8 +86,18 @@ class Item(Base):
     clean_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     short_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     long_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    key_points: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     score_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(3, 2), nullable=True)
     action_suggestion: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # skip / later / deep_read
+    content_score_reasons: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list, server_default="[]"
+    )
+    content_density: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    novelty_level: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    llm_receipts: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    processing_degraded: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     output_language: Mapped[str] = mapped_column(
         String(10), nullable=False, default="zh-CN", server_default="zh-CN"
     )
@@ -115,6 +126,12 @@ class Item(Base):
     knowledge_entries: Mapped[list[KnowledgeEntry]] = relationship(
         back_populates="item", cascade="all, delete-orphan"
     )
+
+    @validates("source_url", "resolved_from_url")
+    def _canonicalize_persisted_urls(self, _key: str, value: str | None) -> str | None:
+        # Fetch-only query values travel on the transient _collector_fetch_url
+        # attribute; durable Item fields always use the privacy-safe identity.
+        return canonicalize_persisted_url(value)
 
 
 class ItemTag(Base):

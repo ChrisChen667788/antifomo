@@ -40,7 +40,7 @@ def test_upgrade_from_0035_handles_precreated_tables_and_preserves_integrity(
         item["name"] for item in inspector.get_unique_constraints("task_receipts")
     }
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "20261001_0040"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "20261003_0041"
         assert connection.execute(text("PRAGMA integrity_check")).scalar_one() == "ok"
         assert connection.execute(text("SELECT count(*) FROM pragma_foreign_key_check")).scalar_one() == 0
         trigger_names = {

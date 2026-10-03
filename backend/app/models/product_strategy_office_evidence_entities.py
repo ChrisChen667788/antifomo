@@ -3,9 +3,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DDL, DateTime, ForeignKey, Index, Integer, JSON, String, UniqueConstraint, Uuid, event, func
+from sqlalchemy import Boolean, DDL, DateTime, ForeignKey, Index, Integer, JSON, String, UniqueConstraint, event, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.db.types import CompatibleUuid as Uuid
 from app.db.base import Base
 
 
