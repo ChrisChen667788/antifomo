@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompetitiveDecisionContextPackets } from "@/components/competitive-intelligence/competitive-decision-context-packets";
 import type {
@@ -205,9 +205,11 @@ describe("CompetitiveDecisionContextPackets", () => {
     });
 
     render(<CompetitiveDecisionContextPackets />);
-    fireEvent.click(await screen.findByRole("button", { name: "显式确认并初始化" }));
+    const initializeButton = await screen.findByRole("button", { name: "显式确认并初始化" });
+    await waitFor(() => expect(initializeButton).toBeEnabled());
+    fireEvent.click(initializeButton);
 
-    expect(apiMock.initializeDecisionContextPackets).toHaveBeenCalledOnce();
+    await waitFor(() => expect(apiMock.initializeDecisionContextPackets).toHaveBeenCalledOnce());
     expect(await screen.findByText("已初始化本地上下文包")).toBeInTheDocument();
     expect(screen.getByText("初始化记录：新建 4 个上下文包，已存在 seed 管理包 0 个，保留人工包 0 个；新增 revision 4 条，审批审计新增 1 条。")).toBeInTheDocument();
     expect(screen.getAllByText(/不可自动批准发布/)).not.toHaveLength(0);
